@@ -1,0 +1,68 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Chart palette (kept in sync with tailwind.config.ts). Charts read these. */
+  --accent: #1f3a5f;
+  --accent-400: #5b7ba3;
+  --good: #15803d;
+  --watch: #b45309;
+  --stop: #b91c1c;
+  --na: #9ca3af;
+  --ink: #111111;
+  --ink-faint: #71717a;
+  --line: #e6e6e6;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  background: theme('colors.surface');
+  color: theme('colors.ink.DEFAULT');
+  font-feature-settings: 'cv02', 'cv03', 'cv04';
+}
+
+/* Tabular figures everywhere numbers are the heroes. */
+.tnum {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+}
+
+/* Section eyebrow label — small, uppercase, tracked. */
+.eyebrow {
+  @apply text-eyebrow uppercase text-ink-faint font-medium;
+}
+
+/* Hairline-first cards. */
+.card {
+  @apply bg-card border border-line rounded-card;
+}
+
+/* ---- Print / PDF (§14): clean A4, page-break between sections ---- */
+@media print {
+  @page {
+    size: A4;
+    margin: 14mm;
+  }
+  html,
+  body {
+    background: #fff;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .card {
+    border-color: #d4d4d4;
+    box-shadow: none;
+  }
+  .print-break {
+    break-before: page;
+  }
+  .print-avoid-break {
+    break-inside: avoid;
+  }
+}
