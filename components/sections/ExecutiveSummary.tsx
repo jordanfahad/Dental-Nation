@@ -14,7 +14,7 @@ export function ExecutiveSummary({ view }: { view: ReportView }) {
     <Card highlight={amber} className="overflow-hidden">
       <div className="flex flex-col gap-5 p-5 md:flex-row md:items-start md:justify-between">
         <div className="max-w-xl">
-          <Eyebrow>Lane E · Daily decision</Eyebrow>
+          <Eyebrow>Paid acquisition · Daily decision</Eyebrow>
           <div className="mt-2 flex items-center gap-3">
             <DecisionPill decision={s.decision} />
             <span className="text-sm text-ink-soft">
@@ -26,7 +26,7 @@ export function ExecutiveSummary({ view }: { view: ReportView }) {
           </div>
           <p className="mt-3 text-[15px] leading-snug text-ink">{s.decision_reason}</p>
           <p className="mt-1 text-[13px] text-ink-faint">
-            Is Lane E becoming a controlled patient-acquisition engine?
+            Is Dental Nation&apos;s paid acquisition becoming a controlled engine?
           </p>
         </div>
 
@@ -46,14 +46,14 @@ export function ExecutiveSummary({ view }: { view: ReportView }) {
       {/* KPI strip */}
       <div className="grid grid-cols-2 divide-x divide-line border-t border-line md:grid-cols-5">
         <KpiStat
-          label="Qualified inquiries"
+          label="Qualified leads"
           value={fmtInt(k.qualified_inquiries.today)}
           delta={fmtDelta(k.qualified_inquiries.delta)}
           deltaTone={deltaTone(k.qualified_inquiries.delta)}
           sparkData={k.qualified_inquiries.series}
         />
         <KpiStat
-          label="Glow Up bookings"
+          label="Bookings"
           value={fmtInt(k.glow_up_bookings.today)}
           delta={fmtDelta(k.glow_up_bookings.delta)}
           deltaTone={deltaTone(k.glow_up_bookings.delta)}

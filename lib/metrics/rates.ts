@@ -8,10 +8,11 @@ export function safeRate(numerator: number | null, denominator: number | null): 
 }
 
 export interface RateInputs {
-  qualified_inquiries: number;
-  glow_up_bookings: number;
-  attended_visits: number;
-  valid_inquiries: number;
+  qualified_inquiries: number | null;
+  /** null when bookings are a data gap (no source column value) — NOT 0. */
+  glow_up_bookings: number | null;
+  attended_visits: number | null;
+  valid_inquiries: number | null;
   /** Spend is out of scope for Sheets-v1 unless a sheet maps it. */
   total_spend: number | null;
 }

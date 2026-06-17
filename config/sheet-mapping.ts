@@ -19,6 +19,7 @@ export type CanonicalTarget =
   | 'content_items'
   | 'pac_feedback'
   | 'blockers'
+  | 'performance' // aggregated paid-acquisition spend/funnel rows → daily_snapshot engine
   | 'none'; // supporting source, mirrored to bronze only for now
 
 export interface SourceMapping {
@@ -67,14 +68,15 @@ const asDate = (v: string): string | null => {
 export const sharedTransforms = { truthy, lower, trimmed, asDate };
 
 export const sheetMapping: Record<string, SourceMapping> = {
-  // 1 — CORE leads fact table. Highest priority. Drives funnel (§D) + §C.
+  // 1 — Lane-E in-house lead tracker. ~3 real leads only — NOT the funnel engine.
+  // Mirrored to bronze only (target:none) so it does not pollute §C / the funnel.
   leadTracker: {
     key: 'leadTracker',
     label: 'Inhouse Lead Tracker',
     spreadsheetId: '1FKg7-uh2kGU5ULK9WL71FCkLLljQ6dZkIDdJreIgiKA',
     tab: 'Sheet1', // PHASE0: confirm
     headerRow: 1,
-    target: 'leads',
+    target: 'none',
     rawTable: 'raw_lead_tracker',
     priority: 'high',
     columns: {
@@ -122,67 +124,103 @@ export const sheetMapping: Record<string, SourceMapping> = {
     label: 'DN Social PR Report',
     spreadsheetId: '1WwnWcaY-xwba-x676PP3Hsx3mzFZ0NOH6w19O18fOXM',
     headerRow: 1,
-    target: 'content_items',
+    target: 'none',
     rawTable: 'raw_social_pr',
-    priority: 'medium',
-    columns: {}, // PHASE0
-    notes: 'Maps to content_items (§E). Confirm content_type/objective columns in Phase 0.',
+    priority: 'low',
+    columns: {},
+    notes: 'Mirrored to bronze only; §E content_items is fed by shootCalendar.',
   },
 
-  // 3 — Google Business Profile / Maps lead capture: a channel + a lead source.
+  // 3 — Google Business Profile / Maps lead capture. Mirrored to bronze only.
   gmbForm: {
     key: 'gmbForm',
     label: 'DN on-site GMB Form',
     spreadsheetId: '1MLfZzAhjzbsHlH5DSBjtnWIyT_Bun2cve9JEuWyGf_8',
     headerRow: 1,
-    target: 'leads',
+    target: 'none',
     rawTable: 'raw_gmb_form',
-    priority: 'high',
-    columns: {}, // PHASE0 — likely a lead source feeding `leads` with channel_source = Maps
-    notes: 'Treat as both a channel (GBP/Maps) and a lead source feeding `leads`.',
+    priority: 'low',
+    columns: {},
+    notes: 'Mirrored to bronze only; not part of the paid-acquisition funnel engine.',
   },
 
-  // 4 — Content pipeline / shoot schedule (supporting, §E status).
+  // 4 — Social PR new shoot calendar → content_items (§E).
   shootCalendar: {
     key: 'shootCalendar',
     label: 'Social PR new shoot calendar',
     spreadsheetId: '1RfhHcHCFb_dhXvwOIpz7JZcgV_9kqX75_w9Gw3JCJDc',
+    tab: 'Sheet1',
     headerRow: 1,
     target: 'content_items',
     rawTable: 'raw_shoot_calendar',
     priority: 'low',
-    columns: {}, // PHASE0
-    notes: 'Content pipeline status; supports §E.',
+    columns: {
+      title: 'Content Ideation',
+      channel: 'Platform Focus',
+      objective: 'Objective',
+      content_type: 'Type',
+      perf_note: 'Caption & Theme',
+      status: 'Stage',
+    },
+    notes: 'Content pipeline → content_items (§E). Only rows with a non-empty title.',
   },
 
-  // 5 — Task & ownership tracking → blockers/owners (§G).
+  // 5 — ALL Task detail (Task Summary - BAU tab) → blockers/owners (§G).
   tasks: {
     key: 'tasks',
     label: 'ALL Task detail',
     spreadsheetId: '1nHTrPZNj7u58Qqom7_8Xry6BIkGLtmU6-5kk7AQslJM',
-    gid: 1243210343,
+    gid: 2132716641,
     headerRow: 1,
     target: 'blockers',
     rawTable: 'raw_tasks',
     priority: 'medium',
-    columns: {}, // PHASE0
-    notes: 'Maps to blockers (§G): task → blocker/owner/fix/due/status.',
+    columns: {
+      blocker: 'Task / Deliverable',
+      type: 'Category / Platform',
+      impact: 'Priority',
+      owner: 'Primary Owner (Stage 1)',
+      fix: 'Progress Summary / Next Step',
+      due_time: 'Estimated completion date',
+      status: 'Auto Status',
+      _id: 'ID',
+      _finalCompletion: 'Final Completion',
+    },
+    notes: 'Maps to blockers (§G): task → blocker/owner/fix/due/status. Only non-completed rows.',
   },
 
-  // 6 — Raw social metrics (reach/impressions/engagement) for §B/§D top-funnel.
+  // 6 — RAW_Performance Report — THE paid-acquisition funnel/spend engine →
+  // `performance` → daily_snapshot. headerRow 3 (rows 1–2 are a banner).
   rawSocial: {
     key: 'rawSocial',
-    label: 'Social PR - RAW Report',
+    label: 'RAW_Performance Report',
     spreadsheetId: '1EajDKlNANuz5jJs8fIfABmEBL-Vqgewx-D3gxh4mM3k',
-    headerRow: 1,
-    target: 'none',
+    gid: 362365447,
+    headerRow: 3,
+    target: 'performance',
     rawTable: 'raw_raw_social',
-    priority: 'medium',
-    columns: {}, // PHASE0 — source of reach/impressions/clicks (funnel top stages)
-    notes: 'Top-of-funnel volume (reach/impressions/clicks). Until mapped, those funnel stages are data gaps.',
+    priority: 'high',
+    columns: {
+      date: 'Date',
+      clinic: 'Clinic',
+      channelGroup: 'Channel_Group',
+      channel: 'Channel',
+      campaign: 'Campaign',
+      objective: 'Objective',
+      spend: 'Spend',
+      impressions: 'Impressions',
+      clicks: 'Clicks',
+      leads: 'Leads',
+      bookings: 'Bookings',
+      showups: 'Show-Ups',
+      treatments: 'Treatments',
+      revenue: 'Revenue',
+    },
+    notes:
+      'Aggregated paid-acquisition rows (spend/impressions/clicks/leads). THE funnel + spend engine. Bookings/Show-Ups/Treatments are empty → data gaps, not zeros.',
   },
 
-  // 7 — Personal performance log; may contain spend / activity.
+  // 7 — Personal performance log; mirrored to bronze only.
   performance: {
     key: 'performance',
     label: 'DN My performance report',
@@ -192,37 +230,37 @@ export const sheetMapping: Record<string, SourceMapping> = {
     target: 'none',
     rawTable: 'raw_performance',
     priority: 'low',
-    columns: {}, // PHASE0 — CHECK for a spend column to unlock cost-per-inquiry/booking
-    notes: 'If a spend column exists here, map it to unlock cost_per_inquiry / cost_per_booking.',
+    columns: {},
+    notes: 'Mirrored to bronze only; the funnel/spend engine is RAW_Performance (rawSocial).',
   },
 
-  // 8 — Checklist → candidate source for channel-activation status (§B).
+  // 8 — Checklist. Mirrored to bronze only — §B channel_status derived from
+  // the paid channels present in RAW_Performance.
   amcChecklist: {
     key: 'amcChecklist',
     label: 'AMC Checklist',
     spreadsheetId: '1wD_L4FqqrP8wmJAk7jBUScjq1meULDYg',
     gid: 983327953,
     headerRow: 1,
-    target: 'channel_status',
+    target: 'none',
     rawTable: 'raw_amc_checklist',
-    priority: 'medium',
-    columns: {}, // PHASE0 — maps to channel_status (live/content/cta/destination/tracking)
-    notes: 'Candidate source for §B channel activation status.',
+    priority: 'low',
+    columns: {},
+    notes: 'Mirrored to bronze only; §B derived from RAW_Performance paid channels.',
   },
 
-  // 9 + 10 — Zavis / SagR website lead sheet (SAME spreadsheet + gid → one source).
+  // 9 + 10 — Zavis / SagR website lead sheet — test data. Bronze only.
   zavis: {
     key: 'zavis',
     label: 'Zavis / SagR website lead sheet',
     spreadsheetId: '1CtfSiGONthczH6YVOLfAZvOdmFfGP26uVBZJoYjxRQQ',
     gid: 119899925,
     headerRow: 1,
-    target: 'leads',
+    target: 'none',
     rawTable: 'raw_zavis',
-    priority: 'high',
-    columns: {}, // PHASE0 — additional lead source feeding `leads`
-    notes:
-      'Sources #9 and #10 are the same spreadsheet+gid — treated as ONE source unless Phase 0 reveals distinct tabs.',
+    priority: 'low',
+    columns: {},
+    notes: 'Test data — mirrored to bronze only; not used for the funnel.',
   },
 
   // 11 — Caption / copy library (supporting content, §E).

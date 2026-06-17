@@ -40,7 +40,7 @@ export function Header({
   return (
     <header className="no-print flex flex-wrap items-center justify-between gap-3 pb-5">
       <div>
-        <p className="eyebrow text-accent">Dental Nation · Lane E</p>
+        <p className="eyebrow text-accent">Dental Nation · Paid Acquisition</p>
         <h1 className="text-xl font-semibold tracking-tight text-ink">Daily Control Report</h1>
       </div>
 

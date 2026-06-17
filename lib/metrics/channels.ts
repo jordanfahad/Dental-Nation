@@ -1,4 +1,5 @@
 import type { LeadLike } from './funnel';
+import type { PerfRow } from '@/lib/sync/normalize';
 import { MIN_CHANNEL_VOLUME } from '@/config/decision-rules';
 import { safeRate } from './rates';
 
@@ -21,6 +22,28 @@ export function computeChannelMix(leads: LeadLike[]): ChannelMix {
     inquiries[ch] = (inquiries[ch] ?? 0) + 1;
     if (l.is_qualified) qualified[ch] = (qualified[ch] ?? 0) + 1;
     if (isBooking(l)) bookings[ch] = (bookings[ch] ?? 0) + 1;
+  }
+  return { inquiries_by_channel: inquiries, qualified_by_channel: qualified, bookings_by_channel: bookings };
+}
+
+/**
+ * Channel mix from aggregated performance rows. Groups by `channel`:
+ * inquiries ← Σ leads, qualified ← Σ leads, bookings ← Σ bookings.
+ */
+export function channelMixFromPerformance(perf: PerfRow[]): ChannelMix {
+  const inquiries: Record<string, number> = {};
+  const qualified: Record<string, number> = {};
+  const bookings: Record<string, number> = {};
+  for (const r of perf) {
+    const ch = r.channel?.trim() || 'Unattributed';
+    if (r.leads) {
+      inquiries[ch] = (inquiries[ch] ?? 0) + r.leads;
+      qualified[ch] = (qualified[ch] ?? 0) + r.leads;
+    } else {
+      inquiries[ch] = inquiries[ch] ?? 0;
+      qualified[ch] = qualified[ch] ?? 0;
+    }
+    if (r.bookings) bookings[ch] = (bookings[ch] ?? 0) + r.bookings;
   }
   return { inquiries_by_channel: inquiries, qualified_by_channel: qualified, bookings_by_channel: bookings };
 }

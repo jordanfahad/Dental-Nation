@@ -77,8 +77,36 @@ function buildKpiTrends(snapshots: DailySnapshot[]): KpiTrends {
   };
 }
 
-/** Compute §C tracking health from the day's leads. */
-function buildTracking(leads: Record<string, unknown>[]): TrackingHealth {
+/** Compute §C tracking health from the day's leads. When the `leads` table is
+ *  empty (paid-acquisition mode — attribution is channel-level), fall back to
+ *  the snapshot's channel mix so §C shows real attribution instead of zeros. */
+function buildTracking(
+  leads: Record<string, unknown>[],
+  snapshot?: DailySnapshot,
+): TrackingHealth {
+  if (leads.length === 0 && snapshot) {
+    const attributed = Object.values(snapshot.inquiries_by_channel).reduce((a, b) => a + b, 0);
+    return {
+      attributed,
+      unattributed: snapshot.unattributed_leads ?? 0,
+      missing: [
+        {
+          label: 'Lead-level UTM/creative detail',
+          count: attributed,
+          owner: ownerFor('utm'),
+        },
+      ],
+      flagged: [
+        {
+          ref: 'channel-level',
+          detail:
+            'Attribution is channel-level only — lead-level UTM/creative detail is a data gap',
+          owner: ownerFor('attribution'),
+        },
+      ],
+    };
+  }
+
   const missingCount = (pred: (l: Record<string, unknown>) => boolean) =>
     leads.filter(pred).length;
   const empty = (v: unknown) => v == null || String(v).trim() === '';
@@ -185,7 +213,7 @@ export async function getReportView(reportDate?: string): Promise<ReportViewResu
       content: (content as ContentItem[]) ?? [],
       pac: (pacRow as PacFeedback) ?? null,
       blockers: (blockers as Blocker[]) ?? [],
-      tracking: buildTracking((leadRows as Record<string, unknown>[]) ?? []),
+      tracking: buildTracking((leadRows as Record<string, unknown>[]) ?? [], snapshot),
       ingestion,
       availableDates,
       source: 'live',

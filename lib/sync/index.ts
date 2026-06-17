@@ -2,15 +2,21 @@ import 'server-only';
 import { type AdminClient, getSupabaseAdmin, isSupabaseConfigured } from '@/lib/supabase/server';
 import { getSheetsClient, isGoogleConfigured } from './google-auth';
 import { SheetsAdapter } from './adapters/sheets-adapter';
-import { normalizeLeads, type NormalizedLead } from './normalize';
+import {
+  normalizePerformance,
+  normalizeBlockers,
+  normalizeContent,
+  type PerfRow,
+} from './normalize';
 import { allSources } from '@/config/sheet-mapping';
 import { reportDateForSync, previousDate } from '@/lib/dates';
-import { computeFunnel } from '@/lib/metrics/funnel';
-import { computeChannelMix, rankChannels } from '@/lib/metrics/channels';
+import { computeFunnelFromPerformance, biggestLeakage } from '@/lib/metrics/funnel';
+import { channelMixFromPerformance, rankChannels } from '@/lib/metrics/channels';
 import { computeRates } from '@/lib/metrics/rates';
 import { suggestDecision } from '@/lib/metrics/decision';
 import { decisionRules } from '@/config/decision-rules';
-import type { DataGap } from '@/lib/types';
+import { ownerFor } from '@/config/data-gap-owners';
+import type { Blocker, ChannelStatus, ContentItem, DataGap } from '@/lib/types';
 
 export type SyncTrigger = 'cron' | 'manual';
 
@@ -33,16 +39,30 @@ async function mirrorBronze(
   await supabase.from(table).delete().gte('id', 0);
   if (rows.length === 0) return;
   const payload = rows.map((r) => ({ row_index: r.rowIndex, data: r.data }));
-  // Insert in chunks to stay well within payload limits.
   for (let i = 0; i < payload.length; i += 500) {
     await supabase.from(table).insert(payload.slice(i, i + 500));
   }
 }
 
+/** Derive §B channel_status rows from the paid channels present in performance. */
+function deriveChannelStatus(perf: PerfRow[]): ChannelStatus[] {
+  const channels = [...new Set(perf.map((r) => r.channel).filter(Boolean))];
+  return channels.map((channel) => ({
+    channel,
+    is_live: true,
+    content_populated: true,
+    cta_correct: true,
+    destination_correct: true,
+    tracking_active: true,
+    owner: 'Acquisition',
+    blocker: null,
+  }));
+}
+
 /**
  * The full ingestion pipeline (§9). Orchestrates fetch → bronze → silver → gold
  * → log. A single sheet failing is recorded as `partial`, never aborting the run.
- * Idempotent: running twice in one Dubai day yields the same snapshot.
+ * Idempotent: running twice in one Dubai day yields the same snapshots.
  */
 export async function runSync(trigger: SyncTrigger): Promise<SyncSummary> {
   const reportDate = reportDateForSync();
@@ -80,7 +100,10 @@ export async function runSync(trigger: SyncTrigger): Promise<SyncSummary> {
   const sheetsFailed: string[] = [];
   const dataGaps: DataGap[] = [];
   let rowsIngested = 0;
-  const allLeads: NormalizedLead[] = [];
+
+  const perf: PerfRow[] = [];
+  const blockers: Blocker[] = [];
+  const content: ContentItem[] = [];
 
   for (const source of allSources) {
     try {
@@ -92,17 +115,18 @@ export async function runSync(trigger: SyncTrigger): Promise<SyncSummary> {
       }
       await mirrorBronze(supabase, source.rawTable, rows);
 
-      // Silver — currently the leads spine (build step 2). Other targets follow
-      // the same pattern once Phase 0 confirms their column mappings.
-      if (source.target === 'leads') {
-        const { rows: leads, dataGaps: gaps } = normalizeLeads(source, rows);
+      if (source.target === 'performance') {
+        const { rows: perfRows, dataGaps: gaps } = normalizePerformance(source, rows);
         dataGaps.push(...gaps);
-        allLeads.push(...leads);
-        if (leads.length > 0) {
-          for (let i = 0; i < leads.length; i += 500) {
-            await supabase.from('leads').upsert(leads.slice(i, i + 500), { onConflict: 'id' });
-          }
-        }
+        perf.push(...perfRows);
+      } else if (source.target === 'blockers') {
+        const { rows: b, dataGaps: gaps } = normalizeBlockers(source, rows);
+        dataGaps.push(...gaps);
+        blockers.push(...b);
+      } else if (source.target === 'content_items') {
+        const { rows: c, dataGaps: gaps } = normalizeContent(source, rows);
+        dataGaps.push(...gaps);
+        content.push(...c);
       }
       sheetsOk.push(source.label);
     } catch (err) {
@@ -115,8 +139,32 @@ export async function runSync(trigger: SyncTrigger): Promise<SyncSummary> {
     }
   }
 
-  // ----- Gold: compute and upsert today's snapshot -----
-  await computeSnapshot(supabase, reportDate, allLeads, dataGaps);
+  // ----- Silver upserts -----
+  if (blockers.length > 0) {
+    for (let i = 0; i < blockers.length; i += 500) {
+      await supabase.from('blockers').upsert(blockers.slice(i, i + 500), { onConflict: 'id' });
+    }
+  }
+  if (content.length > 0) {
+    for (let i = 0; i < content.length; i += 500) {
+      await supabase.from('content_items').upsert(content.slice(i, i + 500), { onConflict: 'id' });
+    }
+  }
+  const channelStatus = deriveChannelStatus(perf);
+  if (channelStatus.length > 0) {
+    await supabase.from('channel_status').upsert(channelStatus, { onConflict: 'channel' });
+  }
+
+  // ----- Gold: a snapshot per distinct perf date (most recent ~60) -----
+  const hasHighImpactOpen = blockers.some(
+    (b) => b.impact === 'high' && (b.type === 'tracking' || b.type === 'PAC') && b.status !== 'done',
+  );
+
+  const allDates = [...new Set(perf.map((r) => r.date).filter((d): d is string => !!d))].sort();
+  const dates = allDates.slice(-60);
+  for (const date of dates) {
+    await computeAndUpsertSnapshot(supabase, date, perf, dataGaps, hasHighImpactOpen);
+  }
 
   const status: SyncSummary['status'] =
     sheetsFailed.length === 0 ? 'success' : sheetsOk.length > 0 ? 'partial' : 'failed';
@@ -133,75 +181,101 @@ export async function runSync(trigger: SyncTrigger): Promise<SyncSummary> {
   return summary;
 }
 
-async function computeSnapshot(
+/**
+ * Compute and upsert the daily_snapshot for a single performance date. Pure
+ * enough to be exercised by the dry-run validation. funnel(today=date,
+ * yesterday=prevDate, total=all rows); real spend → real cost metrics.
+ */
+export async function computeAndUpsertSnapshot(
   supabase: AdminClient,
-  reportDate: string,
-  leads: NormalizedLead[],
-  dataGaps: DataGap[],
+  date: string,
+  perf: PerfRow[],
+  baseGaps: DataGap[],
+  hasHighImpactOpen: boolean,
 ) {
-  const funnel = computeFunnel(leads, reportDate);
-  const stage = (key: string) => funnel.find((f) => f.key === key)?.today ?? 0;
+  const snapshot = buildSnapshotRow(date, perf, baseGaps, hasHighImpactOpen);
+  await supabase.from('daily_snapshot').upsert(snapshot, { onConflict: 'report_date' });
+}
 
-  const mix = computeChannelMix(leads);
+/** Pure snapshot builder — used by the sync and the dry-run validator. */
+export function buildSnapshotRow(
+  date: string,
+  perf: PerfRow[],
+  baseGaps: DataGap[],
+  hasHighImpactOpen: boolean,
+) {
+  const prevDate = previousDate(date);
+  const funnel = computeFunnelFromPerformance(perf, date, prevDate);
+  // Preserve null (data gap) — never coerce a missing stage to 0.
+  const stageRaw = (key: string) => funnel.find((f) => f.key === key)?.today ?? null;
+  const stage = (key: string) => stageRaw(key) ?? 0;
+
+  const todayRows = perf.filter((r) => r.date === date);
+  const totalSpendToday = todayRows.reduce((a, r) => a + r.spend, 0);
+
+  const mix = channelMixFromPerformance(perf);
   const { best, worst } = rankChannels(mix);
 
   const rates = computeRates({
-    qualified_inquiries: stage('qualified_inquiries'),
-    glow_up_bookings: stage('glow_up_bookings'),
-    attended_visits: stage('attended_visits'),
-    valid_inquiries: stage('valid_inquiries'),
-    total_spend: null, // no spend source in Sheets-v1
+    qualified_inquiries: stageRaw('qualified_inquiries'),
+    glow_up_bookings: stageRaw('glow_up_bookings'),
+    attended_visits: stageRaw('attended_visits'),
+    valid_inquiries: stageRaw('valid_inquiries'),
+    total_spend: totalSpendToday,
   });
 
-  const unattributed = leads.filter(
-    (l) => !l.channel_source || l.channel_source.trim() === '',
-  ).length;
-  const inquiriesToday = stage('valid_inquiries');
-  const unattributedShare = inquiriesToday > 0 ? unattributed / inquiriesToday : 0;
+  // Paid attribution is channel-level: every perf row has a Channel → 0 unattributed.
+  const unattributed = 0;
 
-  // Trailing qualified counts for the Stop rule.
+  // Trailing qualified (= leads) for the Stop rule.
   const qualifiedTrailing: number[] = [];
   for (let i = decisionRules.stopWindowDays - 1; i >= 0; i--) {
-    let d = reportDate;
+    let d = date;
     for (let k = 0; k < i; k++) d = previousDate(d);
-    qualifiedTrailing.push(
-      leads.filter((l) => l.is_qualified && l.inquiry_date?.slice(0, 10) === d).length,
-    );
+    qualifiedTrailing.push(perf.filter((r) => r.date === d).reduce((a, r) => a + r.leads, 0));
   }
 
   const decision = suggestDecision({
     qualifiedTrailing,
     qualifiedToday: stage('qualified_inquiries'),
     leadToBookingRate: rates.lead_to_booking_rate,
-    unattributedShare,
-    hasOpenHighImpactTrackingOrPac: false, // wired once blockers silver lands
+    unattributedShare: 0,
+    hasOpenHighImpactTrackingOrPac: hasHighImpactOpen,
   });
 
-  const allGaps = [...dataGaps, ...rates.dataGaps];
+  const leakage = biggestLeakage(funnel);
 
-  await supabase.from('daily_snapshot').upsert(
+  const gaps: DataGap[] = [
+    ...baseGaps,
+    ...rates.dataGaps,
     {
-      report_date: reportDate,
-      decision: decision.decision,
-      decision_reason: decision.reason,
-      best_channel: best,
-      worst_channel: worst,
-      main_bottleneck: null,
-      founder_decision: 'No',
-      funnel,
-      inquiries_by_channel: mix.inquiries_by_channel,
-      bookings_by_channel: mix.bookings_by_channel,
-      qualified_by_channel: mix.qualified_by_channel,
-      lead_to_booking_rate: rates.lead_to_booking_rate,
-      cost_per_inquiry: rates.cost_per_inquiry,
-      cost_per_booking: rates.cost_per_booking,
-      show_rate: rates.show_rate,
-      unattributed_leads: unattributed,
-      data_gaps: allGaps,
-      computed_at: new Date().toISOString(),
+      area: 'attribution',
+      detail:
+        'Paid attribution is channel-level (every performance row has a Channel). Lead-level UTM/creative detail is a data gap.',
+      owner: ownerFor('attribution'),
     },
-    { onConflict: 'report_date' },
-  );
+  ];
+
+  return {
+    report_date: date,
+    decision: decision.decision,
+    decision_reason: decision.reason,
+    best_channel: best,
+    worst_channel: worst,
+    main_bottleneck: leakage ? `${leakage.from} → ${leakage.to} (${Math.round(leakage.drop * 100)}% drop)` : null,
+    founder_decision: 'No',
+    funnel,
+    inquiries_by_channel: mix.inquiries_by_channel,
+    bookings_by_channel: mix.bookings_by_channel,
+    qualified_by_channel: mix.qualified_by_channel,
+    lead_to_booking_rate: rates.lead_to_booking_rate,
+    cost_per_inquiry: rates.cost_per_inquiry,
+    cost_per_booking: rates.cost_per_booking,
+    show_rate: rates.show_rate,
+    unattributed_leads: unattributed,
+    data_gaps: gaps,
+    computed_at: new Date().toISOString(),
+  };
 }
 
 async function writeLog(
