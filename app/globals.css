@@ -42,6 +42,16 @@ body {
   @apply bg-card border border-line rounded-card;
 }
 
+/* ---- Ownership encoding (Impact / Tab 2) — first-class, used everywhere ----
+   collaborator = 1.5px dashed; owner = 1px solid. A legend appears wherever
+   both can show. Kept here so cards AND the timeline share one definition. */
+.owned-border {
+  border: 1px solid theme('colors.line');
+}
+.collab-border {
+  border: 1.5px dashed theme('colors.hairline.strong');
+}
+
 /* ---- Print / PDF (§14): clean A4, page-break between sections ---- */
 @media print {
   @page {
