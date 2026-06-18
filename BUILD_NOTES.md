@@ -387,13 +387,29 @@ Without it, ingestion still stores the raw upload and shows an "extraction
 skipped" note on review; Zoho import and manual CRUD don't need it. (See
 `.env.example`.)
 
-## T10. ⚠️ Pre-existing security issue surfaced (NOT introduced here, NOT mine to fix)
+## T10. Pre-existing security issue surfaced — and RLS enabled (per owner go-ahead)
 
-A Supabase advisor reports **RLS disabled** on six `public` tables that belong
-to a *different* app sharing this project: `public.brand_kit`, `guidelines`,
-`assets`, `jobs`, `briefs`, `renders`. With the anon key these are
-world-readable/writable. Tab 2 doesn't touch them (it lives in `lane_e` with RLS
-on). **Recommendation for the owner:** enable RLS + add policies on those tables.
+A Supabase advisor reported **RLS disabled** on six `public` tables belonging to
+a *different* app sharing this project (`brand_kit`, `guidelines`, `assets`,
+`jobs`, `briefs`, `renders`) — with the anon key they were world-readable/
+writable. They were all **empty (0 rows)**, and at the owner's instruction RLS
+was **enabled** on all six (migration `enable_rls_on_unsecured_public_tables`,
+applied via MCP — intentionally NOT added to this repo's migrations since the
+tables aren't this app's). They now match the service-role-only posture (RLS on,
+no policies). The critical `rls_disabled` advisory is cleared.
+
+> **Caveat / rollback:** if that other app reads those tables with the public
+> **anon** key (client-side), enabling RLS with no policies will block it — add
+> policies designed for that app, or revert with
+> `alter table public.<t> disable row level security;`. (`public.set_updated_at`,
+> that app's trigger function, still shows a `function_search_path_mutable` WARN
+> — left untouched as it's not ours and its body is unknown.)
+
+Also hardened **our own** `lane_e.set_updated_at` with a pinned `search_path`
+(clearing its `function_search_path_mutable` WARN). The remaining
+`rls_enabled_no_policy` INFO lints on `lane_e.*` are **expected and correct** —
+the app uses only the service-role key, which bypasses RLS; do NOT add anon
+policies.
 
 ## T11. Decisions & assumptions (Tab 2)
 

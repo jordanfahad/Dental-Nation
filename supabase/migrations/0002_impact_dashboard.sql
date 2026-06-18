@@ -20,8 +20,12 @@ create schema if not exists lane_e;
 set search_path = lane_e, public;
 
 -- updated_at trigger (project/task rows are mutated by CRUD + the review gate).
+-- search_path is pinned empty (now() resolves via pg_catalog) to satisfy the
+-- function_search_path_mutable advisor and remove the injection surface.
 create or replace function lane_e.set_updated_at()
-returns trigger language plpgsql as $$
+returns trigger language plpgsql
+set search_path = ''
+as $$
 begin
   new.updated_at = now();
   return new;
