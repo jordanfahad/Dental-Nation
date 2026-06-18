@@ -25,6 +25,8 @@ export interface GAdsSyncOpts {
   days?: number; // trailing window when from/to absent (default 30)
   from?: string;
   to?: string;
+  /** Override the API version (for finding the live version without a redeploy). */
+  version?: string;
 }
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
@@ -60,13 +62,14 @@ async function fetchCustomer(
   customerId: string,
   from: string,
   to: string,
+  version: string,
 ): Promise<GAdsRow[]> {
   const query =
     `SELECT campaign.id, campaign.name, segments.date, metrics.cost_micros, ` +
     `metrics.impressions, metrics.clicks, metrics.conversions ` +
     `FROM campaign WHERE segments.date BETWEEN '${from}' AND '${to}'`;
   const res = await fetch(
-    `https://googleads.googleapis.com/${cfg.version}/customers/${customerId}/googleAds:searchStream`,
+    `https://googleads.googleapis.com/${version}/customers/${customerId}/googleAds:searchStream`,
     {
       method: 'POST',
       headers: {
@@ -107,11 +110,12 @@ export async function syncGoogleAds(supabase: AdminClient, opts: GAdsSyncOpts = 
     const days = opts.days ?? 30;
     const to = opts.to ?? iso(new Date());
     const from = opts.from ?? iso(new Date(new Date(to).getTime() - (days - 1) * 86400_000));
+    const version = opts.version || cfg.version;
     const accessToken = await getAccessToken(cfg);
 
     const all: { row: GAdsRow; customer: string }[] = [];
     for (const customer of cfg.customerIds) {
-      const rows = await fetchCustomer(cfg, accessToken, customer, from, to);
+      const rows = await fetchCustomer(cfg, accessToken, customer, from, to, version);
       for (const row of rows) all.push({ row, customer });
     }
 
@@ -144,16 +148,18 @@ export async function syncGoogleAds(supabase: AdminClient, opts: GAdsSyncOpts = 
   }
 }
 
-/** Shape/credential probe: refresh the token + pull a small recent window. */
-export async function googleAdsProbe(): Promise<{ ok: boolean; data?: unknown; error?: string }> {
+/** Shape/credential probe: refresh the token + pull a small recent window.
+ *  Pass `version` to test a specific API version without a redeploy. */
+export async function googleAdsProbe(version?: string): Promise<{ ok: boolean; data?: unknown; error?: string }> {
   const cfg = getGoogleAdsConfig();
   if (!cfg) return { ok: false, error: 'not_configured' };
   try {
+    const ver = version || cfg.version;
     const accessToken = await getAccessToken(cfg);
     const to = iso(new Date());
-    const from = iso(new Date(Date.now() - 6 * 86400_000));
-    const rows = await fetchCustomer(cfg, accessToken, cfg.customerIds[0], from, to);
-    return { ok: true, data: { customer: cfg.customerIds[0], version: cfg.version, rowCount: rows.length, sampleRow: rows[0] ?? null } };
+    const from = iso(new Date(Date.now() - 13 * 86400_000));
+    const rows = await fetchCustomer(cfg, accessToken, cfg.customerIds[0], from, to, ver);
+    return { ok: true, data: { customer: cfg.customerIds[0], version: ver, rowCount: rows.length, sampleRow: rows[0] ?? null } };
   } catch (err) {
     return { ok: false, error: (err as Error).message };
   }

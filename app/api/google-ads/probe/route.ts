@@ -29,9 +29,10 @@ export async function GET(req: NextRequest) {
       from: sp.get('from') ?? undefined,
       to: sp.get('to') ?? undefined,
       days: sp.get('days') ? Number(sp.get('days')) : undefined,
+      version: sp.get('version') ?? undefined,
     });
     return NextResponse.json(result, { status: result.ok ? 200 : 502 });
   }
-  const probe = await googleAdsProbe();
+  const probe = await googleAdsProbe(sp.get('version') ?? undefined);
   return NextResponse.json(probe, { status: probe.ok ? 200 : 502 });
 }
