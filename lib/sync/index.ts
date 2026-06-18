@@ -5,6 +5,8 @@ import { SheetsAdapter } from './adapters/sheets-adapter';
 import { fetchGa4Summary } from './adapters/ga4-adapter';
 import { syncPracto } from './adapters/practo-adapter';
 import { isPractoConfigured } from '@/config/practo';
+import { syncMeta } from './adapters/meta-adapter';
+import { isMetaConfigured } from '@/config/meta';
 import {
   normalizePerformance,
   normalizeBlockers,
@@ -200,6 +202,28 @@ export async function runSync(trigger: SyncTrigger): Promise<SyncSummary> {
         detail: `Practo Insta sync failed: ${(err as Error).message}`,
         owner: 'Data/Analytics',
       });
+    }
+  }
+
+  // ----- Meta (Facebook/Instagram) Ads — live campaign spend. Best-effort:
+  // a failure records a data gap but never aborts the sync.
+  if (isMetaConfigured()) {
+    try {
+      const m = await syncMeta(supabase);
+      if (m.ok) {
+        sheetsOk.push(`Meta Ads (insights) — ${m.stored} rows`);
+        rowsIngested += m.stored;
+      } else {
+        sheetsFailed.push('Meta Ads (insights)');
+        dataGaps.push({
+          area: 'spend',
+          detail: `Meta Ads sync failed: ${m.error ?? 'unknown'}`,
+          owner: 'Acquisition',
+        });
+      }
+    } catch (err) {
+      sheetsFailed.push('Meta Ads (insights)');
+      dataGaps.push({ area: 'spend', detail: `Meta Ads sync failed: ${(err as Error).message}`, owner: 'Acquisition' });
     }
   }
 
