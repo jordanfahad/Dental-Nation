@@ -12,7 +12,7 @@ export function Hero({ summary }: { summary: ImpactSummary }) {
   return (
     <section className="card overflow-hidden p-6 print-avoid-break">
       <div className="text-xs font-semibold uppercase tracking-wider text-ink-3">
-        Growth Manager · Impact
+        Fahad · Growth Projects Dashboard
       </div>
       <h1 className="mt-1 text-3xl font-semibold tracking-tight text-ink">
         One growth manager, six functions.

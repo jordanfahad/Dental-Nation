@@ -8,9 +8,9 @@ import { AddUpdateDrawer } from "@/components/impact/AddUpdateDrawer";
 import { logout } from "@/app/(app)/actions";
 import type { Component, Project } from "@/lib/impact/types";
 
-// Lane E lives at "/" in this app; Impact is the new tab.
+// Lane E lives at "/" in this app; the Growth Projects dashboard is the new tab.
 const TABS: [string, string][] = [
-  ["/impact", "Impact"],
+  ["/impact", "Growth Projects"],
   ["/", "Lane E Report"],
 ];
 

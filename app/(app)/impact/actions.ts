@@ -132,6 +132,7 @@ export async function updateTaskAction(
     .from("tasks")
     .update({
       name: str(formData.get("name")),
+      project_id: projectId,
       status: nullable(formData.get("status")),
       owner: nullable(formData.get("owner")),
       effort_hours: numOrNull(formData.get("effort_hours")),

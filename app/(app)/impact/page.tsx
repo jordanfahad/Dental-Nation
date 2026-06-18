@@ -1,7 +1,9 @@
+import type { Metadata } from "next";
 import { getDashboardData } from "@/lib/impact/data";
 import { computeSummary } from "@/lib/impact/metrics";
 import { Hero } from "@/components/impact/Hero";
 import { Swimlanes } from "@/components/impact/Swimlanes";
+import { TasksTable } from "@/components/impact/TasksTable";
 import { RoadmapTimeline } from "@/components/impact/RoadmapTimeline";
 import { BlockersSection } from "@/components/impact/BlockersSection";
 import { EffortAnalysis } from "@/components/impact/EffortAnalysis";
@@ -10,6 +12,7 @@ import { EvidenceLocker } from "@/components/impact/EvidenceLocker";
 import { formatDate, formatRelativeTime } from "@/lib/impact/format";
 
 export const dynamic = "force-dynamic";
+export const metadata: Metadata = { title: "Fahad — Growth Projects Dashboard" };
 
 export default async function ImpactPage() {
   const data = await getDashboardData();
@@ -40,6 +43,7 @@ export default async function ImpactPage() {
     <div className="mx-auto max-w-7xl space-y-10 px-5 py-8">
       <Hero summary={summary} />
       <Swimlanes components={summary.components} taskCounts={taskCounts} />
+      <TasksTable tasks={data.tasks} projects={data.projects} />
       <RoadmapTimeline projects={data.projects} components={data.components} />
       <BlockersSection blockers={data.blockers} />
       <EffortAnalysis effortByDate={effortByDate} components={summary.components} effort={summary.effort} />
