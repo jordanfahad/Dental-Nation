@@ -148,6 +148,36 @@ export async function syncGoogleAds(supabase: AdminClient, opts: GAdsSyncOpts = 
   }
 }
 
+/** Raw debug: refresh token + do ONE search call, returning the exact URL, HTTP
+ *  status and raw body (no parsing/throwing) so we can see what Google sees. */
+export async function googleAdsDebug(version?: string): Promise<{ ok: boolean; data?: unknown; error?: string }> {
+  const cfg = getGoogleAdsConfig();
+  if (!cfg) return { ok: false, error: 'not_configured' };
+  try {
+    const ver = version || cfg.version;
+    const accessToken = await getAccessToken(cfg);
+    const url = `https://googleads.googleapis.com/${ver}/customers/${cfg.customerIds[0]}/googleAds:search`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'developer-token': cfg.developerToken,
+        'login-customer-id': cfg.loginCustomerId,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ query: 'SELECT customer.id FROM customer LIMIT 1' }),
+      cache: 'no-store',
+    });
+    const text = await res.text();
+    return {
+      ok: true,
+      data: { url, requestedUrlHost: new URL(url).host, status: res.status, contentType: res.headers.get('content-type'), body: text.slice(0, 700) },
+    };
+  } catch (err) {
+    return { ok: false, error: (err as Error).message };
+  }
+}
+
 /** Shape/credential probe: refresh the token + pull a small recent window.
  *  Pass `version` to test a specific API version without a redeploy. */
 export async function googleAdsProbe(version?: string): Promise<{ ok: boolean; data?: unknown; error?: string }> {
