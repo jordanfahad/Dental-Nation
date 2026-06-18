@@ -9,6 +9,7 @@ import { RoadmapTimeline } from "@/components/impact/RoadmapTimeline";
 import { BlockersSection } from "@/components/impact/BlockersSection";
 import { EffortAnalysis } from "@/components/impact/EffortAnalysis";
 import { ImpactByFunction } from "@/components/impact/ImpactByFunction";
+import { FlowchartsSection } from "@/components/impact/FlowchartsSection";
 import { EvidenceLocker } from "@/components/impact/EvidenceLocker";
 import { formatDate, formatRelativeTime } from "@/lib/impact/format";
 import { currentRole } from "@/lib/auth/role";
@@ -53,6 +54,7 @@ export default async function ImpactPage() {
       <BlockersSection blockers={data.blockers} />
       <EffortAnalysis effortByDate={effortByDate} components={summary.components} effort={summary.effort} />
       <ImpactByFunction components={summary.components} snapshot={data.snapshot} />
+      <FlowchartsSection flowcharts={data.flowcharts} />
       <EvidenceLocker evidence={data.evidence} components={data.components} canEdit={canEdit} />
 
       <footer className="border-t border-hairline pt-4 text-xs text-ink-3">

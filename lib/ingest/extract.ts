@@ -23,6 +23,12 @@ RULES
 - "confidence" is a number 0.0–1.0.
 - "impact_summary" must capture the OUTCOME / business result, not the activity.
 - Put anything you cannot confidently place into "unmapped" (do not guess).
+- If (and ONLY if) the input describes an operating model, architecture, pipeline, or roadmap,
+  also produce "flowcharts": top-to-bottom layered diagrams (2-6 layers; each layer 1-4 SHORT
+  node labels). Use key "operating_architecture" or "seo_roadmap" to refresh those existing
+  charts; otherwise a short lowercase slug. tone is optional (start|process|decision|accent|end:
+  use "start" for the first node and "end" for the terminal one). Omit flowcharts entirely when
+  the input has no such structure.
 
 OUTPUT
 Respond with STRICT JSON ONLY — no prose, no markdown code fences. Exactly this shape:
@@ -35,6 +41,10 @@ Respond with STRICT JSON ONLY — no prose, no markdown code fences. Exactly thi
   ],
   "new_tasks": [
     { "project_ref": "existing project_id OR new project name", "name": "...", "status": "open", "effort_hours": null, "due_date": "YYYY-MM-DD" }
+  ],
+  "flowcharts": [
+    { "key": "operating_architecture", "title": "...", "subtitle": "...",
+      "layers": [ { "nodes": [ { "label": "...", "sublabel": "...", "tone": "start" } ] } ] }
   ],
   "unmapped": [ "items you could not confidently place" ],
   "notes": "anything the reviewer should know"
@@ -103,6 +113,14 @@ export function parseExtraction(raw: string): ExtractionResult {
       matched_projects: Array.isArray(obj.matched_projects) ? obj.matched_projects : [],
       new_projects: Array.isArray(obj.new_projects) ? obj.new_projects : [],
       new_tasks: Array.isArray(obj.new_tasks) ? obj.new_tasks : [],
+      flowcharts: Array.isArray(obj.flowcharts)
+        ? obj.flowcharts.filter(
+            (f: unknown) =>
+              !!f &&
+              typeof (f as { title?: unknown }).title === "string" &&
+              Array.isArray((f as { layers?: unknown }).layers),
+          )
+        : [],
       unmapped: Array.isArray(obj.unmapped) ? obj.unmapped.map(String) : [],
       notes: typeof obj.notes === "string" ? obj.notes : undefined,
     };
