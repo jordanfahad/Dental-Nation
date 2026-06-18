@@ -156,6 +156,40 @@ export interface TrackingHealth {
   flagged: { ref: string; detail: string; owner: string }[];
 }
 
+/** One traffic source in the GA4 channel mix (sessionDefaultChannelGroup). */
+export interface Ga4Channel {
+  channel: string;
+  sessions: number;
+  conversions: number;
+}
+
+/** One stage of the GA4 on-site booking funnel (see config/ga4.ts). */
+export interface Ga4FunnelStage {
+  key: string;
+  label: string;
+  count: number;
+  /** Conversion vs. the previous stage (0–1), or null when prev is 0/missing. */
+  conversionFromPrev: number | null;
+}
+
+/**
+ * The current "Website — last 28 days" GA4 summary (ga4_summary singleton).
+ * Decoupled from the per-date paid snapshot: GA4 is current through today.
+ */
+export interface Ga4Summary {
+  period_start: string; // YYYY-MM-DD
+  period_end: string; // YYYY-MM-DD
+  sessions: number;
+  users: number;
+  new_users: number;
+  conversions: number;
+  engaged_sessions: number;
+  /** On-site lead conversions (GA4 `generate_lead` event). */
+  leads: number;
+  channels: Ga4Channel[];
+  onsite_funnel: Ga4FunnelStage[];
+}
+
 /**
  * The full view-model the dashboard page assembles and passes to sections.
  * Built server-side from the gold snapshot + silver tables + trailing snapshots.
@@ -171,4 +205,6 @@ export interface ReportView {
   ingestion: IngestionStatus | null;
   /** All report dates available, newest first, for the date picker. */
   availableDates: string[];
+  /** Current website analytics (last 28 days). Null when unavailable (data gap). */
+  ga4: Ga4Summary | null;
 }

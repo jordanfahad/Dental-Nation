@@ -4,12 +4,14 @@ import type {
   ContentItem,
   DailySnapshot,
   FunnelStage,
+  Ga4Summary,
   IngestionStatus,
   KpiTrends,
   PacFeedback,
   ReportView,
   TrackingHealth,
 } from '@/lib/types';
+import { ONSITE_FUNNEL } from '@/config/ga4';
 import { CANONICAL_CHANNELS } from '@/config/channels';
 import { ownerFor } from '@/config/data-gap-owners';
 import { trailingDates } from '@/lib/dates';
@@ -370,6 +372,47 @@ function buildIngestion(): IngestionStatus {
   };
 }
 
+/** Mock "Website — last 28 days" GA4 summary so the §GA4 section renders in
+ *  scaffold/mock mode. Counts roughly mirror the live shape (smaller than the
+ *  90-day sample): sessions descend cleanly through the booking funnel. */
+function buildGa4(latest: string): Ga4Summary {
+  const sessions = 782;
+  const funnelCounts: Record<string, number> = {
+    booking_widget_viewed: 612,
+    booking_visit_type_selected: 98,
+    booking_treatment_selected: 71,
+  };
+  let prev: number | null = null;
+  const onsite_funnel = ONSITE_FUNNEL.map((stage) => {
+    const count = funnelCounts[stage.key] ?? 0;
+    const conversionFromPrev = prev != null && prev > 0 ? count / prev : null;
+    prev = count;
+    return { key: stage.key, label: stage.label, count, conversionFromPrev };
+  });
+  const end = new Date(`${latest}T00:00:00Z`);
+  const start = new Date(end);
+  start.setUTCDate(start.getUTCDate() - 28);
+  return {
+    period_start: start.toISOString().slice(0, 10),
+    period_end: latest,
+    sessions,
+    users: 431,
+    new_users: 428,
+    conversions: 95,
+    engaged_sessions: 408,
+    leads: 88,
+    channels: [
+      { channel: 'Direct', sessions: 286, conversions: 31 },
+      { channel: 'Organic Search', sessions: 204, conversions: 24 },
+      { channel: 'Paid Search', sessions: 142, conversions: 22 },
+      { channel: 'Referral', sessions: 78, conversions: 9 },
+      { channel: 'Organic Social', sessions: 52, conversions: 6 },
+      { channel: 'Unassigned', sessions: 20, conversions: 3 },
+    ],
+    onsite_funnel,
+  };
+}
+
 const DATE_COUNT = 6;
 
 /** All mock report dates, newest first. */
@@ -395,5 +438,6 @@ export function mockReportView(latest: string, reportDate?: string): ReportView 
     tracking: buildTracking(snapshot.unattributed_leads, totalInq - snapshot.unattributed_leads),
     ingestion: buildIngestion(),
     availableDates: dates,
+    ga4: buildGa4(date),
   };
 }

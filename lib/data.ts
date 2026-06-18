@@ -8,6 +8,7 @@ import type {
   ChannelStatus,
   ContentItem,
   DailySnapshot,
+  Ga4Summary,
   IngestionStatus,
   KpiTrend,
   KpiTrends,
@@ -48,6 +49,23 @@ function snapshotFromRow(row: Record<string, unknown>): DailySnapshot {
     unattributed_leads: (row.unattributed_leads as number) ?? 0,
     data_gaps: (row.data_gaps as DailySnapshot['data_gaps']) ?? [],
     computed_at: (row.computed_at as string) ?? new Date().toISOString(),
+  };
+}
+
+/** Map the ga4_summary singleton row → the Ga4Summary the UI consumes. */
+function ga4FromRow(row: Record<string, unknown> | null | undefined): Ga4Summary | null {
+  if (!row) return null;
+  return {
+    period_start: (row.period_start as string) ?? '',
+    period_end: (row.period_end as string) ?? '',
+    sessions: (row.sessions as number) ?? 0,
+    users: (row.users as number) ?? 0,
+    new_users: (row.new_users as number) ?? 0,
+    conversions: (row.conversions as number) ?? 0,
+    engaged_sessions: (row.engaged_sessions as number) ?? 0,
+    leads: (row.leads as number) ?? 0,
+    channels: (row.channels as Ga4Summary['channels']) ?? [],
+    onsite_funnel: (row.onsite_funnel as Ga4Summary['onsite_funnel']) ?? [],
   };
 }
 
@@ -182,6 +200,7 @@ export async function getReportView(reportDate?: string): Promise<ReportViewResu
       { data: blockers },
       { data: logRow },
       { data: leadRows },
+      { data: ga4Row },
     ] = await Promise.all([
       supabase.from('channel_status').select('*'),
       supabase.from('content_items').select('*'),
@@ -194,6 +213,7 @@ export async function getReportView(reportDate?: string): Promise<ReportViewResu
         .limit(1)
         .maybeSingle(),
       supabase.from('leads').select('*').eq('inquiry_date', date),
+      supabase.from('ga4_summary').select('*').eq('id', 1).maybeSingle(),
     ]);
 
     const ingestion: IngestionStatus | null = logRow
@@ -216,6 +236,7 @@ export async function getReportView(reportDate?: string): Promise<ReportViewResu
       tracking: buildTracking((leadRows as Record<string, unknown>[]) ?? [], snapshot),
       ingestion,
       availableDates,
+      ga4: ga4FromRow(ga4Row as Record<string, unknown> | null),
       source: 'live',
     };
   } catch {

@@ -2,6 +2,7 @@ import 'server-only';
 import { type AdminClient, getSupabaseAdmin, isSupabaseConfigured } from '@/lib/supabase/server';
 import { getSheetsClient, isGoogleConfigured } from './google-auth';
 import { SheetsAdapter } from './adapters/sheets-adapter';
+import { fetchGa4Summary } from './adapters/ga4-adapter';
 import {
   normalizePerformance,
   normalizeBlockers,
@@ -134,6 +135,26 @@ export async function runSync(trigger: SyncTrigger): Promise<SyncSummary> {
       dataGaps.push({
         area: 'tracking',
         detail: `${source.label} failed: ${(err as Error).message}`,
+        owner: 'Data/Analytics',
+      });
+    }
+  }
+
+  // ----- GA4 (website analytics) — a decoupled single-row current summary.
+  // A GA4 failure is just another failed source: it records a data gap but never
+  // aborts the sheet sync (the status logic treats it like any other source).
+  if (isGoogleConfigured()) {
+    try {
+      const ga4 = await fetchGa4Summary();
+      await supabase
+        .from('ga4_summary')
+        .upsert({ id: 1, ...ga4, computed_at: new Date().toISOString() }, { onConflict: 'id' });
+      sheetsOk.push('Google Analytics (GA4)');
+    } catch (err) {
+      sheetsFailed.push('Google Analytics (GA4)');
+      dataGaps.push({
+        area: 'tracking',
+        detail: `Google Analytics (GA4) failed: ${(err as Error).message}`,
         owner: 'Data/Analytics',
       });
     }
