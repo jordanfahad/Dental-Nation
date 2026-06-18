@@ -9,6 +9,7 @@ import { CrmReport } from '@/components/sections/crm/CrmReport';
 import { ExecutiveDashboard } from '@/components/sections/executive/ExecutiveDashboard';
 import { PractoReport } from '@/components/sections/practo/PractoReport';
 import { BookingsReport } from '@/components/sections/bookings/BookingsReport';
+import { MarketingReport } from '@/components/sections/marketing/MarketingReport';
 
 export const dynamic = 'force-dynamic';
 
@@ -54,6 +55,7 @@ export default async function DashboardPage({
       ) : null}
       {tab === 'practo' ? <PractoReport /> : null}
       {tab === 'bookings' ? <BookingsReport /> : null}
+      {tab === 'marketing' ? <MarketingReport /> : null}
 
       <Footer ingestion={report.ingestion} />
     </main>
