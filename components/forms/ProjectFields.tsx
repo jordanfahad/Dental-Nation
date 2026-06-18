@@ -92,6 +92,16 @@ export function ProjectFields({
         />
       </Field>
 
+      <Field label="Link (G-Drive / URL)" hint="A Drive folder, doc, deck, sheet…">
+        <input
+          name="link"
+          type="url"
+          className={inputCls}
+          defaultValue={project?.link ?? ""}
+          placeholder="https://drive.google.com/…"
+        />
+      </Field>
+
       <Field label="Description">
         <textarea
           name="description"

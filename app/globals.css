@@ -75,4 +75,9 @@ body {
   .print-avoid-break {
     break-inside: avoid;
   }
+  /* Tabbed dashboard: print EVERY tab (override the hidden inactive panels),
+     so "Export PDF" still produces the full report. */
+  .tab-panel {
+    display: block !important;
+  }
 }
