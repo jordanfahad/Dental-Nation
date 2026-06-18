@@ -9,8 +9,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'Lane E — Daily Control Report',
-  description: 'Dental Nation · Lane E patient-acquisition control report',
+  title: 'Dental Nation — Performance Report',
+  description: 'Dental Nation · All Lanes patient-acquisition performance report',
   robots: { index: false, follow: false },
 };
 

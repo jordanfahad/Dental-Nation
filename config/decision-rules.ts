@@ -19,3 +19,22 @@ export const MIN_CHANNEL_VOLUME = 3;
 
 /** Default target for PAC first-response time, in minutes (§F gauge). */
 export const RESPONSE_TIME_TARGET_MIN = 15;
+
+/**
+ * Thresholds for the SUGGESTED weekly Scale/Fix/Hold/Stop decision (§B/§A).
+ * Like the daily rule, the weekly verdict always shows its reasoning — never a
+ * black-box; the reviewer overrides. Cost ceilings are in AED.
+ */
+export const weeklyDecisionRules = {
+  /** Cost per qualified inquiry (paid lead) ceiling, AED. Above → Fix. */
+  costPerQualifiedCeiling: 250,
+  /** Cost per booking ceiling, AED. Above → Fix (when bookings are sourced). */
+  costPerBookingCeiling: 1500,
+  /** Lead→booking floor (qualified → booking). Below → Fix. */
+  leadToBookingFloor: 0.1, // 10%
+  /** Below this many qualified inquiries in the week, volume is too low to judge → Hold. */
+  minQualifiedToJudge: 5,
+  /** A channel that is "good cost" (≤ this fraction of the ceiling) AND has
+   *  sufficient volume → Scale. */
+  scaleCostFraction: 0.7,
+} as const;

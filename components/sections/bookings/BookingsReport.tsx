@@ -1,0 +1,204 @@
+import { getRangeReport } from '@/lib/report';
+import { Card, SectionHeader, Takeaway } from '@/components/ui/Card';
+import { DataGapInline } from '@/components/ui/DataGap';
+import { KpiBand, type KpiItem } from '@/components/charts/KpiBand';
+import {
+  ChartLegend,
+  Donut,
+  HBarChart,
+  TOKENS,
+  TrendChart,
+  type BarDatum,
+  type TrendSeries,
+} from '@/components/charts/Charts';
+import { ownerFor } from '@/config/data-gap-owners';
+import { dubaiDateLabel } from '@/lib/dates';
+
+const aed = (n: number) => `AED ${Math.round(n).toLocaleString('en-US')}`;
+const int = (n: number) => Math.round(n).toLocaleString('en-US');
+
+/**
+ * Website Bookings tab — the on-site booking-widget lens. Reads the all-time
+ * range report and consumes `.bookings` + `.series` + `.range`. This is its OWN
+ * population: the website booking widget, distinct from CRM appointments and
+ * Practo finalized bills — never fused into one cross-source funnel.
+ *
+ * Honest by construction (CLAUDE.md §15): empty → owned data gap, null-guarded
+ * derived metrics (avg booking value), never a fabricated 0.
+ */
+export async function BookingsReport() {
+  const report = await getRangeReport({ preset: 'all', compare: 'none' });
+  const b = report.bookings;
+  const range = report.range;
+  const isEmpty = b.empty;
+
+  const period = `${dubaiDateLabel(range.from)} → ${dubaiDateLabel(range.to)}`;
+
+  const booked = b.booked.value;
+  const revenue = b.revenue.value;
+  const avg = booked != null && booked > 0 && revenue != null ? revenue / booked : null;
+
+  const kpis: KpiItem[] = [
+    {
+      label: 'Bookings',
+      value: booked != null ? int(booked) : null,
+      deltaPct: b.booked.deltaPct,
+      gapDetail: 'no widget rows in range',
+      gapOwner: ownerFor('website'),
+    },
+    {
+      label: 'Revenue',
+      value: revenue != null ? aed(revenue) : null,
+      deltaPct: b.revenue.deltaPct,
+      gapDetail: 'no priced bookings in range',
+      gapOwner: ownerFor('website'),
+    },
+    {
+      label: 'Cancellations',
+      value: b.cancellations.value != null ? int(b.cancellations.value) : null,
+      deltaPct: b.cancellations.deltaPct,
+      goodWhenUp: false,
+      gapDetail: 'no cancellation rows in range',
+      gapOwner: ownerFor('website'),
+    },
+    {
+      label: 'Avg booking value',
+      value: avg != null ? aed(avg) : null,
+      gapDetail: 'no priced bookings to average',
+      gapOwner: ownerFor('website'),
+      hint: avg != null && booked != null ? `over ${int(booked)} bookings` : undefined,
+    },
+  ];
+
+  const trendData = report.series.map((d) => ({
+    date: d.date,
+    bookings: d.bookings,
+    revenue: Math.round(d.revenue),
+  }));
+  const trendSeries: TrendSeries[] = [
+    { key: 'bookings', label: 'Bookings', color: TOKENS.accent, kind: 'area', axis: 'left', valueFormat: 'int' },
+    { key: 'revenue', label: 'Revenue (AED)', color: TOKENS.accent400, kind: 'line', axis: 'right', valueFormat: 'aed' },
+  ];
+
+  const byClinic: BarDatum[] = b.byClinic.map((r) => ({ label: r.label, value: r.value }));
+  const byTreatment: BarDatum[] = b.byTreatment.map((r) => ({ label: r.label, value: r.value }));
+
+  return (
+    <div className="space-y-5">
+      <Card>
+        <SectionHeader
+          tag="W"
+          eyebrow="On-site widget · Website Bookings"
+          title="Website Booking Widget — leads & bookings"
+          right={<span className="text-[11px] text-ink-faint">{period}</span>}
+        />
+        <div className="px-5 pb-5 pt-4">
+          <p className="text-[12.5px] leading-snug text-ink-soft">
+            This is the on-site website booking widget — its own population, distinct from the CRM appointment
+            funnel and the Practo finalized-bill clinic revenue. Do not fuse it with them.{' '}
+            <span className="text-ink-faint">Period: {period}.</span>
+          </p>
+          {isEmpty ? (
+            <div className="mt-4">
+              <DataGapInline detail="no website-booking-widget rows in range" owner={ownerFor('website')} />
+            </div>
+          ) : null}
+        </div>
+      </Card>
+
+      <Card>
+        <SectionHeader tag="W1" eyebrow="Scorecard" title="Bookings at a glance" />
+        <div className="px-5 pb-5 pt-4">
+          <KpiBand items={kpis} />
+        </div>
+      </Card>
+
+      <Card>
+        <SectionHeader tag="W2" eyebrow="Daily" title="Bookings & revenue over time" />
+        <div className="px-5 pb-5 pt-4">
+          {trendData.length === 0 ? (
+            <DataGapInline detail="no dated booking activity to chart" owner={ownerFor('website')} />
+          ) : (
+            <>
+              <TrendChart data={trendData} series={trendSeries} leftFormat="int" rightFormat="aed" />
+              <ChartLegend
+                items={[
+                  { label: 'Bookings', color: TOKENS.accent },
+                  { label: 'Revenue (AED)', color: TOKENS.accent400 },
+                ]}
+              />
+            </>
+          )}
+        </div>
+      </Card>
+
+      <Card>
+        <SectionHeader tag="W3" eyebrow="Mix" title="Where bookings come from" />
+        <div className="px-5 pb-5 pt-4">
+          {isEmpty ? (
+            <DataGapInline detail="no bookings to break down in range" owner={ownerFor('website')} />
+          ) : (
+            <div className="grid gap-6 lg:grid-cols-2">
+              <div>
+                <p className="mb-3 text-[11px] font-medium uppercase tracking-wide text-ink-faint">
+                  Bookings by clinic
+                </p>
+                <Donut data={byClinic} valueFormat="int" centerLabel="bookings" height={200} />
+              </div>
+              <div>
+                <p className="mb-3 text-[11px] font-medium uppercase tracking-wide text-ink-faint">
+                  Bookings by treatment
+                </p>
+                <HBarChart data={byTreatment} valueFormat="int" />
+              </div>
+            </div>
+          )}
+        </div>
+      </Card>
+
+      <Card>
+        <SectionHeader tag="W4" eyebrow="Detail" title="Recent bookings" />
+        <div className="px-5 pb-5 pt-4">
+          {b.recent.length === 0 ? (
+            <DataGapInline detail="no recent booking rows in range" owner={ownerFor('website')} />
+          ) : (
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-[12.5px]">
+                  <thead>
+                    <tr className="border-b border-line text-[10.5px] uppercase tracking-wide text-ink-faint">
+                      <th className="py-2 pr-3 font-medium">Date</th>
+                      <th className="py-2 pr-3 font-medium">Treatment</th>
+                      <th className="py-2 pr-3 font-medium">Clinic</th>
+                      <th className="py-2 pr-3 font-medium">Doctor</th>
+                      <th className="py-2 pl-3 text-right font-medium">Price</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {b.recent.map((r, i) => (
+                      <tr key={i} className="border-b border-line/60 last:border-0">
+                        <td className="py-2 pr-3 tabular-nums text-ink-soft">
+                          {r.date ? dubaiDateLabel(r.date) : '—'}
+                        </td>
+                        <td className="py-2 pr-3 text-ink">{r.treatment ?? '—'}</td>
+                        <td className="py-2 pr-3 text-ink-soft">{r.clinic ?? '—'}</td>
+                        <td className="py-2 pr-3 text-ink-soft">{r.doctor ?? '—'}</td>
+                        <td className="py-2 pl-3 text-right tabular-nums text-ink">
+                          {r.price != null ? aed(r.price) : '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <Takeaway>
+                These are real website-booking-widget rows — a self-serve lead signal that runs ahead of CRM
+                follow-up and clinic billing. Treat the counts as widget submissions, not finalized revenue.
+              </Takeaway>
+            </>
+          )}
+        </div>
+      </Card>
+    </div>
+  );
+}

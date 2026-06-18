@@ -6,6 +6,7 @@ import type {
   BookingsRangeReport,
   LeadsRangeReport,
   MixRow,
+  PaidChannelRow,
   PaidRangeReport,
   RangeMeta,
 } from '@/lib/types';
@@ -55,11 +56,30 @@ export function aggregatePaid(rows: PerfRow[], range: RangeMeta): PaidRangeRepor
 
   const leadsByCh: Record<string, number> = {};
   const spendByCh: Record<string, number> = {};
+  // Full per-channel totals (spend/impr/clicks/leads) for the §B weekly table.
+  const byChAcc: Record<string, { spend: number; impressions: number; clicks: number; leads: number }> = {};
   for (const r of cur) {
     const ch = r.channel?.trim() || 'Unattributed';
     leadsByCh[ch] = (leadsByCh[ch] ?? 0) + r.leads;
     spendByCh[ch] = (spendByCh[ch] ?? 0) + r.spend;
+    const acc = (byChAcc[ch] ??= { spend: 0, impressions: 0, clicks: 0, leads: 0 });
+    acc.spend += r.spend;
+    acc.impressions += r.impressions;
+    acc.clicks += r.clicks;
+    acc.leads += r.leads;
   }
+
+  const byChannel: PaidChannelRow[] = Object.entries(byChAcc)
+    .map(([channel, t]) => ({
+      channel,
+      spend: t.spend,
+      impressions: t.impressions,
+      clicks: t.clicks,
+      leads: t.leads,
+      // Cost-per-lead is a data gap (null) when leads = 0 — never spend/0.
+      costPerLead: t.leads > 0 ? t.spend / t.leads : null,
+    }))
+    .sort((a, b) => b.spend - a.spend);
 
   return {
     spend: metricDelta(curSpend, prevSpend),
@@ -69,6 +89,7 @@ export function aggregatePaid(rows: PerfRow[], range: RangeMeta): PaidRangeRepor
     costPerLead: metricDelta(curCpl, prevCpl),
     channelLeads: topMix(leadsByCh),
     channelSpend: topMix(spendByCh),
+    byChannel,
     empty: cur.length === 0,
   };
 }

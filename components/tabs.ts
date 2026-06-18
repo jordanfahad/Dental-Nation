@@ -8,11 +8,12 @@
  * Keeping these here lets BOTH the server page and the client TabBar import them.
  */
 export const TABS = [
-  { key: 'executive', label: 'Executive' },
-  { key: 'paid', label: 'Paid acquisition' },
-  { key: 'website', label: 'Website' },
-  { key: 'inquiries', label: 'Inquiries' },
-  { key: 'bookings', label: 'Bookings' },
+  { key: 'executive', label: 'Executive Dashboard' },
+  { key: 'daily', label: 'Daily Control' },
+  { key: 'weekly', label: 'Weekly Review' },
+  { key: 'crm', label: 'CRM — Zavis' },
+  { key: 'practo', label: 'Practo Insta' },
+  { key: 'bookings', label: 'Website Bookings' },
 ] as const;
 
 export type TabKey = (typeof TABS)[number]['key'];

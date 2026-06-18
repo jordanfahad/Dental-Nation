@@ -3,19 +3,23 @@ import { resolveTab } from '@/components/tabs';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { TabBar } from '@/components/TabBar';
-import { ExecutiveTab } from '@/components/sections/range/ExecutiveTab';
-import { PaidTab } from '@/components/sections/range/PaidTab';
-import { WebsiteTab } from '@/components/sections/range/WebsiteTab';
-import { InquiriesTab } from '@/components/sections/range/InquiriesTab';
-import { BookingsTab } from '@/components/sections/range/BookingsTab';
+import { DailyControlReport } from '@/components/sections/daily/DailyControlReport';
+import { WeeklyReview } from '@/components/sections/weekly/WeeklyReview';
+import { CrmReport } from '@/components/sections/crm/CrmReport';
+import { ExecutiveDashboard } from '@/components/sections/executive/ExecutiveDashboard';
+import { PractoReport } from '@/components/sections/practo/PractoReport';
+import { BookingsReport } from '@/components/sections/bookings/BookingsReport';
 
 export const dynamic = 'force-dynamic';
 
 /**
  * The single server-rendered route. Reads searchParams (from/to/preset/compare/
- * tab), assembles the range-aware report once, then renders only the active
- * tab's content. Navigating (presets, custom range, compare toggle, tabs) just
- * changes the params — the whole page re-renders server-side.
+ * tab), assembles the range-aware report once (for the Header date control + sync
+ * footer), then renders the active tab:
+ *  - daily  → the canonical Daily Control Report (§A–G) for the selected date
+ *  - weekly → the Weekly All Lanes Performance Review (§A–E), 7-day window
+ * The selected daily report date is `?from` (a single day); default = latest.
+ * For weekly, `?from` anchors the week's end (default = latest data date).
  */
 export default async function DashboardPage({
   searchParams,
@@ -42,11 +46,14 @@ export default async function DashboardPage({
       <Header range={report.range} source={report.source} />
       <TabBar />
 
-      {tab === 'executive' ? <ExecutiveTab report={report} /> : null}
-      {tab === 'paid' ? <PaidTab report={report} /> : null}
-      {tab === 'website' ? <WebsiteTab report={report} /> : null}
-      {tab === 'inquiries' ? <InquiriesTab report={report} /> : null}
-      {tab === 'bookings' ? <BookingsTab report={report} /> : null}
+      {tab === 'executive' ? <ExecutiveDashboard /> : null}
+      {tab === 'daily' ? <DailyControlReport reportDate={sp.from} /> : null}
+      {tab === 'weekly' ? <WeeklyReview weekOf={sp.from} /> : null}
+      {tab === 'crm' ? (
+        <CrmReport range={{ from: report.range.from, to: report.range.to }} />
+      ) : null}
+      {tab === 'practo' ? <PractoReport /> : null}
+      {tab === 'bookings' ? <BookingsReport /> : null}
 
       <Footer ingestion={report.ingestion} />
     </main>

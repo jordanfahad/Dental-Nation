@@ -33,8 +33,10 @@ export async function middleware(req: NextRequest) {
   if (authed) return NextResponse.next();
 
   // Private, no-password viewer link → grant a viewer session, then strip the token.
-  const linkToken = process.env.VIEWER_LINK_TOKEN;
-  const provided = req.nextUrl.searchParams.get(ACCESS_PARAM);
+  // Trim the env value so an accidental trailing space/newline from pasting it into
+  // the dashboard doesn't silently break the link (a common gotcha).
+  const linkToken = process.env.VIEWER_LINK_TOKEN?.trim();
+  const provided = req.nextUrl.searchParams.get(ACCESS_PARAM)?.trim();
   if (linkToken && provided && safeEqual(provided, linkToken)) {
     const clean = req.nextUrl.clone();
     clean.searchParams.delete(ACCESS_PARAM); // keep the token out of the address bar / history
@@ -56,6 +58,7 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  // Everything except login, the cron endpoint, Next internals and static files.
-  matcher: ['/((?!login|api/cron|_next/static|_next/image|favicon.ico).*)'],
+  // Everything except login, the cron + practo endpoints (CRON_SECRET-gated),
+  // Next internals and static files.
+  matcher: ['/((?!login|api/cron|api/practo|api/meta|api/google-ads|_next/static|_next/image|favicon.ico).*)'],
 };

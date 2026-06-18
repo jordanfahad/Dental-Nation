@@ -1,18 +1,20 @@
 import 'server-only';
+import { format, parseISO, subDays } from 'date-fns';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
 import { dubaiToday } from '@/lib/dates';
 import { buildRangeMeta, inRange } from '@/lib/range';
 import { aggregateBookings, aggregateLeads, aggregatePaid } from '@/lib/aggregate';
 import { fetchGa4Range } from '@/lib/sync/adapters/ga4-adapter';
 import { isGoogleConfigured } from '@/lib/sync/google-auth';
-import { normalizePerformance } from '@/lib/sync/normalize';
+import { normalizePerformance, type PerfRow } from '@/lib/sync/normalize';
 import { sheetMapping } from '@/config/sheet-mapping';
-import { ownerFor } from '@/config/data-gap-owners';
 import { mockRangeReport } from '@/lib/mock/report';
+import { weeklyDecisionRules } from '@/config/decision-rules';
 import type {
   ChannelStatus,
   ContentItem,
   Blocker,
+  DailyPoint,
   DailySnapshot,
   Ga4RangeReport,
   Ga4Summary,
@@ -127,6 +129,112 @@ async function resolveGa4(
   return null;
 }
 
+/** Minimal lead-date carrier for the series + default-week anchor. */
+interface LeadDateLike {
+  inquiry_date: string | null;
+}
+interface BookingDateLike {
+  booking_date: string | null;
+  status: string | null;
+  price: number | string | null;
+}
+
+/**
+ * Build the per-day activity series across [from, to] (inclusive). Every day in
+ * the window is emitted (real zeros where there was no activity), so trend
+ * charts read continuously rather than collapsing gaps.
+ */
+function buildSeries(
+  perf: PerfRow[],
+  leads: LeadDateLike[],
+  bookings: BookingDateLike[],
+  from: string,
+  to: string,
+): DailyPoint[] {
+  const map = new Map<string, DailyPoint>();
+  const start = parseISO(from);
+  const end = parseISO(to);
+  // Cap the number of emitted days defensively (a malformed range never loops away).
+  for (let d = start, i = 0; d <= end && i < 400; d = subDays(d, -1), i++) {
+    const key = iso(d);
+    map.set(key, {
+      date: key,
+      spend: 0,
+      impressions: 0,
+      clicks: 0,
+      paidLeads: 0,
+      inquiries: 0,
+      bookings: 0,
+      revenue: 0,
+    });
+  }
+  for (const r of perf) {
+    const p = r.date ? map.get(r.date.slice(0, 10)) : undefined;
+    if (!p) continue;
+    p.spend += r.spend;
+    p.impressions += r.impressions;
+    p.clicks += r.clicks;
+    p.paidLeads += r.leads;
+  }
+  for (const l of leads) {
+    const p = l.inquiry_date ? map.get(l.inquiry_date.slice(0, 10)) : undefined;
+    if (p) p.inquiries += 1;
+  }
+  for (const b of bookings) {
+    if ((b.status ?? '') !== 'booked') continue;
+    const p = b.booking_date ? map.get(b.booking_date.slice(0, 10)) : undefined;
+    if (!p) continue;
+    p.bookings += 1;
+    p.revenue += Number(b.price) || 0;
+  }
+  return [...map.values()];
+}
+
+/**
+ * Pick the smart default week-end for the Weekly Review. The weekly review judges
+ * PAID volume (spend / qualified inquiries / channel decisions), so we prefer the
+ * most recent week whose trailing 7 days hold ≥ `minVolume` PAID leads — that
+ * gives a substantive, decision-able default rather than the empty live week. If
+ * paid volume is never sufficient, fall back to the richest lead-tracker week,
+ * then to the latest activity date, then `fallback`.
+ */
+function pickDefaultWeekTo(
+  perfPoints: { date: string | null; leads: number }[],
+  inquiryDates: string[],
+  minVolume: number,
+  fallback: string,
+): string {
+  const trailingSum = (dates: string[], values: number[], end: string): number => {
+    const start = iso(subDays(parseISO(end), 6));
+    let s = 0;
+    for (let i = 0; i < dates.length; i++) if (dates[i] >= start && dates[i] <= end) s += values[i];
+    return s;
+  };
+
+  // 1) Most recent week with enough PAID leads.
+  const perfDated = perfPoints
+    .filter((p) => p.date)
+    .map((p) => ({ d: p.date!.slice(0, 10), leads: p.leads }));
+  const perfDates = perfDated.map((p) => p.d);
+  const perfLeads = perfDated.map((p) => p.leads);
+  const perfEnds = [...new Set(perfDates)].sort((a, b) => (a < b ? 1 : -1)); // newest first
+  for (const end of perfEnds) {
+    if (trailingSum(perfDates, perfLeads, end) >= minVolume) return end;
+  }
+
+  // 2) Else the most recent week with enough lead-tracker inquiries.
+  const inqDated = inquiryDates.filter(Boolean).map((d) => d.slice(0, 10)).sort();
+  const inqOnes = inqDated.map(() => 1);
+  const inqEnds = [...new Set(inqDated)].sort((a, b) => (a < b ? 1 : -1));
+  for (const end of inqEnds) {
+    if (trailingSum(inqDated, inqOnes, end) >= minVolume) return end;
+  }
+
+  // 3) Else the latest activity date anywhere.
+  const allDates = [...perfDates, ...inqDated].sort();
+  return allDates.length ? allDates[allDates.length - 1] : fallback;
+}
+
 /**
  * The main range-aware read. `availableFrom/To` define the full data span; the
  * default range (preset 'all') is that whole span. Comparison is the prior
@@ -215,6 +323,28 @@ export async function getRangeReport(query: RangeQuery): Promise<RangeReport> {
       range,
     );
 
+    // Per-day series for the trend charts (over the resolved range).
+    const bookingDates = bookingList.map((r) => ({
+      booking_date: (r.booking_date as string) ?? null,
+      status: (r.status as string) ?? null,
+      price: (r.price as number | string | null) ?? null,
+    }));
+    const series = buildSeries(
+      perf,
+      leadList.map((r) => ({ inquiry_date: (r.inquiry_date as string) ?? null })),
+      bookingDates,
+      range.from,
+      range.to,
+    );
+
+    // Smart default week-end (most recent substantive week of acquisition).
+    const defaultWeekTo = pickDefaultWeekTo(
+      perf.map((r) => ({ date: r.date, leads: r.leads })),
+      leadList.map((r) => (r.inquiry_date as string) ?? '').filter(Boolean),
+      weeklyDecisionRules.minQualifiedToJudge,
+      availableTo,
+    );
+
     const storedGa4 = ga4SummaryFromRow(ga4Row as Record<string, unknown> | null);
     const ga4 = await resolveGa4(range, storedGa4);
 
@@ -246,9 +376,41 @@ export async function getRangeReport(query: RangeQuery): Promise<RangeReport> {
       ingestion,
       availableFrom,
       availableTo,
+      series,
+      defaultWeekTo,
       source: 'live',
     };
   } catch {
     return mockRangeReport({ today, preset, compare, from: query.from, to: query.to });
   }
+}
+
+const iso = (d: Date) => format(d, 'yyyy-MM-dd');
+
+/**
+ * Weekly read for the Weekly All Lanes Performance Review (§A–E). Reuses
+ * getRangeReport internally over a 7-day window with compare='prev' (the prior
+ * 7 days). The window defaults to the last 7 days ending at the latest data date;
+ * pass `weekOf` (any YYYY-MM-DD in the desired week's end) to anchor `to`.
+ *
+ * To find the latest data date we resolve the full span once (preset 'all'), then
+ * re-read the same sources for the concrete 7-day window. Data is small so the
+ * extra read is cheap, and reusing getRangeReport keeps a single aggregation path.
+ */
+export async function getWeeklyReport(weekOf?: string): Promise<RangeReport> {
+  // 1) Resolve the available span (also the mock/live decision + GA4 path).
+  const span = await getRangeReport({ preset: 'all', compare: 'none' });
+
+  // 2) Anchor the week end at `weekOf` (clamped into the span) or — by default —
+  //    the most recent week that actually has acquisition volume (defaultWeekTo),
+  //    NOT the empty live week. This is what makes the Weekly tab show real data.
+  let to = span.defaultWeekTo || span.availableTo;
+  if (weekOf && /^\d{4}-\d{2}-\d{2}$/.test(weekOf)) {
+    to = weekOf < span.availableFrom ? span.availableFrom : weekOf > span.availableTo ? span.availableTo : weekOf;
+  }
+  let from = iso(subDays(parseISO(to), 6)); // inclusive 7-day window
+  if (from < span.availableFrom) from = span.availableFrom;
+
+  // 3) Re-read the same sources for the concrete week + prior-week comparison.
+  return getRangeReport({ from, to, compare: 'prev' });
 }

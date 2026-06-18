@@ -5,8 +5,8 @@ import { useSearchParams } from 'next/navigation';
 import { TABS, resolveTab, type TabKey } from '@/components/tabs';
 
 /**
- * Tab navigation (Step 3). Five tabs; the active one comes from `?tab=`
- * (default Executive). Links PRESERVE the date params (from/to/preset/compare)
+ * Tab navigation. Two tabs (Daily Control / Weekly Review); the active one comes
+ * from `?tab=` (default Daily Control). Links PRESERVE the date params (from/to/preset/compare)
  * so switching tabs keeps the selected range. The tab definitions + resolveTab
  * live in ./tabs (a plain, non-client module) so the SERVER page can call
  * resolveTab without crossing the RSC boundary (that was the prod crash).
