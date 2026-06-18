@@ -71,6 +71,9 @@ export default async function ProjectDetailPage({
               {project.priority && (
                 <span className="text-xs font-medium capitalize text-ink-2">{project.priority} priority</span>
               )}
+              {project.owner && (
+                <span className="text-xs font-medium text-ink-2">· Owner: {project.owner}</span>
+              )}
             </div>
           </div>
           <ProjectEditModal project={project} components={components} />

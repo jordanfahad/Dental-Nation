@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Modal } from "@/components/ui/Modal";
 import { ActionForm } from "@/components/forms/ActionForm";
 import { TaskFields } from "@/components/forms/TaskFields";
+import { AttachEvidence } from "@/components/forms/AttachEvidence";
 import { TaskStatusPill } from "@/components/ui/StatusPill";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -92,12 +93,15 @@ export function TasksTable({ tasks, projects }: { tasks: Task[]; projects: Proje
                   <td className="tnum px-4 py-2.5 text-ink-2">{formatDate(t.due_date)}</td>
                   <td className="px-4 py-2.5 text-xs capitalize text-ink-3">{t.source}</td>
                   <td className="px-4 py-2.5 text-right">
-                    <button
-                      onClick={() => setEditing(t)}
-                      className="no-print rounded-md px-2 py-1 text-xs font-medium text-ink-2 hover:bg-panel"
-                    >
-                      Edit
-                    </button>
+                    <div className="flex items-center justify-end gap-1">
+                      <AttachEvidence taskId={t.id} componentId={undefined} label="+ File" />
+                      <button
+                        onClick={() => setEditing(t)}
+                        className="no-print rounded-md px-2 py-1 text-xs font-medium text-ink-2 hover:bg-panel"
+                      >
+                        Edit
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
