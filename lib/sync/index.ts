@@ -7,6 +7,8 @@ import { syncPracto } from './adapters/practo-adapter';
 import { isPractoConfigured } from '@/config/practo';
 import { syncMeta } from './adapters/meta-adapter';
 import { isMetaConfigured } from '@/config/meta';
+import { syncGoogleAds } from './adapters/google-ads-adapter';
+import { isGoogleAdsConfigured } from '@/config/google-ads';
 import {
   normalizePerformance,
   normalizeBlockers,
@@ -224,6 +226,24 @@ export async function runSync(trigger: SyncTrigger): Promise<SyncSummary> {
     } catch (err) {
       sheetsFailed.push('Meta Ads (insights)');
       dataGaps.push({ area: 'spend', detail: `Meta Ads sync failed: ${(err as Error).message}`, owner: 'Acquisition' });
+    }
+  }
+
+  // ----- Google Ads — live campaign spend. Best-effort: a failure records a
+  // data gap but never aborts the sync.
+  if (isGoogleAdsConfigured()) {
+    try {
+      const g = await syncGoogleAds(supabase);
+      if (g.ok) {
+        sheetsOk.push(`Google Ads (insights) — ${g.stored} rows`);
+        rowsIngested += g.stored;
+      } else {
+        sheetsFailed.push('Google Ads (insights)');
+        dataGaps.push({ area: 'spend', detail: `Google Ads sync failed: ${g.error ?? 'unknown'}`, owner: 'Acquisition' });
+      }
+    } catch (err) {
+      sheetsFailed.push('Google Ads (insights)');
+      dataGaps.push({ area: 'spend', detail: `Google Ads sync failed: ${(err as Error).message}`, owner: 'Acquisition' });
     }
   }
 
