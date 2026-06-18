@@ -9,14 +9,36 @@ export function Hero({ summary }: { summary: ImpactSummary }) {
     hue: c.hue,
   }));
 
-  // Outcome KPIs (the heroes) + a surface-area tile, reference-deck style.
+  // Outcome KPIs (the heroes) + a surface-area tile, reference-deck style. Each
+  // tile deep-links to its detail: project tiles scroll to that function's cards
+  // in Project Control; the live Lane E metric opens the Performance Report.
+  const countByComp = new Map(summary.components.map((c) => [c.id, c.projectCount]));
+  const grp = (id: string) => ((countByComp.get(id) ?? 0) > 0 ? `#pc-${id}` : "#project-control");
+  const hrefByKey: Record<string, string> = {
+    leads: "/",
+    sites: grp("website_growth"),
+    hires: grp("hiring"),
+    ranking:
+      (countByComp.get("seo") ?? 0) > 0
+        ? "#pc-seo"
+        : (countByComp.get("ai_seo") ?? 0) > 0
+          ? "#pc-ai_seo"
+          : "#project-control",
+  };
   const tiles = [
-    ...summary.headline.map((h) => ({ value: h.value, label: h.label, sub: h.sub, live: h.live })),
+    ...summary.headline.map((h) => ({
+      value: h.value,
+      label: h.label,
+      sub: h.sub,
+      live: h.live,
+      href: hrefByKey[h.key] ?? "#project-control",
+    })),
     {
       value: String(summary.activeProjects),
       label: "Active projects",
       sub: `${summary.totalProjects} total · ${summary.completedAllTime} done`,
       live: false,
+      href: "#project-control",
     },
   ].slice(0, 5);
 
@@ -40,7 +62,11 @@ export function Hero({ summary }: { summary: ImpactSummary }) {
 
           <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
             {tiles.map((t, i) => (
-              <div key={i} className="rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur-sm">
+              <a
+                key={i}
+                href={t.href}
+                className="group relative block rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur-sm transition-colors hover:bg-white/20 hover:ring-1 hover:ring-dn-mint/40"
+              >
                 <div className="tnum text-3xl font-extrabold leading-none text-dn-mint">{t.value}</div>
                 <div className="mt-2 text-sm font-medium text-dn-off">{t.label}</div>
                 <div className="mt-0.5 text-[11px] text-dn-off/70">{t.sub}</div>
@@ -50,7 +76,13 @@ export function Hero({ summary }: { summary: ImpactSummary }) {
                     live — Lane E
                   </div>
                 )}
-              </div>
+                <span
+                  aria-hidden
+                  className="absolute right-3 top-3 text-sm text-dn-mint opacity-0 transition-opacity group-hover:opacity-80"
+                >
+                  {t.href === "/" ? "↗" : "↓"}
+                </span>
+              </a>
             ))}
           </div>
 
