@@ -44,3 +44,10 @@ export function requireSupabaseAdmin(): AdminClient {
   }
   return client;
 }
+
+/**
+ * Private Storage bucket for the Impact tab (Tab 2): evidence files + raw
+ * ingest uploads. Never public — files are served via short-lived signed URLs
+ * (see app/api/evidence/[id]). Created in supabase/migrations/0002.
+ */
+export const EVIDENCE_BUCKET = 'evidence';

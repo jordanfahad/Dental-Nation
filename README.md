@@ -47,6 +47,23 @@ badge shows in the header) so the full UI is reviewable immediately.
 - **Cron** (`vercel.json`): hourly on Vercel Pro; see BUILD_NOTES for the Hobby
   (daily) and external-scheduler alternatives.
 
+## Tab 2 — Growth Manager Impact Dashboard (`/impact`)
+
+A second tab behind the **same** password gate (no second login) makes the case
+for the growth manager across six functions (Online Marketing · SEO · AI SEO ·
+Website Growth · Lead Generation · Hiring). Outcomes-first: hero KPIs, six
+swimlanes, a hand-rolled roadmap Gantt, blockers, honest effort (counts when
+hours aren't tracked — never invented), impact-by-function, and a signed-URL
+evidence locker. It cross-links the live Lane E snapshot under Lead Gen /
+Marketing.
+
+Updates flow through **one human gate**: paste text or drop a file (PDF / Excel
+/ CSV / HTML / Zoho export) → `/api/ingest` extracts a proposal with Claude
+(`claude-sonnet-4-6`) → you review and **Approve** on `/impact/review/[jobId]`.
+Nothing reaches the dashboard without that approval; Zoho exports import
+structurally and dedupe by task id. Its tables live in the `lane_e` schema
+(migration `0002`). See **BUILD_NOTES.md → Tab 2** for the full design.
+
 ## Configuration lives in one place
 
 - `config/sheet-mapping.ts` — every sheet → canonical column mapping (the only
