@@ -18,10 +18,12 @@ export function TopNav({
   components,
   projects,
   pendingReviewCount,
+  canEdit = true,
 }: {
   components: Component[];
   projects: Project[];
   pendingReviewCount: number;
+  canEdit?: boolean;
 }) {
   const pathname = usePathname();
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -59,7 +61,7 @@ export function TopNav({
           </nav>
 
           <div className="ml-auto flex items-center gap-2">
-            {pendingReviewCount > 0 && (
+            {canEdit && pendingReviewCount > 0 && (
               <Link
                 href={`/impact/review`}
                 className="inline-flex items-center gap-1.5 rounded-full bg-warn-weak px-2.5 py-1 text-xs font-medium text-warn"
@@ -68,15 +70,22 @@ export function TopNav({
                 {pendingReviewCount} pending review
               </Link>
             )}
-            <button
-              onClick={() => setDrawerOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-accent-strong"
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                <path d="M12 5v14M5 12h14" />
-              </svg>
-              Add update
-            </button>
+            {canEdit ? (
+              <button
+                onClick={() => setDrawerOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-accent-strong"
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+                Add update
+              </button>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-panel px-2.5 py-1 text-xs font-medium text-ink-2">
+                <span className="h-1.5 w-1.5 rounded-full bg-ink-3" />
+                Viewer · read-only
+              </span>
+            )}
             <button
               onClick={() => window.print()}
               title="Print / export PDF"
@@ -98,12 +107,14 @@ export function TopNav({
         </div>
       </header>
 
-      <AddUpdateDrawer
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        components={components}
-        projects={projects}
-      />
+      {canEdit && (
+        <AddUpdateDrawer
+          open={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+          components={components}
+          projects={projects}
+        />
+      )}
     </>
   );
 }

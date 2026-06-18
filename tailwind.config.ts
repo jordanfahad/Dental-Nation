@@ -51,6 +51,25 @@ const config: Config = {
         warn: { DEFAULT: '#B45309', weak: '#FEF6EC' },
         bad: { DEFAULT: '#B91C1C', weak: '#FEF2F2' },
         muted: { DEFAULT: '#9CA3AF', weak: '#F4F4F5' },
+
+        // --- "Mr. Akbar deck" reference palette (Growth Projects tab restyle) ---
+        // Navy + mint executive look. Namespaced `dn-*` so it never touches the
+        // Lane E report's near-monochrome tokens.
+        dn: {
+          navy: '#244260',
+          navy2: '#315779',
+          mint: '#CFE2D0',
+          off: '#F7F5EF',
+          soft: '#5793A3',
+          pale: '#C9E2E1',
+          beige: '#EEEFE1',
+          ink: '#2C3233',
+          line: '#DDE5E0',
+          red: '#B42318',
+          amber: '#B54708',
+          green: '#2E7D32',
+          grey: '#ADAC99',
+        },
       },
       fontFamily: {
         sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],

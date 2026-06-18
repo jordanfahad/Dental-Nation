@@ -6,6 +6,7 @@ import { importZoho } from "@/lib/ingest/zoho";
 import { uploadIngestRaw } from "@/lib/ingest/storage";
 import { getComponents, getProjects } from "@/lib/impact/data";
 import { requireSupabaseAdmin } from "@/lib/supabase/server";
+import { isAdmin } from "@/lib/auth/role";
 import type { ExtractionResult } from "@/lib/impact/types";
 
 export const runtime = "nodejs";
@@ -17,6 +18,9 @@ export const dynamic = "force-dynamic";
 // on the review screen — see app/(app)/impact/review/actions.ts.
 export async function POST(req: NextRequest) {
   try {
+    if (!(await isAdmin())) {
+      return NextResponse.json({ error: "Read-only access — admin only." }, { status: 403 });
+    }
     const db = requireSupabaseAdmin();
     const form = await req.formData();
     const text = typeof form.get("text") === "string" ? (form.get("text") as string) : undefined;

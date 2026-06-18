@@ -5,8 +5,9 @@ import Link from "next/link";
 import { applyReviewAction, rejectReviewAction } from "@/app/(app)/impact/review/actions";
 import { inputCls } from "@/components/ui/field";
 import { cn } from "@/components/ui/cn";
+import { FlowChart } from "@/components/impact/FlowChart";
 import type { ActionState } from "@/lib/impact/action-types";
-import type { Component, IngestionJob, Project } from "@/lib/impact/types";
+import type { Component, FlowLayer, IngestionJob, Project } from "@/lib/impact/types";
 
 const STATUS_OPTS = ["not_started", "in_progress", "blocked", "on_hold", "completed"];
 
@@ -45,10 +46,12 @@ export function ReviewClient({
   job,
   components,
   projects,
+  canEdit = true,
 }: {
   job: IngestionJob;
   components: Component[];
   projects: Project[];
+  canEdit?: boolean;
 }) {
   const ex = job.extracted;
   const projectById = useMemo(() => new Map(projects.map((p) => [p.id, p])), [projects]);
@@ -98,6 +101,16 @@ export function ReviewClient({
 
   const [unmapped, setUnmapped] = useState<string[]>(ex.unmapped ?? []);
 
+  const [flowcharts, setFlowcharts] = useState(
+    (ex.flowcharts ?? []).map((f) => ({
+      include: true,
+      key: f.key ?? null,
+      title: f.title ?? "",
+      subtitle: f.subtitle ?? null,
+      layers: (Array.isArray(f.layers) ? f.layers : []) as FlowLayer[],
+    }))
+  );
+
   const [applyState, applyAction, applying] = useActionState<ActionState, FormData>(applyReviewAction, null);
   const [rejectState, rejectAction, rejecting] = useActionState<ActionState, FormData>(rejectReviewAction, null);
 
@@ -137,13 +150,21 @@ export function ReviewClient({
         effort_hours: t.effort_hours ? Number(t.effort_hours) : null,
         due_date: t.due_date || null,
       })),
+      flowcharts: flowcharts.map((f) => ({
+        include: f.include,
+        key: f.key,
+        title: f.title,
+        subtitle: f.subtitle,
+        layers: f.layers,
+      })),
     });
-  }, [newProjects, matched, newTasks]);
+  }, [newProjects, matched, newTasks, flowcharts]);
 
   const includedCount =
     newProjects.filter((p) => p.include).length +
     matched.filter((m) => m.include).length +
-    newTasks.filter((t) => t.include).length;
+    newTasks.filter((t) => t.include).length +
+    flowcharts.filter((f) => f.include).length;
 
   return (
     <div className="mt-3">
@@ -386,6 +407,37 @@ export function ReviewClient({
         </Section>
       )}
 
+      {/* Flowcharts */}
+      {flowcharts.length > 0 && (
+        <Section title="Flowcharts" subtitle="Operating-architecture / roadmap diagrams to add or refresh (saved by key on approve).">
+          <div className="space-y-3">
+            {flowcharts.map((f, i) => (
+              <div
+                key={i}
+                className={cn(
+                  "rounded-xl border p-4",
+                  f.include ? "border-hairline bg-paper" : "border-hairline bg-panel opacity-60"
+                )}
+              >
+                <label className="flex items-center gap-2 text-sm font-medium text-ink">
+                  <input
+                    type="checkbox"
+                    checked={f.include}
+                    onChange={(e) => upd(setFlowcharts, i, { include: e.target.checked })}
+                  />
+                  {f.title || "Untitled flowchart"}
+                  {f.key && <span className="text-xs font-normal text-ink-3">({f.key})</span>}
+                </label>
+                {f.subtitle && <p className="mt-1 text-xs text-ink-3">{f.subtitle}</p>}
+                <div className="mt-3 rounded-lg border border-hairline bg-white p-3">
+                  <FlowChart spec={{ layers: f.layers }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
+
       {/* Unmapped */}
       {unmapped.length > 0 && (
         <Section title="Unmapped" subtitle="Nothing here is dropped silently — convert to a project or leave it.">
@@ -426,8 +478,14 @@ export function ReviewClient({
         </p>
       )}
 
+      {!canEdit && (
+        <div className="mt-6 rounded-lg bg-panel px-4 py-3 text-sm text-ink-2">
+          Read-only — sign in with the admin password to approve or reject this proposal.
+        </div>
+      )}
+
       {/* Actions — the gate */}
-      {!alreadyReviewed && (
+      {!alreadyReviewed && canEdit && (
         <div className="sticky bottom-0 mt-6 flex items-center justify-between gap-3 border-t border-hairline bg-paper/95 py-4 backdrop-blur">
           <form action={rejectAction}>
             <input type="hidden" name="jobId" value={job.id} />

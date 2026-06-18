@@ -2,7 +2,9 @@ import Link from "next/link";
 import { getIngestionJobs } from "@/lib/impact/data";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { JobDeleteButton } from "@/components/impact/JobDeleteButton";
 import { formatRelativeTime } from "@/lib/impact/format";
+import { currentRole } from "@/lib/auth/role";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +17,7 @@ const STATUS_PILL: Record<string, string> = {
 
 export default async function ReviewIndexPage() {
   const jobs = await getIngestionJobs();
+  const canEdit = (await currentRole()) === "admin";
   const pending = jobs.filter((j) => j.status === "pending_review");
   const others = jobs.filter((j) => j.status !== "pending_review");
 
@@ -39,11 +42,11 @@ export default async function ReviewIndexPage() {
       ) : (
         <ul className="space-y-2">
           {pending.map((j) => (
-            <li key={j.id}>
-              <Link
-                href={`/impact/review/${j.id}`}
-                className="flex items-center justify-between gap-3 rounded-xl border border-hairline bg-paper p-4 hover:shadow-sm"
-              >
+            <li
+              key={j.id}
+              className="flex items-center gap-3 rounded-xl border border-hairline bg-paper p-4 hover:shadow-sm"
+            >
+              <Link href={`/impact/review/${j.id}`} className="flex min-w-0 flex-1 items-center justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_PILL.pending_review}`}>
@@ -57,6 +60,7 @@ export default async function ReviewIndexPage() {
                 </div>
                 <span className="shrink-0 text-xs text-ink-3">{formatRelativeTime(j.created_at)}</span>
               </Link>
+              {canEdit && <JobDeleteButton jobId={j.id} />}
             </li>
           ))}
         </ul>
@@ -67,8 +71,8 @@ export default async function ReviewIndexPage() {
           <h2 className="mb-3 text-sm font-semibold text-ink">History</h2>
           <ul className="divide-y divide-hairline rounded-xl border border-hairline bg-paper">
             {others.slice(0, 30).map((j) => (
-              <li key={j.id} className="flex items-center justify-between gap-3 p-3 text-sm">
-                <Link href={`/impact/review/${j.id}`} className="flex min-w-0 items-center gap-2 hover:text-accent">
+              <li key={j.id} className="flex items-center gap-3 p-3 text-sm">
+                <Link href={`/impact/review/${j.id}`} className="flex min-w-0 flex-1 items-center gap-2 hover:text-accent">
                   <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_PILL[j.status] ?? STATUS_PILL.rejected}`}>
                     {j.status}
                   </span>
@@ -79,6 +83,7 @@ export default async function ReviewIndexPage() {
                 <span className="shrink-0 text-xs text-ink-3">
                   {formatRelativeTime(j.applied_at ?? j.reviewed_at ?? j.created_at)}
                 </span>
+                {canEdit && <JobDeleteButton jobId={j.id} />}
               </li>
             ))}
           </ul>

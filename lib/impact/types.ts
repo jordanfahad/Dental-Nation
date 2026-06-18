@@ -48,6 +48,7 @@ export interface Project {
   description: string | null;
   status: ProjectStatus;
   ownership: Ownership;
+  owner: string | null;
   progress_pct: number | null;
   effort_hours: number | null;
   effort_source: EffortSource;
@@ -92,6 +93,7 @@ export interface ProjectBlocker {
 export interface EvidenceFile {
   id: string;
   project_id: string | null;
+  task_id: string | null;
   component_id: string | null;
   filename: string;
   storage_path: string;
@@ -123,6 +125,37 @@ export interface LaneESnapshot {
   glow_up_bookings: number | null;
   best_channel: string | null;
   leads_total: number | null;
+}
+
+// ---- Flowcharts (operating architecture / roadmaps) ----
+export type FlowTone = "start" | "process" | "decision" | "accent" | "end";
+export interface FlowNode {
+  label: string;
+  sublabel?: string;
+  tone?: FlowTone;
+}
+export interface FlowLayer {
+  nodes: FlowNode[];
+}
+export interface FlowchartSpec {
+  layers: FlowLayer[];
+}
+export interface Flowchart {
+  id: string;
+  key: string | null;
+  title: string;
+  subtitle: string | null;
+  spec: FlowchartSpec;
+  sort_order: number;
+  source: string;
+  updated_at: string;
+}
+/** A flowchart proposed by extraction (upserted by key on approval). */
+export interface FlowchartProposal {
+  key?: string;
+  title: string;
+  subtitle?: string;
+  layers: FlowLayer[];
 }
 
 // ---- Ingestion / review-gate payload (§5) ----
@@ -164,6 +197,7 @@ export interface ExtractionResult {
   matched_projects: MatchedProjectProposal[];
   new_projects: NewProjectProposal[];
   new_tasks: NewTaskProposal[];
+  flowcharts?: FlowchartProposal[];
   unmapped: string[];
   notes?: string;
   // populated only when JSON parsing failed, so the review screen can surface it
