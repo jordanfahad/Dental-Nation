@@ -6,6 +6,7 @@ import { TabBar } from '@/components/TabBar';
 import { DailyControlReport } from '@/components/sections/daily/DailyControlReport';
 import { WeeklyReview } from '@/components/sections/weekly/WeeklyReview';
 import { CrmReport } from '@/components/sections/crm/CrmReport';
+import { ExecutiveDashboard } from '@/components/sections/executive/ExecutiveDashboard';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,6 +44,7 @@ export default async function DashboardPage({
       <Header range={report.range} source={report.source} />
       <TabBar />
 
+      {tab === 'executive' ? <ExecutiveDashboard /> : null}
       {tab === 'daily' ? <DailyControlReport reportDate={sp.from} /> : null}
       {tab === 'weekly' ? <WeeklyReview weekOf={sp.from} /> : null}
       {tab === 'crm' ? (

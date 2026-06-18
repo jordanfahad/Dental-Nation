@@ -56,6 +56,7 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  // Everything except login, the cron endpoint, Next internals and static files.
-  matcher: ['/((?!login|api/cron|_next/static|_next/image|favicon.ico).*)'],
+  // Everything except login, the cron + practo endpoints (CRON_SECRET-gated),
+  // Next internals and static files.
+  matcher: ['/((?!login|api/cron|api/practo|_next/static|_next/image|favicon.ico).*)'],
 };

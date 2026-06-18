@@ -2,6 +2,7 @@ import { getPractoSummary } from '@/lib/practo/report';
 import type { CrmRange } from '@/lib/crm/types';
 import { Card, SectionHeader, Takeaway } from '@/components/ui/Card';
 import { DataGapInline } from '@/components/ui/DataGap';
+import { Donut, HBarChart, type BarDatum } from '@/components/charts/Charts';
 import { ownerFor } from '@/config/data-gap-owners';
 
 const aed = (n: number) => `AED ${Math.round(n).toLocaleString('en-US')}`;
@@ -58,11 +59,33 @@ export async function CrmPractoRevenue({ range }: { range?: CrmRange }) {
                 hint={`${int(p.amountKnown)}/${int(p.billCount)} bills with a parsed amount`}
               />
             </div>
+            <div className="mt-5 grid gap-6 lg:grid-cols-2">
+              <div>
+                <p className="mb-3 text-[11px] font-medium uppercase tracking-wide text-ink-faint">
+                  Revenue by department
+                </p>
+                <Donut data={p.byDepartment as BarDatum[]} valueFormat="aed" centerLabel="revenue" height={180} />
+              </div>
+              <div>
+                <p className="mb-3 text-[11px] font-medium uppercase tracking-wide text-ink-faint">
+                  Top treatments by revenue
+                </p>
+                <HBarChart data={p.byTreatment as BarDatum[]} valueFormat="aed" />
+              </div>
+            </div>
+            {p.byDoctor.length > 0 ? (
+              <div className="mt-5">
+                <p className="mb-3 text-[11px] font-medium uppercase tracking-wide text-ink-faint">
+                  Revenue by doctor
+                </p>
+                <HBarChart data={p.byDoctor as BarDatum[]} valueFormat="aed" />
+              </div>
+            ) : null}
             <Takeaway>
               Revenue is read from Practo&apos;s finalized bills (the clinic PMS — a distinct
-              population from the booking funnel). Amounts are mapped best-effort from the raw bill
-              payload; once the field mapping is confirmed via the probe endpoint, the{' '}
-              <span className="font-medium text-ink-soft">amount coverage</span> reaches 100%.
+              population from the booking funnel), broken down by treating department, treatment
+              (line-item services) and conducting doctor. Average bill value:{' '}
+              <span className="font-medium text-ink-soft">{p.avgBill != null ? aed(p.avgBill) : '—'}</span>.
             </Takeaway>
           </>
         )}

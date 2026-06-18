@@ -8,6 +8,7 @@
  * Keeping these here lets BOTH the server page and the client TabBar import them.
  */
 export const TABS = [
+  { key: 'executive', label: 'Executive Dashboard' },
   { key: 'daily', label: 'Daily Control' },
   { key: 'weekly', label: 'Weekly Review' },
   { key: 'crm', label: 'CRM — Zavis' },
@@ -15,7 +16,7 @@ export const TABS = [
 
 export type TabKey = (typeof TABS)[number]['key'];
 
-export const DEFAULT_TAB: TabKey = 'daily';
+export const DEFAULT_TAB: TabKey = 'executive';
 
 /** Normalise an arbitrary ?tab= value to a known tab (default Executive). */
 export function resolveTab(tab: string | undefined): TabKey {
