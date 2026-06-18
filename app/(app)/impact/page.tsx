@@ -2,14 +2,17 @@ import type { Metadata } from "next";
 import { getDashboardData } from "@/lib/impact/data";
 import { computeSummary } from "@/lib/impact/metrics";
 import { Hero } from "@/components/impact/Hero";
+import { ProjectControl } from "@/components/impact/ProjectControl";
 import { Swimlanes } from "@/components/impact/Swimlanes";
 import { TasksTable } from "@/components/impact/TasksTable";
 import { RoadmapTimeline } from "@/components/impact/RoadmapTimeline";
 import { BlockersSection } from "@/components/impact/BlockersSection";
 import { EffortAnalysis } from "@/components/impact/EffortAnalysis";
 import { ImpactByFunction } from "@/components/impact/ImpactByFunction";
+import { FlowchartsSection } from "@/components/impact/FlowchartsSection";
 import { EvidenceLocker } from "@/components/impact/EvidenceLocker";
 import { formatDate, formatRelativeTime } from "@/lib/impact/format";
+import { currentRole } from "@/lib/auth/role";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Fahad — Growth Projects Dashboard" };
@@ -17,6 +20,7 @@ export const metadata: Metadata = { title: "Fahad — Growth Projects Dashboard"
 export default async function ImpactPage() {
   const data = await getDashboardData();
   const summary = computeSummary(data);
+  const canEdit = (await currentRole()) === "admin";
 
   const taskCounts: Record<string, number> = {};
   for (const t of data.tasks) {
@@ -40,15 +44,18 @@ export default async function ImpactPage() {
     });
 
   return (
+    <div className="bg-[linear-gradient(135deg,#F7F5EF,#ffffff_45%,#EEEFE1)]">
     <div className="mx-auto max-w-7xl space-y-10 px-5 py-8">
       <Hero summary={summary} />
+      <ProjectControl projects={data.projects} components={data.components} blockers={data.blockers} />
       <Swimlanes components={summary.components} taskCounts={taskCounts} />
-      <TasksTable tasks={data.tasks} projects={data.projects} />
+      <TasksTable tasks={data.tasks} projects={data.projects} canEdit={canEdit} />
       <RoadmapTimeline projects={data.projects} components={data.components} />
       <BlockersSection blockers={data.blockers} />
       <EffortAnalysis effortByDate={effortByDate} components={summary.components} effort={summary.effort} />
       <ImpactByFunction components={summary.components} snapshot={data.snapshot} />
-      <EvidenceLocker evidence={data.evidence} components={data.components} />
+      <FlowchartsSection flowcharts={data.flowcharts} />
+      <EvidenceLocker evidence={data.evidence} components={data.components} canEdit={canEdit} />
 
       <footer className="border-t border-hairline pt-4 text-xs text-ink-3">
         <div className="flex flex-wrap justify-between gap-2">
@@ -63,6 +70,7 @@ export default async function ImpactPage() {
           )}
         </div>
       </footer>
+    </div>
     </div>
   );
 }

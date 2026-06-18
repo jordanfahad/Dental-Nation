@@ -2,8 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireSupabaseAdmin } from "@/lib/supabase/server";
+import { EVIDENCE_BUCKET, requireSupabaseAdmin } from "@/lib/supabase/server";
 import { recomputeProjectEffort } from "@/lib/impact/effort";
+import { isAdmin, READ_ONLY_ERROR } from "@/lib/auth/role";
 import type { ActionState } from "@/lib/impact/action-types";
 
 /**
@@ -46,6 +47,17 @@ interface ApplyPayload {
     effort_hours?: number | null;
     due_date?: string | null;
   }>;
+  flowcharts?: Array<{
+    include: boolean;
+    key?: string | null;
+    title: string;
+    subtitle?: string | null;
+    layers: unknown;
+  }>;
+}
+
+function slugify(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 60) || "flowchart";
 }
 
 function projectSource(jobSource: string): string {
@@ -96,6 +108,7 @@ async function assignZohoTasks(projectId: string, externalIds: string[]) {
 }
 
 export async function applyReviewAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  if (!(await isAdmin())) return { ok: false, error: READ_ONLY_ERROR };
   const jobId = String(formData.get("jobId") ?? "");
   if (!jobId) return { ok: false, error: "Missing job id" };
 
@@ -177,6 +190,26 @@ export async function applyReviewAction(_prev: ActionState, formData: FormData):
     if (error) return { ok: false, error: `Task "${t.name}": ${error.message}` };
   }
 
+  // 4) Flowcharts — upsert by key (refreshes the operating-architecture / roadmap diagrams).
+  for (const fc of payload.flowcharts ?? []) {
+    if (!fc.include || !fc.title?.trim() || !Array.isArray(fc.layers)) continue;
+    const key = (fc.key?.trim() || slugify(fc.title));
+    const { error } = await db()
+      .from("flowcharts")
+      .upsert(
+        {
+          key,
+          title: fc.title.trim(),
+          subtitle: fc.subtitle || null,
+          spec: { layers: fc.layers },
+          source: src,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "key" }
+      );
+    if (error) return { ok: false, error: `Flowchart "${fc.title}": ${error.message}` };
+  }
+
   const now = new Date().toISOString();
   await db().from("ingestion_jobs").update({ status: "applied", reviewed_at: now, applied_at: now }).eq("id", jobId);
 
@@ -186,6 +219,7 @@ export async function applyReviewAction(_prev: ActionState, formData: FormData):
 }
 
 export async function rejectReviewAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  if (!(await isAdmin())) return { ok: false, error: READ_ONLY_ERROR };
   const jobId = String(formData.get("jobId") ?? "");
   if (!jobId) return { ok: false, error: "Missing job id" };
   // Reject writes NOTHING to projects/tasks.
@@ -195,4 +229,22 @@ export async function rejectReviewAction(_prev: ActionState, formData: FormData)
     .eq("id", jobId);
   revalidatePath("/impact");
   redirect("/impact");
+}
+
+/** Delete an ingestion job outright (also removes its stored raw upload). Writes
+ *  nothing to projects/tasks — it only discards the staged proposal. */
+export async function deleteIngestionJobAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  if (!(await isAdmin())) return { ok: false, error: READ_ONLY_ERROR };
+  const jobId = String(formData.get("jobId") ?? "");
+  if (!jobId) return { ok: false, error: "Missing job id" };
+  const { data: job } = await db()
+    .from("ingestion_jobs")
+    .select("storage_path")
+    .eq("id", jobId)
+    .maybeSingle();
+  const sp = (job as { storage_path?: string } | null)?.storage_path;
+  if (sp) await db().storage.from(EVIDENCE_BUCKET).remove([sp]);
+  await db().from("ingestion_jobs").delete().eq("id", jobId);
+  revalidatePath("/impact");
+  redirect("/impact/review");
 }
