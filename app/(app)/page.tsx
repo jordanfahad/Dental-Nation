@@ -1,5 +1,5 @@
 import { getRangeReport } from '@/lib/report';
-import { resolveTab } from '@/components/TabBar';
+import { resolveTab } from '@/components/tabs';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { TabBar } from '@/components/TabBar';

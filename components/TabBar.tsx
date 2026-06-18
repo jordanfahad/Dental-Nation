@@ -2,28 +2,15 @@
 
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { TABS, resolveTab, type TabKey } from '@/components/tabs';
 
 /**
  * Tab navigation (Step 3). Five tabs; the active one comes from `?tab=`
  * (default Executive). Links PRESERVE the date params (from/to/preset/compare)
- * so switching tabs keeps the selected range. Clean underlined consulting style.
+ * so switching tabs keeps the selected range. The tab definitions + resolveTab
+ * live in ./tabs (a plain, non-client module) so the SERVER page can call
+ * resolveTab without crossing the RSC boundary (that was the prod crash).
  */
-export const TABS = [
-  { key: 'executive', label: 'Executive' },
-  { key: 'paid', label: 'Paid acquisition' },
-  { key: 'website', label: 'Website' },
-  { key: 'inquiries', label: 'Inquiries' },
-  { key: 'bookings', label: 'Bookings' },
-] as const;
-
-export type TabKey = (typeof TABS)[number]['key'];
-
-export const DEFAULT_TAB: TabKey = 'executive';
-
-/** Normalise an arbitrary ?tab= value to a known tab (default Executive). */
-export function resolveTab(tab: string | undefined): TabKey {
-  return (TABS.find((t) => t.key === tab)?.key as TabKey) ?? DEFAULT_TAB;
-}
 
 export function TabBar() {
   const params = useSearchParams();
