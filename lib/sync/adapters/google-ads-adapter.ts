@@ -81,15 +81,19 @@ async function fetchCustomer(
     `metrics.impressions, metrics.clicks, metrics.conversions ` +
     `FROM campaign WHERE segments.date BETWEEN '${from}' AND '${to}'`;
   // Non-streaming :search (paginated JSON) — more robust over REST than
-  // :searchStream. Page through nextPageToken until exhausted.
+  // :searchStream. Page through nextPageToken until exhausted. If querying via a
+  // configured manager (login-customer-id) is permission-denied (that manager
+  // doesn't manage this account), automatically fall back to DIRECT access.
   const out: GAdsRow[] = [];
   let pageToken: string | undefined;
+  let effectiveLcid = loginCustomerId;
+  let triedDirect = false;
   for (let guard = 0; guard < 200; guard++) {
     const res = await fetch(
       `https://googleads.googleapis.com/${version}/customers/${customerId}/googleAds:search`,
       {
         method: 'POST',
-        headers: gAdsHeaders(cfg, accessToken, loginCustomerId),
+        headers: gAdsHeaders(cfg, accessToken, effectiveLcid),
         body: JSON.stringify({ query, pageSize: 10000, ...(pageToken ? { pageToken } : {}) }),
         cache: 'no-store',
       },
@@ -101,8 +105,17 @@ async function fetchCustomer(
     } catch {
       throw new Error(`Google Ads non-JSON (${res.status}): ${text.slice(0, 300)}`);
     }
-    const obj = body as { results?: GAdsRow[]; nextPageToken?: string; error?: { message?: string } };
-    if (obj.error) throw new Error(`Google Ads API: ${obj.error.message ?? text.slice(0, 300)}`);
+    const obj = body as { results?: GAdsRow[]; nextPageToken?: string; error?: { message?: string; status?: string } };
+    if (obj.error) {
+      const denied = res.status === 403 || /permission/i.test(obj.error.message ?? '') || obj.error.status === 'PERMISSION_DENIED';
+      if (denied && effectiveLcid && !triedDirect) {
+        // Retry the same page with direct access (no login-customer-id).
+        effectiveLcid = null;
+        triedDirect = true;
+        continue;
+      }
+      throw new Error(`Google Ads API: ${obj.error.message ?? text.slice(0, 300)}`);
+    }
     if (Array.isArray(obj.results)) out.push(...obj.results);
     if (!obj.nextPageToken) break;
     pageToken = obj.nextPageToken;
