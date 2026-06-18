@@ -1,7 +1,24 @@
 import type { ExecutiveReport } from '@/lib/executive/types';
 import { dubaiDateLabel } from '@/lib/dates';
 import { DecisionBanner, type BannerTone } from '@/components/charts/DecisionBanner';
-import { CoverageStrip, type CoveragePill } from './parts';
+import { CoverageStrip, fmtAed, fmtInt, type CoveragePill } from './parts';
+
+/**
+ * Build a confident, investor-ready one-line narrative from the real figures.
+ * Honest: only sourced (non-null) numbers are woven in; nothing is fabricated.
+ */
+function execNarrative(k: ExecutiveReport['kpis']): string | null {
+  const parts: string[] = [];
+  if (k.clinicRevenue != null) parts.push(`${fmtAed(k.clinicRevenue)} in finalized clinic revenue`);
+  if (k.appointmentsCompleted != null) parts.push(`${fmtInt(k.appointmentsCompleted)} completed appointments`);
+  if (k.appointmentsBooked != null) parts.push(`${fmtInt(k.appointmentsBooked)} appointments booked`);
+  if (k.leadsGenerated != null) parts.push(`${fmtInt(k.leadsGenerated)} tracked leads`);
+  if (k.marketingSpend != null) parts.push(`${fmtAed(k.marketingSpend)} of measured media spend`);
+  if (k.conversationsHandled != null) parts.push(`${fmtInt(k.conversationsHandled)} patient conversations`);
+  if (parts.length < 2) return null;
+  const last = parts.pop();
+  return `${parts.join(', ')} and ${last} — one instrumented funnel from ad spend to the dental chair.`;
+}
 
 /**
  * Executive Dashboard hero — the investor-grade landing header. A confident title,
@@ -32,12 +49,14 @@ export function ExecHero({ report }: { report: ExecutiveReport }) {
     verdict = 'Partial coverage';
   }
 
+  const narrative = source === 'mock' ? null : execNarrative(kpis);
   const headline =
     source === 'mock'
       ? 'Preview mode — showing representative sample numbers. On the live deployment this reads every connected engine end to end.'
-      : `A measured, multi-channel patient-acquisition system — ${liveCount} of ${pills.length} engines live, from ad spend through clinic revenue, instrumented end to end.`;
+      : narrative ??
+        `A measured, multi-channel patient-acquisition system — ${liveCount} of ${pills.length} engines live, from ad spend through clinic revenue, instrumented end to end.`;
 
-  const period = `${dubaiDateLabel(range.from)} → ${dubaiDateLabel(range.to)} · all-time`;
+  const period = `${dubaiDateLabel(range.from)} → ${dubaiDateLabel(range.to)} · full history, each engine over its own measured window`;
 
   return (
     <div className="space-y-4">
