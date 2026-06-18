@@ -56,6 +56,17 @@ interface GAdsRow {
   metrics?: { costMicros?: string; impressions?: string; clicks?: string; conversions?: number };
 }
 
+/** Build request headers; login-customer-id is only sent when provided. */
+function gAdsHeaders(cfg: GoogleAdsConfig, accessToken: string, loginCustomerId: string | null): Record<string, string> {
+  const h: Record<string, string> = {
+    Authorization: `Bearer ${accessToken}`,
+    'developer-token': cfg.developerToken,
+    'Content-Type': 'application/json',
+  };
+  if (loginCustomerId) h['login-customer-id'] = loginCustomerId;
+  return h;
+}
+
 async function fetchCustomer(
   cfg: GoogleAdsConfig,
   accessToken: string,
@@ -63,6 +74,7 @@ async function fetchCustomer(
   from: string,
   to: string,
   version: string,
+  loginCustomerId: string | null,
 ): Promise<GAdsRow[]> {
   const query =
     `SELECT campaign.id, campaign.name, segments.date, metrics.cost_micros, ` +
@@ -77,12 +89,7 @@ async function fetchCustomer(
       `https://googleads.googleapis.com/${version}/customers/${customerId}/googleAds:search`,
       {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'developer-token': cfg.developerToken,
-          'login-customer-id': cfg.loginCustomerId,
-          'Content-Type': 'application/json',
-        },
+        headers: gAdsHeaders(cfg, accessToken, loginCustomerId),
         body: JSON.stringify({ query, pageSize: 10000, ...(pageToken ? { pageToken } : {}) }),
         cache: 'no-store',
       },
@@ -115,7 +122,7 @@ export async function syncGoogleAds(supabase: AdminClient, opts: GAdsSyncOpts = 
 
     const all: { row: GAdsRow; customer: string }[] = [];
     for (const customer of cfg.customerIds) {
-      const rows = await fetchCustomer(cfg, accessToken, customer, from, to, version);
+      const rows = await fetchCustomer(cfg, accessToken, customer, from, to, version, cfg.loginCustomerId);
       for (const row of rows) all.push({ row, customer });
     }
 
@@ -150,28 +157,28 @@ export async function syncGoogleAds(supabase: AdminClient, opts: GAdsSyncOpts = 
 
 /** Raw debug: refresh token + do ONE search call, returning the exact URL, HTTP
  *  status and raw body (no parsing/throwing) so we can see what Google sees. */
-export async function googleAdsDebug(version?: string): Promise<{ ok: boolean; data?: unknown; error?: string }> {
+export async function googleAdsDebug(
+  version?: string,
+  loginOverride?: string,
+): Promise<{ ok: boolean; data?: unknown; error?: string }> {
   const cfg = getGoogleAdsConfig();
   if (!cfg) return { ok: false, error: 'not_configured' };
   try {
     const ver = version || cfg.version;
+    // ?lcid=none → omit header; ?lcid=<id> → use it; absent → configured value.
+    const lcid = loginOverride === 'none' ? null : loginOverride ? loginOverride.replace(/[^0-9]/g, '') : cfg.loginCustomerId;
     const accessToken = await getAccessToken(cfg);
     const url = `https://googleads.googleapis.com/${ver}/customers/${cfg.customerIds[0]}/googleAds:search`;
     const res = await fetch(url, {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'developer-token': cfg.developerToken,
-        'login-customer-id': cfg.loginCustomerId,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ query: 'SELECT customer.id FROM customer LIMIT 1' }),
+      headers: gAdsHeaders(cfg, accessToken, lcid),
+      body: JSON.stringify({ query: 'SELECT customer.id, customer.descriptive_name FROM customer LIMIT 1' }),
       cache: 'no-store',
     });
     const text = await res.text();
     return {
       ok: true,
-      data: { url, requestedUrlHost: new URL(url).host, status: res.status, contentType: res.headers.get('content-type'), body: text.slice(0, 700) },
+      data: { url, loginCustomerId: lcid, status: res.status, contentType: res.headers.get('content-type'), body: text.slice(0, 700) },
     };
   } catch (err) {
     return { ok: false, error: (err as Error).message };
@@ -188,7 +195,7 @@ export async function googleAdsProbe(version?: string): Promise<{ ok: boolean; d
     const accessToken = await getAccessToken(cfg);
     const to = iso(new Date());
     const from = iso(new Date(Date.now() - 13 * 86400_000));
-    const rows = await fetchCustomer(cfg, accessToken, cfg.customerIds[0], from, to, ver);
+    const rows = await fetchCustomer(cfg, accessToken, cfg.customerIds[0], from, to, ver, cfg.loginCustomerId);
     return { ok: true, data: { customer: cfg.customerIds[0], version: ver, rowCount: rows.length, sampleRow: rows[0] ?? null } };
   } catch (err) {
     return { ok: false, error: (err as Error).message };

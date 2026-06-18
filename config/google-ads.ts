@@ -16,7 +16,7 @@ export interface GoogleAdsConfig {
   clientSecret: string;
   refreshToken: string;
   customerIds: string[];
-  loginCustomerId: string;
+  loginCustomerId: string | null;
   version: string;
 }
 
@@ -38,8 +38,10 @@ export function getGoogleAdsConfig(): GoogleAdsConfig | null {
     clientSecret,
     refreshToken,
     customerIds,
-    loginCustomerId: loginRaw ? digits(loginRaw) : digits(customerIds[0]),
-    version: process.env.GOOGLE_ADS_API_VERSION?.trim() || 'v25',
+    // Only send login-customer-id when explicitly configured (a manager/MCC).
+    // For direct ad-account access it should be omitted, or set to the account.
+    loginCustomerId: loginRaw ? digits(loginRaw) : null,
+    version: process.env.GOOGLE_ADS_API_VERSION?.trim() || 'v24',
   };
 }
 

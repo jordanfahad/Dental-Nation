@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(result, { status: result.ok ? 200 : 502 });
   }
   if (sp.get('debug') === '1') {
-    const dbg = await googleAdsDebug(sp.get('version') ?? undefined);
+    const dbg = await googleAdsDebug(sp.get('version') ?? undefined, sp.get('lcid') ?? undefined);
     return NextResponse.json(dbg, { status: dbg.ok ? 200 : 502 });
   }
   const probe = await googleAdsProbe(sp.get('version') ?? undefined);
