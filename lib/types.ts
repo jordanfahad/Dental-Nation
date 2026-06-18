@@ -235,6 +235,22 @@ export interface MixRow {
   value: number;
 }
 
+/** One day of activity across the range — powers the trend charts. Each metric
+ *  is its own honest population (paid spend/leads vs lead-tracker inquiries vs
+ *  bookings), never fused. Days with no activity are real zeros for that day. */
+export interface DailyPoint {
+  date: string; // YYYY-MM-DD
+  spend: number;
+  impressions: number;
+  clicks: number;
+  /** Paid leads recorded by the perf source that day. */
+  paidLeads: number;
+  /** Lead-tracker inquiries recorded that day (its own population). */
+  inquiries: number;
+  bookings: number;
+  revenue: number;
+}
+
 /** The selected date range + its comparison range (resolved to concrete dates). */
 export interface RangeMeta {
   from: string; // YYYY-MM-DD inclusive
@@ -347,6 +363,12 @@ export interface RangeReport {
   /** Full available data span, for the "All" preset default + range clamping. */
   availableFrom: string;
   availableTo: string;
+  /** Per-day activity across the selected range (oldest → newest), for trend charts. */
+  series: DailyPoint[];
+  /** Smart default anchor for the Weekly Review — the most recent week-end that
+   *  has real acquisition volume (≥ minQualifiedToJudge inquiries in its trailing
+   *  7 days), so the default week is substantive, not the empty live week. */
+  defaultWeekTo: string;
   source: 'live' | 'mock';
 }
 

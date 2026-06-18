@@ -23,7 +23,7 @@ export async function WeeklyReview({ weekOf }: { weekOf?: string }) {
     <div className="space-y-5">
       <SectionAExecutive report={report} model={model} />
       <SectionBChannels model={model} />
-      <SectionCFunnel model={model} />
+      <SectionCFunnel report={report} model={model} />
       <SectionDLearning report={report} model={model} />
       <SectionEActions report={report} model={model} />
     </div>

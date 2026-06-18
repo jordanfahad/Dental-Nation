@@ -4,6 +4,7 @@ import type {
   BookingsSummary,
   ChannelStatus,
   ContentItem,
+  DailyPoint,
   DailySnapshot,
   FunnelStage,
   Ga4RangeReport,
@@ -582,6 +583,7 @@ export function mockRangeReport({ today, preset, compare, from, to }: MockRangeA
   const leads = mockLeadsRange();
   const bookings = mockBookingsRange();
   const ga4 = mockGa4Range();
+  const series = mockSeries(range.from, range.to);
 
   if (compare === 'none') {
     paid.spend = stripPrev(paid.spend);
@@ -615,8 +617,39 @@ export function mockRangeReport({ today, preset, compare, from, to }: MockRangeA
     ingestion: buildIngestion(),
     availableFrom,
     availableTo,
+    series,
+    defaultWeekTo: range.to,
     source: 'mock',
   };
+}
+
+/** A deterministic, smoothly-varying mock daily series for the trend charts. */
+function mockSeries(from: string, to: string): DailyPoint[] {
+  const out: DailyPoint[] = [];
+  const start = new Date(`${from}T00:00:00Z`);
+  const end = new Date(`${to}T00:00:00Z`);
+  let i = 0;
+  for (let d = start; d <= end && i < 400; d = new Date(d.getTime() + 86400000), i++) {
+    const wave = Math.sin(i / 4) * 0.5 + 0.5; // 0..1
+    const dow = d.getUTCDay();
+    const weekend = dow === 5 || dow === 6 ? 0.55 : 1; // Fri/Sat dip (Dubai weekend)
+    const date = d.toISOString().slice(0, 10);
+    const spend = Math.round((900 + wave * 1400) * weekend);
+    const impressions = Math.round((22000 + wave * 30000) * weekend);
+    const clicks = Math.round((380 + wave * 520) * weekend);
+    const paidLeads = Math.round((6 + wave * 12) * weekend);
+    out.push({
+      date,
+      spend,
+      impressions,
+      clicks,
+      paidLeads,
+      inquiries: paidLeads + Math.round(wave * 4),
+      bookings: Math.round((1 + wave * 3) * weekend),
+      revenue: Math.round((1400 + wave * 2600) * weekend),
+    });
+  }
+  return out;
 }
 
 export function mockReportView(latest: string, reportDate?: string): ReportView {

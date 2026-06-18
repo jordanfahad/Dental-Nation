@@ -2,16 +2,25 @@ import type { RangeReport } from '@/lib/types';
 import type { WeeklyModel } from './prepare';
 import { Card, SectionHeader } from '@/components/ui/Card';
 import { DataGapInline } from '@/components/ui/DataGap';
-import { WeeklyDecisionChip } from './WeeklyDecisionCell';
+import { DecisionBanner, type BannerTone } from '@/components/charts/DecisionBanner';
+import { KpiBand, type KpiItem } from '@/components/charts/KpiBand';
+import { TrendChart, ChartLegend, TOKENS } from '@/components/charts/Charts';
 import { dubaiDateLabel } from '@/lib/dates';
 import { ownerFor } from '@/config/data-gap-owners';
-import { num } from './format';
+import { aed, num, pct } from './format';
+
+const TONE: Record<string, BannerTone> = {
+  Scale: 'good',
+  Fix: 'watch',
+  Stop: 'stop',
+  Hold: 'neutral',
+};
 
 /**
- * §A — Weekly Executive View. One table answering the week's operating
- * questions. The overall decision is the SUGGESTED weekly Scale/Fix/Hold/Stop
- * (reviewer overrides). Fields with no real source render an explicit, owned
- * data gap — never a fabricated value.
+ * §A — Weekly Executive View. Answer-first: the overall Scale/Fix/Hold/Stop call
+ * up top, a scorecard band of the week's headline numbers (with prior-week
+ * deltas + sparklines), the week's acquisition trend, then the executive answers.
+ * Every field with no real source renders an explicit, owned data gap.
  */
 export function SectionAExecutive({
   report,
@@ -20,12 +29,8 @@ export function SectionAExecutive({
   report: RangeReport;
   model: WeeklyModel;
 }) {
-  const { range } = report;
+  const { range, paid, leads, bookings, series } = report;
   const { overall, bestChannel, worstChannel, totals, leakage } = model;
-
-  const gap = (detail: string, area: string) => (
-    <DataGapInline detail={detail} owner={ownerFor(area)} />
-  );
 
   const recommendation =
     overall.decision === 'Scale'
@@ -36,24 +41,80 @@ export function SectionAExecutive({
           ? 'Pause spend on the failing channels and re-test creative/targeting.'
           : 'Hold spend; gather more volume before changing direction.';
 
-  const rows: { label: string; value: React.ReactNode }[] = [
-    { label: 'Week covered', value: `${dubaiDateLabel(range.from)} → ${dubaiDateLabel(range.to)}` },
+  // Scorecard band — real metrics with prior-week deltas + weekly sparklines.
+  const kpis: KpiItem[] = [
     {
-      label: 'Overall weekly decision',
-      value: (
-        <span className="inline-flex flex-wrap items-center gap-2">
-          <WeeklyDecisionChip decision={overall.decision} />
-          <span className="text-ink-soft">{overall.reason}</span>
-          <span className="rounded bg-na/10 px-1.5 py-0.5 text-[10.5px] font-medium uppercase tracking-wide text-ink-faint">
-            suggested — reviewer overrides
-          </span>
-        </span>
-      ),
+      label: 'Ad spend',
+      value: totals.spend == null ? null : aed(totals.spend),
+      deltaPct: paid.spend.deltaPct,
+      goodWhenUp: false,
+      spark: series.map((s) => s.spend),
+      sparkColor: TOKENS.accent400,
+      gapDetail: 'no ad-spend source',
+      gapOwner: ownerFor('spend'),
     },
+    {
+      label: 'Qualified inquiries',
+      value: num(totals.qualified),
+      deltaPct: paid.leads.deltaPct,
+      goodWhenUp: true,
+      spark: series.map((s) => s.paidLeads),
+      sparkColor: TOKENS.accent,
+    },
+    {
+      label: 'Glow Up bookings',
+      value: num(totals.bookings),
+      deltaPct: bookings.booked.deltaPct,
+      goodWhenUp: true,
+      spark: series.map((s) => s.bookings),
+      sparkColor: TOKENS.good,
+    },
+    {
+      label: 'Lead → booking',
+      value: totals.leadToBooking == null ? null : pct(totals.leadToBooking),
+      goodWhenUp: true,
+      gapDetail: 'no qualified inquiries to divide by',
+      gapOwner: ownerFor('tracking'),
+      hint: 'bookings ÷ qualified',
+    },
+    {
+      label: 'Cost / qualified',
+      value: totals.costPerQualified == null ? null : aed(totals.costPerQualified),
+      goodWhenUp: false,
+      gapDetail: 'needs spend + qualified',
+      gapOwner: ownerFor('cost'),
+    },
+    {
+      label: 'Unattributed',
+      value: totals.unattributed == null ? null : num(totals.unattributed),
+      goodWhenUp: false,
+      hint:
+        totals.unattributedShare != null ? `${Math.round(totals.unattributedShare * 100)}% of leads` : undefined,
+      gapDetail: 'attribution not sourced',
+      gapOwner: ownerFor('attribution'),
+    },
+  ];
+
+  // The week's acquisition trend (each population on its own footing).
+  const trendData = series.map((s) => ({
+    date: s.date,
+    inquiries: s.inquiries,
+    bookings: s.bookings,
+    spend: s.spend,
+  }));
+  const trendSeries = [
+    { key: 'spend', label: 'Spend (AED)', color: TOKENS.accent400, kind: 'bar' as const, axis: 'right' as const },
+    { key: 'inquiries', label: 'Inquiries', color: TOKENS.accent, kind: 'area' as const },
+    { key: 'bookings', label: 'Bookings', color: TOKENS.good, kind: 'line' as const },
+  ];
+
+  const gap = (detail: string, area: string) => <DataGapInline detail={detail} owner={ownerFor(area)} />;
+
+  const answers: { label: string; value: React.ReactNode }[] = [
     {
       label: 'Best-performing channel',
       value: bestChannel ? (
-        <span className="text-good">{bestChannel.channel}</span>
+        <span className="font-medium text-good">{bestChannel.channel}</span>
       ) : (
         gap('no paid channel had enough qualified volume to rank', 'channel')
       ),
@@ -61,23 +122,18 @@ export function SectionAExecutive({
     {
       label: 'Worst-performing channel',
       value: worstChannel ? (
-        <span className="text-stop">{worstChannel.channel}</span>
+        <span className="font-medium text-stop">{worstChannel.channel}</span>
       ) : (
         gap('fewer than two paid channels with judgeable volume', 'channel')
       ),
     },
     {
-      label: 'Best-performing creative',
-      value: gap('no per-creative performance metric in the content source', 'creative'),
-    },
-    {
-      label: 'Main audience learning',
-      value: gap('no per-audience response metric sourced this week', 'creative'),
-    },
-    {
       label: 'Main conversion bottleneck',
       value: leakage ? (
-        `${leakage.from} → ${leakage.to} (${Math.round(leakage.drop * 100)}% drop)`
+        <span className="text-ink">
+          {leakage.from} → {leakage.to}{' '}
+          <span className="text-ink-faint">({Math.round(leakage.drop * 100)}% drop)</span>
+        </span>
       ) : (
         gap('not enough measured funnel stages to locate a leak', 'tracking')
       ),
@@ -86,44 +142,62 @@ export function SectionAExecutive({
       label: 'Main tracking gap',
       value:
         totals.unattributed != null && totals.unattributed > 0 ? (
-          <span>
+          <span className="text-ink">
             {num(totals.unattributed)} unattributed inquiries
-            {totals.unattributedShare != null ? ` (${Math.round(totals.unattributedShare * 100)}% of total)` : ''}
-            <span className="ml-1 text-ink-faint">· owner: {ownerFor('attribution')}</span>
+            {totals.unattributedShare != null ? ` (${Math.round(totals.unattributedShare * 100)}%)` : ''}
+            <span className="text-ink-faint"> · {ownerFor('attribution')}</span>
           </span>
         ) : totals.unattributed === 0 ? (
-          <span className="text-good">No unattributed inquiries this week</span>
+          <span className="font-medium text-good">No unattributed inquiries this week</span>
         ) : (
           gap('attribution coverage not sourced', 'attribution')
         ),
     },
     {
-      label: 'Main clinic / PAC issue',
-      value: gap('no PAC / clinic feedback source for the week', 'pac'),
+      label: 'Best-performing creative',
+      value: gap('no per-creative performance metric in the content source', 'creative'),
     },
     {
-      label: 'Recommendation for next week',
-      value: <span className="text-ink">{recommendation}</span>,
+      label: 'Main clinic / PAC issue',
+      value: gap('no PAC / clinic feedback source for the week', 'pac'),
     },
   ];
 
   return (
-    <Card>
-      <SectionHeader tag="A" eyebrow="Weekly review" title="Weekly executive view" />
-      <div className="px-5 pb-5 pt-4">
-        <table className="w-full border-collapse text-[13px]">
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.label} className="border-b border-line/60 align-top last:border-0">
-                <th className="w-[230px] py-2 pr-4 text-left font-medium text-ink-faint">
-                  {r.label}
-                </th>
-                <td className="py-2 leading-snug text-ink">{r.value}</td>
-              </tr>
+    <div className="space-y-4">
+      <DecisionBanner
+        eyebrow="Weekly review · All Lanes — Lifestyle & Aesthetics"
+        verdict={overall.decision}
+        tone={TONE[overall.decision] ?? 'neutral'}
+        headline={overall.reason}
+        meta={`Week covered: ${dubaiDateLabel(range.from)} → ${dubaiDateLabel(range.to)} · vs. prior 7 days`}
+        right={
+          <div className="rounded-card border border-line bg-surface px-4 py-3 text-right">
+            <p className="text-[10.5px] uppercase tracking-wide text-ink-faint">Next week</p>
+            <p className="mt-0.5 max-w-[220px] text-[12px] leading-snug text-ink-soft">{recommendation}</p>
+          </div>
+        }
+      />
+
+      <KpiBand items={kpis} />
+
+      <Card>
+        <SectionHeader tag="A" eyebrow="Weekly review" title="Acquisition trend — this week" />
+        <div className="px-5 pb-5 pt-3">
+          <TrendChart data={trendData} series={trendSeries} height={250} leftFormat="int" rightFormat="aed" />
+          <ChartLegend items={trendSeries.map((s) => ({ label: s.label, color: s.color }))} />
+          <div className="mt-4 grid gap-x-6 gap-y-3 sm:grid-cols-2">
+            {answers.map((a) => (
+              <div key={a.label} className="flex flex-col gap-0.5 border-b border-line/60 pb-2.5">
+                <span className="text-[11px] font-medium uppercase tracking-wide text-ink-faint">
+                  {a.label}
+                </span>
+                <span className="text-[13px] leading-snug text-ink">{a.value}</span>
+              </div>
             ))}
-          </tbody>
-        </table>
-      </div>
-    </Card>
+          </div>
+        </div>
+      </Card>
+    </div>
   );
 }

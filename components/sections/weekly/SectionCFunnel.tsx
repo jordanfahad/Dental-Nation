@@ -1,16 +1,34 @@
+import type { RangeReport } from '@/lib/types';
 import type { WeeklyModel } from './prepare';
-import { Card, SectionHeader } from '@/components/ui/Card';
+import { Card, SectionHeader, Takeaway } from '@/components/ui/Card';
 import { DataGapInline } from '@/components/ui/DataGap';
+import { FunnelViz, type FunnelStageViz } from '@/components/charts/FunnelViz';
 import { ownerFor } from '@/config/data-gap-owners';
 import { aed, num, pct } from './format';
 
 /**
- * §C — Weekly Funnel Quality. Metric / Weekly result / Comment. Real where the
- * data supports it (spend, qualified paid leads, real bookings, derived rates);
- * everything else is an explicit, owned data gap — never a fabricated 0.
+ * §C — Weekly Funnel Quality. A funnel infographic (impressions → clicks →
+ * qualified → bookings) sits above the metric / result / comment table. Real
+ * where the data supports it (spend, qualified paid leads, real bookings, derived
+ * rates); everything else is an explicit, owned data gap — never a fabricated 0.
  */
-export function SectionCFunnel({ model }: { model: WeeklyModel }) {
+export function SectionCFunnel({ report, model }: { report: RangeReport; model: WeeklyModel }) {
   const t = model.totals;
+
+  const empty = (v: unknown) => v == null || (typeof v === 'number' && v === 0 && report.paid.empty);
+  const funnelStages: FunnelStageViz[] = [
+    {
+      label: 'Impressions',
+      value: empty(report.paid.impressions.value) ? null : report.paid.impressions.value,
+      hint: 'reach source pending',
+    },
+    {
+      label: 'Clicks',
+      value: empty(report.paid.clicks.value) ? null : report.paid.clicks.value,
+    },
+    { label: 'Qualified inquiries', value: t.qualified },
+    { label: 'Glow Up bookings', value: t.bookings },
+  ];
 
   const real = (value: React.ReactNode) => <span className="text-ink">{value}</span>;
   const gap = (detail: string, area: string) => (
@@ -101,6 +119,16 @@ export function SectionCFunnel({ model }: { model: WeeklyModel }) {
   return (
     <Card>
       <SectionHeader tag="C" eyebrow="Weekly review" title="Weekly funnel quality" />
+      <div className="px-5 pt-4">
+        <FunnelViz stages={funnelStages} />
+        <Takeaway>
+          {model.leakage
+            ? `Largest measured drop: ${model.leakage.from} → ${model.leakage.to} (${Math.round(
+                model.leakage.drop * 100,
+              )}%). Upstream reach is a data gap until a paid-reach source is mapped.`
+            : 'Not enough measured stages to locate the leak — upstream reach is a data gap.'}
+        </Takeaway>
+      </div>
       <div className="overflow-x-auto px-5 pb-5 pt-4">
         <table className="w-full border-collapse text-[12.5px]">
           <thead>
