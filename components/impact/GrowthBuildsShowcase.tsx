@@ -1,4 +1,5 @@
 import { AcknowledgeButton } from "./AcknowledgeButton";
+import { AttachEvidence } from "@/components/forms/AttachEvidence";
 import { formatDate } from "@/lib/impact/format";
 import type { EvidenceFile, Project } from "@/lib/impact/types";
 
@@ -76,7 +77,7 @@ export function GrowthBuildsShowcase({
 
               <div className="px-5 pt-5">
                 {imgs.length ? (
-                  <div className="flex gap-3 overflow-x-auto pb-1">
+                  <div className="flex items-center gap-3 overflow-x-auto pb-1">
                     {imgs.map((e) => (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
@@ -86,10 +87,16 @@ export function GrowthBuildsShowcase({
                         className="h-44 w-auto shrink-0 rounded-lg border border-dn-line object-cover"
                       />
                     ))}
+                    {role === "admin" && (
+                      <div className="shrink-0">
+                        <AttachEvidence projectId={b.id} label="+ Add" />
+                      </div>
+                    )}
                   </div>
                 ) : (
-                  <div className="flex h-28 items-center justify-center rounded-lg border border-dashed border-dn-line bg-dn-pale/30 text-xs text-dn-ink/45">
-                    Screenshots coming soon
+                  <div className="flex h-28 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-dn-line bg-dn-pale/30 text-xs text-dn-ink/45">
+                    <span>No screenshots yet</span>
+                    {role === "admin" && <AttachEvidence projectId={b.id} label="+ Add screenshot" />}
                   </div>
                 )}
               </div>
