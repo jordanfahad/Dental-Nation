@@ -57,13 +57,20 @@ function extractToken(body: unknown): string | null {
   return null;
 }
 
-/** Detect Practo's "login again" sentinel anywhere obvious in the body. */
+/** Detect Practo's "login again" / invalid-token signal. Practo wraps responses
+ *  in `return_code` / `return_message` (e.g. an expired/cancelled handler key),
+ *  so we must read those too — not just code/message — or a stale token silently
+ *  yields zero bills. A success envelope won't contain these auth phrases, so
+ *  genuinely-empty windows are NOT mistaken for an auth error. */
 function isReloginCode(body: unknown): boolean {
   if (!body || typeof body !== 'object') return false;
   const obj = body as Record<string, unknown>;
-  const code = String(obj.code ?? obj.status ?? obj.error_code ?? '');
-  const msg = String(obj.message ?? obj.error ?? '').toLowerCase();
-  return code === PRACTO_RELOGIN_CODE || msg.includes('login again');
+  const code = String(obj.code ?? obj.status ?? obj.error_code ?? obj.return_code ?? '');
+  const msg = String(obj.message ?? obj.error ?? obj.return_message ?? '').toLowerCase();
+  if (code === PRACTO_RELOGIN_CODE) return true;
+  return ['login again', 'login', 'invalid', 'expired', 'unauthor', 'session', 'handler key', 'token'].some(
+    (k) => msg.includes(k),
+  );
 }
 
 async function postJson(url: string, headers: Record<string, string>): Promise<unknown> {
