@@ -1,5 +1,6 @@
 import 'server-only';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
+import { fetchGa4LeadLens, type Ga4LeadByChannel } from '@/lib/sync/adapters/ga4-adapter';
 
 /**
  * Marketing reconciliation: ties LIVE ad spend (Meta + Google) to platform-
@@ -26,6 +27,25 @@ export interface MktMonth {
   spend: number;
   reportedLeads: number;
   trackedLeads: number;
+  /** GA4 site-tagged gross leads (independent measure). */
+  ga4Leads: number;
+}
+/**
+ * GA4 gross-lead lens — an INDEPENDENT, site-tagged measure of where leads come
+ * from, sitting between the ad platforms' self-reported conversions and the
+ * in-house tracker. Added to triangulate the picture WITHOUT contaminating the
+ * platform/tracker reconciliation: GA4 is a third population, shown side-by-side.
+ */
+export interface MktGa4 {
+  available: boolean;
+  totalLeads: number;
+  byChannel: Ga4LeadByChannel[];
+  /** Leads GA4 attributes to PAID channels — the apples-to-apples check vs ad-platform conversions. */
+  paidLeads: number;
+  events: string[];
+  channelDimension: string;
+  period: { from: string; to: string } | null;
+  note: string | null;
 }
 export interface MktCampaign {
   platform: 'Meta' | 'Google';
@@ -52,9 +72,24 @@ export interface MarketingReport {
   topCampaigns: MktCampaign[];
   /** In-house tracker leads by channel (context for attribution). */
   trackedByChannel: { label: string; value: number }[];
+  /** GA4 site-tagged gross-lead lens (independent triangulation). */
+  ga4: MktGa4;
   metaPeriod: { from: string | null; to: string | null };
   googlePeriod: { from: string | null; to: string | null };
 }
+
+/** GA4 default-channel-grouping buckets that are PAID (ad-driven). */
+const GA4_PAID_CHANNELS = /paid|cross-network|display|shopping/i;
+const emptyGa4: MktGa4 = {
+  available: false,
+  totalLeads: 0,
+  byChannel: [],
+  paidLeads: 0,
+  events: [],
+  channelDimension: '',
+  period: null,
+  note: null,
+};
 
 const monthLabel = (m: string): string => {
   try {
@@ -74,6 +109,7 @@ const emptyReport: MarketingReport = {
   monthly: [],
   topCampaigns: [],
   trackedByChannel: [],
+  ga4: emptyGa4,
   metaPeriod: { from: null, to: null },
   googlePeriod: { from: null, to: null },
 };
@@ -109,17 +145,50 @@ export async function getMarketingReport(): Promise<MarketingReport> {
     const months = new Map<string, MktMonth>();
     const bump = (m: string | null, patch: Partial<MktMonth>) => {
       if (!m) return;
-      const row = months.get(m) ?? { month: m, label: monthLabel(m), metaSpend: 0, googleSpend: 0, spend: 0, reportedLeads: 0, trackedLeads: 0 };
+      const row = months.get(m) ?? { month: m, label: monthLabel(m), metaSpend: 0, googleSpend: 0, spend: 0, reportedLeads: 0, trackedLeads: 0, ga4Leads: 0 };
       row.metaSpend += patch.metaSpend ?? 0;
       row.googleSpend += patch.googleSpend ?? 0;
       row.spend += (patch.metaSpend ?? 0) + (patch.googleSpend ?? 0);
       row.reportedLeads += patch.reportedLeads ?? 0;
       row.trackedLeads += patch.trackedLeads ?? 0;
+      row.ga4Leads += patch.ga4Leads ?? 0;
       months.set(m, row);
     };
     for (const r of meta) bump(ym(r.date), { metaSpend: Number(r.spend) || 0, reportedLeads: Number(r.leads) || 0 });
     for (const r of gads) bump(ym(r.date), { googleSpend: Number(r.spend) || 0, reportedLeads: Number(r.conversions) || 0 });
     for (const l of leads) bump(ym(l.inquiry_date), { trackedLeads: 1 });
+
+    // GA4 gross-lead lens — an INDEPENDENT, site-tagged read on where leads come
+    // from. Spans the same window as the ad/tracker data; degrades to a data gap
+    // (never throws) so a GA4 hiccup can't break the spend reconciliation.
+    const allDates = [
+      ...meta.map((r) => r.date),
+      ...gads.map((r) => r.date),
+      ...leads.map((l) => l.inquiry_date),
+    ].filter(Boolean).sort() as string[];
+    const today = new Date().toISOString().slice(0, 10);
+    const ga4From = allDates[0] ?? new Date(Date.now() - 90 * 86400_000).toISOString().slice(0, 10);
+    let ga4: MktGa4 = { ...emptyGa4 };
+    try {
+      const lens = await fetchGa4LeadLens(ga4From, today);
+      const paidLeads = lens.byChannel
+        .filter((c) => GA4_PAID_CHANNELS.test(c.channel))
+        .reduce((a, c) => a + c.leads, 0);
+      ga4 = {
+        available: true,
+        totalLeads: lens.totalLeads,
+        byChannel: lens.byChannel,
+        paidLeads,
+        events: lens.events,
+        channelDimension: lens.channelDimension,
+        period: lens.period,
+        note: lens.totalLeads === 0 ? 'no GA4 lead events in this window' : null,
+      };
+      for (const m of lens.monthly) bump(m.month, { ga4Leads: m.leads });
+    } catch (err) {
+      ga4 = { ...emptyGa4, note: (err as Error).message };
+    }
+
     const monthly = [...months.values()].sort((a, b) => a.month.localeCompare(b.month));
 
     // Top campaigns by spend across both platforms.
@@ -168,6 +237,7 @@ export async function getMarketingReport(): Promise<MarketingReport> {
       monthly,
       topCampaigns,
       trackedByChannel,
+      ga4,
       metaPeriod: { from: metaDates[0] ?? null, to: metaDates[metaDates.length - 1] ?? null },
       googlePeriod: { from: gadsDates[0] ?? null, to: gadsDates[gadsDates.length - 1] ?? null },
     };

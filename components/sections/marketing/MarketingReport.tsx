@@ -5,6 +5,7 @@ import { KpiBand, type KpiItem } from '@/components/charts/KpiBand';
 import {
   ChartLegend,
   Donut,
+  HBarChart,
   TOKENS,
   TrendChart,
   type BarDatum,
@@ -17,6 +18,10 @@ import { dubaiDateLabel } from '@/lib/dates';
 const aed = (n: number) => `AED ${Math.round(n).toLocaleString('en-US')}`;
 const int = (n: number) => Math.round(n).toLocaleString('en-US');
 const pct = (n: number) => `${Math.round(n * 100)}%`;
+
+/** Distinct colour for the GA4 (site-tagged) lens — kept apart from the navy
+ *  platform palette and the green tracker so the three lenses read as separate. */
+const GA4_COLOR = '#6D28D9';
 
 const periodLabel = (p: { from: string | null; to: string | null }): string => {
   if (!p.from || !p.to) return 'no coverage yet';
@@ -36,7 +41,7 @@ const periodLabel = (p: { from: string | null; to: string | null }): string => {
  */
 export async function MarketingReport() {
   const report = await getMarketingReport();
-  const { source, platforms, totals, monthly, topCampaigns, trackedByChannel } = report;
+  const { source, platforms, totals, monthly, topCampaigns, trackedByChannel, ga4 } = report;
 
   const meta = platforms.find((p) => p.platform === 'Meta');
   const google = platforms.find((p) => p.platform === 'Google');
@@ -94,6 +99,13 @@ export async function MarketingReport() {
       hint: 'incl. click-to-WhatsApp + calls',
     },
     {
+      label: 'GA4 site leads',
+      value: ga4.available ? int(ga4.totalLeads) : null,
+      hint: 'independent · site-tagged',
+      gapDetail: ga4.note ?? 'GA4 lead lens unavailable',
+      gapOwner: ownerFor('channel'),
+    },
+    {
       label: 'Tracked leads',
       value: int(totals.trackedLeads),
       hint: 'logged in tracker',
@@ -125,11 +137,15 @@ export async function MarketingReport() {
     date: `${m.month}-01`,
     spend: Math.round(m.spend),
     reportedLeads: m.reportedLeads,
+    ga4Leads: m.ga4Leads,
     trackedLeads: m.trackedLeads,
   }));
   const trendSeries: TrendSeries[] = [
     { key: 'spend', label: 'Ad spend (AED)', color: TOKENS.accent400, kind: 'bar', axis: 'right', valueFormat: 'aed' },
     { key: 'reportedLeads', label: 'Platform-reported leads', color: TOKENS.accent, kind: 'area', axis: 'left', valueFormat: 'int' },
+    ...(ga4.available
+      ? [{ key: 'ga4Leads', label: 'GA4 site leads', color: GA4_COLOR, kind: 'line', axis: 'left', valueFormat: 'int' } as TrendSeries]
+      : []),
     { key: 'trackedLeads', label: 'Tracked leads', color: TOKENS.good, kind: 'line', axis: 'left', valueFormat: 'int' },
   ];
 
@@ -137,6 +153,17 @@ export async function MarketingReport() {
   const channelData: BarDatum[] = trackedByChannel.map((c) => ({ label: c.label, value: c.value }));
 
   const sharePctText = totals.trackedShare != null ? pct(totals.trackedShare) : null;
+
+  // --- GA4 site-tagged lens ---
+  const ga4ChannelData: BarDatum[] = ga4.byChannel.map((c) => ({ label: c.channel, value: c.leads }));
+  // Three independent lenses on the SAME demand, side-by-side (not nested).
+  const lensCompare: BarDatum[] = [
+    { label: 'Platform-reported', value: totals.reportedLeads, color: TOKENS.accent, note: 'platforms claim' },
+    ...(ga4.available ? [{ label: 'GA4 site-tagged', value: ga4.totalLeads, color: GA4_COLOR, note: 'site truth' }] : []),
+    { label: 'Tracked (CRM)', value: totals.trackedLeads, color: TOKENS.good, note: 'logged in-house' },
+  ];
+  const googleReported = google?.reportedLeads ?? 0;
+  const ga4LeadEventsLabel = ga4.events.join(', ');
 
   return (
     <div className="space-y-5">
@@ -220,6 +247,81 @@ export async function MarketingReport() {
       </Card>
 
       <Card>
+        <SectionHeader
+          tag="M3.5"
+          eyebrow="Triangulation"
+          title="Three lenses on gross leads"
+          right={
+            ga4.available && ga4.period ? (
+              <span className="text-right text-[11px] text-ink-faint">
+                GA4: {dubaiDateLabel(ga4.period.from)} → {dubaiDateLabel(ga4.period.to)}
+              </span>
+            ) : null
+          }
+        />
+        <div className="px-5 pb-5 pt-4">
+          <HBarChart data={lensCompare} valueFormat="int" />
+          <Takeaway>
+            Three <span className="font-medium text-ink">independent counts of the same demand</span>,
+            shown side-by-side rather than as a funnel because they are not nested:{' '}
+            <span className="font-medium text-ink">platform-reported</span> is what Meta + Google
+            claim, <span className="font-medium text-ink">GA4 site-tagged</span> is the website&apos;s
+            own first-party measure (resistant to ad-platform tracking gaps), and{' '}
+            <span className="font-medium text-ink">tracked</span> is what the in-house CRM logs. GA4
+            is added to triangulate — it does not replace or alter the platform/tracker numbers
+            above.
+          </Takeaway>
+        </div>
+      </Card>
+
+      <Card>
+        <SectionHeader tag="M3.6" eyebrow="GA4 · site truth" title="Gross leads by acquisition channel (GA4)" />
+        <div className="px-5 pb-5 pt-4">
+          {!ga4.available ? (
+            <DataGapInline
+              detail={ga4.note ?? 'GA4 lead lens unavailable'}
+              owner={ownerFor('channel')}
+            />
+          ) : ga4ChannelData.length === 0 ? (
+            <DataGapInline detail="no GA4 lead events in this window" owner={ownerFor('channel')} />
+          ) : (
+            <>
+              <Donut data={ga4ChannelData} valueFormat="int" centerLabel="site leads" height={200} />
+              <div className="mt-5 rounded-card border border-accent/20 bg-accent/5 p-4">
+                <p className="text-[10.5px] font-medium uppercase tracking-wide text-accent">
+                  Google Ads tracking sanity check
+                </p>
+                <p className="mt-1.5 text-[13px] leading-snug text-ink">
+                  Google Ads reports{' '}
+                  <span className="text-[16px] font-semibold tabular-nums">{int(googleReported)}</span>{' '}
+                  conversions, while GA4 attributes{' '}
+                  <span className="text-[16px] font-semibold tabular-nums text-accent">{int(ga4.paidLeads)}</span>{' '}
+                  leads to paid channels (Paid Search, Cross-network, Display).{' '}
+                  {googleReported > 0 && ga4.paidLeads > googleReported * 1.15 ? (
+                    <>GA4 sees materially more paid leads than Google Ads records — consistent with a{' '}
+                      <span className="font-medium">conversion-tracking gap</span> on the Google Ads side.</>
+                  ) : googleReported > ga4.paidLeads * 1.15 ? (
+                    <>Google Ads records more conversions than GA4 attributes to paid — likely{' '}
+                      <span className="font-medium">view-through / cross-device</span> conversions GA4&apos;s
+                      last-click model doesn&apos;t credit to paid.</>
+                  ) : (
+                    <>The two broadly agree — no obvious paid-channel tracking gap.</>
+                  )}
+                </p>
+              </div>
+              <Takeaway>
+                This is GA&apos;s own &ldquo;First user primary channel group&rdquo; lead breakdown — the
+                same view the CEO sees in Analytics — so the numbers reconcile with the GA UI. Counts
+                the lead event{ga4.events.length > 1 ? 's' : ''}{' '}
+                <span className="font-medium text-ink">{ga4LeadEventsLabel}</span>; the set is tunable
+                in config if ops marks more events as leads (owner: {ownerFor('channel')}).
+              </Takeaway>
+            </>
+          )}
+        </div>
+      </Card>
+
+      <Card>
         <SectionHeader tag="M4" eyebrow="Monthly" title="Spend vs reported & tracked leads over time" />
         <div className="px-5 pb-5 pt-4">
           {trendData.length === 0 ? (
@@ -231,6 +333,7 @@ export async function MarketingReport() {
                 items={[
                   { label: 'Ad spend (AED)', color: TOKENS.accent400 },
                   { label: 'Platform-reported leads', color: TOKENS.accent },
+                  ...(ga4.available ? [{ label: 'GA4 site leads', color: GA4_COLOR }] : []),
                   { label: 'Tracked leads', color: TOKENS.good },
                 ]}
               />

@@ -38,3 +38,29 @@ export const GA4_LEAD_EVENT = 'generate_lead';
 
 /** Every GA4 event we count (funnel stages + the lead event) for the dimensionFilter. */
 export const GA4_EVENTS = [...ONSITE_FUNNEL.map((s) => s.event), GA4_LEAD_EVENT];
+
+/**
+ * GROSS marketing-lead lens (the "where do leads actually come from" view shown
+ * on the Marketing tab, independent of the ad platforms' own conversion
+ * tracking). GA4 carries MANY events (qualify_lead, close_convert_lead,
+ * booking_completed, whatsapp_click, newsletter_subscribed, …) — most are
+ * downstream funnel stages or non-lead actions, so counting them all would
+ * INFLATE the lead number. We therefore count an explicit, tunable set of
+ * lead-intent events. Default: the canonical `generate_lead` (matches GA's
+ * "New leads" objective). Override with GA4_MARKETING_LEAD_EVENTS (CSV) without
+ * a redeploy if ops marks additional events as leads.
+ */
+export const GA4_MARKETING_LEAD_EVENTS: string[] = (
+  process.env.GA4_MARKETING_LEAD_EVENTS || GA4_LEAD_EVENT
+)
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+/**
+ * Acquisition-channel dimension for the gross-lead lens. `firstUserDefaultChannelGroup`
+ * = GA's "First user primary channel group" (the screenshot the CEO sees), so the
+ * dashboard reconciles 1:1 with the GA UI's Lead-acquisition report.
+ */
+export const GA4_LEAD_CHANNEL_DIMENSION =
+  process.env.GA4_LEAD_CHANNEL_DIMENSION?.trim() || 'firstUserDefaultChannelGroup';

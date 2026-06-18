@@ -2,8 +2,10 @@ import type { analyticsdata_v1beta } from 'googleapis';
 import { getAnalyticsClient } from '../google-auth';
 import {
   GA4_EVENTS,
+  GA4_LEAD_CHANNEL_DIMENSION,
   GA4_LEAD_EVENT,
   GA4_LOOKBACK_DAYS,
+  GA4_MARKETING_LEAD_EVENTS,
   GA4_PROPERTY_ID,
   ONSITE_FUNNEL,
 } from '@/config/ga4';
@@ -314,4 +316,89 @@ export async function fetchGa4Range({
   } catch (err) {
     throw new Error(`GA4 range fetch failed (property ${GA4_PROPERTY_ID}): ${(err as Error).message}`);
   }
+}
+
+// ============================================================================
+// Gross-lead lens (Marketing tab): GA4 as an INDEPENDENT measure of where leads
+// come from, sitting between the ad platforms' self-reported conversions and the
+// in-house tracker. Used to sanity-check Google Ads' own conversion tracking
+// (e.g. Paid Search leads in GA4 vs conversions Google Ads claims). Counts only
+// the configured lead-intent events (default: generate_lead) so the number is a
+// true gross-lead count, not an inflated sum of every event.
+// ============================================================================
+
+export interface Ga4LeadByChannel {
+  channel: string;
+  leads: number;
+}
+export interface Ga4LeadMonth {
+  month: string; // YYYY-MM
+  leads: number;
+}
+export interface Ga4LeadLens {
+  totalLeads: number;
+  byChannel: Ga4LeadByChannel[];
+  monthly: Ga4LeadMonth[];
+  events: string[];
+  channelDimension: string;
+  period: { from: string; to: string };
+}
+
+/** "YYYYMM" (GA4 `yearMonth`) → "YYYY-MM". */
+function yearMonthToIso(v: string | null | undefined): string | null {
+  if (!v || v.length !== 6) return null;
+  return `${v.slice(0, 4)}-${v.slice(4, 6)}`;
+}
+
+/**
+ * Fetch GA4 gross leads for [from,to], broken down by first-user channel group
+ * (matching the GA UI's Lead-acquisition report) and rolled up by month for the
+ * trend. Throws on hard GA4 failure so the caller can degrade to a data gap.
+ */
+export async function fetchGa4LeadLens(from: string, to: string): Promise<Ga4LeadLens> {
+  const analytics = getAnalyticsClient();
+  const property = `properties/${GA4_PROPERTY_ID}`;
+  const events = GA4_MARKETING_LEAD_EVENTS;
+  const dimension = GA4_LEAD_CHANNEL_DIMENSION;
+  const dateRanges = [{ startDate: from, endDate: to }];
+  const dimensionFilter = {
+    filter: { fieldName: 'eventName', inListFilter: { values: events } },
+  };
+
+  // 1 — Leads by acquisition channel (the CEO's "First user primary channel group").
+  const channelRes = await analytics.properties.runReport({
+    property,
+    requestBody: {
+      dateRanges,
+      dimensions: [{ name: dimension }],
+      metrics: [{ name: 'eventCount' }],
+      dimensionFilter,
+      orderBys: [{ metric: { metricName: 'eventCount' }, desc: true }],
+      limit: '25',
+    },
+  });
+  const byChannel: Ga4LeadByChannel[] = (channelRes.data.rows ?? [])
+    .map((r) => ({ channel: r.dimensionValues?.[0]?.value || 'Unassigned', leads: metric(r, 0) }))
+    .filter((c) => c.leads > 0);
+
+  // 2 — Leads by month for the trend.
+  const monthRes = await analytics.properties.runReport({
+    property,
+    requestBody: {
+      dateRanges,
+      dimensions: [{ name: 'yearMonth' }],
+      metrics: [{ name: 'eventCount' }],
+      dimensionFilter,
+      orderBys: [{ dimension: { dimensionName: 'yearMonth' } }],
+      limit: '60',
+    },
+  });
+  const monthly: Ga4LeadMonth[] = [];
+  for (const r of monthRes.data.rows ?? []) {
+    const month = yearMonthToIso(r.dimensionValues?.[0]?.value);
+    if (month) monthly.push({ month, leads: metric(r, 0) });
+  }
+
+  const totalLeads = byChannel.reduce((a, c) => a + c.leads, 0);
+  return { totalLeads, byChannel, monthly, events, channelDimension: dimension, period: { from, to } };
 }
