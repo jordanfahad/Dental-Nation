@@ -1,14 +1,21 @@
 import type {
   Blocker,
+  BookingsRangeReport,
   BookingsSummary,
   ChannelStatus,
   ContentItem,
   DailySnapshot,
   FunnelStage,
+  Ga4RangeReport,
   Ga4Summary,
   IngestionStatus,
   KpiTrends,
+  LeadsRangeReport,
+  MetricDelta,
   PacFeedback,
+  PaidRangeReport,
+  RangePreset,
+  RangeReport,
   ReportView,
   TrackingHealth,
 } from '@/lib/types';
@@ -16,6 +23,7 @@ import { ONSITE_FUNNEL } from '@/config/ga4';
 import { CANONICAL_CHANNELS } from '@/config/channels';
 import { ownerFor } from '@/config/data-gap-owners';
 import { trailingDates } from '@/lib/dates';
+import { buildRangeMeta, metricDelta } from '@/lib/range';
 
 /**
  * Realistic mock ReportView for the scaffold (mock-first build). It deliberately
@@ -444,6 +452,166 @@ const DATE_COUNT = 6;
 /** All mock report dates, newest first. */
 export function mockDates(latest: string): string[] {
   return trailingDates(latest, DATE_COUNT).reverse();
+}
+
+// ============================================================================
+// Range-shaped mock (Step 2 + 3). Returns the same well-formed RangeReport
+// regardless of the requested range — enough to render every tab + scorecard
+// with a "vs previous" comparison and the GA4 data-gap path. Mock mode must
+// NEVER crash and must exercise every state.
+// ============================================================================
+
+const d = (value: number | null, prev: number | null): MetricDelta => metricDelta(value, prev);
+
+function mockPaid(): PaidRangeReport {
+  return {
+    spend: d(48250, 41200),
+    impressions: d(612_400, 548_900),
+    clicks: d(9840, 8720),
+    leads: d(412, 366),
+    costPerLead: d(48250 / 412, 41200 / 366),
+    channelLeads: [
+      { label: 'Meta', value: 214 },
+      { label: 'Google Ads-Search', value: 138 },
+      { label: 'Google', value: 60 },
+    ],
+    channelSpend: [
+      { label: 'Meta', value: 26800 },
+      { label: 'Google Ads-Search', value: 15050 },
+      { label: 'Google', value: 6400 },
+    ],
+    empty: false,
+  };
+}
+
+function mockLeadsRange(): LeadsRangeReport {
+  return {
+    total: d(244, 198),
+    attributed: d(212, 169),
+    unattributed: d(32, 29),
+    byChannel: [
+      { label: 'WhatsApp', value: 96 },
+      { label: 'ZAVIS', value: 58 },
+      { label: 'Instagram', value: 41 },
+      { label: 'Telephone', value: 17 },
+      { label: 'Unattributed', value: 32 },
+    ],
+    byClinic: [
+      { label: 'DN Al Wasl', value: 121 },
+      { label: 'DR. TOSUN Branch', value: 78 },
+      { label: 'Al Maher Branch', value: 45 },
+    ],
+    flagged: [
+      { ref: 'LE-0142', detail: 'No channel source', owner: ownerFor('attribution') },
+      { ref: 'LE-0151', detail: 'No UTM campaign', owner: ownerFor('utm') },
+    ],
+    empty: false,
+  };
+}
+
+function mockBookingsRange(): BookingsRangeReport {
+  return {
+    booked: d(21, 16),
+    revenue: d(14250, 10800),
+    cancellations: d(4, 6),
+    byClinic: [
+      { label: 'General Dental Clinic', value: 11 },
+      { label: 'Dr Tosun Dental Clinic', value: 7 },
+      { label: 'Al Maher Dental Clinic', value: 3 },
+    ],
+    byTreatment: [
+      { label: 'Teeth Whitening', value: 6 },
+      { label: 'Aesthetic Fillings', value: 5 },
+      { label: 'Dental Implant', value: 4 },
+      { label: 'Scaling & Polishing', value: 3 },
+      { label: 'Veneers Consultation', value: 3 },
+    ],
+    recent: buildBookings().recent,
+    empty: false,
+  };
+}
+
+function mockGa4Range(): Ga4RangeReport {
+  const g = buildGa4('2026-06-18');
+  let prev: number | null = null;
+  const onsite_funnel = g.onsite_funnel.map((s) => {
+    const conversionFromPrev = prev != null && prev > 0 ? s.count / prev : null;
+    prev = s.count;
+    return { ...s, conversionFromPrev };
+  });
+  return {
+    sessions: d(g.sessions, 690),
+    users: d(g.users, 388),
+    conversions: d(g.conversions, 82),
+    leads: d(g.leads, 79),
+    channels: g.channels,
+    onsite_funnel,
+    period_start: g.period_start,
+    period_end: g.period_end,
+    fellBack: false,
+    note: null,
+  };
+}
+
+export interface MockRangeArgs {
+  today: string;
+  preset: RangePreset;
+  compare: 'prev' | 'none';
+  from?: string;
+  to?: string;
+}
+
+export function mockRangeReport({ today, preset, compare, from, to }: MockRangeArgs): RangeReport {
+  // A fixed mock span so range math is well-formed; data is range-independent.
+  const availableFrom = '2025-12-01';
+  const availableTo = today;
+  const range = buildRangeMeta(preset, compare, availableFrom, availableTo, from, to);
+
+  // When the caller asked for no comparison, blank the prev side so scorecards
+  // render the clean "—" state.
+  const stripPrev = <T extends { value: number | null; prev: number | null; deltaPct: number | null }>(
+    m: T,
+  ): T => (compare === 'none' ? { ...m, prev: null, deltaPct: null } : m);
+
+  const paid = mockPaid();
+  const leads = mockLeadsRange();
+  const bookings = mockBookingsRange();
+  const ga4 = mockGa4Range();
+
+  if (compare === 'none') {
+    paid.spend = stripPrev(paid.spend);
+    paid.impressions = stripPrev(paid.impressions);
+    paid.clicks = stripPrev(paid.clicks);
+    paid.leads = stripPrev(paid.leads);
+    paid.costPerLead = stripPrev(paid.costPerLead);
+    leads.total = stripPrev(leads.total);
+    leads.attributed = stripPrev(leads.attributed);
+    leads.unattributed = stripPrev(leads.unattributed);
+    bookings.booked = stripPrev(bookings.booked);
+    bookings.revenue = stripPrev(bookings.revenue);
+    bookings.cancellations = stripPrev(bookings.cancellations);
+    ga4.sessions = stripPrev(ga4.sessions);
+    ga4.users = stripPrev(ga4.users);
+    ga4.conversions = stripPrev(ga4.conversions);
+    ga4.leads = stripPrev(ga4.leads);
+  }
+
+  return {
+    range,
+    paid,
+    leads,
+    bookings,
+    ga4,
+    snapshot: buildSnapshot(range.to),
+    channels: buildChannels(),
+    content: buildContent(),
+    pac: buildPac(range.to),
+    blockers: buildBlockers(),
+    ingestion: buildIngestion(),
+    availableFrom,
+    availableTo,
+    source: 'mock',
+  };
 }
 
 export function mockReportView(latest: string, reportDate?: string): ReportView {

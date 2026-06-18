@@ -213,6 +213,128 @@ export interface BookingsSummary {
   byClinic: { clinic: string; count: number }[];
 }
 
+// ============================================================================
+// Range report (Step 2 + 3): a date-range-aware, period-comparison view across
+// ALL sources. Aggregated at query time (the data is small). Each source stays
+// a DISTINCT population — never fused into one cross-source funnel.
+// ============================================================================
+
+/** A single metric carrying its current value, the comparison-period value, and
+ *  the % delta between them. `deltaPct` is null when prev is 0/missing (never a
+ *  divide-by-zero or a fabricated 0). `value`/`prev` are null for a data gap. */
+export interface MetricDelta {
+  value: number | null;
+  prev: number | null;
+  /** (value - prev) / prev, as a fraction. null when prev is 0/null/missing. */
+  deltaPct: number | null;
+}
+
+/** A {label, value} channel-mix row used across paid/leads/GA4 breakdowns. */
+export interface MixRow {
+  label: string;
+  value: number;
+}
+
+/** The selected date range + its comparison range (resolved to concrete dates). */
+export interface RangeMeta {
+  from: string; // YYYY-MM-DD inclusive
+  to: string; // YYYY-MM-DD inclusive
+  preset: RangePreset;
+  compare: 'prev' | 'none';
+  /** Concrete comparison range, or null when compare='none'. */
+  compareFrom: string | null;
+  compareTo: string | null;
+  /** Inclusive day-count of the selected range. */
+  days: number;
+}
+
+export type RangePreset = 'all' | 'last30' | 'last90' | 'thisMonth' | 'lastMonth' | 'custom';
+
+/** Paid-acquisition aggregate for a range (from raw_raw_social via normalizePerformance). */
+export interface PaidRangeReport {
+  spend: MetricDelta;
+  impressions: MetricDelta;
+  clicks: MetricDelta;
+  leads: MetricDelta;
+  /** spend / leads. null when leads is 0 (data gap, not a fabricated 0). */
+  costPerLead: MetricDelta;
+  /** Channel mix (by `channel`) for the current range — leads share. */
+  channelLeads: MixRow[];
+  /** Channel mix (by `channel`) for the current range — spend share. */
+  channelSpend: MixRow[];
+  /** True when no perf rows fell in the range (→ data-gap state). */
+  empty: boolean;
+}
+
+/** Lead-tracker aggregate for a range (from `leads` by inquiry_date). */
+export interface LeadsRangeReport {
+  total: MetricDelta;
+  /** Attribution health over the range. */
+  attributed: MetricDelta;
+  unattributed: MetricDelta;
+  byChannel: MixRow[];
+  byClinic: MixRow[];
+  /** A few flagged unattributed/incomplete leads (ref + detail + owner). */
+  flagged: { ref: string; detail: string; owner: string }[];
+  empty: boolean;
+}
+
+/** Bookings aggregate for a range (from `bookings` by booking_date). */
+export interface BookingsRangeReport {
+  booked: MetricDelta;
+  revenue: MetricDelta;
+  cancellations: MetricDelta;
+  byClinic: MixRow[];
+  byTreatment: MixRow[];
+  recent: BookingRecent[];
+  empty: boolean;
+}
+
+/** GA4 aggregate for a range (live runReport with range + comparison dateRanges). */
+export interface Ga4RangeReport {
+  sessions: MetricDelta;
+  users: MetricDelta;
+  conversions: MetricDelta;
+  leads: MetricDelta;
+  channels: Ga4Channel[];
+  onsite_funnel: Ga4FunnelStage[];
+  period_start: string;
+  period_end: string;
+  /** True when the live GA4 call failed and we fell back to the stored summary. */
+  fellBack: boolean;
+  /** Set when GA4 is entirely unavailable (no live + no stored summary). */
+  note: string | null;
+}
+
+/**
+ * The range-aware report assembled by getRangeReport(). Carries the per-source
+ * aggregates (each its own population), the resolved range meta, the latest
+ * in-range snapshot (for the Executive decision pill), plus the §B/§E/§F/§G
+ * supporting tables that are not range-aggregated (current state).
+ */
+export interface RangeReport {
+  range: RangeMeta;
+  paid: PaidRangeReport;
+  leads: LeadsRangeReport;
+  bookings: BookingsRangeReport;
+  ga4: Ga4RangeReport | null;
+  /** Latest daily_snapshot whose report_date falls in the range (decision pill). */
+  snapshot: DailySnapshot | null;
+  /** §B channel activation (current). */
+  channels: ChannelStatus[];
+  /** §E content/creative (current). */
+  content: ContentItem[];
+  /** §F PAC feedback (mock-only — no real source). */
+  pac: PacFeedback | null;
+  /** §G blockers (current). */
+  blockers: Blocker[];
+  ingestion: IngestionStatus | null;
+  /** Full available data span, for the "All" preset default + range clamping. */
+  availableFrom: string;
+  availableTo: string;
+  source: 'live' | 'mock';
+}
+
 /**
  * The full view-model the dashboard page assembles and passes to sections.
  * Built server-side from the gold snapshot + silver tables + trailing snapshots.

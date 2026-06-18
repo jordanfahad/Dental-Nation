@@ -1,56 +1,54 @@
-import { getReportView } from '@/lib/data';
+import { getRangeReport } from '@/lib/report';
+import { resolveTab } from '@/components/TabBar';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
-import { ExecutiveSummary } from '@/components/sections/ExecutiveSummary';
-import { ChannelActivation } from '@/components/sections/ChannelActivation';
-import { TrackingIntegrity } from '@/components/sections/TrackingIntegrity';
-import { DailyFunnel } from '@/components/sections/DailyFunnel';
-import { WebsiteGa4 } from '@/components/sections/WebsiteGa4';
-import { BookingsWidget } from '@/components/sections/BookingsWidget';
-import { ContentPerformance } from '@/components/sections/ContentPerformance';
-import { PacFeedback } from '@/components/sections/PacFeedback';
-import { BlockersFixes } from '@/components/sections/BlockersFixes';
+import { TabBar } from '@/components/TabBar';
+import { ExecutiveTab } from '@/components/sections/range/ExecutiveTab';
+import { PaidTab } from '@/components/sections/range/PaidTab';
+import { WebsiteTab } from '@/components/sections/range/WebsiteTab';
+import { InquiriesTab } from '@/components/sections/range/InquiriesTab';
+import { BookingsTab } from '@/components/sections/range/BookingsTab';
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * The single server-rendered route. Reads searchParams (from/to/preset/compare/
+ * tab), assembles the range-aware report once, then renders only the active
+ * tab's content. Navigating (presets, custom range, compare toggle, tabs) just
+ * changes the params — the whole page re-renders server-side.
+ */
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ date?: string }>;
+  searchParams: Promise<{
+    from?: string;
+    to?: string;
+    preset?: string;
+    compare?: string;
+    tab?: string;
+  }>;
 }) {
-  const { date } = await searchParams;
-  const view = await getReportView(date);
+  const sp = await searchParams;
+  const report = await getRangeReport({
+    from: sp.from,
+    to: sp.to,
+    preset: sp.preset,
+    compare: sp.compare,
+  });
+  const tab = resolveTab(sp.tab);
 
   return (
     <main className="mx-auto max-w-[1180px] px-4 py-6 md:px-8">
-      <Header
-        dates={view.availableDates}
-        currentDate={view.snapshot.report_date}
-        source={view.source}
-      />
+      <Header range={report.range} source={report.source} />
+      <TabBar />
 
-      <div className="space-y-5">
-        <ExecutiveSummary view={view} />
+      {tab === 'executive' ? <ExecutiveTab report={report} /> : null}
+      {tab === 'paid' ? <PaidTab report={report} /> : null}
+      {tab === 'website' ? <WebsiteTab report={report} /> : null}
+      {tab === 'inquiries' ? <InquiriesTab report={report} /> : null}
+      {tab === 'bookings' ? <BookingsTab report={report} /> : null}
 
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-          <ChannelActivation channels={view.channels} />
-          <TrackingIntegrity view={view} />
-        </div>
-
-        <div className="print-break">
-          <DailyFunnel view={view} />
-        </div>
-
-        <WebsiteGa4 ga4={view.ga4} />
-
-        <BookingsWidget bookings={view.bookings} />
-
-        <ContentPerformance content={view.content} />
-        <PacFeedback pac={view.pac} />
-        <BlockersFixes blockers={view.blockers} />
-      </div>
-
-      <Footer ingestion={view.ingestion} />
+      <Footer ingestion={report.ingestion} />
     </main>
   );
 }
