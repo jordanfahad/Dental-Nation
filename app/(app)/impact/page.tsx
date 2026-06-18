@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getDashboardData } from "@/lib/impact/data";
 import { computeSummary } from "@/lib/impact/metrics";
 import { Hero } from "@/components/impact/Hero";
+import { ProjectControl } from "@/components/impact/ProjectControl";
 import { Swimlanes } from "@/components/impact/Swimlanes";
 import { TasksTable } from "@/components/impact/TasksTable";
 import { RoadmapTimeline } from "@/components/impact/RoadmapTimeline";
@@ -40,8 +41,10 @@ export default async function ImpactPage() {
     });
 
   return (
+    <div className="bg-[linear-gradient(135deg,#F7F5EF,#ffffff_45%,#EEEFE1)]">
     <div className="mx-auto max-w-7xl space-y-10 px-5 py-8">
       <Hero summary={summary} />
+      <ProjectControl projects={data.projects} components={data.components} blockers={data.blockers} />
       <Swimlanes components={summary.components} taskCounts={taskCounts} />
       <TasksTable tasks={data.tasks} projects={data.projects} />
       <RoadmapTimeline projects={data.projects} components={data.components} />
@@ -63,6 +66,7 @@ export default async function ImpactPage() {
           )}
         </div>
       </footer>
+    </div>
     </div>
   );
 }
