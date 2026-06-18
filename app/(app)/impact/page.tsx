@@ -11,6 +11,7 @@ import { EffortAnalysis } from "@/components/impact/EffortAnalysis";
 import { ImpactByFunction } from "@/components/impact/ImpactByFunction";
 import { FlowchartsSection } from "@/components/impact/FlowchartsSection";
 import { EvidenceLocker } from "@/components/impact/EvidenceLocker";
+import { DashboardTabs } from "@/components/impact/DashboardTabs";
 import { formatDate, formatRelativeTime } from "@/lib/impact/format";
 import { currentRole } from "@/lib/auth/role";
 
@@ -45,32 +46,46 @@ export default async function ImpactPage() {
 
   return (
     <div className="bg-[linear-gradient(135deg,#F7F5EF,#ffffff_45%,#EEEFE1)]">
-    <div className="mx-auto max-w-7xl space-y-10 px-5 py-8">
-      <Hero summary={summary} />
-      <ProjectControl projects={data.projects} components={data.components} blockers={data.blockers} />
-      <Swimlanes components={summary.components} taskCounts={taskCounts} />
-      <TasksTable tasks={data.tasks} projects={data.projects} canEdit={canEdit} />
-      <RoadmapTimeline projects={data.projects} components={data.components} />
-      <BlockersSection blockers={data.blockers} />
-      <EffortAnalysis effortByDate={effortByDate} components={summary.components} effort={summary.effort} />
-      <ImpactByFunction components={summary.components} snapshot={data.snapshot} />
-      <FlowchartsSection flowcharts={data.flowcharts} />
-      <EvidenceLocker evidence={data.evidence} components={data.components} canEdit={canEdit} />
+      <div className="mx-auto max-w-7xl px-5 py-8">
+        <DashboardTabs
+          overview={
+            <>
+              <Hero summary={summary} />
+              <ProjectControl projects={data.projects} components={data.components} blockers={data.blockers} />
+            </>
+          }
+          projects={
+            <>
+              <Swimlanes components={summary.components} taskCounts={taskCounts} />
+              <RoadmapTimeline projects={data.projects} components={data.components} />
+              <BlockersSection blockers={data.blockers} />
+            </>
+          }
+          tasks={<TasksTable tasks={data.tasks} projects={data.projects} canEdit={canEdit} />}
+          impact={
+            <>
+              <ImpactByFunction components={summary.components} snapshot={data.snapshot} />
+              <EffortAnalysis effortByDate={effortByDate} components={summary.components} effort={summary.effort} />
+            </>
+          }
+          operating={<FlowchartsSection flowcharts={data.flowcharts} />}
+          evidence={<EvidenceLocker evidence={data.evidence} components={data.components} canEdit={canEdit} />}
+        />
 
-      <footer className="border-t border-hairline pt-4 text-xs text-ink-3">
-        <div className="flex flex-wrap justify-between gap-2">
-          <span>Last updated {formatDate(new Date().toISOString())}</span>
-          {data.lastApplied ? (
-            <span>
-              Most recent applied update: {data.lastApplied.source_type} ·{" "}
-              {formatRelativeTime(data.lastApplied.applied_at)}
-            </span>
-          ) : (
-            <span>No ingested updates applied yet</span>
-          )}
-        </div>
-      </footer>
-    </div>
+        <footer className="mt-10 border-t border-hairline pt-4 text-xs text-ink-3">
+          <div className="flex flex-wrap justify-between gap-2">
+            <span>Last updated {formatDate(new Date().toISOString())}</span>
+            {data.lastApplied ? (
+              <span>
+                Most recent applied update: {data.lastApplied.source_type} ·{" "}
+                {formatRelativeTime(data.lastApplied.applied_at)}
+              </span>
+            ) : (
+              <span>No ingested updates applied yet</span>
+            )}
+          </div>
+        </footer>
+      </div>
     </div>
   );
 }

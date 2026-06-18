@@ -76,6 +76,16 @@ export default async function ProjectDetailPage({
               {project.owner && (
                 <span className="text-xs font-medium text-ink-2">· Owner: {project.owner}</span>
               )}
+              {project.link && (
+                <a
+                  href={project.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 rounded-full bg-accent-weak px-2 py-0.5 text-xs font-medium text-accent-strong hover:underline"
+                >
+                  ↗ Link
+                </a>
+              )}
             </div>
           </div>
           {canEdit && <ProjectEditModal project={project} components={components} />}

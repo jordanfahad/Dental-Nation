@@ -59,6 +59,7 @@ export async function createProjectAction(
       impact_summary: nullable(formData.get("impact_summary")),
       start_date: nullable(formData.get("start_date")),
       target_date: nullable(formData.get("target_date")),
+      link: nullable(formData.get("link")),
       source: "manual",
     })
     .select("id")
@@ -89,6 +90,7 @@ export async function updateProjectAction(
     start_date: nullable(formData.get("start_date")),
     target_date: nullable(formData.get("target_date")),
     completed_date: nullable(formData.get("completed_date")),
+    link: nullable(formData.get("link")),
   };
   const { error } = await db().from("projects").update(patch).eq("id", id);
   if (error) return { ok: false, error: error.message };
@@ -131,6 +133,7 @@ export async function createTaskAction(
       start_date: nullable(formData.get("start_date")),
       due_date: nullable(formData.get("due_date")),
       completed_date: nullable(formData.get("completed_date")),
+      link: nullable(formData.get("link")),
       source: "manual",
     });
   if (error) return { ok: false, error: error.message };
@@ -157,6 +160,7 @@ export async function updateTaskAction(
       effort_hours: numOrNull(formData.get("effort_hours")),
       due_date: nullable(formData.get("due_date")),
       completed_date: nullable(formData.get("completed_date")),
+      link: nullable(formData.get("link")),
     })
     .eq("id", id);
   if (error) return { ok: false, error: error.message };

@@ -9,6 +9,7 @@ import { TaskStatusPill } from "@/components/ui/StatusPill";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { createTaskAction, updateTaskAction } from "@/app/(app)/impact/actions";
+import { BulkEditBar } from "@/components/impact/BulkEditBar";
 import { formatDate, formatHours } from "@/lib/impact/format";
 import type { Project, Task } from "@/lib/impact/types";
 
@@ -50,12 +51,15 @@ export function TasksTable({
         }
         right={
           canEdit ? (
-            <button
-              onClick={() => setEditing("new")}
-              className="no-print inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-accent-strong"
-            >
-              + New task
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <BulkEditBar />
+              <button
+                onClick={() => setEditing("new")}
+                className="no-print inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-accent-strong"
+              >
+                + New task
+              </button>
+            </div>
           ) : undefined
         }
       />
@@ -83,7 +87,20 @@ export function TasksTable({
             <tbody className="divide-y divide-hairline">
               {ordered.map((t) => (
                 <tr key={t.id} className="hover:bg-panel/50">
-                  <td className="px-4 py-2.5 text-ink">{t.name}</td>
+                  <td className="px-4 py-2.5 text-ink">
+                    {t.name}
+                    {t.link && (
+                      <a
+                        href={t.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title={t.link}
+                        className="ml-1.5 text-xs font-medium text-accent hover:underline"
+                      >
+                        ↗
+                      </a>
+                    )}
+                  </td>
                   <td className="px-4 py-2.5">
                     {t.project_id ? (
                       <span className="text-ink-2">{projectName.get(t.project_id) ?? "—"}</span>

@@ -79,6 +79,16 @@ export function TaskFields({
           />
         </Field>
       </div>
+
+      <Field label="Link (G-Drive / URL)">
+        <input
+          name="link"
+          type="url"
+          className={inputCls}
+          defaultValue={task?.link ?? ""}
+          placeholder="https://drive.google.com/…"
+        />
+      </Field>
     </div>
   );
 }

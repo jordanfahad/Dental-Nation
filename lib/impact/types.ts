@@ -53,6 +53,7 @@ export interface Project {
   effort_hours: number | null;
   effort_source: EffortSource;
   impact_summary: string | null;
+  link: string | null;
   priority: Priority | null;
   start_date: string | null;
   target_date: string | null;
@@ -73,6 +74,7 @@ export interface Task {
   start_date: string | null;
   due_date: string | null;
   completed_date: string | null;
+  link: string | null;
   source: string;
   raw: unknown;
   updated_at: string;
@@ -215,4 +217,34 @@ export interface IngestionJob {
   created_at: string;
   reviewed_at: string | null;
   applied_at: string | null;
+}
+
+// ---- Bulk edit (Excel export → edit → re-import) ----
+export interface BulkFieldChange {
+  field: string; // the projects/tasks DB column
+  label: string; // human column header (for the diff UI)
+  from: string | null; // current value (canonical string)
+  to: string | null; // proposed value (canonical string)
+}
+export interface BulkRowUpdate {
+  id: string;
+  name: string;
+  changes: BulkFieldChange[];
+}
+export interface BulkUnmatched {
+  sheet: "Projects" | "Tasks";
+  id: string;
+  name: string;
+}
+/**
+ * Stored in ingestion_jobs.extracted for an Excel round-trip. The `kind`
+ * discriminant separates it from an LLM/Zoho ExtractionResult. Applied to
+ * projects/tasks only on an explicit confirm (the bulk-edit review screen).
+ */
+export interface BulkEditProposal {
+  kind: "bulk_edit";
+  projectUpdates: BulkRowUpdate[];
+  taskUpdates: BulkRowUpdate[];
+  unmatched: BulkUnmatched[];
+  notes?: string;
 }
