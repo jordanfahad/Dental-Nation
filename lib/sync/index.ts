@@ -3,6 +3,8 @@ import { type AdminClient, getSupabaseAdmin, isSupabaseConfigured } from '@/lib/
 import { getSheetsClient, isGoogleConfigured } from './google-auth';
 import { SheetsAdapter } from './adapters/sheets-adapter';
 import { fetchGa4Summary } from './adapters/ga4-adapter';
+import { syncPracto } from './adapters/practo-adapter';
+import { isPractoConfigured } from '@/config/practo';
 import {
   normalizePerformance,
   normalizeBlockers,
@@ -169,6 +171,33 @@ export async function runSync(trigger: SyncTrigger): Promise<SyncSummary> {
       dataGaps.push({
         area: 'tracking',
         detail: `Google Analytics (GA4) failed: ${(err as Error).message}`,
+        owner: 'Data/Analytics',
+      });
+    }
+  }
+
+  // ----- Practo Insta (clinic PMS bills) — live token-based API. Best-effort:
+  // a failure records a data gap but never aborts the sync. Bills land in the
+  // bronze table (shape confirmed via /api/practo/probe, then normalized).
+  if (isPractoConfigured()) {
+    try {
+      const p = await syncPracto(supabase);
+      if (p.ok) {
+        sheetsOk.push(`Practo Insta (bills) — ${p.stored} stored`);
+        rowsIngested += p.stored;
+      } else {
+        sheetsFailed.push('Practo Insta (bills)');
+        dataGaps.push({
+          area: 'clinic',
+          detail: `Practo Insta sync failed: ${p.error ?? 'unknown'}`,
+          owner: 'Data/Analytics',
+        });
+      }
+    } catch (err) {
+      sheetsFailed.push('Practo Insta (bills)');
+      dataGaps.push({
+        area: 'clinic',
+        detail: `Practo Insta sync failed: ${(err as Error).message}`,
         owner: 'Data/Analytics',
       });
     }

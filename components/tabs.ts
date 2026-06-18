@@ -10,6 +10,7 @@
 export const TABS = [
   { key: 'daily', label: 'Daily Control' },
   { key: 'weekly', label: 'Weekly Review' },
+  { key: 'crm', label: 'CRM — Zavis' },
 ] as const;
 
 export type TabKey = (typeof TABS)[number]['key'];

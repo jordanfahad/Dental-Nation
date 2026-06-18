@@ -5,6 +5,7 @@ import { Footer } from '@/components/Footer';
 import { TabBar } from '@/components/TabBar';
 import { DailyControlReport } from '@/components/sections/daily/DailyControlReport';
 import { WeeklyReview } from '@/components/sections/weekly/WeeklyReview';
+import { CrmReport } from '@/components/sections/crm/CrmReport';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,6 +45,9 @@ export default async function DashboardPage({
 
       {tab === 'daily' ? <DailyControlReport reportDate={sp.from} /> : null}
       {tab === 'weekly' ? <WeeklyReview weekOf={sp.from} /> : null}
+      {tab === 'crm' ? (
+        <CrmReport range={{ from: report.range.from, to: report.range.to }} />
+      ) : null}
 
       <Footer ingestion={report.ingestion} />
     </main>
