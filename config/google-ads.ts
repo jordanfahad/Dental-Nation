@@ -39,7 +39,7 @@ export function getGoogleAdsConfig(): GoogleAdsConfig | null {
     refreshToken,
     customerIds,
     loginCustomerId: loginRaw ? digits(loginRaw) : digits(customerIds[0]),
-    version: process.env.GOOGLE_ADS_API_VERSION?.trim() || 'v17',
+    version: process.env.GOOGLE_ADS_API_VERSION?.trim() || 'v25',
   };
 }
 

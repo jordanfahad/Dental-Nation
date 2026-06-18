@@ -68,39 +68,39 @@ async function fetchCustomer(
     `SELECT campaign.id, campaign.name, segments.date, metrics.cost_micros, ` +
     `metrics.impressions, metrics.clicks, metrics.conversions ` +
     `FROM campaign WHERE segments.date BETWEEN '${from}' AND '${to}'`;
-  const res = await fetch(
-    `https://googleads.googleapis.com/${version}/customers/${customerId}/googleAds:searchStream`,
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'developer-token': cfg.developerToken,
-        'login-customer-id': cfg.loginCustomerId,
-        'Content-Type': 'application/json',
+  // Non-streaming :search (paginated JSON) — more robust over REST than
+  // :searchStream. Page through nextPageToken until exhausted.
+  const out: GAdsRow[] = [];
+  let pageToken: string | undefined;
+  for (let guard = 0; guard < 200; guard++) {
+    const res = await fetch(
+      `https://googleads.googleapis.com/${version}/customers/${customerId}/googleAds:search`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'developer-token': cfg.developerToken,
+          'login-customer-id': cfg.loginCustomerId,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query, pageSize: 10000, ...(pageToken ? { pageToken } : {}) }),
+        cache: 'no-store',
       },
-      body: JSON.stringify({ query }),
-      cache: 'no-store',
-    },
-  );
-  const text = await res.text();
-  let body: unknown;
-  try {
-    body = JSON.parse(text);
-  } catch {
-    throw new Error(`Google Ads non-JSON (${res.status}): ${text.slice(0, 300)}`);
-  }
-  // searchStream returns an array of batches: [{ results: [...] }, ...]
-  if (Array.isArray(body)) {
-    const out: GAdsRow[] = [];
-    for (const batch of body as { results?: GAdsRow[]; error?: unknown }[]) {
-      if (batch.error) throw new Error(`Google Ads API: ${JSON.stringify(batch.error).slice(0, 300)}`);
-      if (Array.isArray(batch.results)) out.push(...batch.results);
+    );
+    const text = await res.text();
+    let body: unknown;
+    try {
+      body = JSON.parse(text);
+    } catch {
+      throw new Error(`Google Ads non-JSON (${res.status}): ${text.slice(0, 300)}`);
     }
-    return out;
+    const obj = body as { results?: GAdsRow[]; nextPageToken?: string; error?: { message?: string } };
+    if (obj.error) throw new Error(`Google Ads API: ${obj.error.message ?? text.slice(0, 300)}`);
+    if (Array.isArray(obj.results)) out.push(...obj.results);
+    if (!obj.nextPageToken) break;
+    pageToken = obj.nextPageToken;
   }
-  // error envelope
-  const errObj = body as { error?: { message?: string } };
-  throw new Error(`Google Ads API: ${errObj.error?.message ?? text.slice(0, 300)}`);
+  return out;
 }
 
 export async function syncGoogleAds(supabase: AdminClient, opts: GAdsSyncOpts = {}): Promise<GAdsSyncResult> {
