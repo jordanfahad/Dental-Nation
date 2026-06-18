@@ -94,7 +94,7 @@ async function fetchCustomer(
       {
         method: 'POST',
         headers: gAdsHeaders(cfg, accessToken, effectiveLcid),
-        body: JSON.stringify({ query, pageSize: 10000, ...(pageToken ? { pageToken } : {}) }),
+        body: JSON.stringify({ query, ...(pageToken ? { pageToken } : {}) }),
         cache: 'no-store',
       },
     );
