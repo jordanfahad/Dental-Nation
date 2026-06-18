@@ -130,6 +130,40 @@ export function ProjectFields({
           />
         </Field>
       )}
+
+      <div className="space-y-3 rounded-lg border border-hairline bg-panel/40 p-3">
+        <label className="flex items-center gap-2 text-sm font-medium text-ink">
+          <input type="checkbox" name="featured" defaultChecked={!!project?.featured} className="h-4 w-4" />
+          Feature as a “Growth Build” (CEO case study)
+        </label>
+        <Field label="Estimated build effort (hrs)" hint="Your estimate — labelled “est.”, kept out of the portfolio total">
+          <input
+            name="est_hours"
+            type="number"
+            min={0}
+            step={1}
+            className={inputCls}
+            defaultValue={project?.showcase?.est_hours ?? ""}
+          />
+        </Field>
+        <Field label="What it does">
+          <textarea name="sc_what" rows={3} className={inputCls} defaultValue={project?.showcase?.what ?? ""} />
+        </Field>
+        <Field label="How it benefits">
+          <textarea name="sc_benefits" rows={3} className={inputCls} defaultValue={project?.showcase?.benefits ?? ""} />
+        </Field>
+        <Field label="How it can be enhanced">
+          <textarea name="sc_enhance" rows={3} className={inputCls} defaultValue={project?.showcase?.enhance ?? ""} />
+        </Field>
+        <Field label="Impact on growth">
+          <textarea
+            name="sc_growth_impact"
+            rows={3}
+            className={inputCls}
+            defaultValue={project?.showcase?.growth_impact ?? ""}
+          />
+        </Field>
+      </div>
     </div>
   );
 }

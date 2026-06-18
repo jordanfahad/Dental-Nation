@@ -12,6 +12,7 @@ import { ImpactByFunction } from "@/components/impact/ImpactByFunction";
 import { FlowchartsSection } from "@/components/impact/FlowchartsSection";
 import { EvidenceLocker } from "@/components/impact/EvidenceLocker";
 import { DashboardTabs } from "@/components/impact/DashboardTabs";
+import { GrowthBuildsShowcase } from "@/components/impact/GrowthBuildsShowcase";
 import { formatDate, formatRelativeTime } from "@/lib/impact/format";
 import { currentRole } from "@/lib/auth/role";
 
@@ -21,7 +22,9 @@ export const metadata: Metadata = { title: "Fahad — Growth Projects Dashboard"
 export default async function ImpactPage() {
   const data = await getDashboardData();
   const summary = computeSummary(data);
-  const canEdit = (await currentRole()) === "admin";
+  const role = await currentRole();
+  const canEdit = role === "admin";
+  const builds = data.projects.filter((p) => p.featured);
 
   const taskCounts: Record<string, number> = {};
   for (const t of data.tasks) {
@@ -51,6 +54,7 @@ export default async function ImpactPage() {
           overview={
             <>
               <Hero summary={summary} />
+              <GrowthBuildsShowcase builds={builds} evidence={data.evidence} role={role} />
               <ProjectControl projects={data.projects} components={data.components} blockers={data.blockers} />
             </>
           }
