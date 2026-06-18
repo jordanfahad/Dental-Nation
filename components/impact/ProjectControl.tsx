@@ -56,11 +56,11 @@ export function ProjectControl({
   }
 
   return (
-    <section className="print-break">
+    <section id="project-control" className="scroll-mt-28 print-break">
       <Heading />
       <div className="space-y-6">
         {groups.map((g) => (
-          <div key={g.component.id}>
+          <div key={g.component.id} id={`pc-${g.component.id}`} className="scroll-mt-28">
             <div className="mb-2 flex items-center gap-2">
               <span className="h-2.5 w-2.5 rounded-full" style={{ background: "#244260" }} />
               <h3 className="text-sm font-semibold text-dn-navy">{g.component.name}</h3>
