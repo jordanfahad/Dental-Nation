@@ -41,6 +41,14 @@ export interface Component {
   default_role: Ownership;
 }
 
+export interface ProjectShowcase {
+  what?: string | null;
+  benefits?: string | null;
+  enhance?: string | null;
+  growth_impact?: string | null;
+  est_hours?: number | null; // build-effort estimate — shown only on the case-study card, labelled "est."
+}
+
 export interface Project {
   id: string;
   component_id: string | null;
@@ -59,6 +67,10 @@ export interface Project {
   target_date: string | null;
   completed_date: string | null;
   source: ProjectSource;
+  featured: boolean;
+  showcase: ProjectShowcase | null;
+  ceo_ack_at: string | null;
+  ceo_ack_by: string | null;
   created_at: string;
   updated_at: string;
 }
