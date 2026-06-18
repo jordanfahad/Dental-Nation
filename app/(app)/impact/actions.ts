@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { EVIDENCE_BUCKET, requireSupabaseAdmin } from "@/lib/supabase/server";
 import { recomputeProjectEffort } from "@/lib/impact/effort";
-import { isAdmin, READ_ONLY_ERROR } from "@/lib/auth/role";
+import { currentRole, isAdmin, READ_ONLY_ERROR } from "@/lib/auth/role";
 import type { ActionState } from "@/lib/impact/action-types";
 
 function db() {
@@ -28,6 +28,24 @@ function numOrNull(v: FormDataEntryValue | null): number | null {
   if (!s) return null;
   const n = Number(s);
   return isNaN(n) ? null : n;
+}
+
+/** Showcase ("Growth Build") fields → projects.featured + projects.showcase. The
+ *  build estimate lives in showcase.est_hours, NOT effort_hours, so it never
+ *  inflates the portfolio effort total (§2 honest effort). */
+function showcasePatch(formData: FormData): {
+  featured: boolean;
+  showcase: Record<string, unknown> | null;
+} {
+  const sc: Record<string, unknown> = {
+    what: nullable(formData.get("sc_what")),
+    benefits: nullable(formData.get("sc_benefits")),
+    enhance: nullable(formData.get("sc_enhance")),
+    growth_impact: nullable(formData.get("sc_growth_impact")),
+    est_hours: numOrNull(formData.get("est_hours")),
+  };
+  const hasAny = Object.values(sc).some((v) => v != null);
+  return { featured: formData.get("featured") !== null, showcase: hasAny ? sc : null };
 }
 
 function refresh(projectId?: string | null) {
@@ -60,6 +78,7 @@ export async function createProjectAction(
       start_date: nullable(formData.get("start_date")),
       target_date: nullable(formData.get("target_date")),
       link: nullable(formData.get("link")),
+      ...showcasePatch(formData),
       source: "manual",
     })
     .select("id")
@@ -92,6 +111,7 @@ export async function updateProjectAction(
     completed_date: nullable(formData.get("completed_date")),
     link: nullable(formData.get("link")),
   };
+  Object.assign(patch, showcasePatch(formData));
   const { error } = await db().from("projects").update(patch).eq("id", id);
   if (error) return { ok: false, error: error.message };
   refresh(id);
@@ -109,6 +129,34 @@ export async function deleteProjectAction(
   const { error } = await db().from("projects").delete().eq("id", id);
   if (error) return { ok: false, error: error.message };
   refresh();
+  return { ok: true };
+}
+
+/**
+ * CEO acknowledgement of a featured "Growth Build". This is the ONE write a
+ * viewer is allowed to make (admin too) — scoped strictly to ceo_ack_* on a
+ * featured project. Every other mutation stays admin-only via denyIfViewer.
+ */
+export async function acknowledgeShowcaseAction(
+  _prev: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const role = await currentRole();
+  if (role !== "admin" && role !== "viewer") {
+    return { ok: false, error: "Sign in to acknowledge." };
+  }
+  const id = str(formData.get("id"));
+  if (!id) return { ok: false, error: "Missing project id" };
+  const { error } = await db()
+    .from("projects")
+    .update({
+      ceo_ack_at: new Date().toISOString(),
+      ceo_ack_by: nullable(formData.get("ack_by")) ?? "CEO",
+    })
+    .eq("id", id)
+    .eq("featured", true); // only featured builds can be acknowledged
+  if (error) return { ok: false, error: error.message };
+  refresh(id);
   return { ok: true };
 }
 
