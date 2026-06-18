@@ -227,3 +227,202 @@ fires in. The footer renders "Last synced HH:mm (Dubai)".
 4. Add remaining silver normalisers (channel status, social raw, content, PAC,
    blockers) one at a time.
 5. Deploy to Vercel, wire cron, smoke-test the live pull.
+
+---
+---
+
+# Tab 2 — Growth Manager Impact Dashboard
+
+Added as a **second navigable tab** (`/impact`) inside this same app — same
+Next 15 / pnpm / Tailwind 3 stack, same Supabase project, same password gate.
+Built by porting the *logic* of a standalone reference build (npm + Tailwind 4
++ `proxy.ts`) into this repo's conventions. Per the plan: there is exactly ONE
+human-in-the-loop gate (the ingestion review/approve step); every other
+ambiguity was decided, implemented, and logged here.
+
+## T0. The schema decision (where Tab 2's tables live)
+
+Tab 2's tables live in the **existing `lane_e` Postgres schema**, alongside the
+Lane E report tables — **not** `public`, and **not** a new schema. Why:
+
+- The app's service-role client (`lib/supabase/server.ts`) is already bound to
+  `lane_e`, so one client serves both tabs and the §7 cross-link to
+  `lane_e.daily_snapshot` is trivial — **reuse, don't rebuild**.
+- `lane_e` is already in PostgREST's exposed schemas, so there's **no new
+  dashboard step** (a new schema would need exposing, a silent-failure trap).
+- No name collisions inside `lane_e` (it has `blockers`/`ingestion_log`; Tab 2
+  adds the distinct `project_blockers`/`ingestion_jobs`, plus
+  `components`/`projects`/`tasks`/`evidence_files`/`effort_log`).
+
+> The project's **`public`** schema already contains a *stale standalone copy*
+> of these exact tables (`public.projects` had demo rows) from the reference
+> build, plus unrelated apps. Tab 2 does **not** touch `public`; those tables
+> are orphaned/ignored per the plan ("ignore/delete the standalone build").
+
+Migration: `supabase/migrations/0002_impact_dashboard.sql` (applied to project
+`wfsovcbyexqnswgrchxh`). Text PKs default `gen_random_uuid()::text`;
+`updated_at` is bumped by a `lane_e.set_updated_at()` trigger on
+`projects`/`tasks`. RLS is **enabled with no policies** on all seven tables —
+identical posture to Lane E (service-role bypasses RLS; anon/authenticated read
+nothing).
+
+## T1. The cross-link READS the existing Lane E snapshot (never duplicates)
+
+`getLaneESnapshot()` (`lib/impact/data.ts`) reads the latest
+`lane_e.daily_snapshot` row and maps **this app's real snapshot shape** — the
+`funnel` jsonb array (`qualified_inquiries` / `glow_up_bookings` stage totals)
+plus `best_channel` — onto the few fields the Impact tab attributes. It is
+read-only and resilient: no snapshot (it's empty until the Lane E sync runs) or
+unconfigured Supabase → returns null and the "live — from Lane E" tags simply
+hide. The tags render under the **Lead Generation** and **Online Marketing**
+component cards (`LANE_E_COMPONENTS`).
+
+## T2. Navigation / routing
+
+Lane E moved into an `app/(app)/` route group (URL unchanged, still `/`) so the
+report and the Impact tab share one sticky `TopNav` (tabs: **Impact** /
+**Lane E Report**). `/login` stays outside the group (no nav). Same gate, one
+login; a `logout` server action (`app/(app)/actions.ts`) clears the cookie.
+
+## T3. The human-in-the-loop guarantee (the ONE gate) — ENFORCED
+
+**Hard rule, restated in `app/(app)/impact/review/actions.ts`:** the live
+dashboard reflects ONLY rows in `projects`/`tasks`. The ONLY path from an
+ingestion job to those tables is an explicit **Approve** on
+`/impact/review/[jobId]` (`applyReviewAction`). No auto-apply, no
+high-confidence shortcut.
+
+- `POST /api/ingest` writes ONLY an `ingestion_jobs` row (`pending_review`) for
+  the LLM path. (The Zoho path additionally upserts *trusted* task rows as
+  orphans — structured task data is trusted per §5b; the project grouping is
+  still gated.)
+- **Reject** (`rejectReviewAction`) marks the job `rejected` and writes nothing.
+- **"Do nothing"** (navigating away) writes nothing.
+- The reviewer edits every field, toggles ownership/timeline, includes/excludes
+  each item, and accepts/rejects matched-project updates per field. Unmapped
+  items are shown (never dropped) and can be converted to a project.
+- `/impact/review` lists the pending queue so jobs are findable after leaving.
+
+## T4. Claude extraction — model, prompt, JSON schema (`lib/ingest/extract.ts`)
+
+- **Model:** `claude-sonnet-4-6`, via `@anthropic-ai/sdk`, server-side only.
+- **Inputs:** PDF → base64 `document` block; Excel/CSV → SheetJS → markdown
+  table; HTML → `node-html-parser` structured text; pasted text → as-is (capped
+  100K chars). The live catalog (every component id+name and every existing
+  project id/name/component/status) is embedded so the model aligns to and
+  dedupes against what exists.
+- **Output JSON schema** (strict JSON only, no fences):
+  ```json
+  { "matched_projects":[{"project_id","proposed_updates":{"status","progress_pct","impact_summary","target_date"},"evidence","confidence"}],
+    "new_projects":[{"component_id","name","description","suggested_status","suggested_target_date","ownership","rationale","confidence"}],
+    "new_tasks":[{"project_ref","name","status","effort_hours","due_date"}],
+    "unmapped":[], "notes":"" }
+  ```
+- **Defensive parse** (`parseExtraction`): strip ``` fences → slice the
+  outermost `{…}` → `JSON.parse`. On any failure (or missing `ANTHROPIC_API_KEY`)
+  it returns a result carrying `parse_error` + `raw_output`, surfaced on the
+  review screen. It never crashes and never writes.
+
+## T5. Zoho structural import (`config/zoho-mapping.ts`, `lib/ingest/zoho.ts`)
+
+Mapped by header name (case-insensitive). On first import the route logs the
+header row + 3 sample rows (`[zoho-import]`) — extend the candidate lists if a
+column isn't picked up.
+
+| Canonical field | Accepted headers (lowercased) |
+| --- | --- |
+| `external_id` | task id, id, taskid, task id#, task_id |
+| `name` | task name, task, name, title, subject |
+| `project_group` | task list, tasklist, task list name, project, project name, milestone |
+| `status` | status, task status |
+| `progress` | % completed, percent complete, completion, % complete, progress |
+| `owner` | owner, assignee, assigned to, owner name |
+| `start_date` / `due_date` / `completed_date` | start date/start · due date/end date/due/deadline · completed date/completion date/closed date |
+| `effort_hours` | work, logged hours, work hours, hours, actual time, log hours, time spent |
+
+- **Detection:** a tabular file is Zoho when it has a task-name column + one of
+  id/status/grouping (`looksLikeZoho`).
+- **Dedupe by `external_id` in code** (a partial unique index can't be an
+  `ON CONFLICT` target): fetch existing ids → update vs insert. Re-import never
+  duplicates. Tasks land as orphans (`project_id` null).
+- **Only the grouping is a suggestion:** distinct task-list values → proposed
+  projects (component guessed by keyword) or matched to existing projects, with
+  the task `external_id`s attached — routed through the review gate. On approve,
+  projects are created/assigned and each task's logged hours roll into
+  `effort_log` (source `zoho`). Status map: completed/closed→done,
+  progress/started→in_progress, block/hold/waiting→blocked, else open.
+
+## T6. Effort sourcing is honest (non-negotiable)
+
+`effort_log` is the canonical hours store (Zoho logged hours + manual entries).
+A project's `effort_hours`/`effort_source` is recomputed from its logs
+(`lib/impact/effort.ts`). **No logs → `effort_hours` stays null and the UI shows
+task/project counts — hours are never invented.** Every headline carries its
+source inline ("412 logged hrs (Zoho)" / "14 tasks across 5 projects — hours not
+tracked").
+
+## T7. Storage / evidence locker
+
+Private bucket **`evidence`** (created in migration 0002). Uploads (authoring
+drawer or per-project "attach file") write to Storage + an `evidence_files`
+row. The locker serves each file via a short-lived **(60s) signed URL**
+(`GET /api/evidence/[id]`, which also enforces `visible_to_ceo`). The bucket is
+never public.
+
+## T8. Design / charts
+
+The ported components use token aliases added to `tailwind.config.ts`
+(`paper/panel/ink-2/ink-3/hairline/accent-strong/accent-weak/ok/warn/bad/muted`
++ `-weak`) that map onto Lane E's exact palette — one shared visual language.
+Lane E's single-accent discipline is kept: the status donut uses the semantic
+set, but the by-component bars are **monochrome accent (no rainbow)** —
+`COMPONENT_HUE` is intentionally all-accent. The roadmap is a **hand-rolled
+CSS/SVG Gantt** (no chart library); collaborator bars are dashed, with a today
+marker. Print: page breaks between major sections, A4, hairline borders.
+
+## T9. ANTHROPIC_API_KEY setup
+
+Add `ANTHROPIC_API_KEY` (server-side) in `.env.local` and the Vercel project.
+Without it, ingestion still stores the raw upload and shows an "extraction
+skipped" note on review; Zoho import and manual CRUD don't need it. (See
+`.env.example`.)
+
+## T10. Pre-existing security issue surfaced — and RLS enabled (per owner go-ahead)
+
+A Supabase advisor reported **RLS disabled** on six `public` tables belonging to
+a *different* app sharing this project (`brand_kit`, `guidelines`, `assets`,
+`jobs`, `briefs`, `renders`) — with the anon key they were world-readable/
+writable. They were all **empty (0 rows)**, and at the owner's instruction RLS
+was **enabled** on all six (migration `enable_rls_on_unsecured_public_tables`,
+applied via MCP — intentionally NOT added to this repo's migrations since the
+tables aren't this app's). They now match the service-role-only posture (RLS on,
+no policies). The critical `rls_disabled` advisory is cleared.
+
+> **Caveat / rollback:** if that other app reads those tables with the public
+> **anon** key (client-side), enabling RLS with no policies will block it — add
+> policies designed for that app, or revert with
+> `alter table public.<t> disable row level security;`. (`public.set_updated_at`,
+> that app's trigger function, still shows a `function_search_path_mutable` WARN
+> — left untouched as it's not ours and its body is unknown.)
+
+Also hardened **our own** `lane_e.set_updated_at` with a pinned `search_path`
+(clearing its `function_search_path_mutable` WARN). The remaining
+`rls_enabled_no_policy` INFO lints on `lane_e.*` are **expected and correct** —
+the app uses only the service-role key, which bypasses RLS; do NOT add anon
+policies.
+
+## T11. Decisions & assumptions (Tab 2)
+
+- Tables in `lane_e` (see T0), reusing the one service-role client; the
+  standalone reference build's `public` tables are ignored, not migrated.
+- The cross-link maps this app's real `daily_snapshot.funnel` jsonb rather than
+  the reference build's flat `qualified_inquiries`/`glow_up_bookings` columns.
+- Lane E kept at `/`; Impact added at `/impact` via an `(app)` route group +
+  shared TopNav. A global "Add update" drawer shows on both tabs (harmless on
+  Lane E; matches the reference shell).
+- Graceful degradation kept (Lane E philosophy): when Supabase is unconfigured,
+  the read layer returns empty data + the six fixed components, so `/impact`
+  renders its empty states instead of crashing.
+- Added a `/impact/review` queue page (the reference build had none) so pending
+  jobs are findable after navigating away.
+- `next build` passes (types valid); ESLint stays out of the build (unchanged).
