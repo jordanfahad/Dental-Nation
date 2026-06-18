@@ -3,10 +3,17 @@
 import { revalidatePath } from "next/cache";
 import { EVIDENCE_BUCKET, requireSupabaseAdmin } from "@/lib/supabase/server";
 import { recomputeProjectEffort } from "@/lib/impact/effort";
+import { isAdmin, READ_ONLY_ERROR } from "@/lib/auth/role";
 import type { ActionState } from "@/lib/impact/action-types";
 
 function db() {
   return requireSupabaseAdmin();
+}
+
+/** The write gate: viewer-role sessions cannot mutate anything (enforced here,
+ *  server-side — not just hidden in the UI). */
+async function denyIfViewer(): Promise<ActionState | null> {
+  return (await isAdmin()) ? null : { ok: false, error: READ_ONLY_ERROR };
 }
 
 function str(v: FormDataEntryValue | null): string {
@@ -34,6 +41,8 @@ export async function createProjectAction(
   _prev: ActionState,
   formData: FormData
 ): Promise<ActionState> {
+  const denied = await denyIfViewer();
+  if (denied) return denied;
   const name = str(formData.get("name"));
   if (!name) return { ok: false, error: "Project name is required" };
   const { data, error } = await db()
@@ -63,6 +72,8 @@ export async function updateProjectAction(
   _prev: ActionState,
   formData: FormData
 ): Promise<ActionState> {
+  const denied = await denyIfViewer();
+  if (denied) return denied;
   const id = str(formData.get("id"));
   if (!id) return { ok: false, error: "Missing project id" };
   const patch: Record<string, unknown> = {
@@ -89,6 +100,8 @@ export async function deleteProjectAction(
   _prev: ActionState,
   formData: FormData
 ): Promise<ActionState> {
+  const denied = await denyIfViewer();
+  if (denied) return denied;
   const id = str(formData.get("id"));
   if (!id) return { ok: false, error: "Missing project id" };
   const { error } = await db().from("projects").delete().eq("id", id);
@@ -102,6 +115,8 @@ export async function createTaskAction(
   _prev: ActionState,
   formData: FormData
 ): Promise<ActionState> {
+  const denied = await denyIfViewer();
+  if (denied) return denied;
   const name = str(formData.get("name"));
   const projectId = nullable(formData.get("project_id"));
   if (!name) return { ok: false, error: "Task name is required" };
@@ -127,6 +142,8 @@ export async function updateTaskAction(
   _prev: ActionState,
   formData: FormData
 ): Promise<ActionState> {
+  const denied = await denyIfViewer();
+  if (denied) return denied;
   const id = str(formData.get("id"));
   if (!id) return { ok: false, error: "Missing task id" };
   const projectId = nullable(formData.get("project_id"));
@@ -151,6 +168,8 @@ export async function deleteTaskAction(
   _prev: ActionState,
   formData: FormData
 ): Promise<ActionState> {
+  const denied = await denyIfViewer();
+  if (denied) return denied;
   const id = str(formData.get("id"));
   const projectId = nullable(formData.get("project_id"));
   if (!id) return { ok: false, error: "Missing task id" };
@@ -165,6 +184,8 @@ export async function createBlockerAction(
   _prev: ActionState,
   formData: FormData
 ): Promise<ActionState> {
+  const denied = await denyIfViewer();
+  if (denied) return denied;
   const description = str(formData.get("description"));
   const projectId = nullable(formData.get("project_id"));
   if (!description) return { ok: false, error: "Describe the blocker" };
@@ -188,6 +209,8 @@ export async function updateBlockerAction(
   _prev: ActionState,
   formData: FormData
 ): Promise<ActionState> {
+  const denied = await denyIfViewer();
+  if (denied) return denied;
   const id = str(formData.get("id"));
   const projectId = nullable(formData.get("project_id"));
   if (!id) return { ok: false, error: "Missing blocker id" };
@@ -211,6 +234,8 @@ export async function deleteBlockerAction(
   _prev: ActionState,
   formData: FormData
 ): Promise<ActionState> {
+  const denied = await denyIfViewer();
+  if (denied) return denied;
   const id = str(formData.get("id"));
   const projectId = nullable(formData.get("project_id"));
   if (!id) return { ok: false, error: "Missing blocker id" };
@@ -225,6 +250,8 @@ export async function addEffortAction(
   _prev: ActionState,
   formData: FormData
 ): Promise<ActionState> {
+  const denied = await denyIfViewer();
+  if (denied) return denied;
   const projectId = nullable(formData.get("project_id"));
   const hours = numOrNull(formData.get("hours"));
   if (!projectId) return { ok: false, error: "Pick a project" };
@@ -250,6 +277,8 @@ export async function uploadEvidenceAction(
   _prev: ActionState,
   formData: FormData
 ): Promise<ActionState> {
+  const denied = await denyIfViewer();
+  if (denied) return denied;
   const fileEntry = formData.get("file");
   if (!fileEntry || typeof fileEntry === "string") return { ok: false, error: "Choose a file to upload" };
   const f = fileEntry as File;
@@ -287,6 +316,8 @@ export async function deleteEvidenceAction(
   _prev: ActionState,
   formData: FormData
 ): Promise<ActionState> {
+  const denied = await denyIfViewer();
+  if (denied) return denied;
   const id = str(formData.get("id"));
   const projectId = nullable(formData.get("project_id"));
   if (!id) return { ok: false, error: "Missing file id" };

@@ -7,9 +7,11 @@ import type { Component, EvidenceFile } from "@/lib/impact/types";
 export function EvidenceLocker({
   evidence,
   components,
+  canEdit = true,
 }: {
   evidence: EvidenceFile[];
   components: Component[];
+  canEdit?: boolean;
 }) {
   const visible = evidence.filter((e) => e.visible_to_ceo);
   const nameOf = (id: string | null) =>
@@ -28,7 +30,7 @@ export function EvidenceLocker({
         eyebrow="Evidence"
         title="Evidence locker"
         description="Source files for the CEO to review — each opens via a short-lived signed link from a private bucket."
-        right={<AttachEvidence label="+ Attach file" />}
+        right={canEdit ? <AttachEvidence label="+ Attach file" /> : undefined}
       />
       {visible.length === 0 ? (
         <EmptyState

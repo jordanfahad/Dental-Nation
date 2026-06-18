@@ -17,7 +17,15 @@ import type { Project, Task } from "@/lib/impact/types";
  * (project_id null) so nothing is hidden. Add a task or edit any task inline
  * (including reassigning it to a project — how imported Zoho tasks get triaged).
  */
-export function TasksTable({ tasks, projects }: { tasks: Task[]; projects: Project[] }) {
+export function TasksTable({
+  tasks,
+  projects,
+  canEdit = true,
+}: {
+  tasks: Task[];
+  projects: Project[];
+  canEdit?: boolean;
+}) {
   const [editing, setEditing] = useState<Task | "new" | null>(null);
   const projectName = new Map(projects.map((p) => [p.id, p.name]));
 
@@ -41,12 +49,14 @@ export function TasksTable({ tasks, projects }: { tasks: Task[]; projects: Proje
             : `${tasks.length} tasks across every function.`
         }
         right={
-          <button
-            onClick={() => setEditing("new")}
-            className="no-print inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-accent-strong"
-          >
-            + New task
-          </button>
+          canEdit ? (
+            <button
+              onClick={() => setEditing("new")}
+              className="no-print inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-accent-strong"
+            >
+              + New task
+            </button>
+          ) : undefined
         }
       />
 
@@ -93,15 +103,19 @@ export function TasksTable({ tasks, projects }: { tasks: Task[]; projects: Proje
                   <td className="tnum px-4 py-2.5 text-ink-2">{formatDate(t.due_date)}</td>
                   <td className="px-4 py-2.5 text-xs capitalize text-ink-3">{t.source}</td>
                   <td className="px-4 py-2.5 text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <AttachEvidence taskId={t.id} componentId={undefined} label="+ File" />
-                      <button
-                        onClick={() => setEditing(t)}
-                        className="no-print rounded-md px-2 py-1 text-xs font-medium text-ink-2 hover:bg-panel"
-                      >
-                        Edit
-                      </button>
-                    </div>
+                    {canEdit ? (
+                      <div className="flex items-center justify-end gap-1">
+                        <AttachEvidence taskId={t.id} componentId={undefined} label="+ File" />
+                        <button
+                          onClick={() => setEditing(t)}
+                          className="no-print rounded-md px-2 py-1 text-xs font-medium text-ink-2 hover:bg-panel"
+                        >
+                          Edit
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-ink-3">—</span>
+                    )}
                   </td>
                 </tr>
               ))}

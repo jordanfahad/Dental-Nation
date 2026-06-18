@@ -11,6 +11,7 @@ import { EffortAnalysis } from "@/components/impact/EffortAnalysis";
 import { ImpactByFunction } from "@/components/impact/ImpactByFunction";
 import { EvidenceLocker } from "@/components/impact/EvidenceLocker";
 import { formatDate, formatRelativeTime } from "@/lib/impact/format";
+import { currentRole } from "@/lib/auth/role";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Fahad — Growth Projects Dashboard" };
@@ -18,6 +19,7 @@ export const metadata: Metadata = { title: "Fahad — Growth Projects Dashboard"
 export default async function ImpactPage() {
   const data = await getDashboardData();
   const summary = computeSummary(data);
+  const canEdit = (await currentRole()) === "admin";
 
   const taskCounts: Record<string, number> = {};
   for (const t of data.tasks) {
@@ -46,12 +48,12 @@ export default async function ImpactPage() {
       <Hero summary={summary} />
       <ProjectControl projects={data.projects} components={data.components} blockers={data.blockers} />
       <Swimlanes components={summary.components} taskCounts={taskCounts} />
-      <TasksTable tasks={data.tasks} projects={data.projects} />
+      <TasksTable tasks={data.tasks} projects={data.projects} canEdit={canEdit} />
       <RoadmapTimeline projects={data.projects} components={data.components} />
       <BlockersSection blockers={data.blockers} />
       <EffortAnalysis effortByDate={effortByDate} components={summary.components} effort={summary.effort} />
       <ImpactByFunction components={summary.components} snapshot={data.snapshot} />
-      <EvidenceLocker evidence={data.evidence} components={data.components} />
+      <EvidenceLocker evidence={data.evidence} components={data.components} canEdit={canEdit} />
 
       <footer className="border-t border-hairline pt-4 text-xs text-ink-3">
         <div className="flex flex-wrap justify-between gap-2">
