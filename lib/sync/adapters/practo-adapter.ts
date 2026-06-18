@@ -211,15 +211,27 @@ export interface PractoSyncResult {
   error?: string;
 }
 
-/** Sync recent Practo bills (default: trailing `days`) into the bronze table. */
-export async function syncPracto(supabase: AdminClient, days = 14): Promise<PractoSyncResult> {
+export interface PractoSyncOpts {
+  /** Trailing window length (days) when from/to are not given. Default 14. */
+  days?: number;
+  /** Explicit start date (YYYY-MM-DD) for a historical backfill. */
+  from?: string;
+  /** Explicit end date (YYYY-MM-DD). Defaults to today. */
+  to?: string;
+}
+
+/** Sync Practo bills into the bronze table. By default the trailing `days`
+ *  window (cheap, keeps recent bills fresh); pass {from,to} to backfill history.
+ *  Bills upsert by bill_no, so a wide backfill + ongoing trailing sync coexist. */
+export async function syncPracto(supabase: AdminClient, opts: PractoSyncOpts = {}): Promise<PractoSyncResult> {
   const cfg = getPractoConfig();
   if (!cfg) return { ok: false, fetched: 0, stored: 0, windows: 0, note: 'Practo not configured', error: 'not_configured' };
   try {
-    const to = new Date();
-    const from = new Date(to.getTime() - (days - 1) * 86400_000);
     const iso = (d: Date) => d.toISOString().slice(0, 10);
-    const windows = sevenDayChunks(iso(from), iso(to));
+    const days = opts.days ?? 14;
+    const to = opts.to ?? iso(new Date());
+    const from = opts.from ?? iso(new Date(new Date(to).getTime() - (days - 1) * 86400_000));
+    const windows = sevenDayChunks(from, to);
     const tokenRef = { token: await getPractoToken(supabase) };
 
     const raw: Record<string, unknown>[] = [];

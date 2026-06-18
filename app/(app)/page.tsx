@@ -7,6 +7,8 @@ import { DailyControlReport } from '@/components/sections/daily/DailyControlRepo
 import { WeeklyReview } from '@/components/sections/weekly/WeeklyReview';
 import { CrmReport } from '@/components/sections/crm/CrmReport';
 import { ExecutiveDashboard } from '@/components/sections/executive/ExecutiveDashboard';
+import { PractoReport } from '@/components/sections/practo/PractoReport';
+import { BookingsReport } from '@/components/sections/bookings/BookingsReport';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,6 +52,8 @@ export default async function DashboardPage({
       {tab === 'crm' ? (
         <CrmReport range={{ from: report.range.from, to: report.range.to }} />
       ) : null}
+      {tab === 'practo' ? <PractoReport /> : null}
+      {tab === 'bookings' ? <BookingsReport /> : null}
 
       <Footer ingestion={report.ingestion} />
     </main>
