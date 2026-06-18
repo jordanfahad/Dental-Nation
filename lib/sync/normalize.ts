@@ -93,7 +93,48 @@ const LEAD_FIELDS: (keyof NormalizedLead)[] = [
   'is_qualified', 'treatment_signal', 'proof_captured', 'review_captured',
 ];
 
-/** Map a leads-target source into canonical leads + data gaps. */
+/**
+ * Lead-tracker date parser: DD.MM.YYYY, DD-MM-YYYY, DD/MM/YYYY and the 2-digit
+ * DD.MM.YY (year → 20YY). Returns YYYY-MM-DD or null (invalid → null, never a
+ * throw). Distinct from the M/D/YYYY paid-perf parser — this sheet is human-
+ * entered day-first.
+ */
+function asLeadDate(v: unknown): string | null {
+  const s = String(v ?? '').trim();
+  if (!s) return null;
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  const m = s.match(/^(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{2,4})$/);
+  if (!m) return null;
+  const [, dd, mm, yy] = m;
+  const d = Number(dd);
+  const mo = Number(mm);
+  if (d < 1 || d > 31 || mo < 1 || mo > 12) return null;
+  const year = yy.length === 2 ? `20${yy}` : yy;
+  return `${year}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+
+/** Normalise an Inquiry Platform value to a canonical channel label. */
+function normalizeLeadChannel(v: string): string | null {
+  const s = (v ?? '').trim();
+  if (!s) return null;
+  const lc = s.toLowerCase();
+  if (lc.includes('whatsapp')) return 'WhatsApp';
+  if (lc.includes('instagram')) return 'Instagram';
+  if (lc.includes('zavis')) return 'ZAVIS';
+  if (lc.includes('facebook')) return 'Facebook';
+  if (lc.includes('walk')) return 'Walk in';
+  if (lc.includes('telephone') || lc.includes('phone') || lc.includes('call')) return 'Telephone';
+  return s; // keep the raw label rather than dropping a real channel
+}
+
+/** A Conversion cell that indicates a booking/conversion. */
+function conversionIsBooked(v: string): boolean {
+  return /\b(booked|converted|convert|yes)\b/i.test(String(v ?? ''));
+}
+
+/** Map a leads-target source into canonical leads + data gaps. Handles the
+ *  inhouse lead tracker's messy human input (junk rows, day-first dates, free-
+ *  text channel + conversion) without polluting the paid funnel. */
 export function normalizeLeads(
   source: SourceMapping,
   rows: RawRow[],
@@ -103,6 +144,7 @@ export function normalizeLeads(
   const out: NormalizedLead[] = [];
 
   // Column-level gaps: a field is mapped but its header is absent in the sheet.
+  // Skip the private `_*` helper columns used only for filtering/id.
   for (const field of LEAD_FIELDS) {
     const header = source.columns[field];
     if (header && !present.has(header) && rows.length > 0) {
@@ -115,13 +157,35 @@ export function normalizeLeads(
     }
   }
 
+  const patientHeader = source.columns['_patientName'];
+  const contactHeader = source.columns['_contact'];
+  const conversionHeader = source.columns['booking_status'];
+
   for (const raw of rows) {
+    const patientName = patientHeader ? (raw.data[patientHeader] ?? '').trim() : '';
+    const contact = contactHeader ? (raw.data[contactHeader] ?? '').trim() : '';
+
+    // Skip junk rows: "no inquiries about the ads" markers, or rows missing BOTH
+    // a patient name and a contact number (month banners, blanks).
+    const joined = Object.values(raw.data).join(' ').toLowerCase();
+    if (joined.includes('no inquir')) continue;
+    if (!patientName && !contact) continue;
+
     const obj: Partial<NormalizedLead> = {};
     for (const field of LEAD_FIELDS) {
       obj[field] = readField(source, raw, field, present).value as never;
     }
+
+    // Lead-tracker-specific overrides.
+    obj.inquiry_date = asLeadDate(obj.inquiry_date);
+    obj.channel_source = normalizeLeadChannel(String(obj.channel_source ?? ''));
+    const conversionRaw = conversionHeader ? (raw.data[conversionHeader] ?? '') : '';
+    const booked = conversionIsBooked(conversionRaw);
+    obj.booking_status = booked ? 'booked' : null;
+    obj.is_qualified = booked ? true : null;
+
     const lead: NormalizedLead = {
-      id: stableId(source, raw, [String(obj.inquiry_date ?? '')]),
+      id: stableId(source, raw, [raw.tabTitle ?? '', String(obj.inquiry_date ?? ''), contact]),
       source_sheet: source.label,
       raw_row: raw.data,
       ...(obj as Omit<NormalizedLead, 'id' | 'source_sheet' | 'raw_row'>),
@@ -404,6 +468,117 @@ export function normalizeContent(
       perf_note: get(raw, 'perf_note') || null,
       issue_note: null,
       status: get(raw, 'status') || null,
+    });
+  }
+
+  return { rows: out, dataGaps: gaps };
+}
+
+// ============================================================================
+// Bookings (website booking widget) → `bookings`.
+// Two tabs: `Bookings` (status booked) + `Cancellations` (status cancelled).
+// Test/seed rows (zavis / test / sagar) are excluded. Its own honest section —
+// NOT wired into the paid per-date funnel (different population).
+// ============================================================================
+
+export interface NormalizedBooking {
+  id: string;
+  source_sheet: string;
+  booking_date: string | null;
+  full_name: string | null;
+  treatment: string | null;
+  type_of_treatment: string | null;
+  condition: string | null;
+  clinic: string | null;
+  doctor: string | null;
+  price: number | null;
+  visit_type: string | null;
+  payment_mode: string | null;
+  booking_ref: string | null;
+  status: 'booked' | 'cancelled';
+  is_test: boolean;
+  raw: Record<string, string>;
+}
+
+/** First number found in a price cell. "Starting from 650 AED"→650, "AED 2"→2,
+ *  "2 AED"→2, none→null. Commas stripped so "1,200"→1200. */
+function firstPrice(v: string): number | null {
+  const s = String(v ?? '').replace(/,/g, '');
+  const m = s.match(/-?\d+(\.\d+)?/);
+  if (!m) return null;
+  const n = parseFloat(m[0]);
+  return Number.isFinite(n) ? n : null;
+}
+
+/** A row is a test/seed row when the email or name matches the seed patterns. */
+function isTestBooking(email: string, name: string): boolean {
+  return /zavis|test/i.test(email) || /test|sagar/i.test(name);
+}
+
+/** Parse a booking date. `Bookings.Date` is already ISO (YYYY-MM-DD); the
+ *  Cancellations tab has free-text "Feb 25, 2026, 7:30 AM" appointment times or
+ *  a "MM/DD/YYYY, HH:MM:SS" timestamp — Date.parse handles both → YYYY-MM-DD. */
+function parseBookingDate(v: string): string | null {
+  const s = String(v ?? '').trim();
+  if (!s) return null;
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  const parsed = Date.parse(s);
+  return Number.isNaN(parsed) ? null : new Date(parsed).toISOString().slice(0, 10);
+}
+
+/**
+ * Map website-booking-widget rows (across the Bookings + Cancellations tabs)
+ * into canonical bookings. Test rows are STILL emitted with is_test=true so the
+ * caller can decide; the sync only upserts non-test rows.
+ */
+export function normalizeBookings(
+  source: SourceMapping,
+  rows: RawRow[],
+): NormalizeResult<NormalizedBooking> {
+  const gaps: DataGap[] = [];
+  const out: NormalizedBooking[] = [];
+  const pick = (raw: RawRow, ...keys: string[]): string => {
+    for (const k of keys) {
+      const v = (raw.data[k] ?? '').trim();
+      if (v) return v;
+    }
+    return '';
+  };
+
+  for (const raw of rows) {
+    const isCancellation = (raw.tabTitle ?? '').toLowerCase().includes('cancel');
+    const status: NormalizedBooking['status'] = isCancellation ? 'cancelled' : 'booked';
+
+    const fullName = pick(raw, 'Full Name', 'Client Name');
+    const email = pick(raw, 'Email');
+    const is_test = isTestBooking(email, fullName);
+
+    const bookingRef = pick(raw, 'Booking Reference', 'Booking ID');
+    const bookingDate = isCancellation
+      ? parseBookingDate(pick(raw, 'Appointment Time', 'Timestamp'))
+      : parseBookingDate(pick(raw, 'Date'));
+
+    const id = bookingRef
+      ? `${source.key}:${status}:${bookingRef}`
+      : stableId(source, raw, [status, fullName, bookingDate ?? '']);
+
+    out.push({
+      id,
+      source_sheet: source.label,
+      booking_date: bookingDate,
+      full_name: fullName || null,
+      treatment: pick(raw, 'Treatment') || null,
+      type_of_treatment: pick(raw, 'Type of Treatment') || null,
+      condition: pick(raw, 'Condition') || null,
+      clinic: pick(raw, 'Clinic Name', 'Center') || null,
+      doctor: pick(raw, 'Doctor Name', 'Doctor') || null,
+      price: isCancellation ? null : firstPrice(pick(raw, 'Price')),
+      visit_type: pick(raw, 'Visit Type') || null,
+      payment_mode: pick(raw, 'Payment Mode') || null,
+      booking_ref: bookingRef || null,
+      status,
+      is_test,
+      raw: raw.data,
     });
   }
 

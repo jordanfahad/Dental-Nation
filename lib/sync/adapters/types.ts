@@ -9,6 +9,10 @@
 export interface RawRow {
   rowIndex: number;
   data: Record<string, string>;
+  /** Source worksheet title — set for multi-tab sources so downstream
+   *  normalisers can branch per tab (e.g. Bookings vs Cancellations) and build
+   *  stable ids that include the tab. */
+  tabTitle?: string;
 }
 
 export interface FetchResult {

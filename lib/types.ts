@@ -190,6 +190,29 @@ export interface Ga4Summary {
   onsite_funnel: Ga4FunnelStage[];
 }
 
+/** One recent booking row for the §Bookings recent table. */
+export interface BookingRecent {
+  date: string | null;
+  treatment: string | null;
+  clinic: string | null;
+  doctor: string | null;
+  price: number | null;
+}
+
+/**
+ * Website booking-widget summary (its OWN honest lens — distinct from the paid
+ * funnel + GA4 populations). Sourced from the real `bookings` table.
+ */
+export interface BookingsSummary {
+  total: number;
+  /** Sum of parsed prices across booked rows (AED). */
+  revenue: number;
+  cancellations: number;
+  /** Top ~6 bookings by date desc. */
+  recent: BookingRecent[];
+  byClinic: { clinic: string; count: number }[];
+}
+
 /**
  * The full view-model the dashboard page assembles and passes to sections.
  * Built server-side from the gold snapshot + silver tables + trailing snapshots.
@@ -207,4 +230,6 @@ export interface ReportView {
   availableDates: string[];
   /** Current website analytics (last 28 days). Null when unavailable (data gap). */
   ga4: Ga4Summary | null;
+  /** Website booking-widget summary. Null when unavailable (data gap). */
+  bookings: BookingsSummary | null;
 }

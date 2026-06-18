@@ -6,6 +6,7 @@ import { ChannelActivation } from '@/components/sections/ChannelActivation';
 import { TrackingIntegrity } from '@/components/sections/TrackingIntegrity';
 import { DailyFunnel } from '@/components/sections/DailyFunnel';
 import { WebsiteGa4 } from '@/components/sections/WebsiteGa4';
+import { BookingsWidget } from '@/components/sections/BookingsWidget';
 import { ContentPerformance } from '@/components/sections/ContentPerformance';
 import { PacFeedback } from '@/components/sections/PacFeedback';
 import { BlockersFixes } from '@/components/sections/BlockersFixes';
@@ -41,6 +42,8 @@ export default async function DashboardPage({
         </div>
 
         <WebsiteGa4 ga4={view.ga4} />
+
+        <BookingsWidget bookings={view.bookings} />
 
         <ContentPerformance content={view.content} />
         <PacFeedback pac={view.pac} />

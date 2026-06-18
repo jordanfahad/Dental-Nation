@@ -15,6 +15,7 @@
 /** Which canonical (silver) table a source feeds. */
 export type CanonicalTarget =
   | 'leads'
+  | 'bookings' // website booking-widget rows (bookings + revenue + cancellations)
   | 'channel_status'
   | 'content_items'
   | 'pac_feedback'
@@ -31,6 +32,13 @@ export interface SourceMapping {
   gid?: number;
   /** Tab (worksheet) name. PHASE0: confirm against real tabs. */
   tab?: string;
+  /**
+   * Multiple worksheet titles to read and concat (multi-tab sources, e.g. the
+   * lead tracker's per-branch tabs). When set, the adapter reads each tab and
+   * DETECTS the header row per tab (junk row 1 in some tabs), ignoring
+   * `tab`/`gid`/`headerRow`. Empty tabs are fine (skipped).
+   */
+  tabs?: string[];
   headerRow: number;
   target: CanonicalTarget;
   /** Bronze mirror table name (see supabase migration). */
@@ -68,54 +76,43 @@ const asDate = (v: string): string | null => {
 export const sharedTransforms = { truthy, lower, trimmed, asDate };
 
 export const sheetMapping: Record<string, SourceMapping> = {
-  // 1 — Lane-E in-house lead tracker. ~3 real leads only — NOT the funnel engine.
-  // Mirrored to bronze only (target:none) so it does not pollute §C / the funnel.
+  // 1 — Inhouse lead tracker → `leads`. Per-branch tabs (DN + Lane "E"), each
+  // with junk in row 1 on some tabs → multi-tab read + per-tab header detection
+  // (see SheetsAdapter). Real-lead total across these ≈ 243. Lead-level
+  // attribution feeds §C — NOT the paid funnel stages (different population).
   leadTracker: {
     key: 'leadTracker',
     label: 'Inhouse Lead Tracker',
     spreadsheetId: '1FKg7-uh2kGU5ULK9WL71FCkLLljQ6dZkIDdJreIgiKA',
-    tab: 'Sheet1', // PHASE0: confirm
+    tabs: [
+      'DN Al Wasl',
+      'DN - DR. TOSUN Branch ❤',
+      'DN - Al Maher Branch',
+      'Lane "E" DN Al Wasl',
+      'Lane "E" DR. TOSUN Branch ❤',
+      'Lane "E" Al Maher Branch',
+    ],
     headerRow: 1,
-    target: 'none',
+    target: 'leads',
     rawTable: 'raw_lead_tracker',
     priority: 'high',
     columns: {
-      // PHASE0: replace right-hand strings with exact headers from introspection.
-      clinic: 'Clinic',
-      doctor: 'Doctor',
-      channel_source: 'Source',
-      medium: 'Medium',
-      campaign_name: 'Campaign',
-      creative_id: 'Creative',
-      utm_source: 'UTM Source',
-      utm_medium: 'UTM Medium',
-      utm_campaign: 'UTM Campaign',
-      utm_content: 'UTM Content',
-      utm_term: 'UTM Term',
-      landing_page_url: 'Landing Page',
-      whatsapp_ref: 'WhatsApp Ref',
-      call_tracking_no: 'Call Tracking',
-      inquiry_date: 'Inquiry Date',
-      booking_date: 'Booking Date',
-      appointment_date: 'Appointment Date',
-      pac_owner: 'PAC Owner',
-      booking_status: 'Status',
-      is_qualified: 'Qualified?',
-      treatment_signal: 'Treatment',
-      proof_captured: 'Proof',
-      review_captured: 'Review',
+      clinic: 'Clinic / Branch',
+      channel_source: 'Inquiry Platform',
+      medium: 'Source Type',
+      campaign_name: 'Campaign / Offer Name',
+      pac_owner: 'Assigned To',
+      inquiry_date: 'Date',
+      booking_status: 'Conversion',
+      is_qualified: 'Conversion',
+      // identifiers used for the test/junk filter + stable id (read directly).
+      _patientName: 'Patient Name',
+      _contact: 'Contact Number',
     },
-    transforms: {
-      is_qualified: truthy,
-      proof_captured: truthy,
-      review_captured: truthy,
-      booking_status: lower,
-      treatment_signal: lower,
-      inquiry_date: asDate,
-      booking_date: asDate,
-      appointment_date: asDate,
-    },
-    notes: 'Highest priority — prove the spine end-to-end with this sheet first (build step 2).',
+    // Lead-tracker-specific normalisation (channel + conversion mapping) lives in
+    // normalizeLeads; the messy date formats are handled by asLeadDate there.
+    notes:
+      'Per-branch tabs (multi-tab). Header row detected per tab (junk row 1 on the Tosun tab). ≈243 real leads → §C attribution only, never the paid funnel.',
   },
 
   // 2 — Content / creative performance (§E), PR activity.
@@ -249,18 +246,22 @@ export const sheetMapping: Record<string, SourceMapping> = {
     notes: 'Mirrored to bronze only; §B derived from RAW_Performance paid channels.',
   },
 
-  // 9 + 10 — Zavis / SagR website lead sheet — test data. Bronze only.
-  zavis: {
-    key: 'zavis',
-    label: 'Zavis / SagR website lead sheet',
+  // 9 + 10 — Website booking widget → `bookings`. Tabs: `Bookings` (status
+  // booked) + `Cancellations` (status cancelled). A test filter (zavis/test/
+  // sagar) strips seed rows. ≈21 bookings + ≈4 cancellations after filtering.
+  // Its own honest "Bookings" section — NOT wired into the paid per-date funnel.
+  bookingWidget: {
+    key: 'bookingWidget',
+    label: 'Website Booking Widget',
     spreadsheetId: '1CtfSiGONthczH6YVOLfAZvOdmFfGP26uVBZJoYjxRQQ',
-    gid: 119899925,
+    tabs: ['Bookings', 'Cancellations'],
     headerRow: 1,
-    target: 'none',
+    target: 'bookings',
     rawTable: 'raw_zavis',
-    priority: 'low',
+    priority: 'medium',
     columns: {},
-    notes: 'Test data — mirrored to bronze only; not used for the funnel.',
+    notes:
+      'Bookings + Cancellations tabs. Test/seed rows (zavis/test/sagar) excluded. Real bookings + revenue + cancellations → dedicated Bookings section (not the paid funnel).',
   },
 
   // 11 — Caption / copy library (supporting content, §E).

@@ -7,7 +7,11 @@ import {
   normalizePerformance,
   normalizeBlockers,
   normalizeContent,
+  normalizeLeads,
+  normalizeBookings,
   type PerfRow,
+  type NormalizedLead,
+  type NormalizedBooking,
 } from './normalize';
 import { allSources } from '@/config/sheet-mapping';
 import { reportDateForSync, previousDate } from '@/lib/dates';
@@ -105,6 +109,8 @@ export async function runSync(trigger: SyncTrigger): Promise<SyncSummary> {
   const perf: PerfRow[] = [];
   const blockers: Blocker[] = [];
   const content: ContentItem[] = [];
+  const leads: NormalizedLead[] = [];
+  const bookings: NormalizedBooking[] = [];
 
   for (const source of allSources) {
     try {
@@ -128,6 +134,14 @@ export async function runSync(trigger: SyncTrigger): Promise<SyncSummary> {
         const { rows: c, dataGaps: gaps } = normalizeContent(source, rows);
         dataGaps.push(...gaps);
         content.push(...c);
+      } else if (source.target === 'leads') {
+        const { rows: l, dataGaps: gaps } = normalizeLeads(source, rows);
+        dataGaps.push(...gaps);
+        leads.push(...l);
+      } else if (source.target === 'bookings') {
+        const { rows: bk, dataGaps: gaps } = normalizeBookings(source, rows);
+        dataGaps.push(...gaps);
+        bookings.push(...bk);
       }
       sheetsOk.push(source.label);
     } catch (err) {
@@ -164,6 +178,20 @@ export async function runSync(trigger: SyncTrigger): Promise<SyncSummary> {
   if (blockers.length > 0) {
     for (let i = 0; i < blockers.length; i += 500) {
       await supabase.from('blockers').upsert(blockers.slice(i, i + 500), { onConflict: 'id' });
+    }
+  }
+  if (leads.length > 0) {
+    for (let i = 0; i < leads.length; i += 500) {
+      await supabase.from('leads').upsert(leads.slice(i, i + 500), { onConflict: 'id' });
+    }
+  }
+  // Bookings: store ONLY non-test rows (seed/zavis/test/sagar excluded).
+  const realBookings = bookings
+    .filter((b) => !b.is_test)
+    .map((b) => ({ ...b, synced_at: new Date().toISOString() }));
+  if (realBookings.length > 0) {
+    for (let i = 0; i < realBookings.length; i += 500) {
+      await supabase.from('bookings').upsert(realBookings.slice(i, i + 500), { onConflict: 'id' });
     }
   }
   if (content.length > 0) {

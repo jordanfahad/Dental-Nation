@@ -1,5 +1,6 @@
 import type {
   Blocker,
+  BookingsSummary,
   ChannelStatus,
   ContentItem,
   DailySnapshot,
@@ -413,6 +414,31 @@ function buildGa4(latest: string): Ga4Summary {
   };
 }
 
+/** Mock website booking-widget summary so the §Bookings section renders in
+ *  scaffold/mock mode. Mirrors the live shape (≈21 bookings, ≈4 cancellations,
+ *  a handful of priced treatments across two clinics). */
+function buildBookings(): BookingsSummary {
+  const recent = [
+    { date: '2026-02-26', treatment: 'Periodontal Maintenance', clinic: 'General Dental Clinic', doctor: 'Dr. Mohammed Qasem', price: 650 },
+    { date: '2026-02-25', treatment: 'Aesthetic Fillings', clinic: 'General Dental Clinic', doctor: 'Dr. M Safwan Sultan', price: 450 },
+    { date: '2026-02-24', treatment: 'Teeth Whitening', clinic: 'Dr Tosun Dental Clinic', doctor: 'Dr. Dilsad', price: 1200 },
+    { date: '2026-02-23', treatment: 'Dental Implant', clinic: 'General Dental Clinic', doctor: 'Dr. Noor Basil', price: 3500 },
+    { date: '2026-02-22', treatment: 'Scaling & Polishing', clinic: 'Al Maher Dental Clinic', doctor: 'Dr. Sathya Priya', price: 300 },
+    { date: '2026-02-21', treatment: 'Veneers Consultation', clinic: 'Dr Tosun Dental Clinic', doctor: 'Dr. Dilsad', price: null },
+  ];
+  return {
+    total: 21,
+    revenue: 14250,
+    cancellations: 4,
+    recent,
+    byClinic: [
+      { clinic: 'General Dental Clinic', count: 11 },
+      { clinic: 'Dr Tosun Dental Clinic', count: 7 },
+      { clinic: 'Al Maher Dental Clinic', count: 3 },
+    ],
+  };
+}
+
 const DATE_COUNT = 6;
 
 /** All mock report dates, newest first. */
@@ -439,5 +465,6 @@ export function mockReportView(latest: string, reportDate?: string): ReportView 
     ingestion: buildIngestion(),
     availableDates: dates,
     ga4: buildGa4(date),
+    bookings: buildBookings(),
   };
 }

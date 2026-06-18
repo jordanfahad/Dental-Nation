@@ -5,6 +5,7 @@ import { mockReportView } from '@/lib/mock/report';
 import { ownerFor } from '@/config/data-gap-owners';
 import type {
   Blocker,
+  BookingsSummary,
   ChannelStatus,
   ContentItem,
   DailySnapshot,
@@ -67,6 +68,41 @@ function ga4FromRow(row: Record<string, unknown> | null | undefined): Ga4Summary
     channels: (row.channels as Ga4Summary['channels']) ?? [],
     onsite_funnel: (row.onsite_funnel as Ga4Summary['onsite_funnel']) ?? [],
   };
+}
+
+/**
+ * Build the website-booking-widget summary from the real `bookings` table rows.
+ * Booked rows count toward total + revenue; cancelled rows are counted
+ * separately. This is its OWN honest lens — never folded into the paid funnel.
+ */
+function buildBookingsSummary(rows: Record<string, unknown>[]): BookingsSummary | null {
+  if (rows.length === 0) return null;
+  const booked = rows.filter((r) => (r.status as string) === 'booked');
+  const cancelled = rows.filter((r) => (r.status as string) === 'cancelled');
+
+  const revenue = booked.reduce((a, r) => a + (Number(r.price) || 0), 0);
+
+  const recent = [...booked]
+    .sort((a, b) => String(b.booking_date ?? '').localeCompare(String(a.booking_date ?? '')))
+    .slice(0, 6)
+    .map((r) => ({
+      date: (r.booking_date as string) ?? null,
+      treatment: (r.treatment as string) ?? null,
+      clinic: (r.clinic as string) ?? null,
+      doctor: (r.doctor as string) ?? null,
+      price: r.price != null ? Number(r.price) : null,
+    }));
+
+  const clinicCounts = new Map<string, number>();
+  for (const r of booked) {
+    const clinic = ((r.clinic as string) ?? '').trim() || 'Unknown clinic';
+    clinicCounts.set(clinic, (clinicCounts.get(clinic) ?? 0) + 1);
+  }
+  const byClinic = [...clinicCounts.entries()]
+    .map(([clinic, count]) => ({ clinic, count }))
+    .sort((a, b) => b.count - a.count);
+
+  return { total: booked.length, revenue, cancellations: cancelled.length, recent, byClinic };
 }
 
 function buildKpiTrends(snapshots: DailySnapshot[]): KpiTrends {
@@ -201,6 +237,7 @@ export async function getReportView(reportDate?: string): Promise<ReportViewResu
       { data: logRow },
       { data: leadRows },
       { data: ga4Row },
+      { data: bookingRows },
     ] = await Promise.all([
       supabase.from('channel_status').select('*'),
       supabase.from('content_items').select('*'),
@@ -214,6 +251,8 @@ export async function getReportView(reportDate?: string): Promise<ReportViewResu
         .maybeSingle(),
       supabase.from('leads').select('*').eq('inquiry_date', date),
       supabase.from('ga4_summary').select('*').eq('id', 1).maybeSingle(),
+      // Bookings are a current cross-period lens (not per-date) — read all rows.
+      supabase.from('bookings').select('*'),
     ]);
 
     const ingestion: IngestionStatus | null = logRow
@@ -237,6 +276,7 @@ export async function getReportView(reportDate?: string): Promise<ReportViewResu
       ingestion,
       availableDates,
       ga4: ga4FromRow(ga4Row as Record<string, unknown> | null),
+      bookings: buildBookingsSummary((bookingRows as Record<string, unknown>[]) ?? []),
       source: 'live',
     };
   } catch {
