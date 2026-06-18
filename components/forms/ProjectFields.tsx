@@ -43,6 +43,15 @@ export function ProjectFields({
         </Field>
       </div>
 
+      <Field label="Owner" hint="Who's driving this — type any name to add them">
+        <input
+          name="owner"
+          className={inputCls}
+          defaultValue={project?.owner ?? ""}
+          placeholder="e.g. Fahad Siddiqui"
+        />
+      </Field>
+
       <div className="grid grid-cols-3 gap-4">
         <Field label="Status">
           <select name="status" className={inputCls} defaultValue={project?.status ?? "not_started"}>

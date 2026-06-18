@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireSupabaseAdmin } from "@/lib/supabase/server";
+import { EVIDENCE_BUCKET, requireSupabaseAdmin } from "@/lib/supabase/server";
 import { recomputeProjectEffort } from "@/lib/impact/effort";
 import type { ActionState } from "@/lib/impact/action-types";
 
@@ -195,4 +195,21 @@ export async function rejectReviewAction(_prev: ActionState, formData: FormData)
     .eq("id", jobId);
   revalidatePath("/impact");
   redirect("/impact");
+}
+
+/** Delete an ingestion job outright (also removes its stored raw upload). Writes
+ *  nothing to projects/tasks — it only discards the staged proposal. */
+export async function deleteIngestionJobAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const jobId = String(formData.get("jobId") ?? "");
+  if (!jobId) return { ok: false, error: "Missing job id" };
+  const { data: job } = await db()
+    .from("ingestion_jobs")
+    .select("storage_path")
+    .eq("id", jobId)
+    .maybeSingle();
+  const sp = (job as { storage_path?: string } | null)?.storage_path;
+  if (sp) await db().storage.from(EVIDENCE_BUCKET).remove([sp]);
+  await db().from("ingestion_jobs").delete().eq("id", jobId);
+  revalidatePath("/impact");
+  redirect("/impact/review");
 }

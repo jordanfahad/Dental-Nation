@@ -44,6 +44,7 @@ export async function createProjectAction(
       description: nullable(formData.get("description")),
       status: str(formData.get("status")) || "not_started",
       ownership: str(formData.get("ownership")) || "owner",
+      owner: nullable(formData.get("owner")),
       priority: nullable(formData.get("priority")),
       progress_pct: numOrNull(formData.get("progress_pct")) ?? 0,
       impact_summary: nullable(formData.get("impact_summary")),
@@ -70,6 +71,7 @@ export async function updateProjectAction(
     description: nullable(formData.get("description")),
     status: str(formData.get("status")) || "not_started",
     ownership: str(formData.get("ownership")) || "owner",
+    owner: nullable(formData.get("owner")),
     priority: nullable(formData.get("priority")),
     progress_pct: numOrNull(formData.get("progress_pct")) ?? 0,
     impact_summary: nullable(formData.get("impact_summary")),
@@ -267,6 +269,7 @@ export async function uploadEvidenceAction(
 
   const { error } = await db().from("evidence_files").insert({
     project_id: projectId,
+    task_id: nullable(formData.get("task_id")),
     component_id: componentId,
     filename: f.name,
     storage_path: path,

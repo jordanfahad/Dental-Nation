@@ -48,6 +48,7 @@ export interface Project {
   description: string | null;
   status: ProjectStatus;
   ownership: Ownership;
+  owner: string | null;
   progress_pct: number | null;
   effort_hours: number | null;
   effort_source: EffortSource;
@@ -92,6 +93,7 @@ export interface ProjectBlocker {
 export interface EvidenceFile {
   id: string;
   project_id: string | null;
+  task_id: string | null;
   component_id: string | null;
   filename: string;
   storage_path: string;

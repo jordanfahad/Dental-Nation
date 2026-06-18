@@ -9,16 +9,19 @@ import { uploadEvidenceAction } from "@/app/(app)/impact/actions";
 export function AttachEvidence({
   projectId,
   componentId,
+  taskId,
   label = "+ Attach file",
 }: {
   projectId?: string;
   componentId?: string;
+  taskId?: string;
   label?: string;
 }) {
   const [open, setOpen] = useState(false);
   const hidden: Record<string, string> = {};
   if (projectId) hidden.project_id = projectId;
   if (componentId) hidden.component_id = componentId;
+  if (taskId) hidden.task_id = taskId;
 
   return (
     <>
