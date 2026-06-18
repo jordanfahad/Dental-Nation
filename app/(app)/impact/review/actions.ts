@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { EVIDENCE_BUCKET, requireSupabaseAdmin } from "@/lib/supabase/server";
 import { recomputeProjectEffort } from "@/lib/impact/effort";
+import { isAdmin, READ_ONLY_ERROR } from "@/lib/auth/role";
 import type { ActionState } from "@/lib/impact/action-types";
 
 /**
@@ -96,6 +97,7 @@ async function assignZohoTasks(projectId: string, externalIds: string[]) {
 }
 
 export async function applyReviewAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  if (!(await isAdmin())) return { ok: false, error: READ_ONLY_ERROR };
   const jobId = String(formData.get("jobId") ?? "");
   if (!jobId) return { ok: false, error: "Missing job id" };
 
@@ -186,6 +188,7 @@ export async function applyReviewAction(_prev: ActionState, formData: FormData):
 }
 
 export async function rejectReviewAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  if (!(await isAdmin())) return { ok: false, error: READ_ONLY_ERROR };
   const jobId = String(formData.get("jobId") ?? "");
   if (!jobId) return { ok: false, error: "Missing job id" };
   // Reject writes NOTHING to projects/tasks.
@@ -200,6 +203,7 @@ export async function rejectReviewAction(_prev: ActionState, formData: FormData)
 /** Delete an ingestion job outright (also removes its stored raw upload). Writes
  *  nothing to projects/tasks — it only discards the staged proposal. */
 export async function deleteIngestionJobAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  if (!(await isAdmin())) return { ok: false, error: READ_ONLY_ERROR };
   const jobId = String(formData.get("jobId") ?? "");
   if (!jobId) return { ok: false, error: "Missing job id" };
   const { data: job } = await db()

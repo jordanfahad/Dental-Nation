@@ -45,10 +45,12 @@ export function ReviewClient({
   job,
   components,
   projects,
+  canEdit = true,
 }: {
   job: IngestionJob;
   components: Component[];
   projects: Project[];
+  canEdit?: boolean;
 }) {
   const ex = job.extracted;
   const projectById = useMemo(() => new Map(projects.map((p) => [p.id, p])), [projects]);
@@ -426,8 +428,14 @@ export function ReviewClient({
         </p>
       )}
 
+      {!canEdit && (
+        <div className="mt-6 rounded-lg bg-panel px-4 py-3 text-sm text-ink-2">
+          Read-only — sign in with the admin password to approve or reject this proposal.
+        </div>
+      )}
+
       {/* Actions — the gate */}
-      {!alreadyReviewed && (
+      {!alreadyReviewed && canEdit && (
         <div className="sticky bottom-0 mt-6 flex items-center justify-between gap-3 border-t border-hairline bg-paper/95 py-4 backdrop-blur">
           <form action={rejectAction}>
             <input type="hidden" name="jobId" value={job.id} />

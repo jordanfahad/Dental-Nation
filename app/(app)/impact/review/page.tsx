@@ -4,6 +4,7 @@ import { SectionHeading } from "@/components/ui/SectionHeading";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { JobDeleteButton } from "@/components/impact/JobDeleteButton";
 import { formatRelativeTime } from "@/lib/impact/format";
+import { currentRole } from "@/lib/auth/role";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,7 @@ const STATUS_PILL: Record<string, string> = {
 
 export default async function ReviewIndexPage() {
   const jobs = await getIngestionJobs();
+  const canEdit = (await currentRole()) === "admin";
   const pending = jobs.filter((j) => j.status === "pending_review");
   const others = jobs.filter((j) => j.status !== "pending_review");
 
@@ -58,7 +60,7 @@ export default async function ReviewIndexPage() {
                 </div>
                 <span className="shrink-0 text-xs text-ink-3">{formatRelativeTime(j.created_at)}</span>
               </Link>
-              <JobDeleteButton jobId={j.id} />
+              {canEdit && <JobDeleteButton jobId={j.id} />}
             </li>
           ))}
         </ul>
@@ -81,7 +83,7 @@ export default async function ReviewIndexPage() {
                 <span className="shrink-0 text-xs text-ink-3">
                   {formatRelativeTime(j.applied_at ?? j.reviewed_at ?? j.created_at)}
                 </span>
-                <JobDeleteButton jobId={j.id} />
+                {canEdit && <JobDeleteButton jobId={j.id} />}
               </li>
             ))}
           </ul>

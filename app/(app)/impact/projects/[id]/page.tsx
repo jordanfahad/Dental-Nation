@@ -20,6 +20,7 @@ import { AttachEvidence } from "@/components/forms/AttachEvidence";
 import { COMPONENT_HUE, DEFAULT_HUE } from "@/lib/impact/constants";
 import { cn } from "@/components/ui/cn";
 import { clampPct, formatDate, formatHours } from "@/lib/impact/format";
+import { currentRole } from "@/lib/auth/role";
 
 export const dynamic = "force-dynamic";
 
@@ -44,6 +45,7 @@ export default async function ProjectDetailPage({
     getEffortForProject(id),
   ]);
   if (!project) notFound();
+  const canEdit = (await currentRole()) === "admin";
 
   const component = components.find((c) => c.id === project.component_id);
   const hue = component ? COMPONENT_HUE[component.id] ?? DEFAULT_HUE : DEFAULT_HUE;
@@ -76,7 +78,7 @@ export default async function ProjectDetailPage({
               )}
             </div>
           </div>
-          <ProjectEditModal project={project} components={components} />
+          {canEdit && <ProjectEditModal project={project} components={components} />}
         </div>
 
         <div className="mt-4 grid grid-cols-2 gap-4 border-t border-hairline pt-4 sm:grid-cols-4">
@@ -134,7 +136,7 @@ export default async function ProjectDetailPage({
       )}
 
       {/* Tasks */}
-      <Section title="Tasks" count={tasks.length} action={<TaskModal projectId={project.id} />}>
+      <Section title="Tasks" count={tasks.length} action={canEdit ? <TaskModal projectId={project.id} /> : undefined}>
         {tasks.length === 0 ? (
           <EmptyState title="No tasks yet" hint="Add tasks directly or import them from a Zoho export." />
         ) : (
@@ -163,7 +165,7 @@ export default async function ProjectDetailPage({
                     </td>
                     <td className="tnum px-4 py-2.5 text-ink-2">{formatDate(t.due_date)}</td>
                     <td className="px-4 py-2.5 text-right">
-                      <TaskModal projectId={project.id} task={t} />
+                      {canEdit && <TaskModal projectId={project.id} task={t} />}
                     </td>
                   </tr>
                 ))}
@@ -177,7 +179,7 @@ export default async function ProjectDetailPage({
       <Section
         title="Blockers"
         count={blockers.length}
-        action={<BlockerModal projectId={project.id} />}
+        action={canEdit ? <BlockerModal projectId={project.id} /> : undefined}
       >
         {blockers.length === 0 ? (
           <EmptyState title="No blockers" hint="Raise one if something is slowing this project." />
@@ -198,7 +200,7 @@ export default async function ProjectDetailPage({
                     <span className="capitalize">{b.status.replace("_", " ")}</span>
                   </div>
                 </div>
-                <BlockerModal projectId={project.id} blocker={b} />
+                {canEdit && <BlockerModal projectId={project.id} blocker={b} />}
               </div>
             ))}
           </div>
@@ -209,7 +211,7 @@ export default async function ProjectDetailPage({
       <Section
         title="Effort log"
         count={effortLogs.length}
-        action={<EffortModal projectId={project.id} tasks={tasks} />}
+        action={canEdit ? <EffortModal projectId={project.id} tasks={tasks} /> : undefined}
       >
         {effortLogs.length === 0 ? (
           <EmptyState
@@ -234,7 +236,7 @@ export default async function ProjectDetailPage({
       <Section
         title="Evidence"
         count={evidence.length}
-        action={<AttachEvidence projectId={project.id} componentId={project.component_id ?? undefined} />}
+        action={canEdit ? <AttachEvidence projectId={project.id} componentId={project.component_id ?? undefined} /> : undefined}
       >
         {evidence.length === 0 ? (
           <EmptyState title="No files attached" hint="Attach files from the Add-update drawer." />
