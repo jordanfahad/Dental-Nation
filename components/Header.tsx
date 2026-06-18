@@ -28,8 +28,8 @@ export function Header({ range, source }: { range: RangeMeta; source: 'live' | '
     <header className="no-print flex flex-col gap-3 pb-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="eyebrow text-accent">Dental Nation · Lane E</p>
-          <h1 className="text-xl font-semibold tracking-tight text-ink">Daily Control Report</h1>
+          <p className="eyebrow text-accent">Dental Nation · All Lanes</p>
+          <h1 className="text-xl font-semibold tracking-tight text-ink">Performance Report</h1>
         </div>
         <div className="flex items-center gap-2">
           {source === 'mock' ? (

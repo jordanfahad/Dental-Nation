@@ -1,4 +1,5 @@
 import 'server-only';
+import { format, parseISO, subDays } from 'date-fns';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
 import { dubaiToday } from '@/lib/dates';
 import { buildRangeMeta, inRange } from '@/lib/range';
@@ -251,4 +252,32 @@ export async function getRangeReport(query: RangeQuery): Promise<RangeReport> {
   } catch {
     return mockRangeReport({ today, preset, compare, from: query.from, to: query.to });
   }
+}
+
+const iso = (d: Date) => format(d, 'yyyy-MM-dd');
+
+/**
+ * Weekly read for the Weekly All Lanes Performance Review (§A–E). Reuses
+ * getRangeReport internally over a 7-day window with compare='prev' (the prior
+ * 7 days). The window defaults to the last 7 days ending at the latest data date;
+ * pass `weekOf` (any YYYY-MM-DD in the desired week's end) to anchor `to`.
+ *
+ * To find the latest data date we resolve the full span once (preset 'all'), then
+ * re-read the same sources for the concrete 7-day window. Data is small so the
+ * extra read is cheap, and reusing getRangeReport keeps a single aggregation path.
+ */
+export async function getWeeklyReport(weekOf?: string): Promise<RangeReport> {
+  // 1) Resolve the available span (also the mock/live decision + GA4 path).
+  const span = await getRangeReport({ preset: 'all', compare: 'none' });
+
+  // 2) Anchor the week end at `weekOf` (clamped into the span) or the latest data date.
+  let to = span.availableTo;
+  if (weekOf && /^\d{4}-\d{2}-\d{2}$/.test(weekOf)) {
+    to = weekOf < span.availableFrom ? span.availableFrom : weekOf > span.availableTo ? span.availableTo : weekOf;
+  }
+  let from = iso(subDays(parseISO(to), 6)); // inclusive 7-day window
+  if (from < span.availableFrom) from = span.availableFrom;
+
+  // 3) Re-read the same sources for the concrete week + prior-week comparison.
+  return getRangeReport({ from, to, compare: 'prev' });
 }

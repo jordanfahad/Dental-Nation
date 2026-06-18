@@ -9,8 +9,8 @@ export function LoginForm({ from }: { from: string }) {
   return (
     <form action={formAction} className="w-full max-w-sm">
       <div className="card p-6">
-        <p className="eyebrow text-accent">Dental Nation · Paid Acquisition</p>
-        <h1 className="mt-1 text-lg font-semibold tracking-tight text-ink">Daily Control Report</h1>
+        <p className="eyebrow text-accent">Dental Nation · All Lanes</p>
+        <h1 className="mt-1 text-lg font-semibold tracking-tight text-ink">Performance Report</h1>
         <p className="mt-1 text-[13px] text-ink-faint">Enter the password to continue.</p>
 
         <input type="hidden" name="from" value={from} />

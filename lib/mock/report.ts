@@ -480,6 +480,11 @@ function mockPaid(): PaidRangeReport {
       { label: 'Google Ads-Search', value: 15050 },
       { label: 'Google', value: 6400 },
     ],
+    byChannel: [
+      { channel: 'Meta', spend: 26800, impressions: 402_300, clicks: 6120, leads: 214, costPerLead: 26800 / 214 },
+      { channel: 'Google Ads-Search', spend: 15050, impressions: 142_900, clicks: 2840, leads: 138, costPerLead: 15050 / 138 },
+      { channel: 'Google', spend: 6400, impressions: 67_200, clicks: 880, leads: 0, costPerLead: null },
+    ],
     empty: false,
   };
 }

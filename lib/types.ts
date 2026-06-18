@@ -250,6 +250,19 @@ export interface RangeMeta {
 
 export type RangePreset = 'all' | 'last30' | 'last90' | 'thisMonth' | 'lastMonth' | 'custom';
 
+/** Per-channel paid totals for the current range (spend/impressions/clicks/leads).
+ *  Aggregated from the same parsed perf rows the range report already reads. Used
+ *  by the Weekly Channel Performance table (§B). */
+export interface PaidChannelRow {
+  channel: string;
+  spend: number;
+  impressions: number;
+  clicks: number;
+  leads: number;
+  /** spend / leads. null when leads is 0 (data gap, never spend/0). */
+  costPerLead: number | null;
+}
+
 /** Paid-acquisition aggregate for a range (from raw_raw_social via normalizePerformance). */
 export interface PaidRangeReport {
   spend: MetricDelta;
@@ -262,6 +275,8 @@ export interface PaidRangeReport {
   channelLeads: MixRow[];
   /** Channel mix (by `channel`) for the current range — spend share. */
   channelSpend: MixRow[];
+  /** Per-channel paid totals for the range, descending by spend (§B weekly). */
+  byChannel: PaidChannelRow[];
   /** True when no perf rows fell in the range (→ data-gap state). */
   empty: boolean;
 }
