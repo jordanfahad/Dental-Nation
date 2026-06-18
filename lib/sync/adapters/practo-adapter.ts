@@ -179,18 +179,24 @@ function pick(obj: Record<string, unknown>, keys: string[]): string | null {
   return null;
 }
 function billKey(b: Record<string, unknown>): string {
-  const id = pick(b, ['bill_id', 'billId', 'bill_number', 'billNo', 'invoice_id', 'id']);
+  // Real Practo bills carry a stable `bill_no` (e.g. "DNWBL000112"). Using it as
+  // the upsert key means re-syncing a bill whose payload changed (a payment was
+  // added, it got finalized) UPDATES the row instead of inserting a duplicate —
+  // so revenue never double-counts. Fall back to visit_id, then a payload hash.
+  const id = pick(b, ['bill_no', 'billNo', 'bill_id', 'billId', 'bill_number', 'invoice_id', 'visit_id', 'id']);
   if (id) return id;
   return createHash('sha1').update(JSON.stringify(b)).digest('hex').slice(0, 24);
 }
 function billDate(b: Record<string, unknown>): string | null {
-  const raw = pick(b, ['finalized_date', 'bill_date', 'billDate', 'date', 'created_date', 'invoice_date']);
+  // Practo: `finalized_date` is the finalized bill date (we request finalized).
+  const raw = pick(b, ['finalized_date', 'last_finalized_at', 'bill_date', 'billDate', 'open_date', 'date']);
   if (!raw) return null;
   const d = new Date(raw);
   return Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
 }
 function billAmount(b: Record<string, unknown>): number | null {
-  const raw = pick(b, ['net_amount', 'grand_total', 'total_amount', 'total', 'amount', 'bill_amount', 'paid_amount']);
+  // Practo: `net_amount` / `bill_amount` is the bill total (AED).
+  const raw = pick(b, ['net_amount', 'bill_amount', 'grand_total', 'total_amount', 'total', 'amount', 'paid_amount']);
   if (raw == null) return null;
   const n = Number(String(raw).replace(/[^0-9.-]/g, ''));
   return Number.isNaN(n) ? null : n;
