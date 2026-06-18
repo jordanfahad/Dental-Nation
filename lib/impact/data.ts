@@ -5,6 +5,7 @@ import type {
   Component,
   EffortLog,
   EvidenceFile,
+  Flowchart,
   IngestionJob,
   LaneESnapshot,
   Project,
@@ -186,6 +187,13 @@ export async function getLaneESnapshot(): Promise<LaneESnapshot | null> {
   }
 }
 
+export async function getFlowcharts(): Promise<Flowchart[]> {
+  const db = getSupabaseAdmin();
+  if (!db) return [];
+  const { data } = await db.from("flowcharts").select("*").order("sort_order", { ascending: true });
+  return (data ?? []) as Flowchart[];
+}
+
 export async function getIngestionJobs(): Promise<IngestionJob[]> {
   const db = getSupabaseAdmin();
   if (!db) return [];
@@ -223,13 +231,14 @@ export interface DashboardData {
   blockers: BlockerWithProject[];
   evidence: EvidenceFile[];
   effortLog: EffortLog[];
+  flowcharts: Flowchart[];
   snapshot: LaneESnapshot | null;
   lastApplied: IngestionJob | null;
   pendingReviewCount: number;
 }
 
 export async function getDashboardData(): Promise<DashboardData> {
-  const [components, projects, tasks, blockers, evidence, effortLog, snapshot, lastApplied, jobs] =
+  const [components, projects, tasks, blockers, evidence, effortLog, flowcharts, snapshot, lastApplied, jobs] =
     await Promise.all([
       getComponents(),
       getProjects(),
@@ -237,6 +246,7 @@ export async function getDashboardData(): Promise<DashboardData> {
       getBlockers(),
       getEvidence(),
       getEffortLog(),
+      getFlowcharts(),
       getLaneESnapshot(),
       getLastAppliedJob(),
       getIngestionJobs(),
@@ -248,6 +258,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     blockers,
     evidence,
     effortLog,
+    flowcharts,
     snapshot,
     lastApplied,
     pendingReviewCount: jobs.filter((j) => j.status === "pending_review").length,

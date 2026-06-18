@@ -127,6 +127,37 @@ export interface LaneESnapshot {
   leads_total: number | null;
 }
 
+// ---- Flowcharts (operating architecture / roadmaps) ----
+export type FlowTone = "start" | "process" | "decision" | "accent" | "end";
+export interface FlowNode {
+  label: string;
+  sublabel?: string;
+  tone?: FlowTone;
+}
+export interface FlowLayer {
+  nodes: FlowNode[];
+}
+export interface FlowchartSpec {
+  layers: FlowLayer[];
+}
+export interface Flowchart {
+  id: string;
+  key: string | null;
+  title: string;
+  subtitle: string | null;
+  spec: FlowchartSpec;
+  sort_order: number;
+  source: string;
+  updated_at: string;
+}
+/** A flowchart proposed by extraction (upserted by key on approval). */
+export interface FlowchartProposal {
+  key?: string;
+  title: string;
+  subtitle?: string;
+  layers: FlowLayer[];
+}
+
 // ---- Ingestion / review-gate payload (§5) ----
 export interface MatchedProjectProposal {
   project_id: string;
@@ -166,6 +197,7 @@ export interface ExtractionResult {
   matched_projects: MatchedProjectProposal[];
   new_projects: NewProjectProposal[];
   new_tasks: NewTaskProposal[];
+  flowcharts?: FlowchartProposal[];
   unmapped: string[];
   notes?: string;
   // populated only when JSON parsing failed, so the review screen can surface it
