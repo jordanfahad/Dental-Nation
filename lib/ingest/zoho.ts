@@ -1,5 +1,5 @@
 import { requireSupabaseAdmin } from "@/lib/supabase/server";
-import { mapHeaders, mapZohoStatus } from "@/config/zoho-mapping";
+import { mapHeaders, mapZohoStatus, parseHours, parseZohoDate } from "@/config/zoho-mapping";
 import type { Component, ExtractionResult, Project } from "@/lib/impact/types";
 
 /**
@@ -17,6 +17,10 @@ export async function importZoho(opts: {
 }): Promise<{ extracted: ExtractionResult; upserted: number }> {
   const db = requireSupabaseAdmin();
   const m = mapHeaders(opts.headers);
+  // Dedupe on the globally-unique "Task System ID" when present (the human "Task ID"
+  // like "G-1-T4" is only unique within a project), so re-imports never duplicate.
+  const sysIdx = opts.headers.findIndex((h) => h.trim().toLowerCase() === "task system id");
+  if (sysIdx >= 0) m.external_id = sysIdx;
   const get = (row: string[], field: string) => (m[field] !== undefined ? row[m[field]] ?? "" : "");
 
   type Rec = {
@@ -36,16 +40,15 @@ export async function importZoho(opts: {
   for (const row of opts.rows) {
     const name = get(row, "name").trim();
     if (!name) continue;
-    const eff = parseFloat(get(row, "effort_hours"));
     recs.push({
       external_id: get(row, "external_id").trim() || null,
       name,
       status: get(row, "status") ? mapZohoStatus(get(row, "status")) : null,
       owner: get(row, "owner").trim() || null,
-      effort_hours: isNaN(eff) ? null : eff,
-      start_date: normDate(get(row, "start_date")),
-      due_date: normDate(get(row, "due_date")),
-      completed_date: normDate(get(row, "completed_date")),
+      effort_hours: parseHours(get(row, "effort_hours")),
+      start_date: parseZohoDate(get(row, "start_date")),
+      due_date: parseZohoDate(get(row, "due_date")),
+      completed_date: parseZohoDate(get(row, "completed_date")),
       group: get(row, "project_group").trim() || "Imported tasks",
       raw: Object.fromEntries(opts.headers.map((h, i) => [h, row[i] ?? ""])),
     });
@@ -145,13 +148,6 @@ export async function importZoho(opts: {
     },
     upserted,
   };
-}
-
-function normDate(s: string): string | null {
-  const t = (s ?? "").trim();
-  if (!t) return null;
-  const d = new Date(t);
-  return isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
 }
 
 function guessComponent(group: string, components: Component[]): string {
