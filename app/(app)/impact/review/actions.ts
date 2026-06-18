@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { EVIDENCE_BUCKET, requireSupabaseAdmin } from "@/lib/supabase/server";
 import { recomputeProjectEffort } from "@/lib/impact/effort";
 import { isAdmin, READ_ONLY_ERROR } from "@/lib/auth/role";
+import { isBulkEdit, patchFromChanges } from "@/lib/impact/bulk-edit";
 import type { ActionState } from "@/lib/impact/action-types";
 
 /**
@@ -247,4 +248,50 @@ export async function deleteIngestionJobAction(_prev: ActionState, formData: For
   await db().from("ingestion_jobs").delete().eq("id", jobId);
   revalidatePath("/impact");
   redirect("/impact/review");
+}
+
+/**
+ * Apply an Excel bulk-edit proposal — the ONLY path that writes the spreadsheet
+ * round-trip's changes to projects/tasks. Re-reads the staged proposal from the
+ * job (never trusts client-sent values) and applies only the rows whose checkbox
+ * was included. Admin only.
+ */
+export async function applyBulkEditAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  if (!(await isAdmin())) return { ok: false, error: READ_ONLY_ERROR };
+  const jobId = String(formData.get("jobId") ?? "");
+  if (!jobId) return { ok: false, error: "Missing job id" };
+
+  const { data: job } = await db().from("ingestion_jobs").select("*").eq("id", jobId).maybeSingle();
+  if (!job) return { ok: false, error: "Ingestion job not found." };
+  if ((job as { status: string }).status === "applied") {
+    return { ok: false, error: "This job was already applied." };
+  }
+  const proposal = (job as { extracted: unknown }).extracted;
+  if (!isBulkEdit(proposal)) return { ok: false, error: "This job isn't an Excel bulk edit." };
+
+  const includeProjects = new Set(formData.getAll("projectId").map(String));
+  const includeTasks = new Set(formData.getAll("taskId").map(String));
+
+  for (const u of proposal.projectUpdates) {
+    if (!includeProjects.has(u.id)) continue;
+    const patch = patchFromChanges(u.changes);
+    if (Object.keys(patch).length) {
+      const { error } = await db().from("projects").update(patch).eq("id", u.id);
+      if (error) return { ok: false, error: `Project "${u.name}": ${error.message}` };
+    }
+  }
+  for (const u of proposal.taskUpdates) {
+    if (!includeTasks.has(u.id)) continue;
+    const patch = patchFromChanges(u.changes);
+    if (Object.keys(patch).length) {
+      const { error } = await db().from("tasks").update(patch).eq("id", u.id);
+      if (error) return { ok: false, error: `Task "${u.name}": ${error.message}` };
+    }
+  }
+
+  const now = new Date().toISOString();
+  await db().from("ingestion_jobs").update({ status: "applied", reviewed_at: now, applied_at: now }).eq("id", jobId);
+  revalidatePath("/impact");
+  revalidatePath("/");
+  redirect("/impact");
 }
