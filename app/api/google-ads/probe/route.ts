@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
-import { googleAdsDebug, googleAdsProbe, syncGoogleAds } from '@/lib/sync/adapters/google-ads-adapter';
+import { googleAdsDebug, googleAdsListAccessible, googleAdsProbe, syncGoogleAds } from '@/lib/sync/adapters/google-ads-adapter';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
@@ -32,6 +32,10 @@ export async function GET(req: NextRequest) {
       version: sp.get('version') ?? undefined,
     });
     return NextResponse.json(result, { status: result.ok ? 200 : 502 });
+  }
+  if (sp.get('mode') === 'accessible') {
+    const list = await googleAdsListAccessible(sp.get('version') ?? undefined);
+    return NextResponse.json(list, { status: list.ok ? 200 : 502 });
   }
   if (sp.get('debug') === '1') {
     const dbg = await googleAdsDebug(sp.get('version') ?? undefined, sp.get('lcid') ?? undefined);

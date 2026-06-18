@@ -155,6 +155,33 @@ export async function syncGoogleAds(supabase: AdminClient, opts: GAdsSyncOpts = 
   }
 }
 
+/** List the customers the authenticated refresh-token user can access (no
+ *  login-customer-id needed). Definitive check of what the token can reach. */
+export async function googleAdsListAccessible(version?: string): Promise<{ ok: boolean; data?: unknown; error?: string }> {
+  const cfg = getGoogleAdsConfig();
+  if (!cfg) return { ok: false, error: 'not_configured' };
+  try {
+    const ver = version || cfg.version;
+    const accessToken = await getAccessToken(cfg);
+    const url = `https://googleads.googleapis.com/${ver}/customers:listAccessibleCustomers`;
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${accessToken}`, 'developer-token': cfg.developerToken },
+      cache: 'no-store',
+    });
+    const text = await res.text();
+    let body: unknown;
+    try {
+      body = JSON.parse(text);
+    } catch {
+      body = { raw: text.slice(0, 500) };
+    }
+    return { ok: res.status === 200, data: { status: res.status, version: ver, body } };
+  } catch (err) {
+    return { ok: false, error: (err as Error).message };
+  }
+}
+
 /** Raw debug: refresh token + do ONE search call, returning the exact URL, HTTP
  *  status and raw body (no parsing/throwing) so we can see what Google sees. */
 export async function googleAdsDebug(
