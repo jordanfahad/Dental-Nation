@@ -1,4 +1,8 @@
 import { getMarketingReport } from '@/lib/marketing/report';
+import { MarketingSubNav } from './MarketingSubNav';
+import { resolveMarketingSub } from './subtabs';
+import { GoogleAdsPerformance } from './GoogleAdsPerformance';
+import { MetaAdsPerformance } from './MetaAdsPerformance';
 import { Card, SectionHeader, Takeaway } from '@/components/ui/Card';
 import { DataGapInline } from '@/components/ui/DataGap';
 import { KpiBand, type KpiItem } from '@/components/charts/KpiBand';
@@ -39,7 +43,27 @@ const periodLabel = (p: { from: string | null; to: string | null }): string => {
  * 1:1. Empty source → calm owned data gap; null derived metrics → honest gap
  * cards, never a fabricated zero.
  */
-export async function MarketingReport() {
+/**
+ * Marketing tab dispatcher — renders the sub-nav (Overview · Google Ads · Meta
+ * Ads) and the active sub-section. Only the chosen section's data is fetched.
+ */
+export async function MarketingReport({ sub }: { sub?: string }) {
+  const active = resolveMarketingSub(sub);
+  return (
+    <div className="space-y-5">
+      <MarketingSubNav active={active} />
+      {active === 'google' ? (
+        <GoogleAdsPerformance />
+      ) : active === 'meta' ? (
+        <MetaAdsPerformance />
+      ) : (
+        <MarketingOverview />
+      )}
+    </div>
+  );
+}
+
+async function MarketingOverview() {
   const report = await getMarketingReport();
   const { source, platforms, totals, monthly, topCampaigns, trackedByChannel, ga4 } = report;
 

@@ -241,3 +241,208 @@ export async function googleAdsProbe(version?: string): Promise<{ ok: boolean; d
     return { ok: false, error: (err as Error).message };
   }
 }
+
+// ============================================================================
+// Detail report (Google Ads Performance sub-tab): the campaign → ad group → ad
+// (+ responsive-search-ad assets) hierarchy with spend/impressions/clicks/
+// conversions, plus per-campaign daily budget. Live GAQL over [from,to],
+// aggregated (no segments.date) so each row is a single entity total. Reuses the
+// auth + direct-access fallback above. Never throws.
+// ============================================================================
+
+const AED = (micros: unknown) => (Number(micros ?? 0) || 0) / 1_000_000;
+const N = (v: unknown) => Number(v ?? 0) || 0;
+
+/** Generic paginated GAQL search with the same manager→direct fallback. */
+async function gaqlSearch(
+  cfg: GoogleAdsConfig,
+  accessToken: string,
+  customerId: string,
+  query: string,
+  version: string,
+  loginCustomerId: string | null,
+): Promise<Record<string, unknown>[]> {
+  const out: Record<string, unknown>[] = [];
+  let pageToken: string | undefined;
+  let effectiveLcid = loginCustomerId;
+  let triedDirect = false;
+  for (let guard = 0; guard < 200; guard++) {
+    const res = await fetch(
+      `https://googleads.googleapis.com/${version}/customers/${customerId}/googleAds:search`,
+      {
+        method: 'POST',
+        headers: gAdsHeaders(cfg, accessToken, effectiveLcid),
+        body: JSON.stringify({ query, ...(pageToken ? { pageToken } : {}) }),
+        cache: 'no-store',
+      },
+    );
+    const text = await res.text();
+    let body: unknown;
+    try {
+      body = JSON.parse(text);
+    } catch {
+      throw new Error(`Google Ads non-JSON (${res.status}): ${text.slice(0, 200)}`);
+    }
+    const obj = body as { results?: Record<string, unknown>[]; nextPageToken?: string; error?: { message?: string; status?: string } };
+    if (obj.error) {
+      const denied = res.status === 403 || /permission/i.test(obj.error.message ?? '') || obj.error.status === 'PERMISSION_DENIED';
+      if (denied && effectiveLcid && !triedDirect) {
+        effectiveLcid = null;
+        triedDirect = true;
+        continue;
+      }
+      throw new Error(`Google Ads API: ${obj.error.message ?? text.slice(0, 200)}`);
+    }
+    if (Array.isArray(obj.results)) out.push(...obj.results);
+    if (!obj.nextPageToken) break;
+    pageToken = obj.nextPageToken;
+  }
+  return out;
+}
+
+export interface GAdsMetrics {
+  cost: number;
+  impressions: number;
+  clicks: number;
+  conversions: number;
+}
+export interface GAdsCampaignDetail extends GAdsMetrics {
+  id: string;
+  name: string;
+  status: string;
+  channelType: string;
+  dailyBudget: number | null;
+}
+export interface GAdsAdGroupDetail extends GAdsMetrics {
+  id: string;
+  name: string;
+  campaign: string;
+  status: string;
+}
+export interface GAdsAdDetail extends GAdsMetrics {
+  id: string;
+  campaign: string;
+  adGroup: string;
+  type: string;
+  status: string;
+  strength: string | null;
+  headlines: string[];
+  descriptions: string[];
+}
+export interface GoogleAdsDetailReport {
+  available: boolean;
+  note: string | null;
+  period: { from: string; to: string } | null;
+  totals: GAdsMetrics;
+  campaigns: GAdsCampaignDetail[];
+  adGroups: GAdsAdGroupDetail[];
+  ads: GAdsAdDetail[];
+}
+
+const emptyGAdsDetail: GoogleAdsDetailReport = {
+  available: false,
+  note: null,
+  period: null,
+  totals: { cost: 0, impressions: 0, clicks: 0, conversions: 0 },
+  campaigns: [],
+  adGroups: [],
+  ads: [],
+};
+
+const m = (r: Record<string, unknown>) => (r.metrics ?? {}) as Record<string, unknown>;
+const assetTexts = (arr: unknown): string[] =>
+  Array.isArray(arr) ? arr.map((a) => (a as { text?: string })?.text ?? '').filter(Boolean) : [];
+
+/** Pull the full Google Ads detail hierarchy across all configured customers. */
+export async function getGoogleAdsDetail(opts: { from?: string; to?: string } = {}): Promise<GoogleAdsDetailReport> {
+  const cfg = getGoogleAdsConfig();
+  if (!cfg) return { ...emptyGAdsDetail, note: 'Google Ads not configured' };
+  try {
+    const to = opts.to ?? iso(new Date());
+    const from = opts.from ?? '2026-01-01';
+    const version = cfg.version;
+    const accessToken = await getAccessToken(cfg);
+    const where = `WHERE segments.date BETWEEN '${from}' AND '${to}'`;
+
+    const campaigns: GAdsCampaignDetail[] = [];
+    const adGroups: GAdsAdGroupDetail[] = [];
+    const ads: GAdsAdDetail[] = [];
+
+    for (const customer of cfg.customerIds) {
+      const campRows = await gaqlSearch(
+        cfg, accessToken, customer,
+        `SELECT campaign.id, campaign.name, campaign.status, campaign.advertising_channel_type, ` +
+        `campaign_budget.amount_micros, metrics.cost_micros, metrics.impressions, metrics.clicks, ` +
+        `metrics.conversions FROM campaign ${where}`,
+        version, cfg.loginCustomerId,
+      );
+      for (const r of campRows) {
+        const c = (r.campaign ?? {}) as Record<string, unknown>;
+        const b = (r.campaignBudget ?? {}) as Record<string, unknown>;
+        const mm = m(r);
+        campaigns.push({
+          id: String(c.id ?? ''),
+          name: String(c.name ?? '(unnamed)'),
+          status: String(c.status ?? ''),
+          channelType: String(c.advertisingChannelType ?? ''),
+          dailyBudget: b.amountMicros != null ? AED(b.amountMicros) : null,
+          cost: AED(mm.costMicros), impressions: N(mm.impressions), clicks: N(mm.clicks), conversions: N(mm.conversions),
+        });
+      }
+
+      const agRows = await gaqlSearch(
+        cfg, accessToken, customer,
+        `SELECT ad_group.id, ad_group.name, ad_group.status, campaign.name, metrics.cost_micros, ` +
+        `metrics.impressions, metrics.clicks, metrics.conversions FROM ad_group ${where}`,
+        version, cfg.loginCustomerId,
+      );
+      for (const r of agRows) {
+        const g = (r.adGroup ?? {}) as Record<string, unknown>;
+        const c = (r.campaign ?? {}) as Record<string, unknown>;
+        const mm = m(r);
+        adGroups.push({
+          id: String(g.id ?? ''), name: String(g.name ?? '(unnamed)'), campaign: String(c.name ?? ''),
+          status: String(g.status ?? ''),
+          cost: AED(mm.costMicros), impressions: N(mm.impressions), clicks: N(mm.clicks), conversions: N(mm.conversions),
+        });
+      }
+
+      const adRows = await gaqlSearch(
+        cfg, accessToken, customer,
+        `SELECT ad_group_ad.ad.id, ad_group_ad.ad.name, ad_group_ad.ad.type, ad_group_ad.status, ` +
+        `ad_group_ad.ad_strength, ad_group_ad.ad.responsive_search_ad.headlines, ` +
+        `ad_group_ad.ad.responsive_search_ad.descriptions, ad_group.name, campaign.name, ` +
+        `metrics.cost_micros, metrics.impressions, metrics.clicks, metrics.conversions FROM ad_group_ad ${where}`,
+        version, cfg.loginCustomerId,
+      );
+      for (const r of adRows) {
+        const aga = (r.adGroupAd ?? {}) as Record<string, unknown>;
+        const ad = (aga.ad ?? {}) as Record<string, unknown>;
+        const rsa = (ad.responsiveSearchAd ?? {}) as Record<string, unknown>;
+        const g = (r.adGroup ?? {}) as Record<string, unknown>;
+        const c = (r.campaign ?? {}) as Record<string, unknown>;
+        const mm = m(r);
+        ads.push({
+          id: String(ad.id ?? ''), campaign: String(c.name ?? ''), adGroup: String(g.name ?? ''),
+          type: String(ad.type ?? ''), status: String(aga.status ?? ''),
+          strength: aga.adStrength != null ? String(aga.adStrength) : null,
+          headlines: assetTexts(rsa.headlines), descriptions: assetTexts(rsa.descriptions),
+          cost: AED(mm.costMicros), impressions: N(mm.impressions), clicks: N(mm.clicks), conversions: N(mm.conversions),
+        });
+      }
+    }
+
+    const totals = campaigns.reduce(
+      (t, c) => ({ cost: t.cost + c.cost, impressions: t.impressions + c.impressions, clicks: t.clicks + c.clicks, conversions: t.conversions + c.conversions }),
+      { cost: 0, impressions: 0, clicks: 0, conversions: 0 },
+    );
+    campaigns.sort((a, b) => b.cost - a.cost);
+    adGroups.sort((a, b) => b.cost - a.cost);
+    ads.sort((a, b) => b.cost - a.cost);
+
+    const available = campaigns.length > 0 || adGroups.length > 0 || ads.length > 0;
+    return { available, note: available ? null : 'no Google Ads entities in this window', period: { from, to }, totals, campaigns, adGroups, ads };
+  } catch (err) {
+    return { ...emptyGAdsDetail, note: (err as Error).message };
+  }
+}

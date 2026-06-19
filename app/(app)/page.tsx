@@ -12,6 +12,9 @@ import { BookingsReport } from '@/components/sections/bookings/BookingsReport';
 import { MarketingReport } from '@/components/sections/marketing/MarketingReport';
 
 export const dynamic = 'force-dynamic';
+// The Marketing deep-dive sub-tabs make several live Meta/Google ad-API calls;
+// give the function headroom beyond the 10s default so they never truncate.
+export const maxDuration = 60;
 
 /**
  * The single server-rendered route. Reads searchParams (from/to/preset/compare/
@@ -31,6 +34,7 @@ export default async function DashboardPage({
     preset?: string;
     compare?: string;
     tab?: string;
+    mtab?: string;
   }>;
 }) {
   const sp = await searchParams;
@@ -55,7 +59,7 @@ export default async function DashboardPage({
       ) : null}
       {tab === 'practo' ? <PractoReport /> : null}
       {tab === 'bookings' ? <BookingsReport /> : null}
-      {tab === 'marketing' ? <MarketingReport /> : null}
+      {tab === 'marketing' ? <MarketingReport sub={sp.mtab} /> : null}
 
       <Footer ingestion={report.ingestion} />
     </main>
