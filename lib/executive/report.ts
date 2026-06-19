@@ -3,6 +3,7 @@ import { parseISO, format } from 'date-fns';
 import { getRangeReport } from '@/lib/report';
 import { getCrmReport } from '@/lib/crm/report';
 import { getPractoSummary } from '@/lib/practo/report';
+import { getMarketingReport } from '@/lib/marketing/report';
 import type { ExecKpis, ExecMonthPoint, ExecutiveReport } from './types';
 
 /**
@@ -10,23 +11,40 @@ import type { ExecKpis, ExecMonthPoint, ExecutiveReport } from './types';
  * history (preset 'all' for the range sources; all-time for CRM + Practo) so the
  * hero shows the complete business picture. Pure composition — each underlying
  * read already degrades gracefully, so this never throws.
+ *
+ * Marketing spend comes from the LIVE Meta + Google ad APIs (the same source as
+ * the Marketing tab) — NOT the older manual social sheet — so the hero and the
+ * Marketing tab can never disagree on spend. Cost-per-lead is that live spend
+ * over the tracked leads shown beside it, so the two numbers reconcile.
  */
 export async function getExecutiveReport(): Promise<ExecutiveReport> {
-  const [range, crm, practo] = await Promise.all([
+  const [range, crm, practo, mkt] = await Promise.all([
     getRangeReport({ preset: 'all', compare: 'none' }),
     getCrmReport({}),
     getPractoSummary({}),
+    getMarketingReport(),
   ]);
 
   const { paid, leads, ga4, bookings, series } = range;
   const appt = crm.appointments;
   const conv = crm.conversation;
 
+  // Live ad spend (Meta + Google), with a graceful fallback to the manual sheet
+  // only if the live APIs have no data yet.
+  const liveAdSpend = mkt.source === 'live' ? mkt.totals.adSpend : null;
+  const marketingSpend = liveAdSpend ?? paid.spend.value;
+  const leadsGenerated = leads.total.value;
+  // Cost per lead = live spend ÷ tracked leads (the two figures shown together).
+  const costPerLead =
+    marketingSpend != null && leadsGenerated && leadsGenerated > 0
+      ? marketingSpend / leadsGenerated
+      : paid.costPerLead.value;
+
   const kpis: ExecKpis = {
-    marketingSpend: paid.spend.value,
-    leadsGenerated: leads.total.value,
+    marketingSpend,
+    leadsGenerated,
     paidLeads: paid.leads.value,
-    costPerLead: paid.costPerLead.value,
+    costPerLead,
     websiteSessions: ga4?.sessions.value ?? null,
     websiteConversions: ga4?.conversions.value ?? null,
     appointmentsBooked: appt.total,
@@ -54,13 +72,19 @@ export async function getExecutiveReport(): Promise<ExecutiveReport> {
     if (patch.revenue) row.revenue += patch.revenue;
     months.set(m, row);
   };
-  for (const d of series) bump(d.date, { spend: d.spend, leads: d.inquiries });
+  for (const d of series) bump(d.date, { leads: d.inquiries });
+  // Monthly spend from the LIVE ad source (consistent with the headline + Marketing tab).
+  if (mkt.source === 'live') {
+    for (const m of mkt.monthly) bump(`${m.month}-01`, { spend: m.spend });
+  } else {
+    for (const d of series) bump(d.date, { spend: d.spend });
+  }
   for (const d of appt.series) bump(d.date, { appointments: d.appointments });
   for (const d of practo.byDay) bump(d.date, { revenue: d.revenue });
   const monthly = [...months.values()].sort((a, b) => a.month.localeCompare(b.month));
 
   const coverage = {
-    paid: !paid.empty,
+    paid: mkt.source === 'live' || !paid.empty,
     leads: !leads.empty,
     ga4: Boolean(ga4 && (ga4.sessions.value ?? 0) > 0),
     bookings: !bookings.empty,
