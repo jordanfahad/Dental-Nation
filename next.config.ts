@@ -8,6 +8,11 @@ const nextConfig: NextConfig = {
   experimental: {
     // recharts is a large client-only dep; keep it out of the server bundle graph.
     optimizePackageImports: ['recharts', 'date-fns'],
+    // Evidence/screenshot uploads run as Server Actions; the default cap is 1 MB,
+    // which a screenshot easily exceeds. Raise to 4 MB (under Vercel's ~4.5 MB
+    // serverless request-body ceiling). Larger files would need a direct-to-
+    // storage signed upload instead.
+    serverActions: { bodySizeLimit: '4mb' },
   },
 };
 
