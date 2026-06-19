@@ -265,11 +265,13 @@ export async function MarketingReport() {
             Three <span className="font-medium text-ink">independent counts of the same demand</span>,
             shown side-by-side rather than as a funnel because they are not nested:{' '}
             <span className="font-medium text-ink">platform-reported</span> is what Meta + Google
-            claim, <span className="font-medium text-ink">GA4 site-tagged</span> is the website&apos;s
-            own first-party measure (resistant to ad-platform tracking gaps), and{' '}
-            <span className="font-medium text-ink">tracked</span> is what the in-house CRM logs. GA4
-            is added to triangulate — it does not replace or alter the platform/tracker numbers
-            above.
+            claim — and it runs high because the platforms total every configured conversion action
+            (calls, form-views, page engagements), not gross leads;{' '}
+            <span className="font-medium text-ink">GA4 site-tagged</span> is the website&apos;s own
+            first-party lead count (the cleaner gross-lead measure); and{' '}
+            <span className="font-medium text-ink">tracked</span> is what the in-house CRM ultimately
+            logs. GA4 is added to triangulate — it does not replace or alter the platform/tracker
+            numbers above.
           </Takeaway>
         </div>
       </Card>
@@ -300,6 +302,13 @@ export async function MarketingReport() {
                   {googleReported > 0 && ga4.paidLeads > googleReported * 1.15 ? (
                     <>GA4 sees materially more paid leads than Google Ads records — consistent with a{' '}
                       <span className="font-medium">conversion-tracking gap</span> on the Google Ads side.</>
+                  ) : googleReported > ga4.paidLeads * 3 ? (
+                    <>Google Ads counts many times more &ldquo;conversions&rdquo; than GA4 logs as paid leads —
+                      Google Ads totals <span className="font-medium">every configured conversion action</span>{' '}
+                      (calls, form-views, page engagements), not gross leads, so it{' '}
+                      <span className="font-medium">overstates true lead volume</span>. Treat GA4&apos;s
+                      site-tagged count as the cleaner gross-lead measure and the Google Ads number as an
+                      upper bound.</>
                   ) : googleReported > ga4.paidLeads * 1.15 ? (
                     <>Google Ads records more conversions than GA4 attributes to paid — likely{' '}
                       <span className="font-medium">view-through / cross-device</span> conversions GA4&apos;s
