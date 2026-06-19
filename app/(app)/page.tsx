@@ -10,6 +10,7 @@ import { ExecutiveDashboard } from '@/components/sections/executive/ExecutiveDas
 import { PractoReport } from '@/components/sections/practo/PractoReport';
 import { BookingsReport } from '@/components/sections/bookings/BookingsReport';
 import { MarketingReport } from '@/components/sections/marketing/MarketingReport';
+import { GoogleAnalyticsReport } from '@/components/sections/analytics/GoogleAnalyticsReport';
 
 export const dynamic = 'force-dynamic';
 // The Marketing deep-dive sub-tabs make several live Meta/Google ad-API calls;
@@ -60,6 +61,7 @@ export default async function DashboardPage({
       {tab === 'practo' ? <PractoReport /> : null}
       {tab === 'bookings' ? <BookingsReport /> : null}
       {tab === 'marketing' ? <MarketingReport sub={sp.mtab} /> : null}
+      {tab === 'analytics' ? <GoogleAnalyticsReport /> : null}
 
       <Footer ingestion={report.ingestion} />
     </main>

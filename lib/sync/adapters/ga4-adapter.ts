@@ -402,3 +402,130 @@ export async function fetchGa4LeadLens(from: string, to: string): Promise<Ga4Lea
   const totalLeads = byChannel.reduce((a, c) => a + c.leads, 0);
   return { totalLeads, byChannel, monthly, events, channelDimension: dimension, period: { from, to } };
 }
+
+// ============================================================================
+// Audience report (dedicated Google Analytics tab): demographics (gender, age),
+// device and acquisition-channel breakdowns — each with sessions, users and
+// lead-event counts — plus per-event lead acquisition. One runReport per slice,
+// fired concurrently. Throws on hard GA4 failure so the caller degrades to a gap.
+// ============================================================================
+
+export interface Ga4Slice {
+  key: string;
+  sessions: number;
+  users: number;
+  leads: number;
+}
+export interface Ga4EventRow {
+  event: string;
+  count: number;
+  users: number;
+  isLead: boolean;
+}
+export interface Ga4Audience {
+  totals: { sessions: number; users: number; leads: number };
+  byGender: Ga4Slice[];
+  byAge: Ga4Slice[];
+  byDevice: Ga4Slice[];
+  byChannel: Ga4Slice[];
+  events: Ga4EventRow[];
+  leadEvents: string[];
+  period: { from: string; to: string };
+}
+
+const titleCase = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+
+export async function fetchGa4Audience(from: string, to: string): Promise<Ga4Audience> {
+  const analytics = getAnalyticsClient();
+  const property = `properties/${GA4_PROPERTY_ID}`;
+  const dateRanges = [{ startDate: from, endDate: to }];
+  const leadEvents = GA4_MARKETING_LEAD_EVENTS;
+  const leadFilter = { filter: { fieldName: 'eventName', inListFilter: { values: leadEvents } } };
+
+  /** sessions + users for a dimension. */
+  const traffic = async (dim: string): Promise<Map<string, { sessions: number; users: number }>> => {
+    const res = await analytics.properties.runReport({
+      property,
+      requestBody: {
+        dateRanges,
+        dimensions: [{ name: dim }],
+        metrics: [{ name: 'sessions' }, { name: 'totalUsers' }],
+        orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+        limit: '30',
+      },
+    });
+    const map = new Map<string, { sessions: number; users: number }>();
+    for (const r of res.data.rows ?? []) {
+      const k = r.dimensionValues?.[0]?.value || '(unknown)';
+      map.set(k, { sessions: metric(r, 0), users: metric(r, 1) });
+    }
+    return map;
+  };
+
+  /** lead-event count for a dimension. */
+  const leadsBy = async (dim: string): Promise<Map<string, number>> => {
+    const res = await analytics.properties.runReport({
+      property,
+      requestBody: {
+        dateRanges,
+        dimensions: [{ name: dim }],
+        metrics: [{ name: 'eventCount' }],
+        dimensionFilter: leadFilter,
+        limit: '30',
+      },
+    });
+    const map = new Map<string, number>();
+    for (const r of res.data.rows ?? []) map.set(r.dimensionValues?.[0]?.value || '(unknown)', metric(r, 0));
+    return map;
+  };
+
+  const slice = async (dim: string, label: (s: string) => string): Promise<Ga4Slice[]> => {
+    const [tr, ld] = await Promise.all([traffic(dim), leadsBy(dim)]);
+    const keys = new Set<string>([...tr.keys(), ...ld.keys()]);
+    return [...keys]
+      .map((k) => ({ key: label(k), sessions: tr.get(k)?.sessions ?? 0, users: tr.get(k)?.users ?? 0, leads: ld.get(k) ?? 0 }))
+      .sort((a, b) => b.sessions - a.sessions);
+  };
+
+  const totalsCall = async () => {
+    const [t, l] = await Promise.all([
+      analytics.properties.runReport({ property, requestBody: { dateRanges, metrics: [{ name: 'sessions' }, { name: 'totalUsers' }] } }),
+      analytics.properties.runReport({ property, requestBody: { dateRanges, metrics: [{ name: 'eventCount' }], dimensionFilter: leadFilter } }),
+    ]);
+    const tr = t.data.rows?.[0];
+    return { sessions: metric(tr, 0), users: metric(tr, 1), leads: metric(l.data.rows?.[0], 0) };
+  };
+
+  const eventsCall = async (): Promise<Ga4EventRow[]> => {
+    const res = await analytics.properties.runReport({
+      property,
+      requestBody: {
+        dateRanges,
+        dimensions: [{ name: 'eventName' }],
+        metrics: [{ name: 'eventCount' }, { name: 'totalUsers' }],
+        orderBys: [{ metric: { metricName: 'eventCount' }, desc: true }],
+        limit: '100',
+      },
+    });
+    return (res.data.rows ?? []).map((r) => {
+      const event = r.dimensionValues?.[0]?.value || '(unknown)';
+      return { event, count: metric(r, 0), users: metric(r, 1), isLead: leadEvents.includes(event) };
+    });
+  };
+
+  const genderLabel = (s: string) => (s === '(unknown)' || !s ? 'Unknown' : titleCase(s));
+  const deviceLabel = (s: string) => titleCase(s || 'unknown');
+  const ageLabel = (s: string) => (s === '(unknown)' || !s ? 'Unknown' : s);
+  const channelLabel = (s: string) => s || 'Unassigned';
+
+  const [totals, byGender, byAge, byDevice, byChannel, events] = await Promise.all([
+    totalsCall(),
+    slice('userGender', genderLabel),
+    slice('userAgeBracket', ageLabel),
+    slice('deviceCategory', deviceLabel),
+    slice(GA4_LEAD_CHANNEL_DIMENSION, channelLabel),
+    eventsCall(),
+  ]);
+
+  return { totals, byGender, byAge, byDevice, byChannel, events, leadEvents, period: { from, to } };
+}

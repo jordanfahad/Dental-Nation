@@ -15,6 +15,7 @@ export const TABS = [
   { key: 'practo', label: 'Practo Insta' },
   { key: 'bookings', label: 'Website Bookings' },
   { key: 'marketing', label: 'Marketing' },
+  { key: 'analytics', label: 'Google Analytics' },
 ] as const;
 
 export type TabKey = (typeof TABS)[number]['key'];
