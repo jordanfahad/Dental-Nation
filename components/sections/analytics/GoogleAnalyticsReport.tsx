@@ -1,5 +1,7 @@
+import { Suspense } from 'react';
 import { getGoogleAnalyticsReport } from '@/lib/analytics/report';
 import type { Ga4Slice } from '@/lib/sync/adapters/ga4-adapter';
+import { SiteSpeed } from '@/components/sections/analytics/SiteSpeed';
 import { Card, SectionHeader, Takeaway } from '@/components/ui/Card';
 import { DataGapInline } from '@/components/ui/DataGap';
 import { KpiBand, type KpiItem } from '@/components/charts/KpiBand';
@@ -96,8 +98,12 @@ export async function GoogleAnalyticsReport() {
         <div className="px-5 pb-5 pt-4"><KpiBand items={kpis} /></div>
       </Card>
 
+      <Suspense fallback={<SiteSpeedSkeleton />}>
+        <SiteSpeed />
+      </Suspense>
+
       <Card>
-        <SectionHeader tag="GA2" eyebrow="Acquisition" title="Channels — sessions & lead acquisition" />
+        <SectionHeader tag="GA3" eyebrow="Acquisition" title="Channels — sessions & lead acquisition" />
         <div className="grid grid-cols-1 gap-5 px-5 pb-5 pt-4 lg:grid-cols-2">
           <Donut data={toDonut(byChannel)} valueFormat="int" centerLabel="sessions" height={210} />
           <div className="overflow-x-auto"><SliceTable rows={byChannel} head="Channel" /></div>
@@ -105,7 +111,7 @@ export async function GoogleAnalyticsReport() {
       </Card>
 
       <Card>
-        <SectionHeader tag="GA3" eyebrow="Demographics" title="Gender" />
+        <SectionHeader tag="GA4" eyebrow="Demographics" title="Gender" />
         <div className="grid grid-cols-1 gap-5 px-5 pb-5 pt-4 lg:grid-cols-2">
           <Donut data={toDonut(byGender)} valueFormat="int" centerLabel="sessions" height={200} />
           <div className="overflow-x-auto"><SliceTable rows={byGender} head="Gender" /></div>
@@ -113,7 +119,7 @@ export async function GoogleAnalyticsReport() {
       </Card>
 
       <Card>
-        <SectionHeader tag="GA4" eyebrow="Demographics" title="Age" />
+        <SectionHeader tag="GA5" eyebrow="Demographics" title="Age" />
         <div className="grid grid-cols-1 gap-5 px-5 pb-5 pt-4 lg:grid-cols-2">
           <div><HBarChart data={ageBars} valueFormat="int" /></div>
           <div className="overflow-x-auto"><SliceTable rows={byAge} head="Age" /></div>
@@ -121,7 +127,7 @@ export async function GoogleAnalyticsReport() {
       </Card>
 
       <Card>
-        <SectionHeader tag="GA5" eyebrow="Tech" title="Device" />
+        <SectionHeader tag="GA6" eyebrow="Tech" title="Device" />
         <div className="grid grid-cols-1 gap-5 px-5 pb-5 pt-4 lg:grid-cols-2">
           <Donut data={toDonut(byDevice)} valueFormat="int" centerLabel="sessions" height={200} />
           <div className="overflow-x-auto"><SliceTable rows={byDevice} head="Device" /></div>
@@ -129,7 +135,7 @@ export async function GoogleAnalyticsReport() {
       </Card>
 
       <Card>
-        <SectionHeader tag="GA6" eyebrow="Events" title={`Lead acquisition by event (${events.length})`} />
+        <SectionHeader tag="GA7" eyebrow="Events" title={`Lead acquisition by event (${events.length})`} />
         <div className="px-5 pb-5 pt-4 overflow-x-auto">
           <table className="w-full text-left">
             <thead><tr className="border-b border-line">
@@ -161,5 +167,22 @@ export async function GoogleAnalyticsReport() {
         </div>
       </Card>
     </div>
+  );
+}
+
+/** Placeholder shown while PageSpeed Insights is being fetched (streamed via Suspense). */
+function SiteSpeedSkeleton() {
+  return (
+    <Card>
+      <SectionHeader tag="GA2" eyebrow="Core Web Vitals" title="Site Speed" />
+      <div className="px-5 pb-5 pt-4">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          {[0, 1].map((i) => (
+            <div key={i} className="h-44 animate-pulse rounded-lg border border-line bg-panel/40" />
+          ))}
+        </div>
+        <p className="mt-3 text-[11px] text-ink-faint">Measuring live with PageSpeed Insights…</p>
+      </div>
+    </Card>
   );
 }

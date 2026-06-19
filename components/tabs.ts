@@ -16,6 +16,7 @@ export const TABS = [
   { key: 'bookings', label: 'Website Bookings' },
   { key: 'marketing', label: 'Marketing' },
   { key: 'analytics', label: 'Google Analytics' },
+  { key: 'clarity', label: 'Heatmaps & Recordings' },
 ] as const;
 
 export type TabKey = (typeof TABS)[number]['key'];

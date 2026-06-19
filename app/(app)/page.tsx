@@ -11,6 +11,7 @@ import { PractoReport } from '@/components/sections/practo/PractoReport';
 import { BookingsReport } from '@/components/sections/bookings/BookingsReport';
 import { MarketingReport } from '@/components/sections/marketing/MarketingReport';
 import { GoogleAnalyticsReport } from '@/components/sections/analytics/GoogleAnalyticsReport';
+import { ClarityReport } from '@/components/sections/clarity/ClarityReport';
 
 export const dynamic = 'force-dynamic';
 // The Marketing deep-dive sub-tabs make several live Meta/Google ad-API calls;
@@ -62,6 +63,7 @@ export default async function DashboardPage({
       {tab === 'bookings' ? <BookingsReport /> : null}
       {tab === 'marketing' ? <MarketingReport sub={sp.mtab} /> : null}
       {tab === 'analytics' ? <GoogleAnalyticsReport /> : null}
+      {tab === 'clarity' ? <ClarityReport /> : null}
 
       <Footer ingestion={report.ingestion} />
     </main>
