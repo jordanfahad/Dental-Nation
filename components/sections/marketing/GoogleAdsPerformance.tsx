@@ -78,7 +78,14 @@ export async function GoogleAdsPerformance() {
 
       <Card>
         <SectionHeader tag="G1" eyebrow="Scorecard" title="Account totals" />
-        <div className="px-5 pb-5 pt-4"><KpiBand items={kpis} /></div>
+        <div className="px-5 pb-5 pt-4">
+          <KpiBand items={kpis} />
+          <p className="mt-3 text-[11px] leading-snug text-ink-faint">
+            Pulled live from the API now, across currently-active campaigns — so this total can run a
+            few % under the Marketing Overview&apos;s hourly-synced spend (which also retains
+            closed/deleted campaigns). The Overview remains the authoritative all-in figure.
+          </p>
+        </div>
       </Card>
 
       <Card>
