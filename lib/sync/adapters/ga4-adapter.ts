@@ -548,6 +548,8 @@ export interface Ga4ChannelRole {
   consideration: number;
   conversion: number;
   role: ChannelStage;
+  /** True when the row is a logical estimate (e.g. Meta, which GA4 can't attribute). */
+  estimated?: boolean;
 }
 
 export interface Ga4Attribution {
@@ -555,6 +557,58 @@ export interface Ga4Attribution {
   totals: { discovery: number; consideration: number; conversion: number };
   leaders: { discovery: string | null; consideration: string | null; conversion: string | null };
   period: { from: string; to: string };
+}
+
+/** Raw per-channel volumes before role/total/leader derivation. */
+export interface Ga4ChannelRaw {
+  channel: string;
+  discovery: number;
+  consideration: number;
+  conversion: number;
+  estimated?: boolean;
+}
+
+/**
+ * Derive totals, per-channel roles (the stage a channel over-indexes on) and
+ * stage leaders from raw channel volumes. Shared so a merged set (GA4 + an
+ * estimated Meta row) is scored exactly like the pure-GA4 set.
+ */
+export function finalizeAttribution(raw: Ga4ChannelRaw[], period: { from: string; to: string }): Ga4Attribution {
+  const totals = { discovery: 0, consideration: 0, conversion: 0 };
+  for (const r of raw) {
+    totals.discovery += r.discovery;
+    totals.consideration += r.consideration;
+    totals.conversion += r.conversion;
+  }
+
+  const channels: Ga4ChannelRole[] = raw
+    .map((r) => {
+      const ds = totals.discovery ? r.discovery / totals.discovery : 0;
+      const cs = totals.consideration ? r.consideration / totals.consideration : 0;
+      const vs = totals.conversion ? r.conversion / totals.conversion : 0;
+      const max = Math.max(ds, cs, vs);
+      let role: ChannelStage = '—';
+      if (max > 0) role = max === vs ? 'Lower funnel' : max === ds ? 'Discovery' : 'Consideration';
+      return { channel: r.channel, discovery: r.discovery, consideration: r.consideration, conversion: r.conversion, role, estimated: r.estimated };
+    })
+    .sort((a, b) => b.discovery + b.consideration + b.conversion - (a.discovery + a.consideration + a.conversion));
+
+  const leaderOf = (sel: (x: Ga4ChannelRole) => number): string | null =>
+    channels.reduce<{ n: string | null; v: number }>(
+      (acc, ch) => (sel(ch) > acc.v ? { n: ch.channel, v: sel(ch) } : acc),
+      { n: null, v: 0 },
+    ).n;
+
+  return {
+    channels,
+    totals,
+    leaders: {
+      discovery: leaderOf((c) => c.discovery),
+      consideration: leaderOf((c) => c.consideration),
+      conversion: leaderOf((c) => c.conversion),
+    },
+    period,
+  };
 }
 
 export async function fetchGa4Attribution(from: string, to: string): Promise<Ga4Attribution> {
@@ -595,43 +649,12 @@ export async function fetchGa4Attribution(from: string, to: string): Promise<Ga4
   ]);
 
   const keys = new Set<string>([...disc.keys(), ...cons.keys(), ...conv.keys()]);
-  const totals = { discovery: 0, consideration: 0, conversion: 0 };
-  for (const k of keys) {
-    totals.discovery += disc.get(k) ?? 0;
-    totals.consideration += cons.get(k) ?? 0;
-    totals.conversion += conv.get(k) ?? 0;
-  }
+  const raw: Ga4ChannelRaw[] = [...keys].map((channel) => ({
+    channel,
+    discovery: disc.get(channel) ?? 0,
+    consideration: cons.get(channel) ?? 0,
+    conversion: conv.get(channel) ?? 0,
+  }));
 
-  const channels: Ga4ChannelRole[] = [...keys]
-    .map((channel) => {
-      const d = disc.get(channel) ?? 0;
-      const c = cons.get(channel) ?? 0;
-      const v = conv.get(channel) ?? 0;
-      // Share of each stage → the stage a channel over-indexes on is its role.
-      const ds = totals.discovery ? d / totals.discovery : 0;
-      const cs = totals.consideration ? c / totals.consideration : 0;
-      const vs = totals.conversion ? v / totals.conversion : 0;
-      const max = Math.max(ds, cs, vs);
-      let role: ChannelStage = '—';
-      if (max > 0) role = max === vs ? 'Lower funnel' : max === ds ? 'Discovery' : 'Consideration';
-      return { channel, discovery: d, consideration: c, conversion: v, role };
-    })
-    .sort((a, b) => b.discovery + b.consideration + b.conversion - (a.discovery + a.consideration + a.conversion));
-
-  const leaderOf = (sel: (x: Ga4ChannelRole) => number): string | null =>
-    channels.reduce<{ n: string | null; v: number }>(
-      (acc, ch) => (sel(ch) > acc.v ? { n: ch.channel, v: sel(ch) } : acc),
-      { n: null, v: 0 },
-    ).n;
-
-  return {
-    channels,
-    totals,
-    leaders: {
-      discovery: leaderOf((c) => c.discovery),
-      consideration: leaderOf((c) => c.consideration),
-      conversion: leaderOf((c) => c.conversion),
-    },
-    period: { from, to },
-  };
+  return finalizeAttribution(raw, { from, to });
 }

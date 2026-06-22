@@ -17,13 +17,18 @@ const ROLE_CLASS: Record<ChannelStage, string> = {
 
 const STAGE_COLOR = { discovery: TOKENS.accent, consideration: TOKENS.watch, conversion: TOKENS.good };
 
-function StageCell({ value, total, color }: { value: number; total: number; color: string }) {
+function StageCell({ value, total, color, estimated }: { value: number; total: number; color: string; estimated?: boolean }) {
   const share = total > 0 ? value / total : 0;
   return (
     <td className="px-2 py-2 align-middle">
-      <div className="text-right text-[12px] font-medium tabular-nums text-ink">{int(value)}</div>
+      <div className={`text-right text-[12px] font-medium tabular-nums ${estimated ? 'italic text-watch' : 'text-ink'}`}>
+        {estimated ? '≈' : ''}{int(value)}
+      </div>
       <div className="mt-1 h-1 w-full overflow-hidden rounded bg-line">
-        <div className="h-1 rounded" style={{ width: `${Math.round(share * 100)}%`, background: color }} />
+        <div
+          className="h-1 rounded"
+          style={{ width: `${Math.round(share * 100)}%`, background: color, opacity: estimated ? 0.5 : 1 }}
+        />
       </div>
     </td>
   );
@@ -64,7 +69,6 @@ export async function Ga4Attribution() {
   }
 
   const { channels, totals, leaders } = data;
-  const ps = channels.find((c) => c.channel === 'Paid Social');
   const th = 'px-2 py-2 text-[10.5px] font-medium uppercase tracking-wide text-ink-faint';
 
   return (
@@ -80,34 +84,20 @@ export async function Ga4Attribution() {
         {reality.available ? (
           <div className="mb-4 rounded-lg border border-watch/30 bg-watch/5 p-4">
             <div className="text-[11px] font-semibold uppercase tracking-wide text-watch">
-              Paid Social reality check — read this before judging Meta
+              Paid Social = estimated from Meta (GA4 can&apos;t track it directly)
             </div>
-            <div className="mt-2 grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div>
-                <div className="text-[11px] text-ink-faint">Meta Ads — platform-reported</div>
-                <div className="text-[17px] font-semibold tabular-nums text-ink">
-                  {int(reality.metaLeads)} leads · {aed(reality.metaSpend)}
-                </div>
-                <div className="text-[10.5px] leading-snug text-ink-faint">
-                  from Meta&apos;s own pixel/forms (incl. view-through &amp; click-to-WhatsApp)
-                </div>
-              </div>
-              <div>
-                <div className="text-[11px] text-ink-faint">GA4 — attributed to Paid Social</div>
-                <div className="text-[17px] font-semibold tabular-nums text-ink">
-                  {int(ps?.conversion ?? 0)} leads · {int(ps?.discovery ?? 0)} first-touch
-                </div>
-                <div className="text-[10.5px] leading-snug text-ink-faint">
-                  only UTM-tagged Meta clicks that then converted on-site
-                </div>
-              </div>
+            <div className="mt-2 text-[13px] font-semibold tabular-nums text-ink">
+              Meta Ads (platform-reported): {int(reality.metaLeads)} leads · {int(reality.metaClicks)} clicks · {aed(reality.metaSpend)}
             </div>
-            <p className="mt-2.5 text-[11.5px] leading-snug text-ink-soft">
-              The gap is GA4&apos;s blind spot, <span className="font-medium text-ink">not lost performance</span>.
-              Meta doesn&apos;t auto-tag its clicks, so untagged Meta visits are filed under{' '}
-              <span className="font-medium">Direct / Organic Social / Unassigned</span> above, and on-Facebook
-              Instant-Form leads never reach the website at all. The <span className="font-medium text-ink">Marketing
-              tab</span> holds Meta&apos;s true spend &amp; leads; UTM-tagging your ad URLs is what closes this gap here.
+            <p className="mt-2 text-[11.5px] leading-snug text-ink-soft">
+              GA4 can&apos;t attribute untagged Meta, so the <span className="font-medium text-watch">Paid Social</span> row
+              below is a <span className="font-medium text-ink">logical estimate</span> seeded from Meta&apos;s own data:
+              <span className="font-medium"> Discovery ≈ Meta clicks</span>,{' '}
+              <span className="font-medium">Lower funnel = Meta leads</span>, and{' '}
+              <span className="font-medium">Consideration</span> ≈ clicks × the site-average return rate. It&apos;s marked
+              <span className="italic text-watch"> ≈ est.</span> and is directional — Meta&apos;s authoritative numbers live on the{' '}
+              <span className="font-medium text-ink">Marketing tab</span>. UTM-tagging your ad URLs replaces this estimate
+              with real GA4 tracking (incl. on-Facebook Instant-Form leads, which never reach the site at all).
             </p>
           </div>
         ) : null}
@@ -125,31 +115,27 @@ export async function Ga4Attribution() {
             </thead>
             <tbody>
               {channels.map((c) => {
-                const blind = c.channel === 'Paid Social';
+                const est = c.estimated === true;
                 return (
-                <tr key={c.channel} className={`border-b border-line/60 last:border-0 ${blind ? 'bg-watch/5' : ''}`}>
+                <tr key={c.channel} className={`border-b border-line/60 last:border-0 ${est ? 'bg-watch/5' : ''}`}>
                   <td className="px-2 py-2 text-[12px] font-medium text-ink">
                     {c.channel}
-                    {blind && reality.available ? (
-                      <span className="mt-0.5 block text-[10.5px] font-normal leading-snug text-watch">
-                        GA4 can&apos;t attribute Meta — ≈ {int(reality.metaLeads)} real leads · {aed(reality.metaSpend)} (Meta API, see check above)
+                    {est ? (
+                      <span className="mt-0.5 block text-[10.5px] font-normal italic leading-snug text-watch">
+                        estimated from Meta (clicks → discovery, leads → lower funnel) — GA4 can&apos;t track it; tag URLs to fix
                       </span>
                     ) : null}
                   </td>
-                  <StageCell value={c.discovery} total={totals.discovery} color={STAGE_COLOR.discovery} />
-                  <StageCell value={c.consideration} total={totals.consideration} color={STAGE_COLOR.consideration} />
-                  <StageCell value={c.conversion} total={totals.conversion} color={STAGE_COLOR.conversion} />
+                  <StageCell value={c.discovery} total={totals.discovery} color={STAGE_COLOR.discovery} estimated={est} />
+                  <StageCell value={c.consideration} total={totals.consideration} color={STAGE_COLOR.consideration} estimated={est} />
+                  <StageCell value={c.conversion} total={totals.conversion} color={STAGE_COLOR.conversion} estimated={est} />
                   <td className="px-2 py-2 text-right">
-                    {blind ? (
-                      <span
-                        className="rounded bg-watch/10 px-1.5 py-0.5 text-[10px] font-medium text-watch"
-                        title="GA4 cannot attribute untagged Meta traffic — see the Paid Social reality check above. UTM-tag ad URLs to populate this row."
-                      >
-                        GA4-blind
-                      </span>
-                    ) : (
-                      <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${ROLE_CLASS[c.role]}`}>{c.role}</span>
-                    )}
+                    <span
+                      className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${ROLE_CLASS[c.role]}`}
+                      title={est ? 'Estimated from Meta API — not GA4-measured. Replaced by real data once Meta ad URLs are UTM-tagged.' : undefined}
+                    >
+                      {c.role}{est ? ' · est.' : ''}
+                    </span>
                   </td>
                 </tr>
                 );
@@ -165,7 +151,9 @@ export async function Ga4Attribution() {
           <span className="font-medium text-good">Lower funnel</span> = last-touch leads. Each channel&apos;s
           badge marks the stage it over-indexes on — so you can fund discovery channels for reach, nurture
           the consideration ones, and protect the closers. It&apos;s not a paid media-mix model (GA4
-          doesn&apos;t expose full paths), but it reliably separates openers from closers.
+          doesn&apos;t expose full paths), but it reliably separates openers from closers. Rows marked{' '}
+          <span className="italic text-watch">≈ est.</span> (Paid Social / Meta) are logical estimates from Meta&apos;s
+          API, not GA4-measured — they&apos;ll firm up once Meta ad URLs are UTM-tagged.
         </Takeaway>
       </div>
     </Card>
