@@ -1,4 +1,4 @@
-import { getGa4AttributionReport } from '@/lib/analytics/attribution';
+import { getGa4AttributionReport, getPaidSocialReality } from '@/lib/analytics/attribution';
 import type { ChannelStage } from '@/lib/sync/adapters/ga4-adapter';
 import { Card, SectionHeader, Takeaway } from '@/components/ui/Card';
 import { DataGapInline } from '@/components/ui/DataGap';
@@ -6,6 +6,7 @@ import { TOKENS } from '@/components/charts/Charts';
 import { ownerFor } from '@/config/data-gap-owners';
 
 const int = (n: number) => Math.round(n).toLocaleString('en-US');
+const aed = (n: number) => `AED ${Math.round(n).toLocaleString('en-US')}`;
 
 const ROLE_CLASS: Record<ChannelStage, string> = {
   Discovery: 'bg-accent/10 text-accent',
@@ -46,7 +47,10 @@ function Leader({ label, channel, hint, color }: { label: string; channel: strin
  * lower funnel) from GA4. Streamed into the GA tab via Suspense.
  */
 export async function Ga4Attribution() {
-  const { available, data, note } = await getGa4AttributionReport();
+  const [{ available, data, note }, reality] = await Promise.all([
+    getGa4AttributionReport(),
+    getPaidSocialReality(),
+  ]);
 
   if (!available || !data) {
     return (
@@ -60,6 +64,7 @@ export async function Ga4Attribution() {
   }
 
   const { channels, totals, leaders } = data;
+  const ps = channels.find((c) => c.channel === 'Paid Social');
   const th = 'px-2 py-2 text-[10.5px] font-medium uppercase tracking-wide text-ink-faint';
 
   return (
@@ -71,6 +76,41 @@ export async function Ga4Attribution() {
           <Leader label="Consideration" channel={leaders.consideration} hint="returning engaged — keeps them warm" color={STAGE_COLOR.consideration} />
           <Leader label="Lower funnel" channel={leaders.conversion} hint="last-touch — closes the lead" color={STAGE_COLOR.conversion} />
         </div>
+
+        {reality.available ? (
+          <div className="mb-4 rounded-lg border border-watch/30 bg-watch/5 p-4">
+            <div className="text-[11px] font-semibold uppercase tracking-wide text-watch">
+              Paid Social reality check — read this before judging Meta
+            </div>
+            <div className="mt-2 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <div className="text-[11px] text-ink-faint">Meta Ads — platform-reported</div>
+                <div className="text-[17px] font-semibold tabular-nums text-ink">
+                  {int(reality.metaLeads)} leads · {aed(reality.metaSpend)}
+                </div>
+                <div className="text-[10.5px] leading-snug text-ink-faint">
+                  from Meta&apos;s own pixel/forms (incl. view-through &amp; click-to-WhatsApp)
+                </div>
+              </div>
+              <div>
+                <div className="text-[11px] text-ink-faint">GA4 — attributed to Paid Social</div>
+                <div className="text-[17px] font-semibold tabular-nums text-ink">
+                  {int(ps?.conversion ?? 0)} leads · {int(ps?.discovery ?? 0)} first-touch
+                </div>
+                <div className="text-[10.5px] leading-snug text-ink-faint">
+                  only UTM-tagged Meta clicks that then converted on-site
+                </div>
+              </div>
+            </div>
+            <p className="mt-2.5 text-[11.5px] leading-snug text-ink-soft">
+              The gap is GA4&apos;s blind spot, <span className="font-medium text-ink">not lost performance</span>.
+              Meta doesn&apos;t auto-tag its clicks, so untagged Meta visits are filed under{' '}
+              <span className="font-medium">Direct / Organic Social / Unassigned</span> above, and on-Facebook
+              Instant-Form leads never reach the website at all. The <span className="font-medium text-ink">Marketing
+              tab</span> holds Meta&apos;s true spend &amp; leads; UTM-tagging your ad URLs is what closes this gap here.
+            </p>
+          </div>
+        ) : null}
 
         <div className="overflow-x-auto">
           <table className="w-full text-left">
