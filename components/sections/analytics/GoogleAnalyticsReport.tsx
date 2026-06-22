@@ -109,6 +109,15 @@ export async function GoogleAnalyticsReport() {
           <Donut data={toDonut(byChannel)} valueFormat="int" centerLabel="sessions" height={210} />
           <div className="overflow-x-auto"><SliceTable rows={byChannel} head="Channel" /></div>
         </div>
+        <div className="px-5 pb-5">
+          <Takeaway>
+            Heads-up on <span className="font-medium text-ink">Paid Social</span>: GA4 only attributes Meta
+            clicks that arrive UTM-tagged, so Meta is heavily under-counted here — untagged Meta traffic
+            lands in Direct / Organic Social / Unassigned, and on-Facebook Instant-Form leads never reach the
+            site. For Meta&apos;s true spend &amp; leads use the <span className="font-medium text-ink">Marketing
+            tab</span>; UTM-tagging ad URLs is what fixes this. Fuller view in Multi-touch attribution below.
+          </Takeaway>
+        </div>
       </Card>
 
       <Suspense fallback={<AttributionSkeleton />}>
