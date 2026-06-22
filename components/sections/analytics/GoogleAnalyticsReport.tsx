@@ -2,6 +2,7 @@ import { Suspense } from 'react';
 import { getGoogleAnalyticsReport } from '@/lib/analytics/report';
 import type { Ga4Slice } from '@/lib/sync/adapters/ga4-adapter';
 import { SiteSpeed } from '@/components/sections/analytics/SiteSpeed';
+import { Ga4Attribution } from '@/components/sections/analytics/Ga4Attribution';
 import { Card, SectionHeader, Takeaway } from '@/components/ui/Card';
 import { DataGapInline } from '@/components/ui/DataGap';
 import { KpiBand, type KpiItem } from '@/components/charts/KpiBand';
@@ -110,6 +111,10 @@ export async function GoogleAnalyticsReport() {
         </div>
       </Card>
 
+      <Suspense fallback={<AttributionSkeleton />}>
+        <Ga4Attribution />
+      </Suspense>
+
       <Card>
         <SectionHeader tag="GA4" eyebrow="Demographics" title="Gender" />
         <div className="grid grid-cols-1 gap-5 px-5 pb-5 pt-4 lg:grid-cols-2">
@@ -182,6 +187,23 @@ function SiteSpeedSkeleton() {
           ))}
         </div>
         <p className="mt-3 text-[11px] text-ink-faint">Measuring live with PageSpeed Insights…</p>
+      </div>
+    </Card>
+  );
+}
+
+/** Placeholder shown while GA4 multi-touch attribution is computed (Suspense). */
+function AttributionSkeleton() {
+  return (
+    <Card>
+      <SectionHeader tag="GA4·MTA" eyebrow="Attribution" title="Multi-touch attribution" />
+      <div className="px-5 pb-5 pt-4">
+        <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-3">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="h-20 animate-pulse rounded-lg border border-line bg-panel/40" />
+          ))}
+        </div>
+        <div className="h-32 animate-pulse rounded bg-panel/40" />
       </div>
     </Card>
   );

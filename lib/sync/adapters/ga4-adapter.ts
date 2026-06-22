@@ -529,3 +529,109 @@ export async function fetchGa4Audience(from: string, to: string): Promise<Ga4Aud
 
   return { totals, byGender, byAge, byDevice, byChannel, events, leadEvents, period: { from, to } };
 }
+
+// ============================================================================
+// Multi-touch attribution (channel funnel roles). GA4's Data API does not
+// expose full conversion paths, so we model three stages from real channel
+// dimensions and let each channel's strongest stage define its role:
+//   • Discovery     — first-touch new users   (firstUserDefaultChannelGroup × totalUsers, new)
+//   • Consideration — returning engaged visits (sessionDefaultChannelGroup × engagedSessions, returning)
+//   • Lower funnel  — last-touch leads         (sessionDefaultChannelGroup × lead events)
+// Directional, not a paid MMM — but it answers "who opens vs who closes".
+// ============================================================================
+
+export type ChannelStage = 'Discovery' | 'Consideration' | 'Lower funnel' | '—';
+
+export interface Ga4ChannelRole {
+  channel: string;
+  discovery: number;
+  consideration: number;
+  conversion: number;
+  role: ChannelStage;
+}
+
+export interface Ga4Attribution {
+  channels: Ga4ChannelRole[];
+  totals: { discovery: number; consideration: number; conversion: number };
+  leaders: { discovery: string | null; consideration: string | null; conversion: string | null };
+  period: { from: string; to: string };
+}
+
+export async function fetchGa4Attribution(from: string, to: string): Promise<Ga4Attribution> {
+  const analytics = getAnalyticsClient();
+  const property = `properties/${GA4_PROPERTY_ID}`;
+  const dateRanges = [{ startDate: from, endDate: to }];
+
+  const runMap = async (
+    dim: string,
+    metricName: string,
+    dimensionFilter?: Record<string, unknown>,
+  ): Promise<Map<string, number>> => {
+    const res = await analytics.properties.runReport({
+      property,
+      requestBody: {
+        dateRanges,
+        dimensions: [{ name: dim }],
+        metrics: [{ name: metricName }],
+        ...(dimensionFilter ? { dimensionFilter } : {}),
+        limit: '50',
+      },
+    });
+    const map = new Map<string, number>();
+    for (const r of res.data.rows ?? []) map.set(r.dimensionValues?.[0]?.value || 'Unassigned', metric(r, 0));
+    return map;
+  };
+
+  const [disc, cons, conv] = await Promise.all([
+    runMap('firstUserDefaultChannelGroup', 'totalUsers', {
+      filter: { fieldName: 'newVsReturning', stringFilter: { value: 'new' } },
+    }),
+    runMap('sessionDefaultChannelGroup', 'engagedSessions', {
+      filter: { fieldName: 'newVsReturning', stringFilter: { value: 'returning' } },
+    }),
+    runMap('sessionDefaultChannelGroup', 'eventCount', {
+      filter: { fieldName: 'eventName', inListFilter: { values: GA4_MARKETING_LEAD_EVENTS } },
+    }),
+  ]);
+
+  const keys = new Set<string>([...disc.keys(), ...cons.keys(), ...conv.keys()]);
+  const totals = { discovery: 0, consideration: 0, conversion: 0 };
+  for (const k of keys) {
+    totals.discovery += disc.get(k) ?? 0;
+    totals.consideration += cons.get(k) ?? 0;
+    totals.conversion += conv.get(k) ?? 0;
+  }
+
+  const channels: Ga4ChannelRole[] = [...keys]
+    .map((channel) => {
+      const d = disc.get(channel) ?? 0;
+      const c = cons.get(channel) ?? 0;
+      const v = conv.get(channel) ?? 0;
+      // Share of each stage → the stage a channel over-indexes on is its role.
+      const ds = totals.discovery ? d / totals.discovery : 0;
+      const cs = totals.consideration ? c / totals.consideration : 0;
+      const vs = totals.conversion ? v / totals.conversion : 0;
+      const max = Math.max(ds, cs, vs);
+      let role: ChannelStage = '—';
+      if (max > 0) role = max === vs ? 'Lower funnel' : max === ds ? 'Discovery' : 'Consideration';
+      return { channel, discovery: d, consideration: c, conversion: v, role };
+    })
+    .sort((a, b) => b.discovery + b.consideration + b.conversion - (a.discovery + a.consideration + a.conversion));
+
+  const leaderOf = (sel: (x: Ga4ChannelRole) => number): string | null =>
+    channels.reduce<{ n: string | null; v: number }>(
+      (acc, ch) => (sel(ch) > acc.v ? { n: ch.channel, v: sel(ch) } : acc),
+      { n: null, v: 0 },
+    ).n;
+
+  return {
+    channels,
+    totals,
+    leaders: {
+      discovery: leaderOf((c) => c.discovery),
+      consideration: leaderOf((c) => c.consideration),
+      conversion: leaderOf((c) => c.conversion),
+    },
+    period: { from, to },
+  };
+}
