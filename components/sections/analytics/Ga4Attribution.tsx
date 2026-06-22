@@ -124,17 +124,36 @@ export async function Ga4Attribution() {
               </tr>
             </thead>
             <tbody>
-              {channels.map((c) => (
-                <tr key={c.channel} className="border-b border-line/60 last:border-0">
-                  <td className="px-2 py-2 text-[12px] font-medium text-ink">{c.channel}</td>
+              {channels.map((c) => {
+                const blind = c.channel === 'Paid Social';
+                return (
+                <tr key={c.channel} className={`border-b border-line/60 last:border-0 ${blind ? 'bg-watch/5' : ''}`}>
+                  <td className="px-2 py-2 text-[12px] font-medium text-ink">
+                    {c.channel}
+                    {blind && reality.available ? (
+                      <span className="mt-0.5 block text-[10.5px] font-normal leading-snug text-watch">
+                        GA4 can&apos;t attribute Meta — ≈ {int(reality.metaLeads)} real leads · {aed(reality.metaSpend)} (Meta API, see check above)
+                      </span>
+                    ) : null}
+                  </td>
                   <StageCell value={c.discovery} total={totals.discovery} color={STAGE_COLOR.discovery} />
                   <StageCell value={c.consideration} total={totals.consideration} color={STAGE_COLOR.consideration} />
                   <StageCell value={c.conversion} total={totals.conversion} color={STAGE_COLOR.conversion} />
                   <td className="px-2 py-2 text-right">
-                    <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${ROLE_CLASS[c.role]}`}>{c.role}</span>
+                    {blind ? (
+                      <span
+                        className="rounded bg-watch/10 px-1.5 py-0.5 text-[10px] font-medium text-watch"
+                        title="GA4 cannot attribute untagged Meta traffic — see the Paid Social reality check above. UTM-tag ad URLs to populate this row."
+                      >
+                        GA4-blind
+                      </span>
+                    ) : (
+                      <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${ROLE_CLASS[c.role]}`}>{c.role}</span>
+                    )}
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
