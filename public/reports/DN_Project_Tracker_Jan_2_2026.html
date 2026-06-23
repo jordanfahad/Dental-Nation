@@ -1,0 +1,612 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Dental Nation | One-Pager Task Tracker - Jan-2-2026</title>
+<style>
+:root{
+  --ink:#14202B; --muted:#5B6670; --navy:#244260; --sand:#F7F5EF; --line:#E7E7D8; --bg:#ffffff;
+  --red:#B42318; --amber:#B54708; --green:#027A48;
+  --critical:#7A271A; --high:#B54708; --medium:#175CD3; --low:#5b6670;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--ink)}
+.page{max-width:1180px;margin:26px auto;padding:0 18px 34px}
+.header{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;border-bottom:2px solid var(--line);padding-bottom:14px}
+h1{margin:0;font-size:22px;color:var(--navy);letter-spacing:.2px}
+.sub{margin-top:6px;color:var(--muted);font-size:13px;line-height:1.45;max-width:900px}
+.meta{text-align:right;color:var(--muted);font-size:12px;line-height:1.45}
+.meta b{color:var(--ink)}
+.grid{display:grid;gap:10px}
+.kpis{grid-template-columns:1.25fr 1fr 1fr 1fr;margin-top:14px}
+.card{border:1px solid var(--line);border-radius:12px;padding:12px;background:#fff;box-shadow:0 1px 0 rgba(0,0,0,.02)}
+.label{font-size:12px;color:var(--muted);margin-bottom:6px}
+.value{font-size:18px;font-weight:800;color:var(--navy);margin:0;line-height:1.2}
+.small{font-size:12px;color:var(--muted);line-height:1.5}
+.section{margin-top:14px}
+.section h2{margin:0 0 8px 0;font-size:15px;color:var(--navy)}
+.pill{display:inline-block;font-size:11px;padding:4px 8px;border-radius:999px;border:1px solid var(--line);background:var(--sand);color:var(--ink);white-space:nowrap}
+.pill b{color:var(--navy)}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tablewrap{overflow:auto;border:1px solid var(--line);border-radius:12px}
+table{border-collapse:collapse;width:100%;min-width:980px;font-size:12px}
+thead th{background:var(--sand);color:var(--navy);text-align:left;padding:10px;border-bottom:1px solid var(--line);white-space:nowrap}
+tbody td{padding:10px;border-top:1px solid var(--line);vertical-align:top;line-height:1.35}
+.badge{display:inline-block;font-size:11px;padding:4px 8px;border-radius:999px;border:1px solid var(--line);white-space:nowrap}
+.badge.done{background:#ECFDF3;color:var(--green);border-color:#D1FADF}
+.badge.live{background:#EFF8FF;color:var(--medium);border-color:#D1E9FF}
+.badge.progress{background:#FFFAEB;color:var(--amber);border-color:#FEF0C7}
+.badge.pending{background:#FEF3F2;color:var(--amber);border-color:#FEE4E2}
+.badge.notstarted{background:#FEF3F2;color:var(--red);border-color:#FEE4E2}
+.prio{font-weight:800}
+.prio.critical{color:var(--critical)}
+.prio.high{color:var(--high)}
+.prio.medium{color:var(--medium)}
+.prio.low{color:var(--low)}
+.rag{display:inline-block;font-size:10px;padding:3px 8px;border-radius:999px;border:1px solid var(--line)}
+.rag.red{background:#FEF3F2;color:var(--red);border-color:#FEE4E2}
+.rag.amber{background:#FFFAEB;color:var(--amber);border-color:#FEF0C7}
+.rag.green{background:#ECFDF3;color:var(--green);border-color:#D1FADF}
+.decision{border-left:4px solid var(--navy);padding-left:10px}
+.decision b{color:var(--navy)}
+.footer{margin-top:14px;border-top:1px solid var(--line);padding-top:12px;color:var(--muted);font-size:12px;line-height:1.55}
+@media(max-width:980px){
+  .kpis{grid-template-columns:1fr}
+  .split{grid-template-columns:1fr}
+  .meta{text-align:left}
+  .header{flex-direction:column;align-items:flex-start}
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="header">
+    <div>
+      <h1> Tasks + Performance + Targets Status</h1>
+      <div class="sub">
+        <b>Alignment principle:</b> Tasks and performance are shown together so we can see what is delivered, what is blocked, and how it impacts lead targets.
+        <br/>
+        <b>Budget strategy:</b> We have held budgets because the key conversion unlock is <b>clinic-centric content</b> (doctors, clinic footage, credible before/after storytelling).
+        Shoots start <b>03 Jan 2026</b>. Usable aesthetic clinical assets expected <b>3–5 working days</b> after first shoot, then budgets will be increased.
+      </div>
+    </div>
+    <div class="meta">
+      <div><b>Last updated:</b> 02 Jan 2026</div>
+      <div><b>Owner:</b> Fahad</div>
+      <div><b>Audience:</b> CEO Akbar</div>
+    </div>
+  </div>
+
+  <div class="grid kpis">
+    <div class="card">
+      <div class="label">Task visibility (full register)</div>
+      <p class="value">22 tasks tracked</p>
+      <div class="small">
+        Completed/Live/Approved: <b>5</b> |
+        In progress: <b>14</b> |
+        Not started: <b>2</b> |
+        Pending input: <b>1</b><br/>
+        Overdue: <b>1</b> |
+        Due in next 7 days: <b>8</b>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="label">MTD performance (live channels)</div>
+      <p class="value">Spend ~AED 2,000 | Leads 12 | CPL ~AED 170</p>
+      <div class="small">Live: Instagram + GMB. Scale planned post-shoot once clinic-centric assets land.</div>
+    </div>
+
+    <div class="card">
+      <div class="label">Jan 2026 lead targets (Acacia + Dr Tosun)</div>
+      <p class="value">Total 978 leads</p>
+      <div class="small">Paid: <b>166</b> | Organic: <b>127</b> | Retention/Recall: <b>685</b><br/>
+      Run-rate: ~<b>32</b> leads/day (31-day month assumption).</div>
+    </div>
+
+    <div class="card">
+      <div class="label">Backlog vs targets (since Nov start)</div>
+      <p class="value">Target 2,934 vs Known actual 12</p>
+      <div class="small">
+        Backlog based on <b>confirmed actuals only</b>: <b>2,922</b> leads.
+        (Nov-Dec actuals not provided in the inputs; backlog will reduce once those actuals are added.)
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Targets and gap to close (CEO summary)</h2>
+    <div class="split">
+      <div class="card">
+        <div class="label">MTD gap reported</div>
+        <p class="value">Gap ~109 leads</p>
+        <div class="small">Target 122 vs Actual 13. Backlog ~150 leads; required run-rate ~15 leads/day for next 10 days (as shared).</div>
+      </div>
+      <div class="card">
+        <div class="label">What changes after shoots</div>
+        <div class="small">
+          Once aesthetic clinical content is ready (ETA 3–5 working days after first shoot), we will increase budgets and refresh creatives across channels.
+          The objective is to improve lead quality, reduce CPL over time, and close the target gap with higher daily lead volume.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>CEO actions required (next 48–72 hours)</h2>
+    <div class="card">
+      <ul>
+        <li class="decision">
+          <div><b>Approve org structure + JD list to restart hiring (Task #36)</b> (Due: <b>03 Jan 2026</b>)</div>
+          <div class="small">Unlock execution capacity. Urgent hires: Project Coordinator + Digital/CRM Exec. ~21 candidates already interviewed (Project Coordinator, Commercial Lead).</div>
+        </li>
+        <li class="decision">
+          <div><b>Approve WhatsApp compliance guardrails + database utilisation strategy (shared Monday)</b> (Due: <b>03 Jan 2026</b>)</div>
+          <div class="small">Prevents spam reports and improves deliverability. Enables safe scaling of WhatsApp broadcast (Task #21) with Acacia → Dental Nation transition creative.</div>
+        </li>
+      </ul>
+      <div class="small" style="margin-top:8px;">
+        <b>WhatsApp broadcast risk control:</b> Creative must explain Acacia → Dental Nation transition, why choose Dental Nation, then the offer, to avoid spam reports and protect sender reputation.
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Workstreams status (rolled-up)</h2>
+    <div class="tablewrap">
+      <table aria-label="Workstreams summary">
+        <thead>
+          <tr>
+            <th>Workstream</th>
+            <th>RAG</th>
+            <th>Tasks</th>
+            <th>Completed/Live</th>
+            <th>In Progress</th>
+            <th>Not Started</th>
+            <th>Overdue</th>
+            <th>Due in 7 days</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><b>AI Contact Center (Tech)</b></td>
+            <td><span class="rag green">On track</span></td>
+            <td>2</td>
+            <td>1</td>
+            <td>1</td>
+            <td>0</td>
+            <td>0</td>
+            <td>1</td>
+          </tr>
+          <tr>
+            <td><b>CRM & Revenue Products</b></td>
+            <td><span class="rag green">On track</span></td>
+            <td>2</td>
+            <td>0</td>
+            <td>2</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+          </tr>
+          <tr>
+            <td><b>Compliance & Governance</b></td>
+            <td><span class="rag amber">Watch</span></td>
+            <td>3</td>
+            <td>0</td>
+            <td>2</td>
+            <td>1</td>
+            <td>1</td>
+            <td>1</td>
+          </tr>
+          <tr>
+            <td><b>Marketing Go-Live & Content</b></td>
+            <td><span class="rag green">On track</span></td>
+            <td>7</td>
+            <td>3</td>
+            <td>4</td>
+            <td>0</td>
+            <td>0</td>
+            <td>4</td>
+          </tr>
+          <tr>
+            <td><b>Partnerships & Corporate Growth</b></td>
+            <td><span class="rag green">On track</span></td>
+            <td>4</td>
+            <td>0</td>
+            <td>2</td>
+            <td>1</td>
+            <td>0</td>
+            <td>1</td>
+          </tr>
+          <tr>
+            <td><b>Website & Booking Tech</b></td>
+            <td><span class="rag green">On track</span></td>
+            <td>4</td>
+            <td>1</td>
+            <td>3</td>
+            <td>0</td>
+            <td>0</td>
+            <td>1</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Full task register (visibility)</h2>
+    <div class="tablewrap">
+      <table aria-label="Task register">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Workstream</th>
+            <th>Task</th>
+            <th>Owner</th>
+            <th>Priority</th>
+            <th>Status</th>
+            <th>%</th>
+            <th>ETA</th>
+            <th>Blocker</th>
+            <th>Next step</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><b>13</b></td>
+            <td>Compliance & Governance</td>
+            <td>Email protocol rollout</td>
+            <td>Fahad / Shadi + Arun</td>
+            <td><span class="prio medium">Medium</span></td>
+            <td><span class="badge progress">In Progress (Overdue)</span></td>
+            <td>60%</td>
+            <td><b>Overdue</b></td>
+            <td>Await Shadi approval; Arun deployment pending</td>
+            <td>Approve; configure signatures; shared inbox rules.</td>
+          </tr>
+          <tr>
+            <td><b>28</b></td>
+            <td>AI Contact Center (Tech)</td>
+            <td>AI Contact Center - FAQ + Guardrails Pack</td>
+            <td>Fahad + Dr Luvi / Zavis</td>
+            <td><span class="prio critical">Critical</span></td>
+            <td><span class="badge progress">In Progress</span></td>
+            <td>20%</td>
+            <td><b>7 Jan 2026</b></td>
+            <td>Approval of compliance guardrails + clinical boundaries; needs alignment with T&C</td>
+            <td>Finalize guardrails; approve; load into AI environment; enable controlled rollout.</td>
+          </tr>
+          <tr>
+            <td><b>5</b></td>
+            <td>Website & Booking Tech</td>
+            <td>Website Go Live on Domain (Phase 1)</td>
+            <td>Fahad / Zavis</td>
+            <td><span class="prio critical">Critical</span></td>
+            <td><span class="badge progress">In Progress</span></td>
+            <td>75%</td>
+            <td><b>10 Jan 2026</b></td>
+            <td>Booking workflow validation + final content dependencies</td>
+            <td>Validate default booking workflow; publish under dentalnation.com; update ads + tracking URLs.</td>
+          </tr>
+          <tr>
+            <td><b>4</b></td>
+            <td>Marketing Go-Live & Content</td>
+            <td>Instagram launch offers</td>
+            <td>Fahad + Social PR</td>
+            <td><span class="prio critical">Critical</span></td>
+            <td><span class="badge live">Live</span></td>
+            <td>100%</td>
+            <td><b>Live</b></td>
+            <td>None</td>
+            <td>Iterate creatives post-shoot; scale budgets based on CPL + booking quality.</td>
+          </tr>
+          <tr>
+            <td><b>11</b></td>
+            <td>Compliance & Governance</td>
+            <td>DXH listing (Acacia access)</td>
+            <td>Dr Hasna + Fahad</td>
+            <td><span class="prio critical">Critical</span></td>
+            <td><span class="badge notstarted">Not Started</span></td>
+            <td>0%</td>
+            <td><b>ASAP</b></td>
+            <td>Need DXH/Acacia credentials from Dr Hasna</td>
+            <td>Obtain credentials; complete listing; upload compliant assets.</td>
+          </tr>
+          <tr>
+            <td><b>14</b></td>
+            <td>Website & Booking Tech</td>
+            <td>Website Terms & Conditions (T&C)</td>
+            <td>Fahad / Dr Luvi + Zavis</td>
+            <td><span class="prio critical">Critical</span></td>
+            <td><span class="badge progress">In Progress</span></td>
+            <td>60%</td>
+            <td><b>TBD (Dr Luvi input)</b></td>
+            <td>Requires Dr Luvi clinical input + final approval (not CEO)</td>
+            <td>Dr Luvi to provide input; finalize and implement in footer + booking flow.</td>
+          </tr>
+          <tr>
+            <td><b>16</b></td>
+            <td>Website & Booking Tech</td>
+            <td>Lead Capture Landing Page under dentalnation.com</td>
+            <td>Fahad + Zavis</td>
+            <td><span class="prio critical">Critical</span></td>
+            <td><span class="badge done">Approved / Ready</span></td>
+            <td>100%</td>
+            <td><b>Approved</b></td>
+            <td>None (approved)</td>
+            <td>Deploy under dentalnation.com; switch campaigns + GMB links to the main domain.</td>
+          </tr>
+          <tr>
+            <td><b>3</b></td>
+            <td>Marketing Go-Live & Content</td>
+            <td>Shoot Calendar + Resourcing</td>
+            <td>Social PR / Dr Luvi</td>
+            <td><span class="prio high">High</span></td>
+            <td><span class="badge done">Approved / In Execution</span></td>
+            <td>100%</td>
+            <td><b>Start 3 Jan 2026</b></td>
+            <td>None (approved)</td>
+            <td>Run first shoot; deliver priority assets; feed Content Bank + performance pipeline.</td>
+          </tr>
+          <tr>
+            <td><b>6</b></td>
+            <td>Marketing Go-Live & Content</td>
+            <td>Content Calendar sign-off</td>
+            <td>Fahad / Social PR + Dr Luvi</td>
+            <td><span class="prio high">High</span></td>
+            <td><span class="badge progress">In Progress</span></td>
+            <td>30%</td>
+            <td><b>3 Jan 2026</b></td>
+            <td>Final alignment with shoot outputs and publish plan</td>
+            <td>Lock 4-week cadence; assign owners; weekly review cadence.</td>
+          </tr>
+          <tr>
+            <td><b>21</b></td>
+            <td>Marketing Go-Live & Content</td>
+            <td>WhatsApp Broadcast - Existing + Dormant</td>
+            <td>Fahad / Call Center</td>
+            <td><span class="prio high">High</span></td>
+            <td><span class="badge progress">In Progress</span></td>
+            <td>90%</td>
+            <td><b>6 Jan 2026</b></td>
+            <td>Approval of WhatsApp compliance guardrails + DB utilisation strategy; update creatives for Acacia → Dental Nation transition to prevent spam</td>
+            <td>Update creatives; obtain guardrails approval; run pilot; scale with opt-out/spam monitoring.</td>
+          </tr>
+          <tr>
+            <td><b>38</b></td>
+            <td>Compliance & Governance</td>
+            <td>MOH portal access + authority approvals</td>
+            <td>Ashik / Fahad</td>
+            <td><span class="prio high">High</span></td>
+            <td><span class="badge progress">In Progress</span></td>
+            <td>70%</td>
+            <td><b>6 Jan 2026</b></td>
+            <td>Needs formal retrieval email with attachments from official DN email</td>
+            <td>Send retrieval email; receive credentials; submit website/social licenses then ads permit.</td>
+          </tr>
+          <tr>
+            <td><b>12</b></td>
+            <td>Marketing Go-Live & Content</td>
+            <td>Before/After library (DXH + Website-ready)</td>
+            <td>Dr Luvi</td>
+            <td><span class="prio high">High</span></td>
+            <td><span class="badge progress">In Progress</span></td>
+            <td>10%</td>
+            <td><b>7 Jan 2026</b></td>
+            <td>Await full Dr Hasna set + consent + structured folder</td>
+            <td>Collect complete set; confirm consent; tag by service; upload for ads + website + DXH.</td>
+          </tr>
+          <tr>
+            <td><b>37</b></td>
+            <td>Partnerships & Corporate Growth</td>
+            <td>Fazaa onboarding</td>
+            <td>Fahad / Finance</td>
+            <td><span class="prio high">High</span></td>
+            <td><span class="badge progress">In Progress</span></td>
+            <td>10%</td>
+            <td><b>8 Jan 2026</b></td>
+            <td>Awaiting Mr Akbar + Ms Shadi approval (commercial sign-off)</td>
+            <td>Secure approval; submit onboarding; confirm listing and activation plan.</td>
+          </tr>
+          <tr>
+            <td><b>39</b></td>
+            <td>CRM & Revenue Products</td>
+            <td>WhatsApp + CRM lifecycle strategy</td>
+            <td>Fahad / CEO Akbar approval</td>
+            <td><span class="prio high">High</span></td>
+            <td><span class="badge progress">In Progress</span></td>
+            <td>10%</td>
+            <td><b>10 Jan 2026</b></td>
+            <td>Needs DB segmentation + compliance guardrails approval</td>
+            <td>Confirm DB split; map journeys; define consent rules; forecast business case.</td>
+          </tr>
+          <tr>
+            <td><b>30</b></td>
+            <td>Partnerships & Corporate Growth</td>
+            <td>Influencer strategy + pipeline</td>
+            <td>Fahad + Social PR</td>
+            <td><span class="prio high">High</span></td>
+            <td><span class="badge notstarted">Not Started</span></td>
+            <td>0%</td>
+            <td><b>31 Jan 2026</b></td>
+            <td>Execution gated by baseline website + clinic-centric content assets</td>
+            <td>Shortlist influencers; define offer stack; tracking; launch pilots after first content wave.</td>
+          </tr>
+          <tr>
+            <td><b>40</b></td>
+            <td>CRM & Revenue Products</td>
+            <td>Referral payment system (doctor referral incentives)</td>
+            <td>Fahad / Zavis + IT</td>
+            <td><span class="prio high">High</span></td>
+            <td><span class="badge progress">In Progress</span></td>
+            <td>15%</td>
+            <td><b>16 Feb 2026</b></td>
+            <td>Pending technical requirements from Fahad; SOW from Zavis</td>
+            <td>Send requirements; receive SOW + estimate; approval; build + test.</td>
+          </tr>
+          <tr>
+            <td><b>9</b></td>
+            <td>AI Contact Center (Tech)</td>
+            <td>AI Contact Center Phase 1 - Base environment + training</td>
+            <td>Zavis</td>
+            <td><span class="prio high">High</span></td>
+            <td><span class="badge done">Completed</span></td>
+            <td>100%</td>
+            <td><b>Done</b></td>
+            <td>None</td>
+            <td>Proceed to guardrails pack + booking workflows to enable safe responses and booking assistance.</td>
+          </tr>
+          <tr>
+            <td><b>18</b></td>
+            <td>Marketing Go-Live & Content</td>
+            <td>Google My Business - Al Wasl</td>
+            <td>Fahad</td>
+            <td><span class="prio high">High</span></td>
+            <td><span class="badge live">Live</span></td>
+            <td>100%</td>
+            <td><b>Live</b></td>
+            <td>None</td>
+            <td>Weekly posts + review push; ensure link consistency to main-domain landing page.</td>
+          </tr>
+          <tr>
+            <td><b>36</b></td>
+            <td>Partnerships & Corporate Growth</td>
+            <td>Org structure update + green light to restart hiring</td>
+            <td>CEO Akbar</td>
+            <td><span class="prio high">High</span></td>
+            <td><span class="badge pending">Pending CEO input</span></td>
+            <td>0%</td>
+            <td><b>ASAP</b></td>
+            <td>Need approval on structure + JD list; urgent hires: Project Coordinator + Digital/CRM Exec. ~21 candidates already interviewed.</td>
+            <td>Confirm structure/JDs; restart hiring immediately; prioritise Project Coordinator + Digital/CRM Exec.</td>
+          </tr>
+          <tr>
+            <td><b>27</b></td>
+            <td>Website & Booking Tech</td>
+            <td>Booking Enablement (Stepwise)</td>
+            <td>Zavis + Fahad / Akbar + Dr Luvi</td>
+            <td><span class="prio medium">Medium</span></td>
+            <td><span class="badge progress">In Progress</span></td>
+            <td>50%</td>
+            <td><b>7 Jan 2026</b></td>
+            <td>Step 1 default booking build; Step 2 guardrails/T&C alignment</td>
+            <td>Step 1: default booking live. Step 2: align with guardrails pack and T&C.</td>
+          </tr>
+          <tr>
+            <td><b>29</b></td>
+            <td>Marketing Go-Live & Content</td>
+            <td>Content Bank (4–6 weeks ahead)</td>
+            <td>Fahad + Social PR</td>
+            <td><span class="prio medium">Medium</span></td>
+            <td><span class="badge progress">In Progress</span></td>
+            <td>10%</td>
+            <td><b>7 Jan 2026</b></td>
+            <td>Repository not structured yet</td>
+            <td>Create folder + sheet; ingest shoot outputs; build 4–6 week pipeline.</td>
+          </tr>
+          <tr>
+            <td><b>33</b></td>
+            <td>Partnerships & Corporate Growth</td>
+            <td>Offline activations playbook</td>
+            <td>Fahad + Akbar</td>
+            <td><span class="prio medium">Medium</span></td>
+            <td><span class="badge progress">In Progress</span></td>
+            <td>10%</td>
+            <td><b>8 Feb 2026</b></td>
+            <td>Partner list + calendar not prepared</td>
+            <td>Draft playbook; list top corporates; propose 30-day activation calendar.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Branch targets (quarterly) and capacity assumptions</h2>
+    <div class="split">
+      <div class="card">
+        <div class="label">Branch targets by quarter</div>
+        <div class="tablewrap">
+          <table aria-label="Branch quarterly targets" style="min-width:560px">
+            <thead>
+              <tr><th>Branch</th><th>Q1</th><th>Q2</th><th>Q3</th><th>Q4</th></tr>
+            </thead>
+            <tbody>
+<tr><td><b>ACACIA/DN</b></td><td>1125</td><td>1285</td><td>2811</td><td>3093</td></tr>
+<tr><td><b>Dr Tosun</b></td><td>1807</td><td>2008</td><td>2209</td><td>2410</td></tr>
+<tr><td><b>DIFC</b></td><td>0</td><td>964</td><td>1687</td><td>1928</td></tr>
+<tr><td><b>Russian (Fairmont)</b></td><td>643</td><td>1125</td><td>1285</td><td>1607</td></tr>
+<tr><td><b>Total</b></td><td><b>3575</b></td><td><b>5382</b></td><td><b>7992</b></td><td><b>9038</b></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="label">Units and occupancy assumptions by quarter</div>
+        <div class="tablewrap">
+          <table aria-label="Ops targets" style="min-width:560px">
+            <thead>
+              <tr><th>Branch</th><th>Metric</th><th>Q1</th><th>Q2</th><th>Q3</th><th>Q4</th></tr>
+            </thead>
+            <tbody>
+<tr><td><b>ACACIA</b></td><td>Units</td><td>4</td><td>4</td><td>7</td><td>7</td></tr>
+<tr><td><b>ACACIA</b></td><td>Occupancy</td><td>35%</td><td>40%</td><td>50%</td><td>55%</td></tr>
+<tr><td><b>Dr Tosun</b></td><td>Units</td><td>5</td><td>5</td><td>5</td><td>5</td></tr>
+<tr><td><b>Dr Tosun</b></td><td>Occupancy</td><td>45%</td><td>50%</td><td>55%</td><td>60%</td></tr>
+<tr><td><b>DIFC</b></td><td>Units</td><td>6</td><td>6</td><td>6</td><td>6</td></tr>
+<tr><td><b>DIFC</b></td><td>Occupancy</td><td>0%</td><td>20%</td><td>35%</td><td>40%</td></tr>
+<tr><td><b>Russian (Fairmont)</b></td><td>Units</td><td>4</td><td>4</td><td>4</td><td>4</td></tr>
+<tr><td><b>Russian (Fairmont)</b></td><td>Occupancy</td><td>20%</td><td>35%</td><td>40%</td><td>50%</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Lead targets (Nov 2025 to Jan 2026) and weekly run-rate</h2>
+    <div class="card">
+      <div class="label">Monthly lead targets (Acacia + Dr Tosun)</div>
+      <div class="tablewrap">
+        <table aria-label="Lead targets" style="min-width:760px">
+          <thead>
+            <tr>
+              <th>Month</th>
+              <th>Paid</th>
+              <th>Organic</th>
+              <th>Retention/Recall</th>
+              <th>Total</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+<tr><td><b>Nov 2025</b></td><td>127</td><td>166</td><td>685</td><td><b>978</b></td><td>Start month (assumed M1)</td></tr>
+<tr><td><b>Dec 2025</b></td><td>134</td><td>159</td><td>685</td><td><b>978</b></td><td></td></tr>
+<tr><td><b>Jan 2026</b></td><td>166</td><td>127</td><td>685</td><td><b>978</b></td><td>Jan 2026 targets</td></tr>
+<tr><td><b>Cumulative (Nov–Jan)</b></td><td colspan='3'></td><td><b>2934</b></td><td>Backlog shown above uses confirmed actuals only</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="small" style="margin-top:10px;">
+        <b>Channel contribution (annual planning):</b> Paid ~18% + 17%, Organic ~12% + 13%, Retention/Recall ~70% + 70% (as per planning table).
+        This highlights why WhatsApp/CRM retention strategy must be executed with strict compliance guardrails and controlled rollout.
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <b>Notes on backlog maths:</b> This one-pager uses targets from your table and confirmed actuals provided (Jan MTD leads = {known_actual_total}).
+    Nov and Dec actuals were not included in your message, so the “backlog since Nov” is conservative and will update once those actuals are added.
+    <br/><br/>
+    <b>What changes next:</b> After the first shoot, we expect usable assets in 3–5 working days, then we scale budgets and refresh creatives across channels.
+    Task-level dependencies (AI guardrails + WhatsApp strategy + T&C clinical input) are shown in the register to keep performance and delivery aligned.
+  </div>
+
+</div>
+</body>
+</html>

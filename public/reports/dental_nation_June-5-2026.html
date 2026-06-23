@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dental Nation | Mr. Akbar Growth Dashboard</title>
+  <style>
+    :root {
+      --navy:#244260; --mint:#CFE2D0; --off:#F7F5EF; --soft:#5793A3; --pale:#C9E2E1;
+      --green:#A9C3A6; --peach:#DFA798; --yellow:#FFED9F; --dark:#2C3233; --taupe:#ADAC99;
+      --beige:#EEEFE1; --white:#fff; --red:#B42318; --amber:#B54708; --blue:#175CD3;
+      --shadow:0 18px 45px rgba(36,66,96,.12); --line:rgba(36,66,96,.13);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Helvetica,Arial,sans-serif;background:linear-gradient(135deg,var(--off),#fff 45%,var(--beige));color:var(--dark);line-height:1.45}
+    .page{max-width:1440px;margin:0 auto;padding:30px 26px 70px}
+    .hero{background:var(--navy);color:var(--off);border-radius:30px;padding:34px 38px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+    .hero:before{content:"";position:absolute;right:-130px;top:-120px;width:360px;height:360px;background:rgba(207,226,208,.16);border-radius:50%}
+    .hero:after{content:"";position:absolute;right:100px;bottom:-170px;width:300px;height:300px;background:rgba(87,147,163,.20);border-radius:50%}
+    .kicker{font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--mint);font-weight:800;margin-bottom:12px}
+    h1{font-size:clamp(34px,5vw,62px);line-height:1.02;letter-spacing:-1.8px;margin:0;max-width:1050px}
+    .hero p{font-size:17px;max-width:1020px;color:rgba(247,245,239,.88);margin:16px 0 0;position:relative;z-index:1}
+    .hero-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-top:26px;position:relative;z-index:1}
+    .metric{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);border-radius:18px;padding:16px}
+    .metric .num{font-size:28px;font-weight:900;color:var(--mint);line-height:1}
+    .metric .lbl{font-size:12px;margin-top:7px;color:rgba(247,245,239,.82)}
+    .section{margin-top:24px;background:rgba(255,255,255,.82);border:1px solid var(--line);border-radius:24px;padding:26px;box-shadow:0 10px 30px rgba(36,66,96,.06)}
+    .section-title{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;margin-bottom:20px}
+    h2{font-size:25px;line-height:1.15;margin:0;color:var(--navy);letter-spacing:-.5px}
+    .note{max-width:560px;text-align:right;color:#59696d;font-size:14px}
+    .tag{display:inline-flex;align-items:center;border-radius:999px;background:var(--mint);color:var(--navy);font-size:12px;font-weight:900;padding:8px 12px;text-transform:uppercase;letter-spacing:.5px}
+    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+    .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+    .card{background:var(--white);border:1px solid var(--line);border-radius:20px;padding:20px}
+    .card h3{margin:0 0 8px;color:var(--navy);font-size:18px}
+    .card p,.card li{font-size:14px;color:#45565a}
+    .card ul{padding-left:18px;margin:10px 0 0}
+    .ask{background:linear-gradient(135deg,var(--navy),#315779);color:var(--off);border-radius:22px;padding:24px;border:0}
+    .ask h3{color:var(--mint);font-size:22px}
+    .ask p,.ask li{color:rgba(247,245,239,.88)}
+    .decision-list{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:14px}
+    .decision{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);border-radius:16px;padding:14px}
+    .decision b{display:block;color:var(--mint);font-size:14px;margin-bottom:5px}
+    .decision span{font-size:13px;color:rgba(247,245,239,.85)}
+    .phase-card{border:1px solid var(--line);background:var(--white);border-radius:20px;padding:18px;margin-bottom:13px;position:relative;overflow:hidden}
+    .phase-card.red{border-left:6px solid var(--red)} .phase-card.amber{border-left:6px solid var(--amber)} .phase-card.green{border-left:6px solid #2E7D32} .phase-card.grey{border-left:6px solid var(--taupe)}
+    .phase-top{display:flex;align-items:center;gap:10px;color:var(--navy)}
+    .phase-status{margin-left:auto;background:#F2F4F7;color:#344054;font-weight:800;font-size:12px;border-radius:999px;padding:6px 10px}
+    .dot{width:10px;height:10px;border-radius:50%;display:inline-block} .dot.red{background:var(--red)} .dot.amber{background:var(--amber)} .dot.green{background:#2E7D32} .dot.grey{background:var(--taupe)}
+    .progress{height:9px;background:#EEF2F0;border-radius:999px;margin:14px 0;overflow:hidden} .progress span{display:block;height:100%;background:linear-gradient(90deg,var(--soft),var(--mint));border-radius:999px}
+    .phase-grid{display:grid;grid-template-columns:1fr 1.5fr 1fr 1.4fr;gap:12px}
+    label{display:block;font-size:11px;color:#667085;text-transform:uppercase;letter-spacing:.6px;font-weight:900;margin-bottom:4px}
+    .phase-grid b{font-size:13px;color:#344054;font-weight:700}
+    table{width:100%;border-collapse:separate;border-spacing:0;background:#fff;border:1px solid var(--line);border-radius:18px;overflow:hidden;font-size:13px}
+    th{background:var(--navy);color:var(--off);text-align:left;padding:12px;font-size:11px;text-transform:uppercase;letter-spacing:.55px}
+    td{padding:12px;border-bottom:1px solid rgba(36,66,96,.09);vertical-align:top}
+    tr:last-child td{border-bottom:0}
+    small{display:block;color:#667085;margin-top:5px;line-height:1.35}
+    .phase-pill{background:#EEF4F7;color:var(--navy);border-radius:999px;padding:6px 9px;font-size:12px;font-weight:800;white-space:nowrap}
+    .status{display:inline-block;border-radius:999px;padding:6px 9px;font-size:11px;font-weight:900;white-space:nowrap}
+    .in-progress{background:#EAF3FF;color:var(--blue)} .not-started{background:#F2F4F7;color:#475467} .pending-creative{background:#FFECE6;color:var(--red)} .active{background:#E9F7EF;color:#247146} .monthly{background:#FFF7D6;color:#806000}
+    .prio-high{color:var(--red);font-weight:900} .prio-med{color:var(--amber);font-weight:900}
+    .lane-row{display:grid;grid-template-columns:260px 1fr 140px 1.3fr 1.2fr;gap:14px;align-items:center;border-bottom:1px solid var(--line);padding:14px 0}
+    .lane-row:last-child{border-bottom:0}
+    .lane-head{display:flex;gap:12px;align-items:center}
+    .lane-code{min-width:64px;text-align:center;background:var(--navy);color:var(--off);border-radius:999px;padding:8px 10px;font-weight:900}
+    .lane-head strong{display:block;color:var(--navy)} .lane-head small{margin-top:3px}
+    .bar-wrap{height:14px;background:#EEF2F0;border-radius:999px;overflow:hidden} .bar-wrap span{display:block;height:100%;background:linear-gradient(90deg,var(--soft),var(--mint));border-radius:999px}
+    .lane-target{font-weight:900;color:var(--navy)} .lane-success,.lane-blocker{font-size:12.5px;color:#526367}
+    .lane-blocker{color:#7A3E00}
+    .severity{border-radius:999px;padding:6px 9px;font-size:11px;font-weight:900} .severity.high{background:#FEE4E2;color:var(--red)} .severity.medium{background:#FFF1BE;color:var(--amber)} .severity.low{background:#EEF2F0;color:#475467}
+    .flowchart{background:#fff;border:1px solid var(--line);border-radius:22px;padding:24px;overflow:auto}
+    .flow-center{display:flex;flex-direction:column;align-items:center;gap:12px;min-width:980px}
+    .node{border:2px solid var(--line);background:#fff;border-radius:14px;min-width:150px;text-align:center;padding:12px 14px;font-weight:900;color:var(--navy);box-shadow:0 7px 18px rgba(36,66,96,.06)}
+    .node.green{border-color:var(--mint);background:#F3FAF5} .node.blue{border-color:#B1CCDC;background:#F1F8FB} .node.orange{border-color:#FFDDB8;background:#FFF8EE}
+    .arrow-down{height:24px;width:2px;background:var(--taupe);position:relative} .arrow-down:after{content:"";position:absolute;bottom:-2px;left:-5px;border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid var(--taupe)}
+    .split{display:grid;grid-template-columns:1fr 1fr;gap:140px;position:relative}
+    .split:before{content:"";position:absolute;top:-18px;left:25%;right:25%;height:2px;background:var(--taupe)} .split .branch{display:flex;flex-direction:column;align-items:center;gap:12px;position:relative} .split .branch:before{content:"";position:absolute;top:-18px;height:18px;width:2px;background:var(--taupe)}
+    .children{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;position:relative} .children .node{min-width:170px}
+    .children:before{content:"";position:absolute;top:-16px;left:22%;right:22%;height:2px;background:var(--taupe)} .children .node:before{content:"";display:block;position:relative;top:-30px;margin:0 auto -20px;width:2px;height:18px;background:var(--taupe)}
+    .programmatic{display:grid;grid-template-columns:1fr;gap:10px;align-items:center;justify-items:center;min-width:900px}
+    .circle{width:126px;height:126px;border:3px solid var(--mint);border-radius:50%;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:900;color:var(--navy);background:#F7FCF8}
+    .seo-row{display:grid;grid-template-columns:repeat(3,1fr);gap:34px;margin-top:18px;position:relative} .seo-row .node{min-width:200px}
+    .seo-row:before{content:"";position:absolute;top:-18px;left:16%;right:16%;height:2px;background:var(--taupe)} .seo-row .node:before{content:"";display:block;position:relative;top:-30px;margin:0 auto -20px;width:2px;height:18px;background:var(--taupe)}
+    .final-node{margin-top:18px}
+    .gantt{display:grid;grid-template-columns:210px 1fr;gap:10px;align-items:center}
+    .gantt-row{display:contents}
+    .gantt-label{font-weight:900;color:var(--navy);padding:9px 0;font-size:13px}
+    .gantt-track{height:26px;background:#EEF2F0;border-radius:999px;position:relative;overflow:hidden}
+    .gantt-bar{position:absolute;top:0;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--soft),var(--mint));font-size:11px;font-weight:900;color:var(--navy);display:flex;align-items:center;justify-content:center;white-space:nowrap}
+    .bar1{left:0;width:18%} .bar2{left:7%;width:93%} .bar3{left:13%;width:87%} .bar4{left:14%;width:30%} .bar5{left:28%;width:40%}
+    .month-head{display:grid;grid-template-columns:210px repeat(5,1fr);gap:10px;margin-bottom:8px;color:#667085;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.5px}
+    .footer{margin-top:24px;background:var(--navy);color:var(--off);border-radius:24px;padding:24px;display:flex;justify-content:space-between;gap:20px;align-items:center}
+    .footer b{color:var(--mint)}
+    @media(max-width:1000px){.hero-grid,.grid-2,.grid-3,.decision-list{grid-template-columns:1fr}.phase-grid,.lane-row{grid-template-columns:1fr}.note{text-align:left}.section-title{flex-direction:column}}
+    @media print{body{background:white}.page{max-width:none;padding:12px}.section,.hero{break-inside:avoid;box-shadow:none}}
+  </style>
+</head>
+<body>
+<main class="page">
+
+  <section class="hero">
+    <div class="kicker">Dental Nation | Mr. Akbar CEO Growth Dashboard</div>
+    <h1>Content production is the current critical path for BAU, lane campaigns, Influencer Agency  upper funnel and the SEO growth engine.</h1>
+    <p>This version is structured like a Zoho leadership dashboard: project phases, timelines, RAG status, pending actions, blockers, dependencies, lane targets and the operating architecture in one view.</p>
+    <div class="hero-grid">
+      <div class="metric"><div class="num">2,000</div><div class="lbl">Monthly lead target once Lane B/D/E/J are active</div></div>
+      <div class="metric"><div class="num">875</div><div class="lbl">Lane B Family / Routine monthly lead target</div></div>
+      <div class="metric"><div class="num">500</div><div class="lbl">Lane D Emergency and Lane J Ortho each monthly target</div></div>
+      <div class="metric"><div class="num">125</div><div class="lbl">Lane E Lifestyle / Smile Bar monthly lead target</div></div>
+      <div class="metric"><div class="num">1</div><div class="lbl">Shortlisted freelance designer to unlock production</div></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-title">
+      <h2>1. CEO decision required today</h2>
+      <div class="note">The dashboard is not just a status update. It is designed to make the bottleneck and decision path obvious.</div>
+    </div>
+    <div class="grid-2">
+      <div class="card ask">
+        <h3>Decision ask</h3>
+        <p>Approve the shortlisted freelance designer as the near-term execution layer for offer statics, AI-led creatives, short AI videos and video editing. This is the highest-impact unblocker for the next 2 to 3 weeks.</p>
+        <div class="decision-list">
+          <div class="decision"><b>Creative engine</b><span>Start weekly delivery of static creatives, reels, offer adaptations and AI videos.</span></div>
+          <div class="decision"><b>Influencer Agency  support</b><span>Prepare upper-funnel assets and variations once I/O inputs are cleared.</span></div>
+          <div class="decision"><b>SEO support</b><span>Feed Programmatic SEO templates and future AI SEO content scale.</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Recommended positioning to Mr. Akbar</h3>
+        <p><strong>We are not hiring a full creative team right now.</strong> We are creating a lean execution layer to remove the bottleneck, while keeping creative direction, brand alignment, offer accuracy and final approval internally.</p>
+        <ul>
+          <li>Remote freelancer handles production and editing.</li>
+          <li>Local videography remains required for clinic, doctor and patient-style content capture.</li>
+          <li>Internal team owns the brief, treatment positioning, CTA, approval and medical sensitivity.</li>
+          <li>Without this, Influencer Agency  and Lane E will remain exposed to creative shortage.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+    <section class="section" id="shortlisted-designer-freelancer">
+      <div class="section-title">
+        <h2>Shortlisted Designer Freelancer | Commercial & Delivery Assessment</h2>
+        <span class="tag">Decision Required</span>
+      </div>
+
+      <div class="grid-3">
+        <div class="card">
+          <h3>Scope Discussed</h3>
+          <p>
+            The scope has been discussed with the shortlisted freelancer. He is willing to support Dental Nation on a monthly retainer basis covering short-form video editing, static creatives, and campaign adaptations.
+          </p>
+          <p style="margin-top:10px;">
+            <strong>Portfolio reviewed:</strong><br>
+            <a href="https://www.behance.net/Karim-Osama-11" target="_blank" style="color:#244260;font-weight:800;word-break:break-all;">https://www.behance.net/Karim-Osama-11</a>
+          </p>
+        </div>
+
+        <div class="card">
+          <h3>Quality Assessment</h3>
+          <p>
+            Portfolio quality appears suitable for Dental Nation’s immediate execution needs, particularly for social media content, short-form video editing, motion graphics, and advertising creatives.
+          </p>
+          <ul>
+            <li>Strong fit for reels, stories and paid social assets</li>
+            <li>Useful for Influencer Agency  upper-funnel creative variations</li>
+            <li>Good execution support for offer-led promotional communication</li>
+          </ul>
+        </div>
+
+        <div class="card">
+          <h3>CEO Ask</h3>
+          <p>
+            Please share your thoughts on whether we should proceed with this engagement. The recommendation is to proceed if we want to unblock the content pipeline immediately and support Influencer Agency  campaign readiness.
+          </p>
+        </div>
+      </div>
+
+      <div style="margin-top:18px;">
+        <table>
+          <thead>
+            <tr>
+              <th>Monthly Deliverable</th>
+              <th>Quantity</th>
+              <th>EGP Cost</th>
+              <th>Approx. AED Cost</th>
+              <th>Approx. AED Unit Cost</th>
+              <th>Business Use</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Edited short-form videos</strong></td>
+              <td>40 videos</td>
+              <td><strong>EGP 40,000</strong><br><span style="color:#667;">40 × EGP 1,000</span></td>
+              <td><strong>AED 2,960</strong></td>
+              <td><strong>AED 74/video</strong></td>
+              <td>Reels, TikTok, YouTube Shorts, doctor content, offer videos, Influencer Agency  awareness assets.</td>
+            </tr>
+            <tr>
+              <td><strong>Static creatives</strong></td>
+              <td>30 creatives</td>
+              <td><strong>EGP 9,000</strong><br><span style="color:#667;">30 × EGP 300</span></td>
+              <td><strong>AED 665</strong></td>
+              <td><strong>AED 22/creative</strong></td>
+              <td>Offer creatives, GMB posts, Meta/Snap/TikTok ads, WhatsApp creatives, story assets.</td>
+            </tr>
+            <tr>
+              <td><strong>Campaign variations and adaptations</strong></td>
+              <td>As required</td>
+              <td><strong>EGP 6,000</strong></td>
+              <td><strong>AED 445</strong></td>
+              <td><strong>Retainer-based</strong></td>
+              <td>Resizes, language/layout variations, offer adaptations, A/B creative versions and campaign refreshes.</td>
+            </tr>
+            <tr>
+              <td><strong>Total monthly retainer</strong></td>
+              <td>40 videos + 30 creatives + adaptations</td>
+              <td><strong>EGP 55,000/month</strong></td>
+              <td><strong>AED 4,070/month</strong></td>
+              <td><strong>Blended output model</strong></td>
+              <td>Monthly creative production layer to unblock organic, paid and Influencer Agency  upper-funnel execution.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="grid-2" style="margin-top:18px;">
+        <div class="card" style="border-left:6px solid #CFE2D0;">
+          <h3>Why this is commercially attractive</h3>
+          <ul>
+            <li>Low implied unit cost: approx. AED 74 per video and AED 22 per static creative.</li>
+            <li>Retainer model gives predictable monthly capacity and faster campaign turnaround.</li>
+            <li>Directly supports Influencer Agency  upper-funnel execution with more creative variations.</li>
+            <li>Solves the immediate content bottleneck without hiring a full in-house resource.</li>
+          </ul>
+        </div>
+        <div class="card" style="border-left:6px solid #DFA798;">
+          <h3>Important caveats</h3>
+          <ul>
+            <li>Freelancer can execute, but internal team must own creative direction, campaign brief, medical accuracy and final approval.</li>
+            <li>Clinic-based shoots, doctor content and patient-style footage still require local videography or clinic-side capture.</li>
+            <li>First month should be treated as a performance trial with weekly QA and output review.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+
+  <section class="section">
+    <div class="section-title">
+      <h2>2. Project control dashboard</h2>
+      <div class="note">Phases, status, KPI, lead impact and dependencies pulled into one management view.</div>
+    </div>
+    
+      <div class="phase-card amber">
+        <div class="phase-top">
+          <span class="dot amber"></span>
+          <strong>Phase 1 - Infrastructure</strong>
+          <span class="phase-status">In Progress</span>
+        </div>
+        <div class="progress"><span style="width:72%"></span></div>
+        <div class="phase-grid">
+          <div><label>Timeline</label><b>22 May 2026 → 07 Jun 2026</b></div>
+          <div><label>KPI</label><b>100% platform and tracking readiness</b></div>
+          <div><label>Lead impact</label><b>Foundation only</b></div>
+          <div><label>Core dependency</label><b>Access, QA, CRM source tagging</b></div>
+        </div>
+      </div>
+      <div class="phase-card red">
+        <div class="phase-top">
+          <span class="dot red"></span>
+          <strong>Phase 2 - BAU Campaign</strong>
+          <span class="phase-status">Active</span>
+        </div>
+        <div class="progress"><span style="width:38%"></span></div>
+        <div class="phase-grid">
+          <div><label>Timeline</label><b>02 Jun 2026 → 30 Sep 2026</b></div>
+          <div><label>KPI</label><b>2,000 lane leads / month once B/D/E/J are active</b></div>
+          <div><label>Lead impact</label><b>2,000 / month</b></div>
+          <div><label>Core dependency</label><b>Creative pipeline + Influencer Agency  launch</b></div>
+        </div>
+      </div>
+      <div class="phase-card red">
+        <div class="phase-top">
+          <span class="dot red"></span>
+          <strong>Phase 3 - Lane Campaigns</strong>
+          <span class="phase-status">Not Started / Pending Creative</span>
+        </div>
+        <div class="progress"><span style="width:18%"></span></div>
+        <div class="phase-grid">
+          <div><label>Timeline</label><b>10 Jun 2026 → 30 Sep 2026</b></div>
+          <div><label>KPI</label><b>Lane B 875, Lane D 500, Lane E 125, Lane J 500</b></div>
+          <div><label>Lead impact</label><b>2,000 / month</b></div>
+          <div><label>Core dependency</label><b>Designer, offers, tracking, clinic capacity</b></div>
+        </div>
+      </div>
+      <div class="phase-card amber">
+        <div class="phase-top">
+          <span class="dot amber"></span>
+          <strong>Programmatic SEO</strong>
+          <span class="phase-status">Next Sprint</span>
+        </div>
+        <div class="progress"><span style="width:15%"></span></div>
+        <div class="phase-grid">
+          <div><label>Timeline</label><b>Next week → TBC</b></div>
+          <div><label>KPI</label><b>Keyword matrix, templates, build/deploy, indexation</b></div>
+          <div><label>Lead impact</label><b>SEO demand capture</b></div>
+          <div><label>Core dependency</label><b>Website migration + content templates</b></div>
+        </div>
+      </div>
+      <div class="phase-card grey">
+        <div class="phase-top">
+          <span class="dot grey"></span>
+          <strong>AI SEO</strong>
+          <span class="phase-status">Queued</span>
+        </div>
+        <div class="progress"><span style="width:5%"></span></div>
+        <div class="phase-grid">
+          <div><label>Timeline</label><b>After Programmatic SEO foundation → TBC</b></div>
+          <div><label>KPI</label><b>AI search visibility + content scalability</b></div>
+          <div><label>Lead impact</label><b>Assisted discovery</b></div>
+          <div><label>Core dependency</label><b>Programmatic SEO structure live</b></div>
+        </div>
+      </div>
+  </section>
+
+  <section class="section">
+    <div class="section-title">
+      <h2>3. Project timeline view</h2>
+      <div class="note">Simple leadership Gantt showing what is in motion, what starts next and what is dependent on creative readiness.</div>
+    </div>
+    <div class="month-head"><div></div><div>May</div><div>June</div><div>July</div><div>August</div><div>September</div></div>
+    <div class="gantt">
+      <div class="gantt-row"><div class="gantt-label">Phase 1 Infrastructure</div><div class="gantt-track"><div class="gantt-bar bar1">22 May → 07 Jun</div></div></div>
+      <div class="gantt-row"><div class="gantt-label">Phase 2 BAU Campaign</div><div class="gantt-track"><div class="gantt-bar bar2">02 Jun → 30 Sep</div></div></div>
+      <div class="gantt-row"><div class="gantt-label">Phase 3 Lane Campaigns</div><div class="gantt-track"><div class="gantt-bar bar3">10 Jun → 30 Sep</div></div></div>
+      <div class="gantt-row"><div class="gantt-label">Programmatic SEO</div><div class="gantt-track"><div class="gantt-bar bar4">Next week sprint</div></div></div>
+      <div class="gantt-row"><div class="gantt-label">AI SEO</div><div class="gantt-track"><div class="gantt-bar bar5">After SEO foundation</div></div></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-title">
+      <h2>4. Task tracker: timelines, status and pending items</h2>
+      <div class="note">This is the CEO-ready detailed dashboard view for project governance.</div>
+    </div>
+    <table>
+      <thead>
+        <tr><th>Phase</th><th>Task / execution detail</th><th>Status</th><th>Start</th><th>Due</th><th>Priority</th><th>Pending / next action</th></tr>
+      </thead>
+      <tbody>
+      <tr>
+        <td><span class="phase-pill">Phase 1</span></td>
+        <td><strong>Project Development</strong><br><small>Architecture map across tracking, platforms, GMB, CRM attribution and reporting</small></td>
+        <td><span class="status in-progress">In Progress</span></td>
+        <td>22 May</td>
+        <td>26 May</td>
+        <td><span class="prio-high">High</span></td>
+        <td>Finish platform/channel map and access confirmation</td>
+      </tr>
+      <tr>
+        <td><span class="phase-pill">Phase 1</span></td>
+        <td><strong>Business Requirement</strong><br><small>KPI metrics, lane targets, success criteria and governance</small></td>
+        <td><span class="status in-progress">In Progress</span></td>
+        <td>26 May</td>
+        <td>29 May</td>
+        <td><span class="prio-high">High</span></td>
+        <td>CEO/lane owner alignment</td>
+      </tr>
+      <tr>
+        <td><span class="phase-pill">Phase 1</span></td>
+        <td><strong>Development &amp; Test</strong><br><small>Test GA4, pixels, CRM source capture, WhatsApp/call routing</small></td>
+        <td><span class="status in-progress">In Progress</span></td>
+        <td>29 May</td>
+        <td>04 Jun</td>
+        <td><span class="prio-high">High</span></td>
+        <td>Resolve CRM/source mapping gaps</td>
+      </tr>
+      <tr>
+        <td><span class="phase-pill">Phase 1</span></td>
+        <td><strong>Production</strong><br><small>Publish final tracking URLs and enable required conversion events</small></td>
+        <td><span class="status not-started">Not Started</span></td>
+        <td>04 Jun</td>
+        <td>07 Jun</td>
+        <td><span class="prio-high">High</span></td>
+        <td>Needs QA sign-off and campaign URL sheet</td>
+      </tr>
+      <tr>
+        <td><span class="phase-pill">Phase 1</span></td>
+        <td><strong>Monitoring &amp; Controlling</strong><br><small>Daily QA for events, source accuracy, dashboard mismatch and lead routing</small></td>
+        <td><span class="status not-started">Not Started</span></td>
+        <td>07 Jun</td>
+        <td>14 Jun</td>
+        <td><span class="prio-med">Medium</span></td>
+        <td>Agency/CRM response time</td>
+      </tr>
+      <tr>
+        <td><span class="phase-pill">Phase 1</span></td>
+        <td><strong>Closure</strong><br><small>Infrastructure sign-off, blocker list and handover</small></td>
+        <td><span class="status not-started">Not Started</span></td>
+        <td>14 Jun</td>
+        <td>15 Jun</td>
+        <td><span class="prio-med">Medium</span></td>
+        <td>Open creative/video blocker</td>
+      </tr>
+      <tr>
+        <td><span class="phase-pill">Phase 2</span></td>
+        <td><strong>Project Development</strong><br><small>BAU campaign plan covering Google, Meta, TikTok, GMB, CRM and influencer AGENCY Ads</small></td>
+        <td><span class="status in-progress">In Progress</span></td>
+        <td>02 Jun</td>
+        <td>06 Jun</td>
+        <td><span class="prio-high">High</span></td>
+        <td>Budget, creative, offer finalization</td>
+      </tr>
+      <tr>
+        <td><span class="phase-pill">Phase 2</span></td>
+        <td><strong>Business Requirement</strong><br><small>Monthly KPI requirements, lead volumes, CPL, booking and show-up metrics</small></td>
+        <td><span class="status in-progress">In Progress</span></td>
+        <td>06 Jun</td>
+        <td>10 Jun</td>
+        <td><span class="prio-high">High</span></td>
+        <td>CRM-to-revenue mapping</td>
+      </tr>
+      <tr>
+        <td><span class="phase-pill">Phase 2</span></td>
+        <td><strong>Development &amp; Test</strong><br><small>Campaign shells, UTMs, lead forms, WhatsApp routing and pre-launch QA</small></td>
+        <td><span class="status not-started">Not Started</span></td>
+        <td>10 Jun</td>
+        <td>16 Jun</td>
+        <td><span class="prio-high">High</span></td>
+        <td>Creative assets and landing page approval</td>
+      </tr>
+      <tr>
+        <td><span class="phase-pill">Phase 2</span></td>
+        <td><strong>Production</strong><br><small>Launch BAU campaigns and support Influencer Agency  campaign activation</small></td>
+        <td><span class="status pending-creative">Pending Creative</span></td>
+        <td>16 Jun</td>
+        <td>30 Jun</td>
+        <td><span class="prio-high">High</span></td>
+        <td>Primary blocker: videos/creatives</td>
+      </tr>
+      <tr>
+        <td><span class="phase-pill">Phase 2</span></td>
+        <td><strong>Monitoring &amp; Controlling</strong><br><small>Weekly optimization across leads, CPL, booking, show-up, GMB and budget shifts</small></td>
+        <td><span class="status not-started">Not Started</span></td>
+        <td>17 Jun</td>
+        <td>30 Sep</td>
+        <td><span class="prio-high">High</span></td>
+        <td>Front desk SLA, source leakage, clinic capacity</td>
+      </tr>
+      <tr>
+        <td><span class="phase-pill">Phase 2</span></td>
+        <td><strong>Closure</strong><br><small>Monthly CEO report: expected vs actual, blockers and next month priorities</small></td>
+        <td><span class="status monthly">Monthly</span></td>
+        <td>30 Jun</td>
+        <td>30 Sep</td>
+        <td><span class="prio-med">Medium</span></td>
+        <td>Finance and revenue lag</td>
+      </tr>
+      <tr>
+        <td><span class="phase-pill">Phase 3</span></td>
+        <td><strong>Project Development</strong><br><small>Lane-wise blueprint for B, D, E, J and F</small></td>
+        <td><span class="status not-started">Not Started</span></td>
+        <td>10 Jun</td>
+        <td>14 Jun</td>
+        <td><span class="prio-high">High</span></td>
+        <td>Lane F KPI and offer pending</td>
+      </tr>
+      <tr>
+        <td><span class="phase-pill">Phase 3</span></td>
+        <td><strong>Business Requirement</strong><br><small>Lane-specific targets, offer, clinic capacity and source tagging</small></td>
+        <td><span class="status not-started">Not Started</span></td>
+        <td>14 Jun</td>
+        <td>18 Jun</td>
+        <td><span class="prio-high">High</span></td>
+        <td>Budget and offer approval</td>
+      </tr>
+      <tr>
+        <td><span class="phase-pill">Phase 3</span></td>
+        <td><strong>Development &amp; Test</strong><br><small>Campaign assets, LP/forms, UTMs, WhatsApp scripts and CRM fields</small></td>
+        <td><span class="status not-started">Not Started</span></td>
+        <td>18 Jun</td>
+        <td>24 Jun</td>
+        <td><span class="prio-high">High</span></td>
+        <td>Creative asset shortage</td>
+      </tr>
+      <tr>
+        <td><span class="phase-pill">Phase 3</span></td>
+        <td><strong>Production</strong><br><small>Launch lane campaigns by priority and creative readiness</small></td>
+        <td><span class="status pending-creative">Pending Creative</span></td>
+        <td>24 Jun</td>
+        <td>15 Jul</td>
+        <td><span class="prio-high">High</span></td>
+        <td>Designer, budget, slots, tracking</td>
+      </tr>
+      <tr>
+        <td><span class="phase-pill">Phase 3</span></td>
+        <td><strong>Monitoring &amp; Controlling</strong><br><small>Weekly lane scorecard and corrective actions</small></td>
+        <td><span class="status not-started">Not Started</span></td>
+        <td>25 Jun</td>
+        <td>30 Sep</td>
+        <td><span class="prio-high">High</span></td>
+        <td>Creative fatigue, source tagging, capacity</td>
+      </tr>
+      <tr>
+        <td><span class="phase-pill">Phase 3</span></td>
+        <td><strong>Closure</strong><br><small>Monthly lane review: spend, leads, CPL, bookings, show-up, treatment value</small></td>
+        <td><span class="status monthly">Monthly</span></td>
+        <td>31 Jul</td>
+        <td>30 Sep</td>
+        <td><span class="prio-med">Medium</span></td>
+        <td>Finance/revenue lag</td>
+      </tr></tbody>
+    </table>
+  </section>
+
+  <section class="section">
+    <div class="section-title">
+      <h2>5. Lane target dashboard</h2>
+      <div class="note">Lead targets and success criteria aligned to the performance objective, not vague percentages.</div>
+    </div>
+    <div class="lane-dashboard">
+      
+      <div class="lane-row">
+        <div class="lane-head">
+          <span class="lane-code">Lane B</span>
+          <div><strong>Family / Routine</strong><small>Google Search + Meta + WhatsApp + GMB</small></div>
+        </div>
+        <div class="bar-wrap"><span style="width:44%"></span></div>
+        <div class="lane-target">875 leads/month</div>
+        <div class="lane-success">Lead-to-booking ≥35%; show-up ≥80%; hygiene utilization 75-85%</div>
+        <div class="lane-blocker">Creative assets, offer approval, clinic slots</div>
+      </div>
+      <div class="lane-row">
+        <div class="lane-head">
+          <span class="lane-code">Lane D</span>
+          <div><strong>Emergency / Fast Access</strong><small>Google Emergency Search + Call Ads + GMB + WhatsApp SLA</small></div>
+        </div>
+        <div class="bar-wrap"><span style="width:25%"></span></div>
+        <div class="lane-target">500 leads/month</div>
+        <div class="lane-success">Same-day booking ≥70%; WhatsApp response ≤2 minutes; 10 emergency slots/day</div>
+        <div class="lane-blocker">Emergency slot protection, call response SLA, clinic capacity</div>
+      </div>
+      <div class="lane-row">
+        <div class="lane-head">
+          <span class="lane-code">Lane E</span>
+          <div><strong>Lifestyle / Smile Bar</strong><small>Instagram/TikTok Influencers + Meta + Partners</small></div>
+        </div>
+        <div class="bar-wrap"><span style="width:6%"></span></div>
+        <div class="lane-target">125 leads/month</div>
+        <div class="lane-success">15-20% upsell; 5-8 active partners; 100% weekly assets delivered</div>
+        <div class="lane-blocker">Major blocker: lifestyle video/reel assets and creator content</div>
+      </div>
+      <div class="lane-row">
+        <div class="lane-head">
+          <span class="lane-code">Lane J</span>
+          <div><strong>Ortho Pipeline</strong><small>Meta Parents/Teens + Google Invisalign/Search + IG Content</small></div>
+        </div>
+        <div class="bar-wrap"><span style="width:25%"></span></div>
+        <div class="lane-target">500 leads/month</div>
+        <div class="lane-success">Consult conversion ≥40%; show rate ≥80%; case acceptance ≥60%; 8 scan slots/week/clinic</div>
+        <div class="lane-blocker">Doctor/scan capacity, before-after content, financing clarity</div>
+      </div>
+      <div class="lane-row">
+        <div class="lane-head">
+          <span class="lane-code">Lane F</span>
+          <div><strong>To be confirmed</strong><small>Channel mix TBC</small></div>
+        </div>
+        <div class="bar-wrap"><span style="width:8%"></span></div>
+        <div class="lane-target">TBC</div>
+        <div class="lane-success">KPI to be confirmed based on lane definition</div>
+        <div class="lane-blocker">Lane target, offer and owner pending</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-title">
+      <h2>6. Current blocker register</h2>
+      <div class="note">What can delay execution, who needs to act and what should be escalated.</div>
+    </div>
+    <table>
+      <thead><tr><th>Blocker</th><th>Severity</th><th>Impact</th><th>Required action</th><th>Escalation trigger</th></tr></thead>
+      <tbody>
+      <tr>
+        <td><strong>Creative/video asset shortage</strong></td>
+        <td><span class="severity high">High</span></td>
+        <td>Delays Meta/TikTok/Influencer/Lane E and limits upper funnel awareness.</td>
+        <td>Finalize freelance designer/video editor support and weekly content pipeline.</td>
+        <td>Escalate if weekly creative capacity is not confirmed.</td>
+      </tr>
+      <tr>
+        <td><strong>Influencer Agency  campaign dependency</strong></td>
+        <td><span class="severity medium">Medium</span></td>
+        <td>Upper-funnel awareness cannot start until setup, visibility and tracking are confirmed.</td>
+        <td>Confirm I/O, placements, tracking, UTM and launch timeline.</td>
+        <td>Escalate if visibility or tracking is not provided.</td>
+      </tr>
+      <tr>
+        <td><strong>Final budget confirmation</strong></td>
+        <td><span class="severity medium">Medium</span></td>
+        <td>Limits campaign pacing and expected lead forecasting.</td>
+        <td>Confirm monthly budget split by BAU and lane.</td>
+        <td>Escalate during CEO update.</td>
+      </tr>
+      <tr>
+        <td><strong>CRM/source tagging leakage</strong></td>
+        <td><span class="severity high">High</span></td>
+        <td>Creates reporting gaps and makes lead contribution unclear.</td>
+        <td>QA all source fields, UTM rules and test leads before spend scale.</td>
+        <td>Escalate if tracking accuracy falls below 95%.</td>
+      </tr>
+      <tr>
+        <td><strong>Front desk response SLA</strong></td>
+        <td><span class="severity high">High</span></td>
+        <td>Leads may not convert if WhatsApp/calls are not answered quickly.</td>
+        <td>Implement response SLA, 3-attempt callback and lost-reason logging.</td>
+        <td>Escalate if response SLA breaches continue.</td>
+      </tr>
+      <tr>
+        <td><strong>Clinic capacity / slot availability</strong></td>
+        <td><span class="severity medium">Medium</span></td>
+        <td>Demand may not be bookable, especially emergency and ortho.</td>
+        <td>Confirm protected emergency slots and ortho scan/consult slots.</td>
+        <td>Escalate if capacity blocks paid media scale.</td>
+      </tr>
+      <tr>
+        <td><strong>Lane F definition pending</strong></td>
+        <td><span class="severity low">Low</span></td>
+        <td>Cannot assign target or success criteria until lane scope is confirmed.</td>
+        <td>Confirm Lane F objective, offer, channel and KPI.</td>
+        <td>Escalate only if Phase 3 launch requires Lane F.</td>
+      </tr></tbody>
+    </table>
+  </section>
+
+  <section class="section">
+    <div class="section-title">
+      <h2>7. Operating architecture: content to channel activation</h2>
+      <div class="note">Rebuilt from the flowchart so Mr. Akbar can see how one content engine feeds organic, paid, WhatsApp, LinkedIn and reporting.</div>
+    </div>
+    <div class="flowchart">
+      <div class="flow-center">
+        <div class="node blue">Content Engine</div>
+        <div class="node green">Patient Segmentation</div>
+        <div class="arrow-down"></div>
+        <div class="split">
+          <div class="branch">
+            <div class="node">Organic</div>
+            <div class="arrow-down"></div>
+            <div class="children">
+              <div class="node">Reports</div>
+              <div class="node">LinkedIn Posts</div>
+            </div>
+          </div>
+          <div class="branch">
+            <div class="node">Paid</div>
+            <div class="arrow-down"></div>
+            <div class="children">
+              <div class="node">WhatsApp Broadcast</div>
+              <div class="node">Performance Ads</div>
+            </div>
+          </div>
+        </div>
+        <div class="arrow-down"></div>
+        <div class="node orange">Content OS / Pipeline<br><small>Brief → produce → QA → publish → measure → refresh</small></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-title">
+      <h2>8. Programmatic SEO and AI SEO roadmap</h2>
+      <div class="note">Rebuilt from the second flowchart, now connected to execution dependencies.</div>
+    </div>
+    <div class="flowchart">
+      <div class="programmatic">
+        <div class="node blue">Programmatic SEO</div>
+        <div class="arrow-down"></div>
+        <div class="circle">VPS<br>Azure</div>
+        <div class="arrow-down"></div>
+        <div class="node green">Website Migration</div>
+        <div class="arrow-down"></div>
+        <div class="seo-row">
+          <div class="node">Keyword Matrix</div>
+          <div class="node">Templates</div>
+          <div class="node">Build and Deploy</div>
+        </div>
+        <div class="arrow-down"></div>
+        <div class="node final-node orange">Search Engine Indexation<br><small>Indexing → ranking → CTR → leads</small></div>
+      </div>
+    </div>
+
+    <div class="grid-3" style="margin-top:18px">
+      <div class="card"><h3>Next week output</h3><p>Keyword matrix, page template logic, content structure and deployable page architecture.</p></div>
+      <div class="card"><h3>SEO KPI logic</h3><p>Indexation, ranking movement, impressions, CTR, organic clicks, assisted leads and landing-page engagement.</p></div>
+      <div class="card"><h3>AI SEO sequence</h3><p>AI SEO starts only after page structure, content templates and website deployment workflow are stable.</p></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-title">
+      <h2>9. Freelancer operating model</h2>
+      <div class="note">This converts the freelancer from a generic designer into a controlled production pod.</div>
+    </div>
+    <div class="grid-3">
+      <div class="card">
+        <h3>Input owned internally</h3>
+        <p>Weekly brief, lane priority, offer details, audience, treatment positioning, CTA, references and brand guardrails.</p>
+      </div>
+      <div class="card">
+        <h3>Execution by freelancer</h3>
+        <p>Offer statics, social posts, AI videos, reels, raw footage edits, resized variations and paid media adaptations.</p>
+      </div>
+      <div class="card">
+        <h3>Approval owned internally</h3>
+        <p>Brand alignment, medical sensitivity, price/offer accuracy, final visual approval and channel publishing decision.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="footer">
+    <div><b>Meeting close:</b> Approve the designer, confirm Influencer Agency  I/O inputs, and lock the weekly content production cadence.</div>
+    <div><b>Why it matters:</b> This is the unlock for BAU leads, lane campaigns, upper funnel and SEO scale.</div>
+  </div>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Dental Nation – Meta (Facebook & Instagram) Performance Report</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color-scheme: light;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      padding: 16px;
+      background: #f5f6f8;
+      color: #111827;
+    }
+    .page {
+      max-width: 980px;
+      margin: 0 auto;
+      background: #ffffff;
+      border-radius: 14px;
+      padding: 18px 16px 24px;
+      box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+    }
+    @media (min-width: 640px) {
+      .page {
+        padding: 24px 28px 32px;
+      }
+    }
+    header {
+      border-bottom: 1px solid #e5e7eb;
+      padding-bottom: 10px;
+      margin-bottom: 10px;
+    }
+    h1 {
+      font-size: 1.4rem;
+      margin: 0 0 4px;
+    }
+    h2 {
+      font-size: 1.05rem;
+      margin: 12px 0 6px;
+    }
+    h3 {
+      font-size: 0.95rem;
+      margin: 10px 0 4px;
+    }
+    .subtitle {
+      font-size: 0.8rem;
+      color: #6b7280;
+      margin-bottom: 8px;
+    }
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 4px;
+    }
+    .pill {
+      font-size: 0.7rem;
+      padding: 3px 9px;
+      border-radius: 999px;
+      background: #eff6ff;
+      color: #1d4ed8;
+      white-space: nowrap;
+    }
+    .section {
+      margin-top: 12px;
+      padding-top: 8px;
+      border-top: 1px solid #e5e7eb;
+    }
+    .summary-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      font-size: 0.8rem;
+    }
+    .summary-list li {
+      padding: 5px 0;
+      border-bottom: 1px dashed #e5e7eb;
+    }
+    .summary-tag {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      color: #6b7280;
+      margin-right: 4px;
+    }
+    .highlight {
+      font-weight: 600;
+      color: #111827;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+    @media (min-width: 780px) {
+      .grid-2 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+    .card {
+      background: #f9fafb;
+      border-radius: 10px;
+      padding: 9px 10px 10px;
+      border: 1px solid #e5e7eb;
+    }
+    .card h3 {
+      font-size: 0.9rem;
+      margin-bottom: 4px;
+    }
+    .label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #6b7280;
+      margin-bottom: 2px;
+    }
+    .text-sm {
+      font-size: 0.8rem;
+      margin: 0;
+    }
+    .badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 4px;
+    }
+    .badge {
+      font-size: 0.65rem;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: #e5e7eb;
+      color: #374151;
+      white-space: nowrap;
+    }
+    .badge-good {
+      background: #dcfce7;
+      color: #166534;
+    }
+    .badge-risk {
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+    .badge-watch {
+      background: #fef3c7;
+      color: #92400e;
+    }
+    .table-wrap {
+      margin-top: 6px;
+      overflow-x: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.76rem;
+      min-width: 540px;
+    }
+    th, td {
+      border-bottom: 1px solid #e5e7eb;
+      padding: 4px 4px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #6b7280;
+      background: #f9fafb;
+    }
+    .muted {
+      color: #6b7280;
+    }
+    .kpi-list {
+      padding-left: 16px;
+      margin: 4px 0;
+    }
+    .kpi-list li {
+      font-size: 0.8rem;
+      margin: 1px 0;
+    }
+    .footnote {
+      margin-top: 10px;
+      font-size: 0.7rem;
+      color: #6b7280;
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header>
+      <h1>Dental Nation – Meta (Facebook & Instagram) Performance Report</h1>
+      <div class="subtitle">Al Wasl Lead Generation | November to 18 December 2025</div>
+      <div class="pill-row">
+        <span class="pill">Objective: WhatsApp Lead Generation</span>
+        <span class="pill">Platforms: Facebook + Instagram</span>
+        <span class="pill">Clinics: Initial focus on Al Wasl</span>
+      </div>
+    </header>
+
+    <!-- 1. EXECUTIVE SUMMARY -->
+    <section class="section">
+      <h2>1. Executive Summary</h2>
+      <ul class="summary-list">
+        <li>
+          <span class="summary-tag">Efficiency</span>
+          November spend was <span class="highlight">dh1,216.78 for 3 leads</span> (CPL <span class="highlight">dh405.59</span>).
+          From 1 to 18 December, spend increased to <span class="highlight">dh1,913.39 for 12 leads</span>
+          with CPL improving to <span class="highlight">dh159.45</span>.
+          Cost per click dropped from <span class="highlight">dh19.31</span> to <span class="highlight">dh9.86</span> and CPM improved from
+          <span class="highlight">dh29.55</span> to <span class="highlight">dh16.64</span>.
+        </li>
+        <li>
+          <span class="summary-tag">Intent</span>
+          Meta campaigns are currently operating as <span class="highlight">consideration campaigns</span>.
+          CTR is stable around <span class="highlight">0.2 percent</span>, which is below the ideal 1 percent plus benchmark for local healthcare.
+          Real high intent volume is expected from <span class="highlight">Google Search leads campaigns and Google My Business</span>,
+          which will capture patients actively searching for dentists near Al Wasl.
+        </li>
+        <li>
+          <span class="summary-tag">Creative</span>
+          The best performing units are <span class="highlight">clear offer based static ads</span> with strong headline and CTA.
+          However, <span class="highlight">video ads consistently show better engagement potential</span>.
+          Current stills are not strong enough to push CTR and engagement higher.
+          We need more clinic and doctor based video content, which depends directly on <span class="highlight">uniforms being delivered</span>.
+        </li>
+        <li>
+          <span class="summary-tag">Leads</span>
+          For Al Wasl, four Meta driven leads are already documented in the master sheet
+          (Welcome Check Up, Whitening Flash Offer and Hotel Guest Smile Experience).
+          This confirms that the tracking and receptionist process is working but is still in early volume stage.
+        </li>
+        <li>
+          <span class="summary-tag">Next focus</span>
+          Short term focus is to <span class="highlight">stabilise CPL below dh150</span>, improve lead quality and
+          <span class="highlight">increase booked appointments</span> once Practo booking and AI contact center flows are live.
+        </li>
+      </ul>
+    </section>
+
+    <!-- 2. MONTHLY PERFORMANCE VIEW -->
+    <section class="section">
+      <h2>2. Monthly Performance View</h2>
+      <div class="grid-2">
+        <article class="card">
+          <h3>November 2025</h3>
+          <ul class="kpi-list">
+            <li>Ad spend: <strong>dh1,216.78</strong></li>
+            <li>Total leads: <strong>3</strong></li>
+            <li>Cost per lead: <strong>dh405.59</strong></li>
+            <li>Clicks: <strong>63</strong> (CPC <strong>dh19.31</strong>)</li>
+            <li>Impressions: <strong>41,182</strong> (CPM <strong>dh29.55</strong>)</li>
+            <li>Average CTR: <strong>0.2 percent</strong></li>
+          </ul>
+          <div class="badge-row">
+            <span class="badge badge-watch">Learning month</span>
+            <span class="badge">High CPL</span>
+          </div>
+        </article>
+
+        <article class="card">
+          <h3>1 to 18 December 2025</h3>
+          <ul class="kpi-list">
+            <li>Ad spend: <strong>dh1,913.39</strong></li>
+            <li>Total leads: <strong>12</strong></li>
+            <li>Cost per lead: <strong>dh159.45</strong></li>
+            <li>Clicks: <strong>194</strong> (CPC <strong>dh9.86</strong>)</li>
+            <li>Impressions: <strong>114,966</strong> (CPM <strong>dh16.64</strong>)</li>
+            <li>Average CTR: <strong>0.2 percent</strong></li>
+          </ul>
+          <div class="badge-row">
+            <span class="badge badge-good">Improving efficiency</span>
+            <span class="badge">CPL trending better</span>
+          </div>
+        </article>
+      </div>
+
+      <div class="table-wrap" style="margin-top:8px;">
+        <table>
+          <thead>
+            <tr>
+              <th>Month</th>
+              <th>Spend</th>
+              <th>Leads</th>
+              <th>CPL</th>
+              <th>Clicks</th>
+              <th>CPC</th>
+              <th>CTR</th>
+              <th>Impressions</th>
+              <th>CPM</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>November 2025</td>
+              <td>dh1,216.78</td>
+              <td>3</td>
+              <td>dh405.59</td>
+              <td>63</td>
+              <td>dh19.31</td>
+              <td>0.2 percent</td>
+              <td>41,182</td>
+              <td>dh29.55</td>
+            </tr>
+            <tr>
+              <td>1 to 18 December 2025</td>
+              <td>dh1,913.39</td>
+              <td>12</td>
+              <td>dh159.45</td>
+              <td>194</td>
+              <td>dh9.86</td>
+              <td>0.2 percent</td>
+              <td>114,966</td>
+              <td>dh16.64</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="footnote">
+        Diagnostic: spend and leads increased in December with much better CPL and CPM, but CTR and absolute lead volume
+        still need improvement for Al Wasl clinic scale up.
+      </p>
+    </section>
+
+    <!-- 3. WEEKLY DIAGNOSTIC – CAMPAIGN LEVEL -->
+    <section class="section">
+      <h2>3. Weekly Diagnostic – Campaign Level</h2>
+      <div class="grid-2">
+        <article class="card">
+          <h3>Overall Weekly Snapshot</h3>
+          <p class="text-sm">
+            Based on the latest weekly report:
+          </p>
+          <ul class="kpi-list">
+            <li>Weekly spend: <strong>dh704.83</strong></li>
+            <li>Leads: <strong>5</strong></li>
+            <li>CPL: <strong>dh140.96</strong></li>
+            <li>Impressions: <strong>33,485</strong></li>
+            <li>Link clicks: <strong>83</strong> (CTR <strong>0.25 percent</strong>)</li>
+            <li>Click to lead conversion: <strong>6.02 percent</strong></li>
+          </ul>
+          <div class="badge-row">
+            <span class="badge badge-good">CPL improving week on week</span>
+            <span class="badge badge-watch">CTR still below benchmark</span>
+          </div>
+        </article>
+
+        <article class="card">
+          <h3>Campaign Insights</h3>
+          <ul class="kpi-list">
+            <li><strong>Static offer based ads</strong> from Emveto:
+              good CPL around dh44.11 with CTR near 0.32 percent.
+              Clear offer and strong CTA are working.</li>
+            <li><strong>Generic video ads</strong>:
+              moderate CTR around 0.17 percent but still bringing leads around dh93.45 CPL.
+              Frequency is rising, so creative refresh is required.</li>
+            <li><strong>Instant form campaign</strong> with many questions:
+              good CTR but zero leads, now rightly paused.</li>
+            <li><strong>Some static ads from Dental Nation</strong> were paused after giving no leads despite optimisation.</li>
+          </ul>
+          <div class="badge-row">
+            <span class="badge badge-good">Offer based static</span>
+            <span class="badge badge-watch">Generic video refresh</span>
+            <span class="badge badge-risk">Complex forms</span>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- 4. CLINIC VIEW – AL WASL LEADS -->
+    <section class="section">
+      <h2>4. Clinic View – Al Wasl Leads Captured</h2>
+      <p class="text-sm">
+        Leads recorded by the Al Wasl branch reception team from Meta campaigns so far:
+      </p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Patient Name</th>
+              <th>Contact</th>
+              <th>Platform</th>
+              <th>Channel</th>
+              <th>Offer</th>
+              <th>Stage</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>06.12.2025</td>
+              <td>Lauren Lauren</td>
+              <td>-</td>
+              <td>Instagram / Meta</td>
+              <td>Facebook</td>
+              <td>Whitening Flash Offer</td>
+              <td>Contacted</td>
+              <td>Location sent via Messenger, Facebook post inquiry.</td>
+            </tr>
+            <tr>
+              <td>06.12.2025</td>
+              <td>-</td>
+              <td>050 924 1613</td>
+              <td>Instagram / Meta</td>
+              <td>WhatsApp</td>
+              <td>Whitening Flash Offer</td>
+              <td>Contacted</td>
+              <td>Location sent, appointment booking offered.</td>
+            </tr>
+            <tr>
+              <td>06.12.2025</td>
+              <td>-</td>
+              <td>055 686 6328</td>
+              <td>Instagram / Meta</td>
+              <td>WhatsApp</td>
+              <td>Hotel Guest Smile Experience</td>
+              <td>New</td>
+              <td>From Instagram post link, inquiry about offer details.</td>
+            </tr>
+            <tr>
+              <td>09.12.2025</td>
+              <td>Peck Far</td>
+              <td>+44 7775 557904</td>
+              <td>Instagram / Meta</td>
+              <td>WhatsApp</td>
+              <td>Welcome Check Up</td>
+              <td>Contacted</td>
+              <td>Oral hygiene inquiry, flashed offer shared.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="footnote">
+        Observation: Al Wasl has documented 4 Meta driven leads so far.
+        As volume grows and Google Search plus GMB campaigns are added, this clinic level view should become the main reference for booking and revenue attribution.
+      </p>
+    </section>
+
+    <!-- 5. STRATEGIC IMPLICATIONS & NEXT ACTIONS -->
+    <section class="section">
+      <h2>5. Strategic Implications & Next Actions</h2>
+      <div class="grid-2">
+        <article class="card">
+          <h3>Positioning of Meta Campaigns</h3>
+          <p class="text-sm">
+            Meta (Facebook and Instagram) should continue to be treated as a
+            <strong>consideration and awareness engine</strong>, not the only source of high intent leads.
+          </p>
+          <ul class="kpi-list">
+            <li>Maintain Meta campaigns to keep Dental Nation visible in Al Wasl catchment and nurture interest around offers.</li>
+            <li>Accept that CPL will initially be higher while creative and offers are tested, then use these learnings to feed Google campaigns.</li>
+            <li>Use Meta data to identify winning messages for Google Search and GMB, where users already have a strong intent to book.</li>
+          </ul>
+        </article>
+
+        <article class="card">
+          <h3>Immediate Recommendations</h3>
+          <ul class="kpi-list">
+            <li><strong>Scale Google Search Lead campaigns and Google My Business</strong> as soon as the landing page under dentalnation.com is approved, to capture high intent traffic.</li>
+            <li><strong>Prioritise production of video ads</strong>:
+              clinic walkthrough, doctor introductions and offer based video creatives.
+              Empirically, video has shown better engagement and is critical for improved CTR and CPL.</li>
+            <li><strong>Uniform delivery is now a critical dependency</strong>:
+              without uniforms, doctor and staff shoots cannot proceed, which directly limits video content and therefore the performance of Meta campaigns.</li>
+            <li><strong>Continue creative testing</strong>:
+              keep offer based static ads as a base, while testing new video angles such as painless treatment, advanced technology and trust based stories.</li>
+            <li><strong>Simplify forms</strong>:
+              avoid long instant forms that depress completion, and rely instead on short forms plus WhatsApp conversations.</li>
+          </ul>
+        </article>
+      </div>
+      <p class="footnote">
+        Once Practo booking and AI contact center flows are fully live, this report can be extended to show lead to booking to revenue by campaign and channel.
+      </p>
+    </section>
+  </main>
+</body>
+</html>

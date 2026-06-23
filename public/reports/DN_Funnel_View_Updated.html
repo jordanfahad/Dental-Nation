@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Dental Nation – Funnel View & Pending Tasks for CEO (Updated v6)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color-scheme: light;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      padding: 16px;
+      background: #f5f6f8;
+      color: #111827;
+    }
+    .page {
+      max-width: 900px;
+      margin: 0 auto;
+      background: #ffffff;
+      border-radius: 12px;
+      padding: 16px 16px 24px;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.07);
+    }
+    @media (min-width: 640px) {
+      .page {
+        padding: 24px 28px 32px;
+      }
+    }
+    h1 {
+      font-size: 1.4rem;
+      margin: 0 0 4px;
+    }
+    h2 {
+      font-size: 1.05rem;
+      margin: 16px 0 8px;
+    }
+    h3 {
+      font-size: 0.95rem;
+      margin: 12px 0 6px;
+    }
+    .subtitle {
+      font-size: 0.8rem;
+      color: #6b7280;
+      margin-bottom: 12px;
+    }
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .pill {
+      font-size: 0.7rem;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: #eff6ff;
+      color: #1d4ed8;
+      white-space: nowrap;
+    }
+    .section {
+      margin-top: 14px;
+      padding-top: 10px;
+      border-top: 1px solid #e5e7eb;
+    }
+    .summary-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      font-size: 0.8rem;
+    }
+    .summary-list li {
+      padding: 6px 0;
+      border-bottom: 1px dashed #e5e7eb;
+    }
+    .summary-tag {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      color: #6b7280;
+      margin-right: 4px;
+    }
+    .highlight {
+      font-weight: 600;
+      color: #111827;
+    }
+    .funnel-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      margin-top: 8px;
+    }
+    @media (min-width: 640px) {
+      .funnel-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+    }
+    .card {
+      background: #f9fafb;
+      border-radius: 10px;
+      padding: 10px 10px 12px;
+      border: 1px solid #e5e7eb;
+    }
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 4px;
+    }
+    .card-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+    .stage-label {
+      font-size: 0.7rem;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: #eef2ff;
+      color: #3730a3;
+      white-space: nowrap;
+    }
+    .card-body {
+      margin-top: 6px;
+      font-size: 0.78rem;
+    }
+    .card-body ul {
+      padding-left: 16px;
+      margin: 4px 0;
+    }
+    .badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 4px;
+    }
+    .badge {
+      font-size: 0.65rem;
+      padding: 2px 6px;
+      border-radius: 999px;
+      background: #e5e7eb;
+      color: #374151;
+      white-space: nowrap;
+    }
+    .status-badge {
+      font-size: 0.65rem;
+      padding: 2px 6px;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+    .status-live {
+      background: #dcfce7;
+      color: #166534;
+    }
+    .status-partial {
+      background: #fef9c3;
+      color: #854d0e;
+    }
+    .status-blocked {
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+    .status-planned {
+      background: #e0f2fe;
+      color: #075985;
+    }
+    .pending-table-wrap {
+      margin-top: 8px;
+      overflow-x: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.75rem;
+      min-width: 640px;
+    }
+    th, td {
+      border-bottom: 1px solid #e5e7eb;
+      padding: 6px 6px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #6b7280;
+      background: #f9fafb;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    .risk-high {
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+    .risk-medium {
+      background: #fef3c7;
+      color: #92400e;
+    }
+    .risk-low {
+      background: #dcfce7;
+      color: #166534;
+    }
+    .link {
+      color: #1d4ed8;
+      text-decoration: none;
+      word-break: break-all;
+    }
+    .link:hover {
+      text-decoration: underline;
+    }
+    .footer-note {
+      margin-top: 14px;
+      font-size: 0.7rem;
+      color: #6b7280;
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header>
+      <h1>Dental Nation Digital Launch</h1>
+      <div class="subtitle">Funnel View and Pending Tasks for CEO – Updated</div>
+      <div class="pill-row">
+        <span class="pill">Scope: Website, Leads, Performance, CX</span>
+        <span class="pill">Audience: CEO / Leadership</span>
+        <span class="pill">Horizon: Next 2–4 weeks</span>
+      </div>
+    </header>
+
+    <!-- EXECUTIVE SUMMARY -->
+    <section class="section">
+      <h2>1. Executive Summary</h2>
+      <ul class="summary-list">
+        <li>
+          <span class="summary-tag">Website</span>
+          <span class="highlight">Prelive site remains ready</span> on demo domain
+          (<a href="https://dental-nation.vercel.app/" class="link">dental-nation.vercel.app</a>).
+          Go live on primary domain is still targeting <span class="highlight">25 Dec</span>.
+          <span class="highlight">Practo Insta login has now been granted</span>;
+          the critical path is defining and testing the booking workflow so online booking and AI contact center can go live safely.
+        </li>
+        <li>
+          <span class="summary-tag">Lead Engine</span>
+          <span class="highlight">Core lead capture assets are almost fully live</span>:
+          the Google lead gen landing page demo is live at
+          (<a href="https://dental-nation-landing1.vercel.app/" class="link">dental-nation-landing1.vercel.app</a>),
+          pending CEO, Ms Shadi and Dr Luvi approval to move under <span class="highlight">dentalnation.com</span>.
+          Instagram campaigns are live and TikTok launch is in progress.
+          The <span class="highlight">Master Lead Capture Sheet is now fully configured (100%)</span>,
+          feeding into an initial Instagram performance report:
+          <a href="https://docs.google.com/spreadsheets/d/1WwnWcaY-xwba-x676PP3Hsx3mzFZ0NOH6w19O18fOXM/edit?gid=0#gid=0" class="link">
+            Instagram Lead Capture Performance
+          </a>.
+          The <span class="highlight">Social Media Content Repository – Content Bank strategy document is work in progress</span>,
+          with an estimated completion date of <span class="highlight">25 Dec 2025</span>.
+        </li>
+        <li>
+          <span class="summary-tag">CX / Contact Center</span>
+          AI contact center base configuration is complete.
+          <span class="highlight">Practo Insta access is in place</span>, and work has started on the booking integration.
+          The remaining enabler is to
+          <span class="highlight">finalize the FAQ and guardrail pack</span> and then activate live AI handling for bookings.
+        </li>
+        <li>
+          <span class="summary-tag">Critical Dependencies</span>
+          The <span class="highlight">single most critical blocker on content</span> is that
+          <span class="highlight">uniforms are still pending</span>.
+          Without uniforms we cannot proceed with doctor and staff videos and photo shoots,
+          which directly delays overall content generation and therefore limits lead flow and campaign performance.
+        </li>
+        <li>
+          <span class="summary-tag">Governance</span>
+          The unified tracker, master lead sheet and this funnel view provide a single picture of progress.
+          CEO support is most valuable on
+          <span class="highlight">approvals (landing page, creatives, T&amp;C), DXH listing, uniforms, and fast-tracking Practo integration work</span>.
+        </li>
+      </ul>
+    </section>
+
+    <!-- FUNNEL VIEW -->
+    <section class="section">
+      <h2>2. Funnel View – Channel to Booking</h2>
+      <div class="funnel-grid">
+        <!-- Awareness & Clicks -->
+        <article class="card">
+          <div class="card-header">
+            <div class="card-title">Awareness & Clicks</div>
+            <span class="stage-label">Top of Funnel</span>
+          </div>
+          <div class="card-body">
+            <ul>
+              <li>Meta (Instagram / Facebook) launch offers live and spending in learning phase.</li>
+              <li>TikTok ads creatives are ready; campaigns are planned to go live by 20 Dec.</li>
+              <li>GMB “dentist near Al Wasl” listing structure ready; goes live once final landing page URL on dentalnation.com is confirmed.</li>
+              <li>WhatsApp push blast:
+                existing and dormant customer database from Ms Lhanie is complete; only creative approval from Ms Shadi is pending.
+              </li>
+              <li><strong>Uniforms are not yet delivered</strong>; this is now the main blocker preventing doctor and staff video / photo content, which in turn slows down content volume for performance and organic channels.</li>
+            </ul>
+            <div class="badge-row">
+              <span class="status-badge status-live">Status: Live / Rolling out</span>
+              <span class="badge">Owner: Fahad + Social PR</span>
+              <span class="badge">Risk: Medium–High (content volume)</span>
+            </div>
+          </div>
+        </article>
+
+        <!-- Landing & Lead Capture -->
+        <article class="card">
+          <div class="card-header">
+            <div class="card-title">Landing & Lead Capture</div>
+            <span class="stage-label">Lead Form</span>
+          </div>
+          <div class="card-body">
+            <ul>
+              <li>Google lead gen landing page demo is live at
+                <a href="https://dental-nation-landing1.vercel.app/" class="link">dental-nation-landing1.vercel.app</a>;
+                after CEO and leadership approval this will be hosted under dentalnation.com as the main campaign landing page
+                (ETA around 20 Dec for sign-off and switch).
+              </li>
+              <li>Website prelive version in place on
+                <a href="https://dental-nation.vercel.app/" class="link">dental-nation.vercel.app</a>;
+                migration to primary domain remains planned around 25 Dec.</li>
+              <li>Instagram instant forms and Google lead forms connected into a single
+                <span class="highlight">Master Lead Capture Sheet (now 100% configured)</span>.
+              </li>
+              <li>Lead naming, platform and offer fields are in place to support clean funnel reporting by channel and clinic.</li>
+            </ul>
+            <div class="badge-row">
+              <span class="status-badge status-partial">Status: Partially live</span>
+              <span class="badge">Owner: Fahad + Zavis</span>
+              <span class="badge">Risk: Low–Medium (mainly approvals)</span>
+            </div>
+          </div>
+        </article>
+
+        <!-- Lead Handling & CX -->
+        <article class="card">
+          <div class="card-header">
+            <div class="card-title">Lead Handling & CX</div>
+            <span class="stage-label">Conversion</span>
+          </div>
+          <div class="card-body">
+            <ul>
+              <li>AI contact center environment ready; Phase 1 training completed for Acacia.</li>
+              <li>Practo Insta access has been granted (19 Dec); integration work is underway to link booking flows with website and AI.</li>
+              <li>FAQ and guardrail pack is drafted (20%); needs clinical and operations review, then upload into AI environment.</li>
+              <li>Standard email protocols and signatures drafted; implementation awaits final approval from Ms Shadi and config by Arun.</li>
+              <li>Project charter and funnel dashboards are being aligned to provide weekly CEO visibility on blockers and throughput.</li>
+            </ul>
+            <div class="badge-row">
+              <span class="status-badge status-partial">Status: Partially live</span>
+              <span class="badge">Owner: Zavis + Call Center + Fahad</span>
+              <span class="badge">Risk: High (workflow / integration still in progress)</span>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- PENDING CEO VIEW -->
+    <section class="section">
+      <h2>3. Pending Items Requiring CEO Visibility / Decision</h2>
+      <div class="pending-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 4%;">#</th>
+              <th style="width: 23%;">Item</th>
+              <th style="width: 20%;">What CEO Should Know</th>
+              <th style="width: 18%;">Owner</th>
+              <th style="width: 15%;">Status</th>
+              <th style="width: 10%;">Target Date</th>
+              <th style="width: 10%;">Risk</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1</td>
+              <td>Website go live (primary domain)</td>
+              <td>Content is “good enough” with AI + stock; <strong>Practo Insta login is now in place</strong>. Remaining dependency is completing and testing the booking workflow.</td>
+              <td>Fahad (coordination), Zavis (build)</td>
+              <td>~75% complete; demo site live on
+                <a href="https://dental-nation.vercel.app/" class="link">prelive URL</a>.
+              </td>
+              <td>25 Dec</td>
+              <td class="risk-medium">Medium</td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td>Uniforms + content calendar and Social PR shoots</td>
+              <td><strong>Uniforms are still pending</strong>. Without uniforms, Social PR cannot start doctor and staff video / photo content. This is now a critical bottleneck for content generation and therefore impacts lead flow.</td>
+              <td>Dr Luvi, Ms Shadi, Social PR</td>
+              <td>Calendar drafted; non-clinical shoots can proceed, but core doctor shoots are blocked until uniforms arrive.</td>
+              <td>Uniforms ASAP, shoots from 23 Dec</td>
+              <td class="risk-high">High</td>
+            </tr>
+            <tr>
+              <td>3</td>
+              <td>Practo Insta integration & AI guardrails</td>
+              <td>Practo Insta login granted (19 Dec). Critical now to sign off FAQ / guardrails and freeze booking flow so AI can handle appointments safely.</td>
+              <td>Akbar (access), Dr Luvi, Fahad, Practo / IT</td>
+              <td>~50% complete: access ok; integration and guardrails still work-in-progress.</td>
+              <td>31 Dec</td>
+              <td class="risk-high">High</td>
+            </tr>
+            <tr>
+              <td>4</td>
+              <td>Lead capture & tracking standards</td>
+              <td>Master lead sheet is fully configured and live; needs agreement on weekly reporting view for CEO (by service × clinic × channel).</td>
+              <td>Fahad, Call Center, Finance</td>
+              <td>Sheet active:
+                <a href="https://docs.google.com/spreadsheets/d/1MLfZzAhjzbsHlH5DSBjtnWIyT_Bun2cve9JEuWyGf_8/edit" class="link">Lead Capture Sheet</a>,
+                plus
+                <a href="https://docs.google.com/spreadsheets/d/1WwnWcaY-xwba-x676PP3Hsx3mzFZ0NOH6w19O18fOXM/edit?gid=0#gid=0" class="link">
+                  Instagram Performance Report
+                </a>.
+              </td>
+              <td>20 Dec</td>
+              <td class="risk-low">Low</td>
+            </tr>
+            <tr>
+              <td>5</td>
+              <td>WhatsApp blast & creative approvals</td>
+              <td>Existing and dormant patient database is ready; creative approval from Ms Shadi will unlock the first reactivation blast.</td>
+              <td>Fahad, Call Center, Ms Shadi</td>
+              <td>~90% complete; only creative sign-off pending.</td>
+              <td>20 Dec</td>
+              <td class="risk-medium">Medium</td>
+            </tr>
+            <tr>
+              <td>6</td>
+              <td>Landing page on dentalnation.com</td>
+              <td>Google lead gen landing page on demo URL is ready; needs CEO, Ms Shadi and Dr Luvi approval to move under dentalnation.com and become the default landing for “dentist near Al Wasl”.</td>
+              <td>Fahad, Zavis, CEO + Clinical leadership</td>
+              <td>~90% complete; approvals outstanding.</td>
+              <td>20 Dec</td>
+              <td class="risk-medium">Medium</td>
+            </tr>
+            <tr>
+              <td>7</td>
+              <td>DXH listing (Acacia access update)</td>
+              <td>DXH listing is mandatory for compliance; continued delay can lead to regulatory issues and potential fines.</td>
+              <td>Dr Hasna, Fahad, Dr Luvi</td>
+              <td>Waiting DXH / Acacia credentials from Dr Hasna to complete the listing.</td>
+              <td>Within Dec</td>
+              <td class="risk-high">High</td>
+            </tr>
+            <tr>
+              <td>8</td>
+              <td>Content Repository – Content Bank Strategy Doc</td>
+              <td>Strategy document for the Social Media Content Repository – Content Bank is in progress; this defines how to stay 4–6 weeks ahead on content and reduce last-minute pressure.</td>
+              <td>Fahad, Social PR</td>
+              <td>Work in progress; structure defined, details being filled.</td>
+              <td>25 Dec</td>
+              <td class="risk-medium">Medium</td>
+            </tr>
+            <tr>
+              <td>9</td>
+              <td>Project charter & master timeline</td>
+              <td>Charter will lock scope, milestones, owners and review rhythm across IT, Marketing and vendors; aligns all workstreams behind one view.</td>
+              <td>Fahad (draft), Akbar & Dr Luvi (sign-off)</td>
+              <td>~20% complete; structure ready, inputs being populated.</td>
+              <td>25 Dec</td>
+              <td class="risk-medium">Medium</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="footer-note">
+        This view is designed for a 5–10 minute CEO update: progress by funnel stage, critical dependencies
+        (especially Practo, DXH, uniforms and content bank strategy) and where leadership action can unlock the next step.
+      </p>
+    </section>
+  </main>
+</body>
+</html>
