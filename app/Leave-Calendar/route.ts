@@ -1,7 +1,12 @@
 import { cookies } from 'next/headers';
 import { LEAVE_COOKIE, verifyLeaveToken } from '@/lib/auth/leave-session';
+import { getLeaveDashboard } from '@/lib/leave/data';
+import { fillTokens } from '@/lib/leave/render';
 import { LEAVE_HTML_B64 } from './content';
 import { LOGIN_HTML } from './login';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 /**
  * Leave Calendar — standalone, self-contained page (like /Fahad-know-how), but
@@ -17,9 +22,16 @@ export async function GET() {
   const token = (await cookies()).get(LEAVE_COOKIE)?.value;
   const session = secret ? await verifyLeaveToken(token, secret) : null;
 
-  const html = session
-    ? Buffer.from(LEAVE_HTML_B64, 'base64').toString('utf8')
-    : LOGIN_HTML;
+  let html: string;
+  if (!session) {
+    html = LOGIN_HTML;
+  } else {
+    html = Buffer.from(LEAVE_HTML_B64, 'base64').toString('utf8');
+    // Inject live data (Overview + Directory). If Supabase is unreachable the
+    // dashboard renders with safe empty states rather than breaking.
+    const data = await getLeaveDashboard();
+    if (data) html = fillTokens(html, data);
+  }
 
   return new Response(html, {
     status: session ? 200 : 401,
