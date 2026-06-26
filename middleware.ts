@@ -59,6 +59,7 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
   // Everything except login, the cron + practo endpoints (CRON_SECRET-gated),
-  // Next internals and static files.
-  matcher: ['/((?!login|api/cron|api/practo|api/meta|api/google-ads|_next/static|_next/image|favicon.ico).*)'],
+  // the standalone Leave Calendar (Leave-Calendar + api/leave-auth — it runs its
+  // own CEO/super-admin-only gate), Next internals and static files.
+  matcher: ['/((?!login|api/cron|api/practo|api/meta|api/google-ads|Leave-Calendar|api/leave-auth|_next/static|_next/image|favicon.ico).*)'],
 };
