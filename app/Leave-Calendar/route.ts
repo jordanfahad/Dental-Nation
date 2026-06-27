@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers';
 import { LEAVE_COOKIE, verifyLeaveToken } from '@/lib/auth/leave-session';
-import { getLeaveDashboard } from '@/lib/leave/data';
+import { getLeaveDashboard, getLeaveBoard } from '@/lib/leave/data';
 import { fillTokens } from '@/lib/leave/render';
 import { LEAVE_HTML_B64 } from './content';
 import { LOGIN_HTML } from './login';
@@ -27,10 +27,13 @@ export async function GET() {
     html = LOGIN_HTML;
   } else {
     html = Buffer.from(LEAVE_HTML_B64, 'base64').toString('utf8');
-    // Inject live data (Overview + Directory). If Supabase is unreachable the
-    // dashboard renders with safe empty states rather than breaking.
-    const data = await getLeaveDashboard();
-    if (data) html = fillTokens(html, data);
+    // Inject live data for all tabs. If Supabase is unreachable the page
+    // renders with safe empty states rather than breaking.
+    const [data, board] = await Promise.all([
+      getLeaveDashboard(),
+      getLeaveBoard(session.email),
+    ]);
+    html = fillTokens(html, data, board);
   }
 
   return new Response(html, {

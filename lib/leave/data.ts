@@ -48,17 +48,52 @@ export interface LeaveDashboard {
   employees: LeaveEmployee[];
 }
 
-export async function getLeaveDashboard(): Promise<LeaveDashboard | null> {
+// ---- board (Apply / Approvals / Calendar) ----
+export interface LeaveType {
+  code: string; name: string; paid: boolean; requires_cert: boolean; default_days: number | null;
+}
+export interface Balance {
+  code: string; name: string; entitled: number; taken: number; pending: number; remaining: number;
+}
+export interface LadderRung { step: number; name: string | null; action: string; }
+export interface Approval {
+  request_id: string; name: string; designation: string | null; department: string | null;
+  type_code: string; type_name: string; days: number; reason: string | null;
+  start: string; end: string; direct_report: boolean; ladder: LadderRung[];
+}
+export interface CalendarEvent { name: string; type_code: string; start: string; end: string; status: string; }
+export interface LeaveBoard {
+  viewer: { name: string; email: string; role: string; is_super: boolean };
+  year: number; month: number;
+  leave_types: LeaveType[];
+  my_balances: Balance[];
+  approvals: Approval[];
+  calendar: CalendarEvent[];
+  holidays: { name: string; date: string }[];
+}
+
+function client() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) return null;
-
-  const sb = createClient(url, key, {
+  return createClient(url, key, {
     db: { schema: 'public' },
     auth: { persistSession: false, autoRefreshToken: false },
   });
+}
 
+export async function getLeaveDashboard(): Promise<LeaveDashboard | null> {
+  const sb = client();
+  if (!sb) return null;
   const { data, error } = await sb.rpc('leave_dashboard');
   if (error || !data) return null;
   return data as LeaveDashboard;
+}
+
+export async function getLeaveBoard(email: string): Promise<LeaveBoard | null> {
+  const sb = client();
+  if (!sb) return null;
+  const { data, error } = await sb.rpc('leave_board', { p_email: email });
+  if (error || !data) return null;
+  return data as LeaveBoard;
 }
