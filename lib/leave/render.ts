@@ -280,8 +280,7 @@ function roleLabel(b: LeaveBoard): string {
   }
 }
 function viewerIdentity(b: LeaveBoard): string {
-  return `<span class="lbl" style="color:var(--slate)">Signed in as <b style="color:var(--ink)">${esc(b.viewer.name)}</b> · ${esc(roleLabel(b))}</span>
-      <a class="btn btn-out btn-sm" href="/api/leave-auth" style="margin-left:10px">Sign out</a>`;
+  return `<span class="lbl" style="color:var(--slate)">Signed in as <b style="color:var(--ink)">${esc(b.viewer.name)}</b> · ${esc(roleLabel(b))}</span>`;
 }
 
 /** Replace every live token in the static HTML. Board may be null. */

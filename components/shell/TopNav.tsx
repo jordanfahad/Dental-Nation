@@ -58,6 +58,14 @@ export function TopNav({
                 </Link>
               );
             })}
+            {/* Leave Calendar is a separate, per-user-authenticated app (its own
+                login at /Leave-Calendar). Full navigation, not client routing. */}
+            <a
+              href="/Leave-Calendar"
+              className="rounded-md px-3 py-1.5 text-sm font-medium text-ink-2 transition-colors hover:text-ink"
+            >
+              Leave Calendar
+            </a>
           </nav>
 
           <div className="ml-auto flex items-center gap-2">
