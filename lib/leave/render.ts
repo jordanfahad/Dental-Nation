@@ -223,6 +223,28 @@ function attTable(): string {
   return `<div class="cpad" style="padding:26px 22px;color:var(--muted);font-size:13.5px">No attendance has been recorded yet. Once biometric punches arrive — by file import, a device webhook, or manual entry — each person's worked hours, lateness and shortfall against their required hours will be reconciled here (weekends, holidays and approved leave subtracted) before feeding payroll.</div>`;
 }
 
+// ===================== Viewer identity =====================
+function personaOf(b: LeaveBoard): string {
+  if (b.viewer.is_super || b.viewer.role === 'ceo') return 'ceo';
+  if (b.viewer.role === 'manager' || b.viewer.role === 'team_lead') return 'lead';
+  return 'employee';
+}
+function roleLabel(b: LeaveBoard): string {
+  if (b.viewer.is_super) return 'Super Admin';
+  switch (b.viewer.role) {
+    case 'ceo': return 'CEO';
+    case 'manager': return 'Department Head';
+    case 'team_lead': return 'Team Lead';
+    case 'hr_admin': return 'HR';
+    case 'payroll': return 'Payroll';
+    default: return 'Staff';
+  }
+}
+function viewerIdentity(b: LeaveBoard): string {
+  return `<span class="lbl" style="color:var(--slate)">Signed in as <b style="color:var(--ink)">${esc(b.viewer.name)}</b> · ${esc(roleLabel(b))}</span>
+      <a class="btn btn-out btn-sm" href="/api/leave-auth" style="margin-left:10px">Sign out</a>`;
+}
+
 /** Replace every live token in the static HTML. Board may be null. */
 export function fillTokens(html: string, d: LeaveDashboard | null, b: LeaveBoard | null): string {
   const map: Record<string, string> = {};
@@ -242,6 +264,8 @@ export function fillTokens(html: string, d: LeaveDashboard | null, b: LeaveBoard
   }
   if (b) {
     Object.assign(map, {
+      '<!--PERSONA-->': personaOf(b),
+      '<!--VIEWER_IDENTITY-->': viewerIdentity(b),
       '<!--APPLY_NAME-->': esc(b.viewer.name),
       '<!--APPLY_TYPE_OPTIONS-->': applyTypeOptions(b),
       '<!--APPLY_LADDER-->': applyLadder(b, d),
@@ -260,6 +284,7 @@ export function fillTokens(html: string, d: LeaveDashboard | null, b: LeaveBoard
     });
   } else {
     Object.assign(map, {
+      '<!--PERSONA-->': 'employee', '<!--VIEWER_IDENTITY-->': '',
       '<!--APPLY_NAME-->': '', '<!--APPLY_TYPE_OPTIONS-->': '', '<!--APPLY_LADDER-->': '',
       '<!--APPLY_BALANCES-->': '<p class="hint">Balances unavailable.</p>',
       '<!--APPROVALS_QUEUE-->': approvalsQueue([]), '<!--APPROVALS_COUNT-->': '0',

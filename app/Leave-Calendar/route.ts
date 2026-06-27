@@ -30,7 +30,7 @@ export async function GET() {
     // Inject live data for all tabs. If Supabase is unreachable the page
     // renders with safe empty states rather than breaking.
     const [data, board] = await Promise.all([
-      getLeaveDashboard(),
+      getLeaveDashboard(session.email),
       getLeaveBoard(session.email),
     ]);
     html = fillTokens(html, data, board);

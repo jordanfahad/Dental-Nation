@@ -42,15 +42,15 @@ export const LOGIN_HTML = `<!doctype html>
       <div><b>Dental Nation</b><span>Leave, Attendance &amp; Payroll</span></div>
     </div>
     <h1>Sign in</h1>
-    <p class="sub">Restricted to leadership. Use your Dental Nation email.</p>
+    <p class="sub">Use your Dental Nation email and password.</p>
     <div id="err" class="err"></div>
     <label for="email">Email</label>
     <input id="email" name="email" type="email" autocomplete="username" required placeholder="name@dentalnation.com" />
     <label for="password">Password</label>
     <input id="password" name="password" type="password" autocomplete="current-password" required placeholder="••••••••" />
     <button type="submit">Sign in</button>
-    <div class="lock">🔒 Private — Mr Akbar &amp; Super Admin only</div>
-    <div class="foot">If you can't access this, contact the Super Admin.</div>
+    <div class="lock">🔒 Private to Dental Nation staff</div>
+    <div class="foot">No account? Contact the Super Admin to be added.</div>
   </form>
 <script>
   (function(){

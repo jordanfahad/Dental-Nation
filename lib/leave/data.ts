@@ -82,10 +82,10 @@ function client() {
   });
 }
 
-export async function getLeaveDashboard(): Promise<LeaveDashboard | null> {
+export async function getLeaveDashboard(email: string): Promise<LeaveDashboard | null> {
   const sb = client();
   if (!sb) return null;
-  const { data, error } = await sb.rpc('leave_dashboard');
+  const { data, error } = await sb.rpc('leave_dashboard', { p_email: email });
   if (error || !data) return null;
   return data as LeaveDashboard;
 }
