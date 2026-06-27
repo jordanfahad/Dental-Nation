@@ -71,7 +71,7 @@ export interface PayrollRow {
   name: string; working_days: number; present: number; paid_leave: number; unpaid: number; worked_hours: number;
 }
 export interface LeaveBoard {
-  viewer: { name: string; email: string; role: string; is_super: boolean };
+  viewer: { name: string; email: string; role: string; is_super: boolean; can_payroll: boolean };
   year: number; month: number;
   leave_types: LeaveType[];
   my_balances: Balance[];

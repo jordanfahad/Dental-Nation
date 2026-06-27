@@ -235,6 +235,10 @@ function attTable(b: LeaveBoard): string {
     <div class="field" style="margin:0;min-width:150px"><label class="lab">Date</label><input class="inp" id="atDate" type="date"></div>
     <div class="field" style="margin:0;width:110px"><label class="lab">Hours worked</label><input class="inp" id="atHours" type="number" min="0" max="24" step="0.5" placeholder="8"></div>
     <button class="btn btn-navy" type="button" id="atSave" onclick="recordAttendance()" style="margin-bottom:1px">Save entry</button>
+    <div style="display:flex;gap:8px;align-items:flex-end;margin-left:auto">
+      <div class="field" style="margin:0"><label class="lab">Bulk import · CSV <span class="hint">(email, date, hours)</span></label><input type="file" id="atCsv" accept=".csv,text/csv" class="inp" style="padding:8px;font-size:12px"></div>
+      <button class="btn btn-out" type="button" id="atCsvBtn" onclick="importAttendanceCsv()" style="margin-bottom:1px">Import CSV</button>
+    </div>
   </div>`;
   const rows = b.attendance.rows.map((r) => {
     const pct = Math.max(0, Math.min(100, (r.worked / r.required) * 100));
@@ -318,6 +322,7 @@ export function fillTokens(html: string, d: LeaveDashboard | null, b: LeaveBoard
       '<!--ATT_TABLE-->': attTable(b),
       '<!--PAYROLL_PERIOD-->': esc(b.payroll_period),
       '<!--PAYROLL_ROWS-->': payrollRows(b),
+      '<!--PAYROLL_ROLES-->': b.viewer.can_payroll ? personaOf(b) : 'none',
     });
   } else {
     const unavailable = '<div style="padding:30px;text-align:center;color:var(--muted)">Unavailable — could not reach the server.</div>';
@@ -330,6 +335,7 @@ export function fillTokens(html: string, d: LeaveDashboard | null, b: LeaveBoard
       '<!--CAL_TITLE-->': '', '<!--CALENDAR-->': unavailable,
       '<!--ATT_KPIS-->': '', '<!--ATT_TABLE-->': unavailable,
       '<!--PAYROLL_PERIOD-->': '', '<!--PAYROLL_ROWS-->': '<tr><td colspan="7" style="padding:24px;text-align:center;color:var(--muted)">Unavailable.</td></tr>',
+      '<!--PAYROLL_ROLES-->': 'none',
     });
   }
   let out = html;
