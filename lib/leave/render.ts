@@ -213,14 +213,49 @@ function calTitle(b: LeaveBoard): string {
   return `${new Date(b.year, b.month - 1, 1).toLocaleString('en', { month: 'long' })} ${b.year}`;
 }
 
-// ===================== Attendance (no punch source yet) =====================
-function attKpis(): string {
-  const k = (cls: string, lab: string) =>
-    `<div class="kpi ${cls}"><div class="acc"></div><div class="lab">${lab}</div><div class="val num">—</div><div class="foot">No punch data yet</div></div>`;
-  return k('k-blue', 'Checked in today') + k('k-amber', 'Late arrivals (wk)') + k('k-navy', 'Avg hours / week') + k('k-amber', 'Shortfall flags');
+// ===================== Attendance (live + manual entry) =====================
+function attKpis(b: LeaveBoard): string {
+  const a = b.attendance;
+  const withData = a.rows.filter((r) => r.days > 0);
+  const avg = withData.length ? withData.reduce((s, r) => s + r.worked, 0) / withData.length : 0;
+  const below = withData.filter((r) => r.worked < r.required).length;
+  const k = (cls: string, lab: string, val: string, foot: string) =>
+    `<div class="kpi ${cls}"><div class="acc"></div><div class="lab">${lab}</div><div class="val num">${val}</div><div class="foot">${esc(foot)}</div></div>`;
+  return (
+    k('k-blue', 'Logged today', String(a.logged_today), `of ${a.team_size} staff`) +
+    k('k-navy', 'Hours this week', num(a.hours_week), a.week_label) +
+    k('k-amber', 'Avg / person', withData.length ? num(avg) : '—', withData.length ? `over ${withData.length} with entries` : 'no entries yet') +
+    k('k-amber', 'Below 48h', withData.length ? String(below) : '—', 'with entries this week')
+  );
 }
-function attTable(): string {
-  return `<div class="cpad" style="padding:26px 22px;color:var(--muted);font-size:13.5px">No attendance has been recorded yet. Once biometric punches arrive — by file import, a device webhook, or manual entry — each person's worked hours, lateness and shortfall against their required hours will be reconciled here (weekends, holidays and approved leave subtracted) before feeding payroll.</div>`;
+function attTable(b: LeaveBoard): string {
+  const opts = b.team.map((t) => `<option value="${esc(t.id)}">${esc(t.name)}</option>`).join('');
+  const entry = `<div class="cpad" style="padding:16px 20px;border-bottom:1px solid var(--line-2);display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;background:var(--line-2)">
+    <div class="field" style="margin:0;min-width:170px"><label class="lab">Employee</label><select class="inp" id="atEmp">${opts}</select></div>
+    <div class="field" style="margin:0;min-width:150px"><label class="lab">Date</label><input class="inp" id="atDate" type="date"></div>
+    <div class="field" style="margin:0;width:110px"><label class="lab">Hours worked</label><input class="inp" id="atHours" type="number" min="0" max="24" step="0.5" placeholder="8"></div>
+    <button class="btn btn-navy" type="button" id="atSave" onclick="recordAttendance()" style="margin-bottom:1px">Save entry</button>
+  </div>`;
+  const rows = b.attendance.rows.map((r) => {
+    const pct = Math.max(0, Math.min(100, (r.worked / r.required) * 100));
+    let chip: string; let bar: string;
+    if (r.days === 0) { chip = `<span class="chip c-neutral"><span class="pip"></span>No entries</span>`; bar = 'var(--line)'; }
+    else if (r.worked >= r.required) { chip = `<span class="chip c-good"><span class="pip"></span>Complete</span>`; bar = 'var(--green)'; }
+    else { chip = `<span class="chip c-watch"><span class="pip"></span>${num(r.required - r.worked)}h short</span>`; bar = 'var(--amber)'; }
+    return `<tr><td><div class="person"><div class="avatar" style="background:${colorFor(r.name)};width:30px;height:30px;font-size:11px">${initials(r.name)}</div><div><div class="pn">${esc(r.name)}</div><div class="pr">${esc(r.designation || '')}</div></div></div></td><td class="num">${r.days}</td><td class="num">${num(r.worked)}</td><td class="num">${r.required}</td><td><div class="bar"><span style="width:${pct.toFixed(0)}%;background:${bar}"></span></div></td><td>${chip}</td></tr>`;
+  }).join('');
+  return `${entry}<table><thead><tr><th>Employee</th><th>Days logged</th><th>Worked (h)</th><th>Required</th><th style="width:160px">Progress</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+// ===================== Payroll =====================
+function payrollRows(b: LeaveBoard): string {
+  if (!b.payroll.length) {
+    return `<tr><td colspan="7" style="padding:24px;text-align:center;color:var(--muted);font-size:13px">No payroll figures for your access level.</td></tr>`;
+  }
+  return b.payroll.map((p) => {
+    const ded = p.unpaid > 0 ? `<span style="color:var(--red)">${num(p.unpaid)} unpaid day${p.unpaid === 1 ? '' : 's'}</span>` : '—';
+    return `<tr><td><div class="person"><div class="avatar" style="background:${colorFor(p.name)}">${initials(p.name)}</div><div class="pn" style="font-size:13px">${esc(p.name)}</div></div></td><td class="num">${p.working_days}</td><td class="num">${p.present}</td><td class="num">${num(p.paid_leave)}</td><td class="num">${num(p.unpaid)}</td><td class="num">${num(p.worked_hours)}</td><td class="num">${ded}</td></tr>`;
+  }).join('');
 }
 
 // ===================== Viewer identity =====================
@@ -279,18 +314,22 @@ export function fillTokens(html: string, d: LeaveDashboard | null, b: LeaveBoard
       }))).replace(/</g, '\\u003c'),
       '<!--CAL_TITLE-->': esc(calTitle(b)),
       '<!--CALENDAR-->': calendarGrid(b),
-      '<!--ATT_KPIS-->': attKpis(),
-      '<!--ATT_TABLE-->': attTable(),
+      '<!--ATT_KPIS-->': attKpis(b),
+      '<!--ATT_TABLE-->': attTable(b),
+      '<!--PAYROLL_PERIOD-->': esc(b.payroll_period),
+      '<!--PAYROLL_ROWS-->': payrollRows(b),
     });
   } else {
+    const unavailable = '<div style="padding:30px;text-align:center;color:var(--muted)">Unavailable — could not reach the server.</div>';
     Object.assign(map, {
       '<!--PERSONA-->': 'employee', '<!--VIEWER_IDENTITY-->': '',
       '<!--APPLY_NAME-->': '', '<!--APPLY_TYPE_OPTIONS-->': '', '<!--APPLY_LADDER-->': '',
       '<!--APPLY_BALANCES-->': '<p class="hint">Balances unavailable.</p>',
       '<!--APPROVALS_QUEUE-->': approvalsQueue([]), '<!--APPROVALS_COUNT-->': '0',
       '<!--APPROVALS_DATA-->': '[]',
-      '<!--CAL_TITLE-->': '', '<!--CALENDAR-->': '<div style="padding:30px;text-align:center;color:var(--muted)">Calendar unavailable.</div>',
-      '<!--ATT_KPIS-->': attKpis(), '<!--ATT_TABLE-->': attTable(),
+      '<!--CAL_TITLE-->': '', '<!--CALENDAR-->': unavailable,
+      '<!--ATT_KPIS-->': '', '<!--ATT_TABLE-->': unavailable,
+      '<!--PAYROLL_PERIOD-->': '', '<!--PAYROLL_ROWS-->': '<tr><td colspan="7" style="padding:24px;text-align:center;color:var(--muted)">Unavailable.</td></tr>',
     });
   }
   let out = html;

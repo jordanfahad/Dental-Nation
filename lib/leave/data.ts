@@ -62,6 +62,14 @@ export interface Approval {
   start: string; end: string; direct_report: boolean; ladder: LadderRung[];
 }
 export interface CalendarEvent { name: string; type_code: string; start: string; end: string; status: string; }
+export interface TeamMember { id: string; name: string; }
+export interface AttendanceRow { name: string; designation: string | null; worked: number; required: number; days: number; }
+export interface Attendance {
+  week_label: string; logged_today: number; team_size: number; hours_week: number; rows: AttendanceRow[];
+}
+export interface PayrollRow {
+  name: string; working_days: number; present: number; paid_leave: number; unpaid: number; worked_hours: number;
+}
 export interface LeaveBoard {
   viewer: { name: string; email: string; role: string; is_super: boolean };
   year: number; month: number;
@@ -70,6 +78,10 @@ export interface LeaveBoard {
   approvals: Approval[];
   calendar: CalendarEvent[];
   holidays: { name: string; date: string }[];
+  team: TeamMember[];
+  attendance: Attendance;
+  payroll_period: string;
+  payroll: PayrollRow[];
 }
 
 function client() {
