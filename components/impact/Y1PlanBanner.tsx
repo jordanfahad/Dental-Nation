@@ -18,6 +18,9 @@ export function Y1PlanBanner() {
             <b className="text-white">AED 4.34M</b> creative-unlock case · 12-month envelope, the
             5-lane engine, live actuals and governance.
           </p>
+          <div className="mt-2.5 text-[11.5px] text-[#9FB0C9]">
+            Prepared for Faisal, Founder · wearefast.io — by Dental Nation Growth · July 2026
+          </div>
         </div>
         <div className="flex flex-none flex-wrap gap-2">
           <a
