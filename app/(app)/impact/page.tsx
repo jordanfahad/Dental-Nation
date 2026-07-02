@@ -13,6 +13,7 @@ import { FlowchartsSection } from "@/components/impact/FlowchartsSection";
 import { EvidenceLocker } from "@/components/impact/EvidenceLocker";
 import { DashboardTabs } from "@/components/impact/DashboardTabs";
 import { GrowthBuildsShowcase } from "@/components/impact/GrowthBuildsShowcase";
+import { Y1PlanBanner } from "@/components/impact/Y1PlanBanner";
 import { formatDate, formatRelativeTime } from "@/lib/impact/format";
 import { currentRole } from "@/lib/auth/role";
 
@@ -54,6 +55,7 @@ export default async function ImpactPage() {
           overview={
             <>
               <Hero summary={summary} />
+              <Y1PlanBanner />
               <GrowthBuildsShowcase builds={builds} evidence={data.evidence} role={role} />
               <ProjectControl projects={data.projects} components={data.components} blockers={data.blockers} />
             </>
