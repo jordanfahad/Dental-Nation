@@ -12,6 +12,7 @@ import { cn } from '@/components/ui/cn';
 
 const TYPE_LABEL: Record<string, string> = {
   appointments: 'Appointments',
+  csat: 'CSAT (patient ratings)',
   conversation_summary: 'Conversation summary',
   conversation_traffic: 'Conversation traffic',
 };
@@ -61,7 +62,7 @@ export function ZavisUpload() {
           Upload a fresh Zavis export
         </h2>
         <p className="mt-1 text-[12.5px] leading-snug text-ink-soft">
-          Drop an appointments, conversation summary, or conversation traffic CSV. The type is
+          Drop an appointments, CSAT, conversation summary, or conversation traffic CSV. The type is
           detected automatically and rows are upserted (existing records update, not duplicate).
         </p>
       </div>
@@ -98,7 +99,7 @@ export function ZavisUpload() {
           <p className="mt-0.5 text-[11px] text-ink-faint">
             {file
               ? `${(file.size / 1024).toFixed(1)} KB`
-              : 'Zavis appointments / conversation summary / traffic export'}
+              : 'Zavis appointments / CSAT / conversation summary / traffic export'}
           </p>
         </div>
 

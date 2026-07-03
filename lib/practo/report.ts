@@ -31,6 +31,12 @@ export interface PractoSummary {
   byTreatment: MixRow[];
   /** Revenue (AED) by conducting doctor, desc, top 8. */
   byDoctor: MixRow[];
+  /**
+   * Revenue (AED) on positive charge lines with NO conducting doctor recorded on
+   * the bill. byDoctor sum + doctorUnattributed reconciles to total charge revenue,
+   * so the doctor split reads honestly instead of appearing to lose money.
+   */
+  doctorUnattributed: number;
 }
 
 const empty = (configured: boolean): PractoSummary => ({
@@ -46,6 +52,7 @@ const empty = (configured: boolean): PractoSummary => ({
   byDepartment: [],
   byTreatment: [],
   byDoctor: [],
+  doctorUnattributed: 0,
 });
 
 function topMix(map: Map<string, number>, limit = 8): MixRow[] {
@@ -81,6 +88,7 @@ export async function getPractoSummary(range?: { from?: string; to?: string }): 
     const byDept = new Map<string, number>();
     const byTreatment = new Map<string, number>();
     const byDoctor = new Map<string, number>();
+    let doctorUnattributed = 0;
 
     for (const r of rows) {
       const amt = r.amount != null ? Number(r.amount) || 0 : null;
@@ -110,6 +118,7 @@ export async function getPractoSummary(range?: { from?: string; to?: string }): 
         }
         const doc = String(c.conducting_doctor ?? '').trim();
         if (doc) byDoctor.set(doc, (byDoctor.get(doc) ?? 0) + cAmt);
+        else doctorUnattributed += cAmt;
       }
     }
     dates.sort();
@@ -127,6 +136,7 @@ export async function getPractoSummary(range?: { from?: string; to?: string }): 
       byDepartment: topMix(byDept),
       byTreatment: topMix(byTreatment),
       byDoctor: topMix(byDoctor),
+      doctorUnattributed: Math.round(doctorUnattributed),
     };
   } catch {
     return empty(configured);

@@ -71,11 +71,40 @@ export interface CrmTraffic {
   peak: { hour: number; weekday: number; conversations: number } | null;
 }
 
+/** One recent CSAT comment for the "voice of the patient" list. */
+export interface CrmCsatComment {
+  rating: number;
+  feedback: string;
+  agent: string | null;
+  recordedAt: string | null; // ISO
+  url: string | null;
+}
+
+/** Patient-satisfaction (CSAT) rollup. Metrics are null when no rated rows exist. */
+export interface CrmCsat {
+  /** True when there are zero rated conversations in the window. */
+  empty: boolean;
+  /** Number of rated conversations. */
+  responses: number;
+  /** Mean rating (1–5). null when no responses. */
+  average: number | null;
+  /** Share of 4–5 ratings (satisfied), as a fraction. null when no responses. */
+  satisfaction: number | null;
+  /** Count by rating; always five entries, rating 1…5. */
+  distribution: { rating: number; count: number }[];
+  /** Most-recent non-empty feedback comments, newest first (capped). */
+  comments: CrmCsatComment[];
+  /** Window covered by the rated rows (Dubai-day min/max recorded date). */
+  periodStart: string | null;
+  periodEnd: string | null;
+}
+
 /** The assembled CRM report the tab renders. */
 export interface CrmReport {
   appointments: CrmAppointmentStats;
   conversation: CrmConversationSummary | null;
   traffic: CrmTraffic;
+  csat: CrmCsat;
   /** 'live' when at least one table returned rows; 'empty' otherwise / on failure. */
   source: 'live' | 'empty';
 }

@@ -3,6 +3,8 @@ import { getSupabaseAdmin } from '@/lib/supabase/server';
 import type {
   CrmAppointmentStats,
   CrmConversationSummary,
+  CrmCsat,
+  CrmCsatComment,
   CrmDailyPoint,
   CrmMixRow,
   CrmRange,
@@ -60,11 +62,25 @@ function emptyTraffic(): CrmTraffic {
   return { empty: true, byHour: [], matrix: [], peak: null };
 }
 
+function emptyCsat(): CrmCsat {
+  return {
+    empty: true,
+    responses: 0,
+    average: null,
+    satisfaction: null,
+    distribution: [1, 2, 3, 4, 5].map((rating) => ({ rating, count: 0 })),
+    comments: [],
+    periodStart: null,
+    periodEnd: null,
+  };
+}
+
 function emptyReport(): CrmReport {
   return {
     appointments: emptyAppointments(),
     conversation: null,
     traffic: emptyTraffic(),
+    csat: emptyCsat(),
     source: 'empty',
   };
 }
@@ -212,11 +228,71 @@ function computeTraffic(rows: TrafficRow[]): CrmTraffic {
   };
 }
 
+interface CsatRow {
+  rating: number | null;
+  agent_name: string | null;
+  feedback: string | null;
+  recorded_at: string | null;
+  conversation_url: string | null;
+}
+
+/** "IT Admin (it-admin@…)" → "IT Admin"; empty → null. */
+function agentLabel(raw: string | null): string | null {
+  const t = (raw ?? '').trim();
+  if (!t) return null;
+  const paren = t.indexOf('(');
+  const label = (paren > 0 ? t.slice(0, paren) : t).trim();
+  return label || null;
+}
+
+function computeCsat(rows: CsatRow[]): CrmCsat {
+  const rated = rows.filter((r) => r.rating != null && r.rating >= 1 && r.rating <= 5);
+  if (!rated.length) return emptyCsat();
+
+  const counts = [0, 0, 0, 0, 0]; // rating 1..5
+  let sum = 0;
+  let satisfied = 0;
+  const dates: string[] = [];
+  for (const r of rated) {
+    const rt = Math.round(Number(r.rating));
+    counts[rt - 1] += 1;
+    sum += rt;
+    if (rt >= 4) satisfied += 1;
+    const d = dubaiDate(r.recorded_at);
+    if (d) dates.push(d);
+  }
+  dates.sort();
+  const responses = rated.length;
+
+  const comments: CrmCsatComment[] = rated
+    .filter((r) => (r.feedback ?? '').trim() !== '')
+    .sort((a, b) => (Date.parse(b.recorded_at ?? '') || 0) - (Date.parse(a.recorded_at ?? '') || 0))
+    .slice(0, 8)
+    .map((r) => ({
+      rating: Math.round(Number(r.rating)),
+      feedback: (r.feedback ?? '').trim(),
+      agent: agentLabel(r.agent_name),
+      recordedAt: r.recorded_at ?? null,
+      url: r.conversation_url ?? null,
+    }));
+
+  return {
+    empty: false,
+    responses,
+    average: sum / responses,
+    satisfaction: satisfied / responses,
+    distribution: counts.map((count, i) => ({ rating: i + 1, count })),
+    comments,
+    periodStart: dates.length ? dates[0] : null,
+    periodEnd: dates.length ? dates[dates.length - 1] : null,
+  };
+}
+
 /**
- * Assemble the CRM report. Reads all three tables (appointments filtered to
- * is_test=false), scoped to `range` on created_at when provided. Any failure on
- * any read degrades that section to empty — the whole report only ever returns a
- * well-formed object, never throws.
+ * Assemble the CRM report. Reads all four tables (appointments filtered to
+ * is_test=false), scoped to `range` on created_at / recorded_at when provided.
+ * Any failure on any read degrades that section to empty — the whole report only
+ * ever returns a well-formed object, never throws.
  */
 export async function getCrmReport(range?: CrmRange): Promise<CrmReport> {
   const db = getSupabaseAdmin();
@@ -225,6 +301,7 @@ export async function getCrmReport(range?: CrmRange): Promise<CrmReport> {
   let appointments: CrmAppointmentStats = emptyAppointments();
   let conversation: CrmConversationSummary | null = null;
   let traffic: CrmTraffic = emptyTraffic();
+  let csat: CrmCsat = emptyCsat();
 
   // --- Appointments (non-test only) ----------------------------------------
   try {
@@ -266,11 +343,27 @@ export async function getCrmReport(range?: CrmRange): Promise<CrmReport> {
     traffic = emptyTraffic();
   }
 
-  const live = !appointments.empty || conversation != null || !traffic.empty;
+  // --- CSAT (patient ratings), scoped on recorded_at -----------------------
+  try {
+    let q = db
+      .from('crm_csat')
+      .select('rating, agent_name, feedback, recorded_at, conversation_url');
+    if (range?.from) q = q.gte('recorded_at', `${range.from}T00:00:00+04:00`);
+    if (range?.to) q = q.lte('recorded_at', `${range.to}T23:59:59+04:00`);
+    const { data, error } = await q;
+    if (!error && Array.isArray(data)) {
+      csat = computeCsat(data as CsatRow[]);
+    }
+  } catch {
+    csat = emptyCsat();
+  }
+
+  const live = !appointments.empty || conversation != null || !traffic.empty || !csat.empty;
   return {
     appointments,
     conversation,
     traffic,
+    csat,
     source: live ? 'live' : 'empty',
   };
 }

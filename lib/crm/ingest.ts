@@ -10,7 +10,11 @@ import { getSupabaseAdmin } from '@/lib/supabase/server';
  * ever count real patient appointments.
  */
 
-export type ZavisReportType = 'appointments' | 'conversation_summary' | 'conversation_traffic';
+export type ZavisReportType =
+  | 'appointments'
+  | 'conversation_summary'
+  | 'conversation_traffic'
+  | 'csat';
 
 export interface IngestSummary {
   type: ZavisReportType;
@@ -111,6 +115,10 @@ export function detectZavisReport(rows: string[][]): ZavisReportType | null {
     (r) => r[0] === 'appointment_id' && r.includes('status'),
   );
   if (apptHeaderIdx !== -1) return 'appointments';
+
+  // CSAT: a header row carrying both "rating" and "feedback comment" (the patient
+  // satisfaction export). Distinct from the agent report, which has neither.
+  if (flat.some((r) => r.includes('rating') && r.includes('feedback comment'))) return 'csat';
 
   // Conversation summary: first line "Reporting period YYYY-MM-DD to YYYY-MM-DD"
   const firstCell = norm(rows[0]?.[0]);
@@ -408,6 +416,71 @@ async function ingestConversationTraffic(rows: string[][]): Promise<IngestSummar
   return { type: 'conversation_traffic', rowsIngested: ingested };
 }
 
+/* -------------------------------------------------------------- ingest: csat --- */
+
+/**
+ * CSAT (patient satisfaction) export. Columns: Agent Name, Rating, Feedback
+ * Comment, Contact Name/Email/Phone, Link to the conversation, Recorded date.
+ * We dedupe on the conversation id parsed from the link and store only the
+ * rating/agent/feedback/date + link — contact PII is intentionally dropped,
+ * mirroring the lean posture of the appointments ingest.
+ */
+async function ingestCsat(rows: string[][]): Promise<IngestSummary> {
+  const db = getSupabaseAdmin();
+  if (!db) return { type: 'csat', rowsIngested: 0 };
+
+  const headerIdx = rows.findIndex((r) => {
+    const nr = r.map(norm);
+    return nr.includes('rating') && nr.includes('feedback comment');
+  });
+  if (headerIdx === -1) return { type: 'csat', rowsIngested: 0 };
+
+  const idx = headerIndex(rows[headerIdx]);
+  const at = (r: string[], col: string) => {
+    const i = idx[col];
+    return i == null ? undefined : r[i];
+  };
+
+  const now = new Date().toISOString();
+  const records: Record<string, unknown>[] = [];
+  const seen = new Set<number>();
+  for (let i = headerIdx + 1; i < rows.length; i++) {
+    const r = rows[i];
+    // Skip the trailing "Reporting period …" footer / blank artifact rows.
+    if (norm(r[0]).startsWith('reporting period')) continue;
+
+    const link = str(at(r, 'link to the conversation')) ?? '';
+    const m = link.match(/conversations\/(\d+)/);
+    const convId = m ? parseInt(m[1], 10) : null;
+    if (convId == null || !Number.isFinite(convId)) continue;
+
+    const rating = int(at(r, 'rating'));
+    if (rating == null) continue; // a CSAT row without a rating is not usable
+    if (seen.has(convId)) continue; // de-dupe within the file (last write wins on the DB)
+    seen.add(convId);
+
+    records.push({
+      conversation_id: convId,
+      rating,
+      agent_name: str(at(r, 'agent name')),
+      feedback: str(at(r, 'feedback comment')),
+      recorded_at: ts(at(r, 'recorded date')),
+      conversation_url: link || null,
+      ingested_at: now,
+    });
+  }
+
+  let ingested = 0;
+  const CHUNK = 500;
+  for (let i = 0; i < records.length; i += CHUNK) {
+    const batch = records.slice(i, i + CHUNK);
+    const { error } = await db.from('crm_csat').upsert(batch, { onConflict: 'conversation_id' });
+    if (error) throw new Error(`CSAT upsert failed: ${error.message}`);
+    ingested += batch.length;
+  }
+  return { type: 'csat', rowsIngested: ingested };
+}
+
 /* ------------------------------------------------------------ entry point --- */
 
 /**
@@ -422,13 +495,15 @@ export async function ingestZavisCsv(text: string): Promise<IngestSummary> {
   const type = detectZavisReport(rows);
   if (!type) {
     throw new Error(
-      'Could not recognise this as a Zavis export. Expected an appointments export (header starting "appointment_id,..."), a conversation summary ("Reporting period …"), or a conversation traffic export ("Timezone,…" / "Start of the hour,…").',
+      'Could not recognise this as a Zavis export. Expected an appointments export (header starting "appointment_id,..."), a CSAT export (header with "Rating" and "Feedback Comment"), a conversation summary ("Reporting period …"), or a conversation traffic export ("Timezone,…" / "Start of the hour,…").',
     );
   }
 
   switch (type) {
     case 'appointments':
       return ingestAppointments(rows);
+    case 'csat':
+      return ingestCsat(rows);
     case 'conversation_summary':
       return ingestConversationSummary(rows);
     case 'conversation_traffic':
