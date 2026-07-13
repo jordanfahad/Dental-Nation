@@ -26,7 +26,7 @@ export function FunnelViz({ stages }: { stages: FunnelStageViz[] }) {
       {stages.map((s, i) => {
         const conv =
           prevVal != null && prevVal > 0 && s.value != null ? s.value / prevVal : null;
-        const widthPct = s.value != null ? Math.max((s.value / max) * 100, 6) : 100;
+        const widthPct = s.value != null ? Math.max((s.value / max) * 100, 4) : 0;
         // Intensity fades down the funnel for a clean "narrowing" read.
         const shade = [TOKENS.accent, TOKENS.accent600, TOKENS.accent400, '#7C9CC4', '#9CB4D1'][
           Math.min(i, 4)
@@ -34,7 +34,7 @@ export function FunnelViz({ stages }: { stages: FunnelStageViz[] }) {
         const node = (
           <div key={s.label}>
             {i > 0 ? (
-              <div className="flex items-center gap-2 py-0.5 pl-1">
+              <div className="flex items-center gap-2 py-0.5 pl-[190px]">
                 <span className="text-[10px] text-ink-ghost">↓</span>
                 <span className="text-[10.5px] text-ink-faint">
                   {conv != null ? (
@@ -50,19 +50,22 @@ export function FunnelViz({ stages }: { stages: FunnelStageViz[] }) {
                 </span>
               </div>
             ) : null}
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 flex-1 items-center overflow-hidden rounded-md bg-na/10">
+            {/* Label lives in its own column in dark ink (never white-on-bar),
+                so it stays legible regardless of the bar's colour or width. */}
+            <div className="grid grid-cols-[178px_1fr_auto] items-center gap-3">
+              <div className="truncate text-[12.5px] font-medium text-ink" title={s.label}>
+                {s.label}
+              </div>
+              <div className="flex h-8 items-center overflow-hidden rounded-md bg-na/10">
                 {s.value != null ? (
                   <div
-                    className="flex h-full items-center rounded-md px-3 text-[12px] font-medium text-white transition-all"
-                    style={{ width: `${widthPct}%`, background: shade, minWidth: 96 }}
-                  >
-                    <span className="truncate">{s.label}</span>
-                  </div>
+                    className="h-full rounded-md transition-all"
+                    style={{ width: `${widthPct}%`, background: shade, minWidth: 8 }}
+                  />
                 ) : (
-                  <div className="flex h-full w-full items-center px-3 text-[12px] text-watch">
-                    <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-watch" />
-                    {s.label} — data gap{s.hint ? ` · ${s.hint}` : ''}
+                  <div className="flex h-full w-full items-center rounded-md border border-dashed border-watch/40 bg-watch/5 px-2.5 text-[11px] font-medium text-watch">
+                    <span className="mr-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-watch" />
+                    data gap{s.hint ? ` · ${s.hint}` : ''}
                   </div>
                 )}
               </div>
