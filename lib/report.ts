@@ -42,6 +42,15 @@ export interface RangeQuery {
   to?: string;
   preset?: string;
   compare?: string;
+  /**
+   * Skip the LIVE GA4 Data-API fetch (resolveGa4). The dashboard shell — the
+   * header date control, the sync footer and the Website Bookings tab — never
+   * reads `report.ga4`, yet resolveGa4 makes a live Google API call on every
+   * request that can take several seconds (and occasionally times out). Passing
+   * `skipGa4` for those consumers keeps tab navigation snappy; the tabs that
+   * actually show GA4 (Executive / Weekly / Analytics) call without it.
+   */
+  skipGa4?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -346,7 +355,9 @@ export async function getRangeReport(query: RangeQuery): Promise<RangeReport> {
     );
 
     const storedGa4 = ga4SummaryFromRow(ga4Row as Record<string, unknown> | null);
-    const ga4 = await resolveGa4(range, storedGa4);
+    // Skip the live GA4 call entirely for shell/bookings consumers (they don't
+    // read report.ga4) — that live Google fetch is the main tab-switch stall.
+    const ga4 = query.skipGa4 ? null : await resolveGa4(range, storedGa4);
 
     // Latest in-range snapshot for the Executive decision pill.
     const snapshot =
