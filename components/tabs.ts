@@ -14,6 +14,7 @@ export const TABS = [
   { key: 'crm', label: 'CRM — Zavis' },
   { key: 'practo', label: 'Practo Insta' },
   { key: 'bookings', label: 'Website Bookings' },
+  { key: 'arabyads', label: 'Araby Ads' },
   { key: 'marketing', label: 'Marketing' },
   { key: 'analytics', label: 'Google Analytics' },
   { key: 'clarity', label: 'Heatmaps & Recordings' },

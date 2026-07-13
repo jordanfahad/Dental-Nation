@@ -17,11 +17,23 @@ import type { ExecKpis, ExecMonthPoint, ExecutiveReport } from './types';
  * Marketing tab can never disagree on spend. Cost-per-lead is that live spend
  * over the tracked leads shown beside it, so the two numbers reconcile.
  */
-export async function getExecutiveReport(): Promise<ExecutiveReport> {
+export interface ExecQuery {
+  from?: string;
+  to?: string;
+  preset?: string;
+  compare?: string;
+}
+
+export async function getExecutiveReport(query: ExecQuery = {}): Promise<ExecutiveReport> {
   const [range, crm, practo, mkt] = await Promise.all([
-    getRangeReport({ preset: 'all', compare: 'none' }),
-    getCrmReport({}),
-    getPractoSummary({}),
+    getRangeReport({
+      from: query.from,
+      to: query.to,
+      preset: query.preset ?? 'all',
+      compare: query.compare ?? 'none',
+    }),
+    getCrmReport({ from: query.from, to: query.to }),
+    getPractoSummary({ from: query.from, to: query.to }),
     getMarketingReport(),
   ]);
 
@@ -29,10 +41,16 @@ export async function getExecutiveReport(): Promise<ExecutiveReport> {
   const appt = crm.appointments;
   const conv = crm.conversation;
 
-  // Live ad spend (Meta + Google), with a graceful fallback to the manual sheet
-  // only if the live APIs have no data yet.
+  // A specific window is selected (not the full-history default). When scoped,
+  // spend/trend come from the range-scoped paid data; at the 'all' default we
+  // keep the LIVE all-time ad spend so the headline reconciles with Marketing.
+  const scoped = range.range.preset !== 'all';
+
+  // Live ad spend (Meta + Google), with a graceful fallback to the manual sheet.
+  // When a window is selected, prefer the range-scoped paid spend (live is
+  // all-time and would misreport the window).
   const liveAdSpend = mkt.source === 'live' ? mkt.totals.adSpend : null;
-  const marketingSpend = liveAdSpend ?? paid.spend.value;
+  const marketingSpend = scoped ? paid.spend.value : (liveAdSpend ?? paid.spend.value);
   const leadsGenerated = leads.total.value;
   // Cost per lead = live spend ÷ tracked leads (the two figures shown together).
   const costPerLead =
@@ -73,8 +91,9 @@ export async function getExecutiveReport(): Promise<ExecutiveReport> {
     months.set(m, row);
   };
   for (const d of series) bump(d.date, { leads: d.inquiries });
-  // Monthly spend from the LIVE ad source (consistent with the headline + Marketing tab).
-  if (mkt.source === 'live') {
+  // Monthly spend: LIVE ad source at the default (matches the headline +
+  // Marketing tab); the range-scoped per-day series when a window is selected.
+  if (!scoped && mkt.source === 'live') {
     for (const m of mkt.monthly) bump(`${m.month}-01`, { spend: m.spend });
   } else {
     for (const d of series) bump(d.date, { spend: d.spend });

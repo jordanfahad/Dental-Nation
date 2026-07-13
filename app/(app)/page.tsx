@@ -9,6 +9,7 @@ import { CrmReport } from '@/components/sections/crm/CrmReport';
 import { ExecutiveDashboard } from '@/components/sections/executive/ExecutiveDashboard';
 import { PractoReport } from '@/components/sections/practo/PractoReport';
 import { BookingsReport } from '@/components/sections/bookings/BookingsReport';
+import { ArabyAdsReport } from '@/components/sections/arabyads/ArabyAdsReport';
 import { MarketingReport } from '@/components/sections/marketing/MarketingReport';
 import { GoogleAnalyticsReport } from '@/components/sections/analytics/GoogleAnalyticsReport';
 import { ClarityReport } from '@/components/sections/clarity/ClarityReport';
@@ -53,7 +54,9 @@ export default async function DashboardPage({
       <Header range={report.range} source={report.source} />
       <TabBar />
 
-      {tab === 'executive' ? <ExecutiveDashboard /> : null}
+      {tab === 'executive' ? (
+        <ExecutiveDashboard query={{ from: sp.from, to: sp.to, preset: sp.preset, compare: sp.compare }} />
+      ) : null}
       {tab === 'daily' ? <DailyControlReport reportDate={sp.from} /> : null}
       {tab === 'weekly' ? <WeeklyReview weekOf={sp.from} /> : null}
       {tab === 'crm' ? (
@@ -61,6 +64,9 @@ export default async function DashboardPage({
       ) : null}
       {tab === 'practo' ? <PractoReport /> : null}
       {tab === 'bookings' ? <BookingsReport report={report} /> : null}
+      {tab === 'arabyads' ? (
+        <ArabyAdsReport range={{ from: report.range.from, to: report.range.to }} />
+      ) : null}
       {tab === 'marketing' ? <MarketingReport sub={sp.mtab} /> : null}
       {tab === 'analytics' ? <GoogleAnalyticsReport /> : null}
       {tab === 'clarity' ? <ClarityReport /> : null}

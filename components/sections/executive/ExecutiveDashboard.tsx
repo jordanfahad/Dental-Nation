@@ -1,4 +1,4 @@
-import { getExecutiveReport } from '@/lib/executive/report';
+import { getExecutiveReport, type ExecQuery } from '@/lib/executive/report';
 import { ExecHero } from './ExecHero';
 import { ExecKpiBand } from './ExecKpiBand';
 import { ExecPipeline } from './ExecPipeline';
@@ -17,8 +17,8 @@ import { ExecClosing } from './ExecClosing';
  * explicit owned data gap (never a fabricated 0), so the page renders fully in
  * both the live and mock/empty states.
  */
-export async function ExecutiveDashboard() {
-  const report = await getExecutiveReport();
+export async function ExecutiveDashboard({ query }: { query?: ExecQuery }) {
+  const report = await getExecutiveReport(query);
 
   return (
     <div className="space-y-5">

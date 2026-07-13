@@ -611,6 +611,138 @@ export function finalizeAttribution(raw: Ga4ChannelRaw[], period: { from: string
   };
 }
 
+// ============================================================================
+// Araby Ads campaign lens: overall daily traffic + channel mix for the window,
+// plus the ArabyAds-attributed slice (campaign / landing page / daily) filtered
+// to the campaign UTMs. One property, a handful of runReport calls. Throws on
+// hard GA4 failure so the caller can degrade to a data gap (never crash).
+// ============================================================================
+
+export interface Ga4ArabyAds {
+  totalSessions: number;
+  dailyAll: { date: string; sessions: number }[];
+  byChannel: { channel: string; sessions: number }[];
+  araby: {
+    sessions: number;
+    conversions: number;
+    byCampaign: { campaign: string; sessions: number; conversions: number }[];
+    byLandingPage: { page: string; sessions: number }[];
+    daily: { date: string; sessions: number }[];
+  };
+  period: { from: string; to: string };
+}
+
+/** GA4 `date` dimension is 'YYYYMMDD' → 'YYYY-MM-DD'. */
+function ga4DateToIso(v: string | null | undefined): string | null {
+  if (!v || v.length !== 8) return null;
+  return `${v.slice(0, 4)}-${v.slice(4, 6)}-${v.slice(6, 8)}`;
+}
+
+export async function fetchGa4ArabyAds(from: string, to: string, campaigns: string[]): Promise<Ga4ArabyAds> {
+  const analytics = getAnalyticsClient();
+  const property = `properties/${GA4_PROPERTY_ID}`;
+  const dateRanges = [{ startDate: from, endDate: to }];
+  // Attribute to the campaign either by the exact UTM campaign names or a
+  // source that starts with "arabyads" (covers casing / minor UTM drift).
+  const campaignFilter = {
+    orGroup: {
+      expressions: [
+        { filter: { fieldName: 'sessionCampaignName', inListFilter: { values: campaigns } } },
+        { filter: { fieldName: 'sessionSource', stringFilter: { matchType: 'CONTAINS', value: 'arabyads', caseSensitive: false } } },
+      ],
+    },
+  };
+
+  const [dailyAllRes, channelRes, campRes, lpRes, dailyArabyRes] = await Promise.all([
+    // 1 — overall daily sessions (all channels)
+    analytics.properties.runReport({
+      property,
+      requestBody: {
+        dateRanges,
+        dimensions: [{ name: 'date' }],
+        metrics: [{ name: 'sessions' }],
+        orderBys: [{ dimension: { dimensionName: 'date' } }],
+        limit: '400',
+      },
+    }),
+    // 2 — channel mix (all channels)
+    analytics.properties.runReport({
+      property,
+      requestBody: {
+        dateRanges,
+        dimensions: [{ name: 'sessionDefaultChannelGroup' }],
+        metrics: [{ name: 'sessions' }],
+        orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+        limit: '12',
+      },
+    }),
+    // 3 — ArabyAds sessions/conversions by campaign
+    analytics.properties.runReport({
+      property,
+      requestBody: {
+        dateRanges,
+        dimensions: [{ name: 'sessionCampaignName' }],
+        metrics: [{ name: 'sessions' }, { name: 'conversions' }],
+        dimensionFilter: campaignFilter,
+        orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+        limit: '25',
+      },
+    }),
+    // 4 — ArabyAds sessions by landing page
+    analytics.properties.runReport({
+      property,
+      requestBody: {
+        dateRanges,
+        dimensions: [{ name: 'landingPagePlusQueryString' }],
+        metrics: [{ name: 'sessions' }],
+        dimensionFilter: campaignFilter,
+        orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+        limit: '25',
+      },
+    }),
+    // 5 — ArabyAds daily sessions
+    analytics.properties.runReport({
+      property,
+      requestBody: {
+        dateRanges,
+        dimensions: [{ name: 'date' }],
+        metrics: [{ name: 'sessions' }],
+        dimensionFilter: campaignFilter,
+        orderBys: [{ dimension: { dimensionName: 'date' } }],
+        limit: '400',
+      },
+    }),
+  ]);
+
+  const dailyAll = (dailyAllRes.data.rows ?? [])
+    .map((r) => ({ date: ga4DateToIso(r.dimensionValues?.[0]?.value) ?? '', sessions: metric(r, 0) }))
+    .filter((d) => d.date);
+  const byChannel = (channelRes.data.rows ?? []).map((r) => ({ channel: r.dimensionValues?.[0]?.value || 'Unassigned', sessions: metric(r, 0) }));
+  const byCampaign = (campRes.data.rows ?? []).map((r) => ({ campaign: r.dimensionValues?.[0]?.value || '(not set)', sessions: metric(r, 0), conversions: metric(r, 1) }));
+  const byLandingPage = (lpRes.data.rows ?? []).map((r) => ({ page: r.dimensionValues?.[0]?.value || '(not set)', sessions: metric(r, 0) }));
+  const arabyDaily = (dailyArabyRes.data.rows ?? [])
+    .map((r) => ({ date: ga4DateToIso(r.dimensionValues?.[0]?.value) ?? '', sessions: metric(r, 0) }))
+    .filter((d) => d.date);
+
+  const totalSessions = dailyAll.reduce((a, d) => a + d.sessions, 0);
+  const arabySessions = byCampaign.reduce((a, c) => a + c.sessions, 0);
+  const arabyConversions = byCampaign.reduce((a, c) => a + c.conversions, 0);
+
+  return {
+    totalSessions,
+    dailyAll,
+    byChannel,
+    araby: {
+      sessions: arabySessions,
+      conversions: arabyConversions,
+      byCampaign,
+      byLandingPage,
+      daily: arabyDaily,
+    },
+    period: { from, to },
+  };
+}
+
 export async function fetchGa4Attribution(from: string, to: string): Promise<Ga4Attribution> {
   const analytics = getAnalyticsClient();
   const property = `properties/${GA4_PROPERTY_ID}`;

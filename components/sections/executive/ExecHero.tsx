@@ -56,7 +56,9 @@ export function ExecHero({ report }: { report: ExecutiveReport }) {
       : narrative ??
         `A measured, multi-channel patient-acquisition system — ${liveCount} of ${pills.length} engines live, from ad spend through clinic revenue, instrumented end to end.`;
 
-  const period = `${dubaiDateLabel(range.from)} → ${dubaiDateLabel(range.to)} · full history, each engine over its own measured window`;
+  const period = `${dubaiDateLabel(range.from)} → ${dubaiDateLabel(range.to)} · ${
+    range.preset === 'all' ? 'full history, each engine over its own measured window' : 'selected window'
+  }`;
 
   return (
     <div className="space-y-4">
