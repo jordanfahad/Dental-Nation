@@ -26,13 +26,23 @@ export interface ArabyLane {
   laneCode: string; // internal "Lane E/D/J"
   url: string;
   campaign: string; // utm_campaign
+  /** ArabyAds rate per confirmed booking event (AED, excl VAT). */
+  cpl: number;
+  /** The label ArabyAds uses in the rate card, when different from `label`. */
+  billingName: string;
 }
 
+// Commercial model: pay-per-confirmed-booking. Rates from the ArabyAds rate
+// card. "Ortho" maps to the /scan landing page by elimination (Glow↔glow-up,
+// SOS↔sos) — confirm with the vendor if the /scan page isn't the Ortho offer.
 export const ARABY_LANES: ArabyLane[] = [
-  { key: 'glowup', label: 'Glow-Up', laneCode: 'Lane E', url: 'https://www.dentalnation.com/en/glow-up', campaign: 'dental_nation_glowup' },
-  { key: 'sos', label: 'SOS', laneCode: 'Lane D', url: 'https://www.dentalnation.com/en/sos', campaign: 'dental_nation_sos' },
-  { key: 'scan', label: 'Scan', laneCode: 'Lane J', url: 'https://www.dentalnation.com/en/scan', campaign: 'dental_nation_scan' },
+  { key: 'glowup', label: 'Glow-Up', laneCode: 'Lane E', url: 'https://www.dentalnation.com/en/glow-up', campaign: 'dental_nation_glowup', cpl: 121.19, billingName: 'Glow' },
+  { key: 'sos', label: 'SOS', laneCode: 'Lane D', url: 'https://www.dentalnation.com/en/sos', campaign: 'dental_nation_sos', cpl: 97.17, billingName: 'SOS' },
+  { key: 'scan', label: 'Scan', laneCode: 'Lane J', url: 'https://www.dentalnation.com/en/scan', campaign: 'dental_nation_scan', cpl: 97.17, billingName: 'Ortho' },
 ];
+
+/** Total campaign budget cap (AED, exclusive of VAT). */
+export const ARABY_BUDGET_CAP = 55088;
 
 const LANE_BY_CAMPAIGN = new Map(ARABY_LANES.map((l) => [l.campaign, l]));
 
@@ -83,6 +93,20 @@ export interface ArabyReport {
     appointmentsBooked: number | null;
     clinicRevenue: number | null;
     bills: number | null;
+  };
+  /**
+   * Cost & budget. ArabyAds bills per confirmed booking, so cost = real
+   * ArabyAds bookings × the lane's rate. `windowCost` matches the tab's date
+   * scope; `toDateCost` is all-time (for the budget cap, a campaign-lifetime
+   * figure). Excludes VAT, matching the rate card.
+   */
+  cost: {
+    windowCost: number;
+    toDateCost: number;
+    budgetCap: number;
+    remaining: number;
+    utilization: number; // toDateCost / budgetCap (0..1+)
+    perLane: { lane: string; laneCode: string; billingName: string; rate: number; bookings: number; cost: number }[];
   };
   ga4: Ga4ArabyAds | null;
 }
@@ -140,6 +164,14 @@ export async function getArabyAdsReport(range: { from: string; to: string }): Pr
     bookings: { total: 0, test: 0, revenue: 0, byLane: [], daily: [], byPublisher: [], recent: [] },
     enquiries: { total: 0, byChannel: [], social: [], daily: [] },
     practo: { appointmentsBooked: null, clinicRevenue: null, bills: null },
+    cost: {
+      windowCost: 0,
+      toDateCost: 0,
+      budgetCap: ARABY_BUDGET_CAP,
+      remaining: ARABY_BUDGET_CAP,
+      utilization: 0,
+      perLane: ARABY_LANES.map((l) => ({ lane: l.label, laneCode: l.laneCode, billingName: l.billingName, rate: l.cpl, bookings: 0, cost: 0 })),
+    },
     ga4: null,
   };
 
@@ -152,6 +184,9 @@ export async function getArabyAdsReport(range: { from: string; to: string }): Pr
   const dailyBook = new Map<string, number>();
   const publishers = new Map<string, ArabyPublisher>();
   const recent: ArabyBooking[] = [];
+  // Real (non-test) bookings per lane key: all-time (budget) + window (cost).
+  const allTimeByLaneKey = new Map<string, number>();
+  const windowByLaneKey = new Map<string, number>();
   let total = 0;
   let test = 0;
   let revenue = 0;
@@ -165,12 +200,16 @@ export async function getArabyAdsReport(range: { from: string; to: string }): Pr
       if (!parsed) continue; // not an ArabyAds row
       const date = String(d['Date'] ?? '').slice(0, 10) || null;
       if (date && (!firstSeen || date < firstSeen)) firstSeen = date;
-      if (!inRange(date, from, to)) continue;
 
       const name = String(d['Full Name'] ?? '').trim() || null;
       const email = String(d['Email'] ?? '').trim();
       const price = num(d['Price']);
       const isTest = isTestRow(email, name ?? '', parsed.pid);
+
+      // All-time real bookings per lane — the campaign-lifetime cost/budget base.
+      if (!isTest && parsed.lane) allTimeByLaneKey.set(parsed.lane.key, (allTimeByLaneKey.get(parsed.lane.key) ?? 0) + 1);
+
+      if (!inRange(date, from, to)) continue;
 
       recent.push({ date, lane: parsed.lane, pid: parsed.pid, sub: parsed.sub, price, isTest, name });
 
@@ -182,6 +221,7 @@ export async function getArabyAdsReport(range: { from: string; to: string }): Pr
       if (price) revenue += price;
       const laneLabel = parsed.lane?.label ?? 'Unknown lane';
       byLane.set(laneLabel, (byLane.get(laneLabel) ?? 0) + 1);
+      if (parsed.lane) windowByLaneKey.set(parsed.lane.key, (windowByLaneKey.get(parsed.lane.key) ?? 0) + 1);
       if (date) dailyBook.set(date, (dailyBook.get(date) ?? 0) + 1);
       const pk = `${parsed.pid ?? '—'}|${parsed.sub ?? '—'}`;
       const pub = publishers.get(pk) ?? { pid: parsed.pid ?? '—', sub: parsed.sub ?? '—', lane: laneLabel, bookings: 0, revenue: 0 };
@@ -193,6 +233,22 @@ export async function getArabyAdsReport(range: { from: string; to: string }): Pr
     /* leave booking rollups empty */
   }
   recent.sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''));
+
+  // Cost = real ArabyAds bookings × the lane's confirmed-booking rate.
+  const perLane = ARABY_LANES.map((l) => {
+    const bookings = allTimeByLaneKey.get(l.key) ?? 0;
+    return { lane: l.label, laneCode: l.laneCode, billingName: l.billingName, rate: l.cpl, bookings, cost: Math.round(bookings * l.cpl) };
+  });
+  const toDateCost = perLane.reduce((a, x) => a + x.cost, 0);
+  const windowCost = ARABY_LANES.reduce((a, l) => a + (windowByLaneKey.get(l.key) ?? 0) * l.cpl, 0);
+  const cost = {
+    windowCost: Math.round(windowCost),
+    toDateCost: Math.round(toDateCost),
+    budgetCap: ARABY_BUDGET_CAP,
+    remaining: Math.round(ARABY_BUDGET_CAP - toDateCost),
+    utilization: ARABY_BUDGET_CAP > 0 ? toDateCost / ARABY_BUDGET_CAP : 0,
+    perLane,
+  };
 
   // ── Lead / enquiry trend across all channels (surge detection) ──
   const byChannel = new Map<string, number>();
@@ -271,6 +327,7 @@ export async function getArabyAdsReport(range: { from: string; to: string }): Pr
       daily: dailyEnquiries,
     },
     practo,
+    cost,
     ga4,
   };
 }

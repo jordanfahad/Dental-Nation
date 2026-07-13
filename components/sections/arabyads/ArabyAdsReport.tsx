@@ -8,6 +8,7 @@ import { dubaiDateLabel } from '@/lib/dates';
 
 const int = (n: number) => Math.round(n).toLocaleString('en-US');
 const aed = (n: number) => `AED ${int(n)}`;
+const pct = (n: number) => `${Math.round(n * 100)}%`;
 
 /**
  * Araby Ads Performance — is the campaign working? Ground truth is the on-site
@@ -135,9 +136,77 @@ export async function ArabyAdsReport({ range }: { range: { from: string; to: str
         </div>
       </Card>
 
+      {/* ── Cost & budget ── */}
+      <Card>
+        <SectionHeader tag="A2" eyebrow="Cost & budget" title="Spend vs budget (pay per confirmed booking)" />
+        <div className="px-5 pb-5 pt-4">
+          <KpiBand
+            items={[
+              { label: 'Cost to date', value: aed(r.cost.toDateCost), hint: 'bookings × rate · excl VAT' },
+              { label: 'Budget cap', value: aed(r.cost.budgetCap), hint: 'excl VAT' },
+              { label: 'Remaining', value: aed(r.cost.remaining) },
+              { label: 'Budget used', value: pct(r.cost.utilization) },
+            ]}
+          />
+          <div className="mt-4">
+            <span className="relative block h-3 overflow-hidden rounded bg-na/10">
+              <span
+                className={`absolute inset-y-0 left-0 rounded ${r.cost.utilization >= 1 ? 'bg-stop' : r.cost.utilization >= 0.85 ? 'bg-watch' : 'bg-accent'}`}
+                style={{ width: `${Math.min(r.cost.utilization * 100, 100)}%` }}
+              />
+            </span>
+            <p className="mt-1.5 text-[11px] text-ink-faint">
+              {aed(r.cost.toDateCost)} of {aed(r.cost.budgetCap)} used
+              {r.cost.windowCost > 0 ? ` · ${aed(r.cost.windowCost)} in this window` : ''}
+            </p>
+          </div>
+
+          <div className="mt-5 overflow-x-auto">
+            <table className="w-full text-left text-[12.5px]">
+              <thead>
+                <tr className="border-b border-line text-[10.5px] uppercase tracking-wide text-ink-faint">
+                  <th className="py-2 pr-3 font-medium">Landing page</th>
+                  <th className="py-2 pr-3 font-medium">ArabyAds line</th>
+                  <th className="py-2 pr-3 text-right font-medium">Rate / booking</th>
+                  <th className="py-2 pr-3 text-right font-medium">Confirmed bookings</th>
+                  <th className="py-2 pl-3 text-right font-medium">Cost</th>
+                </tr>
+              </thead>
+              <tbody>
+                {r.cost.perLane.map((l) => (
+                  <tr key={l.lane} className="border-b border-line/60">
+                    <td className="py-2 pr-3 text-ink">
+                      {l.laneCode} · {l.lane}
+                    </td>
+                    <td className="py-2 pr-3 text-ink-soft">{l.billingName}</td>
+                    <td className="py-2 pr-3 text-right tabular-nums text-ink-soft">AED {l.rate.toFixed(2)}</td>
+                    <td className="py-2 pr-3 text-right tabular-nums text-ink">{int(l.bookings)}</td>
+                    <td className="py-2 pl-3 text-right tabular-nums text-ink">{aed(l.cost)}</td>
+                  </tr>
+                ))}
+                <tr className="font-medium">
+                  <td className="py-2 pr-3 text-ink" colSpan={3}>
+                    Total (campaign to date)
+                  </td>
+                  <td className="py-2 pr-3 text-right tabular-nums text-ink">
+                    {int(r.cost.perLane.reduce((a, l) => a + l.bookings, 0))}
+                  </td>
+                  <td className="py-2 pl-3 text-right tabular-nums text-ink">{aed(r.cost.toDateCost)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-3 text-[11px] leading-snug text-ink-faint">
+            ArabyAds bills per <strong>confirmed booking</strong>, so cost = confirmed ArabyAds bookings × the
+            lane rate (from the rate card, excl VAT). Budget is tracked campaign-to-date (all-time), not just the
+            selected window. <strong>“Ortho” is mapped to the /scan landing page</strong> — tell me if that pairing is wrong.
+          </p>
+        </div>
+      </Card>
+
       {/* ── Booking conversions ── */}
       <Card>
-        <SectionHeader tag="A2" eyebrow="Conversions" title="ArabyAds bookings — the money signal" />
+        <SectionHeader tag="A3" eyebrow="Conversions" title="ArabyAds bookings — the money signal" />
         <div className="px-5 pb-5 pt-4">
           {b.total === 0 ? (
             <DataGapInline
@@ -188,7 +257,7 @@ export async function ArabyAdsReport({ range }: { range: { from: string; to: str
 
       {/* ── GA4 traffic ── */}
       <Card>
-        <SectionHeader tag="A3" eyebrow="Traffic · GA4" title="Daily traffic & where it comes from" />
+        <SectionHeader tag="A4" eyebrow="Traffic · GA4" title="Daily traffic & where it comes from" />
         <div className="px-5 pb-5 pt-4">
           {!ga4 ? (
             <DataGapInline detail="GA4 traffic unavailable (not configured or API error)" owner={ownerFor('tracking')} />
@@ -233,7 +302,7 @@ export async function ArabyAdsReport({ range }: { range: { from: string; to: str
 
       {/* ── Enquiry surge ── */}
       <Card>
-        <SectionHeader tag="A4" eyebrow="Enquiries" title="Are enquiries surging? (all channels)" />
+        <SectionHeader tag="A5" eyebrow="Enquiries" title="Are enquiries surging? (all channels)" />
         <div className="px-5 pb-5 pt-4">
           {e.total === 0 ? (
             <DataGapInline detail="no enquiries (lead-tracker rows) in range" owner={ownerFor('tracking')} />
@@ -273,7 +342,7 @@ export async function ArabyAdsReport({ range }: { range: { from: string; to: str
       {/* ── Recent ArabyAds bookings ── */}
       {b.recent.length > 0 ? (
         <Card>
-          <SectionHeader tag="A5" eyebrow="Detail" title="Recent ArabyAds bookings" />
+          <SectionHeader tag="A6" eyebrow="Detail" title="Recent ArabyAds bookings" />
           <div className="px-5 pb-5 pt-4">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-[12.5px]">
