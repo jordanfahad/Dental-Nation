@@ -1,4 +1,4 @@
-import { getRangeReport } from '@/lib/report';
+import type { getRangeReport } from '@/lib/report';
 import { Card, SectionHeader, Takeaway } from '@/components/ui/Card';
 import { DataGapInline } from '@/components/ui/DataGap';
 import { KpiBand, type KpiItem } from '@/components/charts/KpiBand';
@@ -17,17 +17,19 @@ import { dubaiDateLabel } from '@/lib/dates';
 const aed = (n: number) => `AED ${Math.round(n).toLocaleString('en-US')}`;
 const int = (n: number) => Math.round(n).toLocaleString('en-US');
 
+type RangeReport = Awaited<ReturnType<typeof getRangeReport>>;
+
 /**
- * Website Bookings tab — the on-site booking-widget lens. Reads the all-time
- * range report and consumes `.bookings` + `.series` + `.range`. This is its OWN
- * population: the website booking widget, distinct from CRM appointments and
- * Practo finalized bills — never fused into one cross-source funnel.
+ * Website Bookings tab — the on-site booking-widget lens. Consumes the page's
+ * range-aware report (`.bookings` + `.series` + `.range`) so it honors the date
+ * picker like every other tab. This is its OWN population: the website booking
+ * widget, distinct from CRM appointments and Practo finalized bills — never
+ * fused into one cross-source funnel.
  *
  * Honest by construction (CLAUDE.md §15): empty → owned data gap, null-guarded
  * derived metrics (avg booking value), never a fabricated 0.
  */
-export async function BookingsReport() {
-  const report = await getRangeReport({ preset: 'all', compare: 'none' });
+export async function BookingsReport({ report }: { report: RangeReport }) {
   const b = report.bookings;
   const range = report.range;
   const isEmpty = b.empty;

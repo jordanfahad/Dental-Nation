@@ -60,7 +60,7 @@ export default async function DashboardPage({
         <CrmReport range={{ from: report.range.from, to: report.range.to }} />
       ) : null}
       {tab === 'practo' ? <PractoReport /> : null}
-      {tab === 'bookings' ? <BookingsReport /> : null}
+      {tab === 'bookings' ? <BookingsReport report={report} /> : null}
       {tab === 'marketing' ? <MarketingReport sub={sp.mtab} /> : null}
       {tab === 'analytics' ? <GoogleAnalyticsReport /> : null}
       {tab === 'clarity' ? <ClarityReport /> : null}
