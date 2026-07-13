@@ -79,7 +79,7 @@ export function FunnelTable({ view }: { view: ReportView }) {
                       <td className="tnum px-2 py-1.5 text-right text-ink-faint">
                         {fmtInt(f!.total)}
                       </td>
-                      <td className="px-2 py-1.5 text-ink-faint">Lead tracker</td>
+                      <td className="px-2 py-1.5 text-ink-faint">{f!.source ?? 'Lead tracker'}</td>
                     </>
                   )}
                 </tr>
@@ -121,10 +121,11 @@ export function FunnelTable({ view }: { view: ReportView }) {
 
       <div className="px-5 pb-5">
         <Takeaway>
-          The inquiry → booking spine is measured from the lead tracker. Top-of-funnel volume
-          (reach / impressions / clicks / WhatsApp + call clicks) and post-visit stages (attended,
-          show rate, treatment, proof, reviews) have no source yet — shown as owned data gaps, never
-          zeros.
+          Most stages are now measured live: clicks / impressions from the ad platforms, landing-page
+          visits + WhatsApp / call clicks from GA4, bookings from the website widget, show-ups from the
+          Zavis CRM and reviews from CSAT (see each row&rsquo;s source). Reach still needs a live Meta
+          feed (its token is stale), and Proof capture has no source yet — those stay owned data gaps,
+          never zeros.
         </Takeaway>
       </div>
     </Card>

@@ -25,6 +25,9 @@ export interface FunnelStage {
   total: number | null;
   /** Stage-to-stage conversion vs. the previous measured stage (0–1), or null. */
   conversionFromPrev: number | null;
+  /** Human source label when the stage was filled from a live overlay source
+   *  (GA4 / booking widget / CRM / CSAT) rather than the lead tracker. */
+  source?: string;
 }
 
 /** Trailing series + delta for a single KPI in the §A strip. */

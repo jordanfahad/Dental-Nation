@@ -1,12 +1,14 @@
 import type { analyticsdata_v1beta } from 'googleapis';
 import { getAnalyticsClient } from '../google-auth';
 import {
+  GA4_CALL_EVENT,
   GA4_EVENTS,
   GA4_LEAD_CHANNEL_DIMENSION,
   GA4_LEAD_EVENT,
   GA4_LOOKBACK_DAYS,
   GA4_MARKETING_LEAD_EVENTS,
   GA4_PROPERTY_ID,
+  GA4_WHATSAPP_EVENT,
   ONSITE_FUNNEL,
 } from '@/config/ga4';
 import type { Ga4Channel, Ga4FunnelStage, Ga4RangeReport, Ga4Summary, MetricDelta } from '@/lib/types';
@@ -789,4 +791,88 @@ export async function fetchGa4Attribution(from: string, to: string): Promise<Ga4
   }));
 
   return finalizeAttribution(raw, { from, to });
+}
+
+// ===========================================================================
+// Daily-funnel overlay source (§D). Per-day sessions ("landing-page visits")
+// and per-day counts of the WhatsApp-click and call-click events, over an
+// arbitrary span. Buckets by GA4's own `date` dimension (YYYYMMDD) so the
+// caller can read today / yesterday / all-time totals off one span fetch.
+// ===========================================================================
+
+export interface Ga4FunnelDay {
+  date: string; // YYYY-MM-DD
+  sessions: number;
+  whatsappClicks: number;
+  callClicks: number;
+}
+
+/** yyyymmdd → yyyy-mm-dd (GA4 `date` dimension is dense, no separators). */
+function isoFromGa4Date(v: string | null | undefined): string | null {
+  if (!v || v.length !== 8) return null;
+  return `${v.slice(0, 4)}-${v.slice(4, 6)}-${v.slice(6, 8)}`;
+}
+
+/**
+ * Fetch the per-day website sessions + WhatsApp/call click events over
+ * [from, to]. Two runReports: sessions by date, and eventCount by date×event
+ * filtered to the two click events. Throws on any GA4 error (the caller treats
+ * a failure as "no GA4 overlay" and leaves those stages as data gaps).
+ */
+export async function fetchGa4FunnelDaily(from: string, to: string): Promise<Ga4FunnelDay[]> {
+  const analytics = getAnalyticsClient();
+  const property = `properties/${GA4_PROPERTY_ID}`;
+  const dateRanges = [{ startDate: from, endDate: to }];
+
+  const byDate = new Map<string, Ga4FunnelDay>();
+  const ensure = (iso: string): Ga4FunnelDay => {
+    let row = byDate.get(iso);
+    if (!row) {
+      row = { date: iso, sessions: 0, whatsappClicks: 0, callClicks: 0 };
+      byDate.set(iso, row);
+    }
+    return row;
+  };
+
+  // 1 — Sessions by date (landing-page visits proxy).
+  const sessionsRes = await analytics.properties.runReport({
+    property,
+    requestBody: {
+      dateRanges,
+      dimensions: [{ name: 'date' }],
+      metrics: [{ name: 'sessions' }],
+      limit: '400',
+    },
+  });
+  for (const r of sessionsRes.data.rows ?? []) {
+    const iso = isoFromGa4Date(r.dimensionValues?.[0]?.value);
+    if (iso) ensure(iso).sessions += metric(r, 0);
+  }
+
+  // 2 — WhatsApp/call click events by date × eventName.
+  const eventsRes = await analytics.properties.runReport({
+    property,
+    requestBody: {
+      dateRanges,
+      dimensions: [{ name: 'date' }, { name: 'eventName' }],
+      metrics: [{ name: 'eventCount' }],
+      dimensionFilter: {
+        filter: {
+          fieldName: 'eventName',
+          inListFilter: { values: [GA4_WHATSAPP_EVENT, GA4_CALL_EVENT] },
+        },
+      },
+      limit: '800',
+    },
+  });
+  for (const r of eventsRes.data.rows ?? []) {
+    const iso = isoFromGa4Date(r.dimensionValues?.[0]?.value);
+    const name = r.dimensionValues?.[1]?.value;
+    if (!iso || !name) continue;
+    const row = ensure(iso);
+    if (name === GA4_WHATSAPP_EVENT) row.whatsappClicks += metric(r, 0);
+    else if (name === GA4_CALL_EVENT) row.callClicks += metric(r, 0);
+  }
+
+  return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
 }

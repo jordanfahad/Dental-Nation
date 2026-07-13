@@ -64,3 +64,12 @@ export const GA4_MARKETING_LEAD_EVENTS: string[] = (
  */
 export const GA4_LEAD_CHANNEL_DIMENSION =
   process.env.GA4_LEAD_CHANNEL_DIMENSION?.trim() || 'firstUserDefaultChannelGroup';
+
+/**
+ * Event names that feed the §D Daily-Funnel live overlay (WhatsApp-click and
+ * call-click stages). WhatsApp is a confirmed event on the property; the call
+ * event name varies by GTM setup, so it is env-overridable. A stage whose event
+ * yields no data across the whole span stays an honest data gap (never a 0).
+ */
+export const GA4_WHATSAPP_EVENT = process.env.GA4_WHATSAPP_EVENT?.trim() || 'whatsapp_click';
+export const GA4_CALL_EVENT = process.env.GA4_CALL_EVENT?.trim() || 'call_click';

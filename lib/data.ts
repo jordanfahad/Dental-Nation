@@ -1,6 +1,7 @@
 import 'server-only';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
 import { dubaiToday, trailingDates } from '@/lib/dates';
+import { getFunnelOverlay, mergeFunnelOverlay } from '@/lib/metrics/funnel-overlay';
 import { mockReportView } from '@/lib/mock/report';
 import { ownerFor } from '@/config/data-gap-owners';
 import type {
@@ -264,6 +265,18 @@ export async function getReportView(reportDate?: string): Promise<ReportViewResu
           rows_ingested: (logRow.rows_ingested as number) ?? null,
         }
       : null;
+
+    // Live overlay for the §D funnel: fill the stages that DO have real sources
+    // (GA4 sessions / WhatsApp + call clicks, booking widget, CRM show-ups, CSAT
+    // reviews) which the stored snapshot leaves blank. Best-effort — any failure
+    // leaves the funnel exactly as the snapshot had it.
+    try {
+      const spanFrom = availableDates[availableDates.length - 1] ?? date;
+      const overlay = await getFunnelOverlay(supabase, { date, spanFrom, spanTo: today });
+      if (overlay.size > 0) snapshot.funnel = mergeFunnelOverlay(snapshot.funnel, overlay);
+    } catch {
+      // keep the snapshot funnel unchanged on any overlay failure.
+    }
 
     return {
       snapshot,
