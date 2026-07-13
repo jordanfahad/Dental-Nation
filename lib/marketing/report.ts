@@ -13,6 +13,69 @@ import { fetchGa4LeadLens, type Ga4LeadByChannel } from '@/lib/sync/adapters/ga4
  * attribution yet), so the comparison is directional and labelled as such.
  */
 
+/**
+ * Live ad spend (Meta + Google insight tables) summed over an inclusive
+ * [from,to] window, with a per-day series and per-platform split. This is the
+ * range-scoped spend the Executive headline needs; over the full span it equals
+ * the all-time total shown on the Marketing tab. metaLatest/googleLatest expose
+ * each feed's freshness so a stale sync (e.g. Meta) can be surfaced honestly.
+ */
+export interface AdSpendRange {
+  meta: number;
+  google: number;
+  total: number;
+  rows: number; // insight rows in the window (0 → no ad data at all)
+  daily: { date: string; spend: number }[];
+  metaLatest: string | null;
+  googleLatest: string | null;
+}
+
+export async function getAdSpendForRange(from: string, to: string): Promise<AdSpendRange> {
+  const supabase = getSupabaseAdmin();
+  const emptyRange: AdSpendRange = { meta: 0, google: 0, total: 0, rows: 0, daily: [], metaLatest: null, googleLatest: null };
+  if (!supabase) return emptyRange;
+  try {
+    const [{ data: m }, { data: g }] = await Promise.all([
+      supabase.from('meta_insights_raw').select('date, spend').gte('date', from).lte('date', to),
+      supabase.from('google_ads_insights_raw').select('date, spend').gte('date', from).lte('date', to),
+    ]);
+    const metaRows = (m as { date: string | null; spend: number | null }[]) ?? [];
+    const gadsRows = (g as { date: string | null; spend: number | null }[]) ?? [];
+    const daily = new Map<string, number>();
+    let meta = 0;
+    let google = 0;
+    let metaLatest: string | null = null;
+    let googleLatest: string | null = null;
+    for (const r of metaRows) {
+      const s = Number(r.spend) || 0;
+      meta += s;
+      if (r.date) {
+        daily.set(r.date, (daily.get(r.date) ?? 0) + s);
+        if (!metaLatest || r.date > metaLatest) metaLatest = r.date;
+      }
+    }
+    for (const r of gadsRows) {
+      const s = Number(r.spend) || 0;
+      google += s;
+      if (r.date) {
+        daily.set(r.date, (daily.get(r.date) ?? 0) + s);
+        if (!googleLatest || r.date > googleLatest) googleLatest = r.date;
+      }
+    }
+    return {
+      meta,
+      google,
+      total: meta + google,
+      rows: metaRows.length + gadsRows.length,
+      daily: [...daily.entries()].map(([date, spend]) => ({ date, spend })).sort((a, b) => a.date.localeCompare(b.date)),
+      metaLatest,
+      googleLatest,
+    };
+  } catch {
+    return emptyRange;
+  }
+}
+
 export interface MktPlatform {
   platform: 'Meta' | 'Google';
   spend: number;

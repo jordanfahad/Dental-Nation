@@ -3,7 +3,7 @@ import { parseISO, format } from 'date-fns';
 import { getRangeReport } from '@/lib/report';
 import { getCrmReport } from '@/lib/crm/report';
 import { getPractoSummary } from '@/lib/practo/report';
-import { getMarketingReport } from '@/lib/marketing/report';
+import { getAdSpendForRange } from '@/lib/marketing/report';
 import type { ExecKpis, ExecMonthPoint, ExecutiveReport } from './types';
 
 /**
@@ -25,7 +25,7 @@ export interface ExecQuery {
 }
 
 export async function getExecutiveReport(query: ExecQuery = {}): Promise<ExecutiveReport> {
-  const [range, crm, practo, mkt] = await Promise.all([
+  const [range, crm, practo] = await Promise.all([
     getRangeReport({
       from: query.from,
       to: query.to,
@@ -34,23 +34,18 @@ export async function getExecutiveReport(query: ExecQuery = {}): Promise<Executi
     }),
     getCrmReport({ from: query.from, to: query.to }),
     getPractoSummary({ from: query.from, to: query.to }),
-    getMarketingReport(),
   ]);
 
   const { paid, leads, ga4, bookings, series } = range;
   const appt = crm.appointments;
   const conv = crm.conversation;
 
-  // A specific window is selected (not the full-history default). When scoped,
-  // spend/trend come from the range-scoped paid data; at the 'all' default we
-  // keep the LIVE all-time ad spend so the headline reconciles with Marketing.
-  const scoped = range.range.preset !== 'all';
-
-  // Live ad spend (Meta + Google), with a graceful fallback to the manual sheet.
-  // When a window is selected, prefer the range-scoped paid spend (live is
-  // all-time and would misreport the window).
-  const liveAdSpend = mkt.source === 'live' ? mkt.totals.adSpend : null;
-  const marketingSpend = scoped ? paid.spend.value : (liveAdSpend ?? paid.spend.value);
+  // Live ad spend (Meta + Google insight tables), summed over the SELECTED
+  // window — so the headline always matches the picker (over the full span it
+  // equals the all-time total on the Marketing tab). Falls back to the manual
+  // RAW_Performance spend only when there is no live ad data in the window.
+  const adSpend = await getAdSpendForRange(range.range.from, range.range.to);
+  const marketingSpend = adSpend.rows > 0 ? adSpend.total : (paid.spend.value ?? null);
   const leadsGenerated = leads.total.value;
   // Cost per lead = live spend ÷ tracked leads (the two figures shown together).
   const costPerLead =
@@ -91,19 +86,15 @@ export async function getExecutiveReport(query: ExecQuery = {}): Promise<Executi
     months.set(m, row);
   };
   for (const d of series) bump(d.date, { leads: d.inquiries });
-  // Monthly spend: LIVE ad source at the default (matches the headline +
-  // Marketing tab); the range-scoped per-day series when a window is selected.
-  if (!scoped && mkt.source === 'live') {
-    for (const m of mkt.monthly) bump(`${m.month}-01`, { spend: m.spend });
-  } else {
-    for (const d of series) bump(d.date, { spend: d.spend });
-  }
+  // Monthly spend from the LIVE per-day ad spend (Meta + Google), scoped to the
+  // window — consistent with the headline.
+  for (const d of adSpend.daily) bump(d.date, { spend: d.spend });
   for (const d of appt.series) bump(d.date, { appointments: d.appointments });
   for (const d of practo.byDay) bump(d.date, { revenue: d.revenue });
   const monthly = [...months.values()].sort((a, b) => a.month.localeCompare(b.month));
 
   const coverage = {
-    paid: mkt.source === 'live' || !paid.empty,
+    paid: adSpend.rows > 0 || !paid.empty,
     leads: !leads.empty,
     ga4: Boolean(ga4 && (ga4.sessions.value ?? 0) > 0),
     bookings: !bookings.empty,
