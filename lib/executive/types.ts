@@ -81,5 +81,12 @@ export interface ExecutiveReport {
     crm: boolean;
     practo: boolean;
   };
+  /** Ad-feed freshness so a stalled sync (e.g. Meta) is surfaced honestly. */
+  adFreshness: {
+    metaLatest: string | null;
+    googleLatest: string | null;
+    /** Meta's latest date lags well behind Google's → the Meta feed is stale. */
+    metaStale: boolean;
+  };
   source: 'live' | 'mock' | 'empty';
 }

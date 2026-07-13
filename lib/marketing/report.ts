@@ -76,6 +76,25 @@ export async function getAdSpendForRange(from: string, to: string): Promise<AdSp
   }
 }
 
+/** All-time latest insight date per ad feed — for a "last synced / reconnect"
+ *  freshness check (independent of any selected window). */
+export async function getAdFeedFreshness(): Promise<{ metaLatest: string | null; googleLatest: string | null }> {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return { metaLatest: null, googleLatest: null };
+  try {
+    const [{ data: m }, { data: g }] = await Promise.all([
+      supabase.from('meta_insights_raw').select('date').order('date', { ascending: false }).limit(1).maybeSingle(),
+      supabase.from('google_ads_insights_raw').select('date').order('date', { ascending: false }).limit(1).maybeSingle(),
+    ]);
+    return {
+      metaLatest: (m as { date: string | null } | null)?.date ?? null,
+      googleLatest: (g as { date: string | null } | null)?.date ?? null,
+    };
+  } catch {
+    return { metaLatest: null, googleLatest: null };
+  }
+}
+
 export interface MktPlatform {
   platform: 'Meta' | 'Google';
   spend: number;

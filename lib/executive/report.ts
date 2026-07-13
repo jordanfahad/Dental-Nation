@@ -1,9 +1,9 @@
 import 'server-only';
-import { parseISO, format } from 'date-fns';
+import { parseISO, format, differenceInCalendarDays } from 'date-fns';
 import { getRangeReport } from '@/lib/report';
 import { getCrmReport } from '@/lib/crm/report';
 import { getPractoSummary } from '@/lib/practo/report';
-import { getAdSpendForRange } from '@/lib/marketing/report';
+import { getAdSpendForRange, getAdFeedFreshness } from '@/lib/marketing/report';
 import type { ExecKpis, ExecMonthPoint, ExecutiveReport } from './types';
 
 /**
@@ -44,7 +44,10 @@ export async function getExecutiveReport(query: ExecQuery = {}): Promise<Executi
   // window — so the headline always matches the picker (over the full span it
   // equals the all-time total on the Marketing tab). Falls back to the manual
   // RAW_Performance spend only when there is no live ad data in the window.
-  const adSpend = await getAdSpendForRange(range.range.from, range.range.to);
+  const [adSpend, freshness] = await Promise.all([
+    getAdSpendForRange(range.range.from, range.range.to),
+    getAdFeedFreshness(),
+  ]);
   const marketingSpend = adSpend.rows > 0 ? adSpend.total : (paid.spend.value ?? null);
   const leadsGenerated = leads.total.value;
   // Cost per lead = live spend ÷ tracked leads (the two figures shown together).
@@ -104,8 +107,17 @@ export async function getExecutiveReport(query: ExecQuery = {}): Promise<Executi
 
   const anyLive = Object.values(coverage).some(Boolean);
 
+  // Meta is stale when its latest insight date lags well behind Google's — a
+  // clear signal the Meta feed stopped syncing (expired token / lost access).
+  const metaStale = Boolean(
+    freshness.metaLatest &&
+      freshness.googleLatest &&
+      differenceInCalendarDays(parseISO(freshness.googleLatest), parseISO(freshness.metaLatest)) > 7,
+  );
+
   return {
     range: range.range,
+    adFreshness: { metaLatest: freshness.metaLatest, googleLatest: freshness.googleLatest, metaStale },
     paid,
     leads,
     ga4,
