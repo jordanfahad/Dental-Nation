@@ -52,18 +52,18 @@ export async function ArabyAdsReport({ range }: { range: { from: string; to: str
       hint: 'all channels',
     },
     {
-      label: 'Appointments booked',
+      label: 'Appointments (clinic-wide)',
       value: r.practo.appointmentsBooked != null ? int(r.practo.appointmentsBooked) : null,
       gapDetail: 'no CRM appointments in range',
       gapOwner: ownerFor('clinic'),
-      hint: 'Zavis CRM',
+      hint: 'all sources · not ArabyAds-only',
     },
     {
-      label: 'Clinic revenue',
+      label: 'Clinic revenue (clinic-wide)',
       value: r.practo.clinicRevenue != null ? aed(r.practo.clinicRevenue) : null,
       gapDetail: 'no finalized Practo bills in range',
       gapOwner: ownerFor('clinic'),
-      hint: r.practo.bills != null ? `${int(r.practo.bills)} bills` : undefined,
+      hint: r.practo.bills != null ? `${int(r.practo.bills)} bills · all sources` : undefined,
     },
   ];
 
@@ -121,6 +121,11 @@ export async function ArabyAdsReport({ range }: { range: { from: string; to: str
         <SectionHeader tag="A1" eyebrow="Scorecard" title="Campaign at a glance" />
         <div className="px-5 pb-5 pt-4">
           <KpiBand items={kpis} />
+          <p className="mt-3 text-[11px] leading-snug text-ink-faint">
+            The first four cards are <strong>ArabyAds-attributed</strong> (from the widget Source column + GA4).
+            “Appointments” and “Clinic revenue” are <strong>clinic-wide</strong> for the same window (all sources) —
+            shown as context, since the booking widget can’t yet be linked to a specific Practo bill.
+          </p>
           {b.test > 0 && b.total === 0 ? (
             <Takeaway>
               Only test/seed bookings so far ({int(b.test)}) — the campaign is wired end to end (widget is
