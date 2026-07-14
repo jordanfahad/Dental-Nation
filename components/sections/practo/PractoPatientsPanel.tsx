@@ -47,8 +47,20 @@ type Filter = 'all' | 'new' | 'existing' | 'upcoming' | 'booked';
  */
 export function PractoPatientsPanel({ data }: { data: CrmPatientBookings }) {
   const [filter, setFilter] = useState<Filter>('all');
+  const [q, setQ] = useState('');
+
+  // Search matches on the patient's name (full or any part) or phone digits.
+  const term = q.trim().toLowerCase();
+  const digits = q.replace(/\D/g, '');
+  const matches = (name: string, phone: string | null): boolean => {
+    if (!term) return true;
+    const nameHit = name.toLowerCase().includes(term);
+    const phoneHit = digits.length > 0 && (phone ?? '').includes(digits);
+    return nameHit || phoneHit;
+  };
 
   const rows = data.rows.filter((r) => {
+    if (!matches(r.patientName, r.phone)) return false;
     if (filter === 'new') return r.patientClass === 'new';
     if (filter === 'existing') return r.patientClass === 'existing';
     if (filter === 'upcoming') return r.isUpcomingAppt;
@@ -56,6 +68,7 @@ export function PractoPatientsPanel({ data }: { data: CrmPatientBookings }) {
     return true;
   });
   const paid = data.paidRows.filter((r) => {
+    if (!matches(r.patientName, r.phone)) return false;
     if (filter === 'new') return r.patientClass === 'new';
     if (filter === 'existing') return r.patientClass === 'existing';
     if (filter === 'upcoming') return r.patientClass === 'upcoming';
@@ -114,6 +127,31 @@ export function PractoPatientsPanel({ data }: { data: CrmPatientBookings }) {
           </>
         ) : null}
       </p>
+
+      {/* Search by name (full or partial) or phone number. */}
+      <div className="mt-4 flex items-center gap-2">
+        <div className="relative flex-1 sm:max-w-sm">
+          <input
+            type="text"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search patient by name or phone…"
+            aria-label="Search patient by name or phone"
+            className="w-full rounded-card border border-line bg-card px-3 py-2 pr-8 text-[13px] text-ink outline-none placeholder:text-ink-faint focus:border-accent focus:ring-1 focus:ring-accent/40"
+          />
+          {q ? (
+            <button
+              type="button"
+              onClick={() => setQ('')}
+              aria-label="Clear search"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-[15px] leading-none text-ink-faint hover:text-ink"
+            >
+              ×
+            </button>
+          ) : null}
+        </div>
+        {q ? <span className="text-[12px] text-ink-faint">{int(rows.length)} match{rows.length === 1 ? '' : 'es'}</span> : null}
+      </div>
 
       {filter !== 'all' ? (
         <p className="mt-2 text-[12px] text-ink-soft">

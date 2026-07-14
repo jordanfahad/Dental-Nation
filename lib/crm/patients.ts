@@ -141,7 +141,8 @@ interface Row {
 }
 
 export async function getCrmPatientBookings(opts: PatientBookingsQuery = {}): Promise<CrmPatientBookings> {
-  const limit = opts.limit ?? 250;
+  // High cap so the client-side patient search covers everyone (small dataset).
+  const limit = opts.limit ?? 2000;
   const empty: CrmPatientBookings = {
     source: 'empty',
     patients: 0,
