@@ -1,4 +1,5 @@
 import type { getRangeReport } from '@/lib/report';
+import { getRecentWidgetBookings } from '@/lib/bookings/recent';
 import { Card, SectionHeader, Takeaway } from '@/components/ui/Card';
 import { DataGapInline } from '@/components/ui/DataGap';
 import { KpiBand, type KpiItem } from '@/components/charts/KpiBand';
@@ -33,6 +34,10 @@ export async function BookingsReport({ report }: { report: RangeReport }) {
   const b = report.bookings;
   const range = report.range;
   const isEmpty = b.empty;
+
+  // Live widget submissions from the Zavis feed (incl. test orders, flagged) —
+  // scoped to the same window as the rest of the tab.
+  const widget = await getRecentWidgetBookings({ from: range.from, to: range.to });
 
   const period = `${dubaiDateLabel(range.from)} → ${dubaiDateLabel(range.to)}`;
 
@@ -198,6 +203,74 @@ export async function BookingsReport({ report }: { report: RangeReport }) {
                 follow-up and clinic billing. Treat the counts as widget submissions, not finalized revenue.
               </Takeaway>
             </>
+          )}
+        </div>
+      </Card>
+
+      {/* Live widget submissions from the Zavis feed — includes test/seed orders,
+          flagged, so a test booking can be confirmed end-to-end (mirrors the Araby
+          Ads "Recent bookings" view). Excluded from the KPIs above (is_test=false). */}
+      <Card>
+        <SectionHeader
+          tag="W5"
+          eyebrow="Detail · live widget feed"
+          title="Recent widget submissions (incl. test)"
+          right={
+            <span className="text-[11px] text-ink-faint">
+              {widget.real} real · {widget.test} test
+            </span>
+          }
+        />
+        <div className="px-5 pb-5 pt-4">
+          <p className="mb-3 text-[12.5px] leading-snug text-ink-soft">
+            The raw on-site booking-widget stream from the Zavis feed — every submission as it lands, including
+            <strong> test/seed orders</strong> (flagged). Test rows are excluded from the scorecard above; this
+            list is here so a test booking can be confirmed end to end.
+          </p>
+          {widget.rows.length === 0 ? (
+            <DataGapInline detail="no widget submissions in range" owner={ownerFor('website')} />
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-[12.5px]">
+                <thead>
+                  <tr className="border-b border-line text-[10.5px] uppercase tracking-wide text-ink-faint">
+                    <th className="py-2 pr-3 font-medium">Booked on</th>
+                    <th className="py-2 pr-3 font-medium">Patient</th>
+                    <th className="py-2 pr-3 font-medium">Appointment</th>
+                    <th className="py-2 pr-3 font-medium">Treatment</th>
+                    <th className="py-2 pr-3 font-medium">Clinic</th>
+                    <th className="py-2 pr-3 font-medium">Doctor</th>
+                    <th className="py-2 pr-3 font-medium">Status</th>
+                    <th className="py-2 pl-3 font-medium">Flag</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {widget.rows.map((r, i) => (
+                    <tr key={i} className="border-b border-line/60 last:border-0">
+                      <td className="py-2 pr-3 tabular-nums text-ink-soft">{r.dateLabel ?? '—'}</td>
+                      <td className="py-2 pr-3 font-medium text-ink">{r.patientName}</td>
+                      <td className="py-2 pr-3 tabular-nums text-ink-soft">{r.apptLabel ?? '—'}</td>
+                      <td className="py-2 pr-3 text-ink-soft">{r.treatment ?? '—'}</td>
+                      <td className="py-2 pr-3 text-ink-soft">{r.clinic}</td>
+                      <td className="py-2 pr-3 text-ink-soft">{r.doctor ?? '—'}</td>
+                      <td className="py-2 pr-3 text-ink-soft">{r.status}</td>
+                      <td className="py-2 pl-3">
+                        {r.isTest ? (
+                          <span className="text-[11px] text-watch">test</span>
+                        ) : (
+                          <span className="text-[11px] text-good">real</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {widget.total > widget.rows.length ? (
+                <p className="mt-2 text-[11.5px] text-ink-faint">
+                  Showing {int(widget.rows.length)} of {int(widget.total)} submissions (most recent first).
+                </p>
+              ) : null}
+            </div>
           )}
         </div>
       </Card>
