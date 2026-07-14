@@ -12,15 +12,17 @@ import { clinicOfDoctor, type ClinicFilterKey } from '@/config/clinics';
  *
  * Identity resolution (see `personKey`): the CRM has NO Emirates ID, so a person
  * is identified by their cleaned NAME (+ their real phone). We deliberately do
- * NOT merge by phone alone — analysis showed shared phones are almost entirely
- * FAMILIES (father books, family treated) and dummy placeholder numbers (one
- * number → 9 unrelated people), so phone-merge would wrongly collapse distinct
- * patients. When Emirates ID lands in the feed, make it the key in ONE place
- * (personKey). Households (a real shared phone with ≥2 distinct people) are
- * detected + labelled instead, so the family scenario is surfaced, not hidden.
+ * NOT merge by phone alone — shared phones are almost entirely FAMILIES (father
+ * books, family treated) and dummy placeholder numbers, so phone-merge would
+ * wrongly collapse distinct patients. When Emirates ID lands, make it the key in
+ * ONE place (personKey). Households (a real shared phone with ≥2 people) are
+ * detected + labelled instead.
  *
- * New-vs-existing: a person is NEW when their FIRST-EVER appointment (all-time,
- * min created_at) falls inside the selected window. "Patient since" is that date.
+ * NEW vs EXISTING is based on the FIRST-VISIT date (earliest appointment date =
+ * min timeslot), NOT the booking-record date — a clinic "new patient" is one who
+ * actually CAME recently. A patient whose earliest appointment is in the FUTURE
+ * hasn't visited yet → classed 'upcoming', never 'new'. So a follow-up booked far
+ * ahead (e.g. Jan 2027) for an already-seen patient no longer reads as new.
  */
 const TZ = 'Asia/Dubai';
 function fmt(ts: string | null | undefined, pattern: string): string | null {
@@ -31,8 +33,10 @@ function fmt(ts: string | null | undefined, pattern: string): string | null {
     return null;
   }
 }
-/** Dubai-day YYYY-MM-DD of a timestamp (for window compares + patient-since). */
+/** Dubai-day YYYY-MM-DD of a timestamp. */
 const dayOf = (ts: string | null | undefined) => fmt(ts, 'yyyy-MM-dd');
+/** Today in Dubai as YYYY-MM-DD. */
+const todayDubai = () => formatInTimeZone(new Date(), TZ, 'yyyy-MM-dd');
 
 /** Strip a jammed/spaced honorific ("MrAHMAD KHALID" / "Mrs. Sara" → clean). */
 function cleanName(raw: string | null | undefined): string {
@@ -40,22 +44,18 @@ function cleanName(raw: string | null | undefined): string {
   s = s.replace(/^(mr|mrs|ms|miss|dr)(\.?\s+|(?=[A-Z]))/i, '');
   return s.replace(/\s+/g, ' ').trim();
 }
-/** Digits-only phone; '' when absent. */
 const normPhone = (p: string | null | undefined) => (p ?? '').replace(/\D/g, '');
-/** Obvious placeholder/dummy number (long zero/repeat run, or too short). */
 function isDummyPhone(p: string): boolean {
   if (!p || p.length < 7) return true;
-  if (/0{5,}/.test(p)) return true; // 971505000000, …
-  if (/(\d)\1{5,}/.test(p)) return true; // 6+ of the same digit
+  if (/0{5,}/.test(p)) return true;
+  if (/(\d)\1{5,}/.test(p)) return true;
   return false;
 }
-/** Lowercase alnum key for tolerant name matching. */
 const nameKey = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
 
 /**
  * Stable per-PERSON identity. Name + real phone → one person; a dummy/missing
- * phone falls back to name only (so a shared dummy number never merges people).
- * REPLACE the body with the Emirates ID when the feed carries it.
+ * phone falls back to name only. REPLACE with Emirates ID when the feed has it.
  */
 function personKey(r: { patient_name: string | null; patient_phone?: string | null; patient_id: string | null }): string {
   const nk = nameKey(cleanName(r.patient_name));
@@ -65,6 +65,8 @@ function personKey(r: { patient_name: string | null; patient_phone?: string | nu
   return `id:${r.patient_id ?? ''}`;
 }
 
+export type PatientClass = 'new' | 'existing' | 'upcoming';
+
 export interface PatientBooking {
   patientId: string | null;
   patientName: string;
@@ -73,12 +75,13 @@ export interface PatientBooking {
   booked: boolean;
   appointmentDate: string | null; // YYYY-MM-DD (for sort)
   appointmentLabel: string | null; // e.g. "Tue 14 Jul 2026 · 15:30"
+  isUpcomingAppt: boolean; // this appointment's date is in the future
   bookedOn: string | null; // YYYY-MM-DD (created_at)
   service: string | null;
   doctor: string | null;
   amount: number | null; // AED recorded on the appointment (often absent)
-  isNew: boolean; // first-ever appointment falls in the window
-  patientSince: string | null; // YYYY-MM-DD first-ever booked date (null → blank)
+  patientClass: PatientClass; // by first-VISIT date vs the window
+  patientSince: string | null; // YYYY-MM-DD first-visit date (null → blank)
   isHousehold: boolean; // shares a real phone with ≥1 other distinct person
 }
 
@@ -89,7 +92,7 @@ export interface PatientPaid {
   phone: string | null;
   paid: number | null; // sum of amounts in the window (null when none priced)
   appointments: number; // appointments in the window
-  isNew: boolean;
+  patientClass: PatientClass;
   patientSince: string | null;
   isHousehold: boolean;
   householdSize: number; // distinct people on the same real phone (1 = solo)
@@ -97,10 +100,12 @@ export interface PatientPaid {
 
 export interface CrmPatientBookings {
   source: 'live' | 'empty';
-  patients: number; // distinct PEOPLE in the window (identity-resolved)
-  newPatients: number; // distinct NEW people in the window
-  existingPatients: number; // distinct existing people in the window
+  patients: number; // distinct PEOPLE with an appointment booked in the window
+  newPatients: number; // first VISIT falls in the window (and has occurred)
+  existingPatients: number; // first visit was before the window
+  notYetVisited: number; // first visit is in the future (booked, not yet seen)
   households: number; // real phones shared by ≥2 distinct people (in window)
+  upcomingAppointments: number; // appointments in the window with a future date
   appointments: number; // total non-test appointments in the window
   bookedConfirmed: number; // status booked | confirmed
   amountKnown: number; // appointments in the window carrying an amount
@@ -142,7 +147,9 @@ export async function getCrmPatientBookings(opts: PatientBookingsQuery = {}): Pr
     patients: 0,
     newPatients: 0,
     existingPatients: 0,
+    notYetVisited: 0,
     households: 0,
+    upcomingAppointments: 0,
     appointments: 0,
     bookedConfirmed: 0,
     amountKnown: 0,
@@ -157,8 +164,6 @@ export async function getCrmPatientBookings(opts: PatientBookingsQuery = {}): Pr
   const db = getSupabaseAdmin();
   if (!db) return empty;
   try {
-    // Fetch ALL non-test appointments (clinic-filterable) so we can compute each
-    // person's all-time first appointment + household; window filtered in code.
     const { data, error } = await db
       .from('crm_appointments')
       .select(
@@ -171,16 +176,19 @@ export async function getCrmPatientBookings(opts: PatientBookingsQuery = {}): Pr
       opts.clinic && opts.clinic !== 'all' ? clinicOfDoctor(r.professional_name) === opts.clinic : true,
     );
 
-    // All-time first booked date per PERSON (min created_at, fallback timeslot),
-    // and household map: real phone → set of distinct person keys.
-    const firstSeen = new Map<string, string>();
+    const today = todayDubai();
+
+    // All-time FIRST-VISIT date per person (earliest appointment date = min
+    // timeslot; fall back to created_at only when a row has no timeslot), plus
+    // the household map (real phone → distinct people).
+    const firstVisit = new Map<string, string>();
     const phonePeople = new Map<string, Set<string>>();
     for (const r of all) {
       const pk = personKey(r);
-      const d = dayOf(r.created_at) ?? dayOf(r.timeslot);
+      const d = dayOf(r.timeslot) ?? dayOf(r.created_at);
       if (d) {
-        const cur = firstSeen.get(pk);
-        if (!cur || d < cur) firstSeen.set(pk, d);
+        const cur = firstVisit.get(pk);
+        if (!cur || d < cur) firstVisit.set(pk, d);
       }
       const phone = normPhone(r.patient_phone);
       if (phone && !isDummyPhone(phone)) {
@@ -189,12 +197,19 @@ export async function getCrmPatientBookings(opts: PatientBookingsQuery = {}): Pr
         phonePeople.set(phone, set);
       }
     }
-    const householdSizeOf = (phone: string): number => {
-      if (!phone || isDummyPhone(phone)) return 1;
-      return phonePeople.get(phone)?.size ?? 1;
+    const householdSizeOf = (phone: string): number =>
+      !phone || isDummyPhone(phone) ? 1 : phonePeople.get(phone)?.size ?? 1;
+
+    /** Classify a person by their first-visit date vs the window + today. */
+    const classOf = (pk: string): PatientClass => {
+      const fv = firstVisit.get(pk);
+      if (!fv) return 'existing';
+      if (fv > today) return 'upcoming'; // hasn't visited yet
+      if (!opts.from) return 'new'; // all-time window → treat past first-visits as new
+      return fv >= opts.from ? 'new' : 'existing';
     };
 
-    // Window filter on created_at (when the appointment was booked).
+    // Window filter on created_at (appointments BOOKED in the period).
     const inWindow = (r: Row) => {
       const d = dayOf(r.created_at);
       if (!d) return false;
@@ -210,20 +225,14 @@ export async function getCrmPatientBookings(opts: PatientBookingsQuery = {}): Pr
       const n = Number(v);
       return Number.isFinite(n) && n > 0 ? n : null;
     };
-    const isNewOf = (pk: string): boolean => {
-      const since = firstSeen.get(pk);
-      if (!since) return false;
-      return opts.from ? since >= opts.from : true; // all-time window → all "new"
-    };
 
     const people = new Set<string>();
-    const newSet = new Set<string>();
     const householdPhones = new Set<string>();
     let bookedConfirmed = 0;
     let amountKnown = 0;
+    let upcomingAppointments = 0;
     const byDay = new Map<string, number>();
     const byDoctor = new Map<string, number>();
-    // Per-person rollup for the "who paid how much" table.
     const paidAcc = new Map<
       string,
       { pid: string | null; name: string; phone: string; paid: number; priced: boolean; appts: number }
@@ -232,21 +241,22 @@ export async function getCrmPatientBookings(opts: PatientBookingsQuery = {}): Pr
     for (const r of scoped) {
       const pk = personKey(r);
       people.add(pk);
-      if (isNewOf(pk)) newSet.add(pk);
-      const phone = normPhone(r.patient_phone);
-      if (phone && !isDummyPhone(phone) && householdSizeOf(phone) >= 2) householdPhones.add(phone);
-
+      const ph = normPhone(r.patient_phone);
+      if (ph && !isDummyPhone(ph) && householdSizeOf(ph) >= 2) householdPhones.add(ph);
       if (BOOKED.has((r.status ?? '').trim().toLowerCase())) bookedConfirmed += 1;
       const amt = num(r.amount);
       if (amt != null) amountKnown += 1;
       const ad = dayOf(r.timeslot);
-      if (ad) byDay.set(ad, (byDay.get(ad) ?? 0) + 1);
+      if (ad) {
+        byDay.set(ad, (byDay.get(ad) ?? 0) + 1);
+        if (ad > today) upcomingAppointments += 1;
+      }
       const doc = (r.professional_name ?? '').trim();
       if (doc) byDoctor.set(doc, (byDoctor.get(doc) ?? 0) + 1);
 
       const acc =
         paidAcc.get(pk) ??
-        { pid: r.patient_id, name: cleanName(r.patient_name) || '—', phone, paid: 0, priced: false, appts: 0 };
+        { pid: r.patient_id, name: cleanName(r.patient_name) || '—', phone: normPhone(r.patient_phone), paid: 0, priced: false, appts: 0 };
       acc.appts += 1;
       if (amt != null) {
         acc.paid += amt;
@@ -255,25 +265,38 @@ export async function getCrmPatientBookings(opts: PatientBookingsQuery = {}): Pr
       paidAcc.set(pk, acc);
     }
 
+    // Classify the distinct people once for the scorecards.
+    let newPatients = 0;
+    let existingPatients = 0;
+    let notYetVisited = 0;
+    for (const pk of people) {
+      const c = classOf(pk);
+      if (c === 'new') newPatients += 1;
+      else if (c === 'existing') existingPatients += 1;
+      else notYetVisited += 1;
+    }
+
     const rows: PatientBooking[] = scoped
       .map((r) => {
         const status = (r.status ?? '').trim() || '—';
         const pk = personKey(r);
         const phone = normPhone(r.patient_phone);
+        const ad = dayOf(r.timeslot);
         return {
           patientId: r.patient_id,
           patientName: cleanName(r.patient_name) || '—',
           phone: phone || null,
           status,
           booked: BOOKED.has(status.toLowerCase()),
-          appointmentDate: dayOf(r.timeslot),
+          appointmentDate: ad,
           appointmentLabel: fmt(r.timeslot, 'EEE d MMM yyyy · HH:mm'),
+          isUpcomingAppt: !!ad && ad > today,
           bookedOn: dayOf(r.created_at),
           service: (r.services ?? '').trim() || (r.complaint ?? '').trim() || null,
           doctor: (r.professional_name ?? '').trim() || null,
           amount: num(r.amount),
-          isNew: isNewOf(pk),
-          patientSince: firstSeen.get(pk) ?? null,
+          patientClass: classOf(pk),
+          patientSince: firstVisit.get(pk) ?? null,
           isHousehold: householdSizeOf(phone) >= 2,
         };
       })
@@ -295,8 +318,8 @@ export async function getCrmPatientBookings(opts: PatientBookingsQuery = {}): Pr
         phone: a.phone || null,
         paid: a.priced ? Math.round(a.paid) : null,
         appointments: a.appts,
-        isNew: isNewOf(pk),
-        patientSince: firstSeen.get(pk) ?? null,
+        patientClass: classOf(pk),
+        patientSince: firstVisit.get(pk) ?? null,
         isHousehold: householdSizeOf(a.phone) >= 2,
         householdSize: householdSizeOf(a.phone),
       }))
@@ -305,9 +328,11 @@ export async function getCrmPatientBookings(opts: PatientBookingsQuery = {}): Pr
     return {
       source: 'live',
       patients: people.size,
-      newPatients: newSet.size,
-      existingPatients: Math.max(0, people.size - newSet.size),
+      newPatients,
+      existingPatients,
+      notYetVisited,
       households: householdPhones.size,
+      upcomingAppointments,
       appointments: scoped.length,
       bookedConfirmed,
       amountKnown,

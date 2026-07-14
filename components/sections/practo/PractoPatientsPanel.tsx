@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { CrmPatientBookings } from '@/lib/crm/patients';
+import type { CrmPatientBookings, PatientClass } from '@/lib/crm/patients';
 
 const int = (n: number) => Math.round(n).toLocaleString('en-US');
 const aed = (n: number) => `AED ${int(n)}`;
@@ -26,40 +26,56 @@ function HouseholdChip({ size }: { size?: number }) {
     </span>
   );
 }
+/** New / Existing / Upcoming (not yet visited) badge, by first-visit date. */
+function ClassBadge({ c }: { c: PatientClass }) {
+  const map = {
+    new: { label: 'New', cls: 'bg-good/10 text-good' },
+    existing: { label: 'Existing', cls: 'bg-na/10 text-ink-soft' },
+    upcoming: { label: 'Not yet visited', cls: 'bg-watch/10 text-watch' },
+  } as const;
+  const m = map[c];
+  return <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${m.cls}`}>{m.label}</span>;
+}
 
-type Filter = 'all' | 'new' | 'existing' | 'booked';
+type Filter = 'all' | 'new' | 'existing' | 'upcoming' | 'booked';
 
 /**
- * Interactive Practo patient panel: clickable scorecards that filter the
- * appointment + per-patient tables (All / New patients / Booked-confirmed /
- * Existing), sourced from the Zavis CRM. New = the patient's first-ever
- * appointment falls in the selected range; "patient since" is that first date.
+ * Interactive Practo patient panel: clickable scorecards filter the appointment
+ * + per-patient tables. New/Existing is by FIRST-VISIT date (earliest
+ * appointment), not the booking date — a patient whose first visit is in the
+ * future is "not yet visited", never "new". "Patient since" = first-visit date.
  */
 export function PractoPatientsPanel({ data }: { data: CrmPatientBookings }) {
   const [filter, setFilter] = useState<Filter>('all');
 
   const rows = data.rows.filter((r) => {
-    if (filter === 'new') return r.isNew;
-    if (filter === 'existing') return !r.isNew && !!r.patientId;
+    if (filter === 'new') return r.patientClass === 'new';
+    if (filter === 'existing') return r.patientClass === 'existing';
+    if (filter === 'upcoming') return r.isUpcomingAppt;
     if (filter === 'booked') return r.booked;
     return true;
   });
   const paid = data.paidRows.filter((r) => {
-    if (filter === 'new') return r.isNew;
-    if (filter === 'existing') return !r.isNew && !!r.patientId;
+    if (filter === 'new') return r.patientClass === 'new';
+    if (filter === 'existing') return r.patientClass === 'existing';
+    if (filter === 'upcoming') return r.patientClass === 'upcoming';
     return true; // 'booked' doesn't apply per-patient → show all
   });
 
   const cards: { key: Filter; label: string; value: number; hint: string }[] = [
     { key: 'all', label: 'Appointments', value: data.appointments, hint: 'all statuses · click to reset' },
-    { key: 'new', label: 'New patients', value: data.newPatients, hint: 'first visit in range · click to filter' },
-    { key: 'existing', label: 'Existing patients', value: data.existingPatients, hint: 'seen before range · click to filter' },
-    { key: 'booked', label: 'Booked / confirmed', value: data.bookedConfirmed, hint: 'of all appointments · click to filter' },
+    { key: 'new', label: 'New patients', value: data.newPatients, hint: 'first VISIT in range · click to filter' },
+    { key: 'existing', label: 'Existing patients', value: data.existingPatients, hint: 'first visit before range' },
+    { key: 'upcoming', label: 'Upcoming appts', value: data.upcomingAppointments, hint: 'future date · click to filter' },
+    { key: 'booked', label: 'Booked / confirmed', value: data.bookedConfirmed, hint: 'of all appointments' },
   ];
+
+  const filterLabel =
+    filter === 'booked' ? 'booked / confirmed' : filter === 'upcoming' ? 'upcoming appointments' : `${filter} patients`;
 
   return (
     <div>
-      <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2.5 md:grid-cols-5">
         {cards.map((c) => {
           const active = filter === c.key;
           return (
@@ -80,19 +96,29 @@ export function PractoPatientsPanel({ data }: { data: CrmPatientBookings }) {
         })}
       </div>
 
-      {data.households > 0 ? (
-        <p className="mt-3 text-[12px] text-ink-soft">
-          <span className="rounded-full bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium text-accent">family</span>{' '}
-          {int(data.households)} household{data.households === 1 ? '' : 's'} — one phone shared by several patients
-          (e.g. a parent books, the family is treated). These are counted as separate patients, not duplicates.
-          Dummy/placeholder numbers are ignored.
-        </p>
-      ) : null}
+      <p className="mt-3 text-[12px] leading-snug text-ink-soft">
+        <span className="font-medium text-ink">New</span> counts a patient by their <strong>first visit</strong>{' '}
+        (earliest appointment date) falling in the range — a follow-up booked far ahead doesn&apos;t make an
+        existing patient &quot;new&quot;.{' '}
+        {data.notYetVisited > 0 ? (
+          <>
+            <span className="font-medium text-watch">{int(data.notYetVisited)}</span> booked patient
+            {data.notYetVisited === 1 ? ' has' : 's have'} a future first appointment (not yet visited).{' '}
+          </>
+        ) : null}
+        {data.households > 0 ? (
+          <>
+            <span className="rounded-full bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium text-accent">family</span>{' '}
+            {int(data.households)} household{data.households === 1 ? '' : 's'} share a phone (parent books, family
+            treated) — counted as separate patients, not duplicates.
+          </>
+        ) : null}
+      </p>
 
       {filter !== 'all' ? (
-        <p className="mt-3 text-[12px] text-ink-soft">
-          Filtered to <span className="font-medium text-ink">{filter === 'booked' ? 'booked / confirmed' : `${filter} patients`}</span>
-          {' '}· {int(rows.length)} appointment{rows.length === 1 ? '' : 's'}.{' '}
+        <p className="mt-2 text-[12px] text-ink-soft">
+          Filtered to <span className="font-medium text-ink">{filterLabel}</span> · {int(rows.length)} appointment
+          {rows.length === 1 ? '' : 's'}.{' '}
           <button type="button" onClick={() => setFilter('all')} className="text-accent underline-offset-2 hover:underline">
             Clear
           </button>
@@ -102,12 +128,12 @@ export function PractoPatientsPanel({ data }: { data: CrmPatientBookings }) {
       {/* Appointments table */}
       <div className="mt-4 overflow-x-auto">
         <div className="max-h-[520px] overflow-y-auto rounded-card border border-line">
-          <table className="w-full min-w-[960px] border-collapse text-[12.5px]">
+          <table className="w-full min-w-[980px] border-collapse text-[12.5px]">
             <thead className="sticky top-0 bg-card">
               <tr className="border-b border-line text-left text-ink-faint">
                 <th className="px-3 py-2 font-medium">Patient</th>
                 <th className="px-3 py-2 font-medium">Phone</th>
-                <th className="px-3 py-2 font-medium">New / existing</th>
+                <th className="px-3 py-2 font-medium">Patient type</th>
                 <th className="px-3 py-2 font-medium">Appointment</th>
                 <th className="px-3 py-2 font-medium">Status</th>
                 <th className="px-3 py-2 text-right font-medium">Amount</th>
@@ -124,15 +150,16 @@ export function PractoPatientsPanel({ data }: { data: CrmPatientBookings }) {
                   </td>
                   <td className="tnum px-3 py-1.5 text-ink-faint">{phoneFmt(r.phone)}</td>
                   <td className="px-3 py-1.5">
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                        r.isNew ? 'bg-good/10 text-good' : 'bg-na/10 text-ink-soft'
-                      }`}
-                    >
-                      {r.isNew ? 'New' : 'Existing'}
-                    </span>
+                    <ClassBadge c={r.patientClass} />
                   </td>
-                  <td className="tnum px-3 py-1.5 text-ink-soft">{r.appointmentLabel ?? '—'}</td>
+                  <td className="tnum px-3 py-1.5 text-ink-soft">
+                    {r.appointmentLabel ?? '—'}
+                    {r.isUpcomingAppt ? (
+                      <span className="ml-1 rounded-full bg-watch/10 px-1.5 py-0.5 text-[10px] font-medium text-watch">
+                        upcoming
+                      </span>
+                    ) : null}
+                  </td>
                   <td className="px-3 py-1.5">
                     <span
                       className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
@@ -173,14 +200,14 @@ export function PractoPatientsPanel({ data }: { data: CrmPatientBookings }) {
         </p>
         <div className="overflow-x-auto">
           <div className="max-h-[420px] overflow-y-auto rounded-card border border-line">
-            <table className="w-full min-w-[680px] border-collapse text-[12.5px]">
+            <table className="w-full min-w-[700px] border-collapse text-[12.5px]">
               <thead className="sticky top-0 bg-card">
                 <tr className="border-b border-line text-left text-ink-faint">
                   <th className="px-3 py-2 font-medium">Patient</th>
                   <th className="px-3 py-2 font-medium">Phone</th>
                   <th className="px-3 py-2 text-right font-medium">Amount paid</th>
                   <th className="px-3 py-2 text-right font-medium">Appts</th>
-                  <th className="px-3 py-2 font-medium">New / existing</th>
+                  <th className="px-3 py-2 font-medium">Patient type</th>
                   <th className="px-3 py-2 font-medium">Patient since</th>
                 </tr>
               </thead>
@@ -195,13 +222,7 @@ export function PractoPatientsPanel({ data }: { data: CrmPatientBookings }) {
                     <td className="tnum px-3 py-1.5 text-right text-ink">{p.paid != null ? aed(p.paid) : '—'}</td>
                     <td className="tnum px-3 py-1.5 text-right text-ink-soft">{int(p.appointments)}</td>
                     <td className="px-3 py-1.5">
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                          p.isNew ? 'bg-good/10 text-good' : 'bg-na/10 text-ink-soft'
-                        }`}
-                      >
-                        {p.isNew ? 'New' : 'Existing'}
-                      </span>
+                      <ClassBadge c={p.patientClass} />
                     </td>
                     <td className="tnum px-3 py-1.5 text-ink-faint">{dlabel(p.patientSince)}</td>
                   </tr>
@@ -219,7 +240,7 @@ export function PractoPatientsPanel({ data }: { data: CrmPatientBookings }) {
         </div>
         <p className="mt-2 text-[11.5px] text-ink-faint">
           Amount is what the CRM recorded on the appointment; blank where no amount was entered. &quot;Patient
-          since&quot; is the first date this patient was booked (blank if unknown).
+          since&quot; is the first date this patient was seen (their earliest appointment; blank if unknown).
         </p>
       </div>
     </div>

@@ -274,8 +274,8 @@ export async function PractoReport({
           <p className="text-[12.5px] leading-snug text-ink-soft">
             Patient entries, appointment bookings and amounts from the <strong>Zavis CRM</strong> — Practo&apos;s
             finalized bills carry no patient names, so these come from the CRM. <strong>Click a scorecard</strong>{' '}
-            to filter the tables. &quot;New&quot; = the patient&apos;s first-ever appointment falls in the selected
-            date range.
+            to filter the tables. &quot;New&quot; is judged by the patient&apos;s <strong>first visit</strong>{' '}
+            (earliest appointment date), so a future follow-up for an existing patient never counts as new.
           </p>
 
           {cpb.source === 'empty' ? (
