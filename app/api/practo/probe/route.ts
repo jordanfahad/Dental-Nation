@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
+import { isAdmin } from '@/lib/auth/role';
 import { practoDiscover, practoProbe, syncPracto } from '@/lib/sync/adapters/practo-adapter';
 
 export const dynamic = 'force-dynamic';
@@ -22,11 +23,16 @@ function authorized(req: NextRequest): boolean {
 }
 
 export async function GET(req: NextRequest) {
-  if (!authorized(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const wantsDiscover = req.nextUrl.searchParams.get('discover') === '1';
+  // Discovery is read-only (no writes), so a signed-in admin may run it from the
+  // browser without the CRON_SECRET (which is hidden once marked Sensitive).
+  // Everything else (sync/backfill, which writes) still requires the secret.
+  const ok = authorized(req) || (wantsDiscover && (await isAdmin()));
+  if (!ok) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const supabase = getSupabaseAdmin();
   if (!supabase) return NextResponse.json({ error: 'Supabase not configured' }, { status: 503 });
 
-  if (req.nextUrl.searchParams.get('discover') === '1') {
+  if (wantsDiscover) {
     const result = await practoDiscover(supabase);
     return NextResponse.json(result, { status: result.ok ? 200 : 502 });
   }
