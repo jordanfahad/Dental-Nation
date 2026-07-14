@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers';
 import { getRangeReport } from '@/lib/report';
-import { dubaiDateLabel } from '@/lib/dates';
+import { dubaiDateLabel, dubaiToday } from '@/lib/dates';
 import { ARABY_COOKIE, verifyArabyToken } from '@/lib/auth/araby-report';
 import { ArabyAdsReport } from '@/components/sections/arabyads/ArabyAdsReport';
 import { DateRangeControl } from '@/components/DateRangeControl';
@@ -28,12 +28,16 @@ export default async function ArabyReportsPage({
   }
 
   const sp = await searchParams;
-  // Resolve the range the same way the main dashboard does (skip the live GA4
-  // fetch here — the Araby report component does its own GA4 read).
+  // The ArabyAds campaign launched 1 Jul 2026, so THIS report defaults to
+  // 1 Jul → today (the whole dashboard keeps its own all-time default). The
+  // date control still overrides it: once the viewer picks a preset or a custom
+  // range, honor that instead of re-injecting the July default.
+  const CAMPAIGN_START = '2026-07-01';
+  const chosen = Boolean(sp.from || sp.to || sp.preset);
   const shell = await getRangeReport({
-    from: sp.from,
-    to: sp.to,
-    preset: sp.preset,
+    from: chosen ? sp.from : CAMPAIGN_START,
+    to: chosen ? sp.to : dubaiToday(),
+    preset: chosen ? sp.preset : 'custom',
     compare: sp.compare,
     skipGa4: true,
   });
