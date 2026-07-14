@@ -1,6 +1,8 @@
 import type { analyticsdata_v1beta } from 'googleapis';
 import { getAnalyticsClient } from '../google-auth';
 import {
+  BOOKING_FUNNEL_EVENTS,
+  BOOKING_OFFERS,
   GA4_CALL_EVENT,
   GA4_EVENTS,
   GA4_LEAD_CHANNEL_DIMENSION,
@@ -743,6 +745,137 @@ export async function fetchGa4ArabyAds(from: string, to: string, campaigns: stri
     },
     period: { from, to },
   };
+}
+
+// ============================================================================
+// Booking funnel & events BY OFFER (Website Bookings tab). Each paid offer
+// (Glow-Up / SOS / Scan) has its own landing page; clicking "Book appointment"
+// opens the widget on /en?offer=<key>… . We attribute:
+//   • traffic  → landing-page sessions whose landingPagePlusQueryString matches
+//                the offer landing OR carries offer=<key>
+//   • events   → GA4 events on pages whose pagePathPlusQueryString carries
+//                offer=<key> (widget viewed → visit type → treatment → lead →
+//                qualified → booking confirmed), plus every other event fired.
+// URL-based, so an event that fires on a page without the offer param can't be
+// attributed per offer — those still show in the site-wide events total. Throws
+// on hard GA4 failure so the caller degrades to a data gap.
+// ============================================================================
+
+export interface Ga4OfferFunnel {
+  key: string;
+  label: string;
+  laneCode: string;
+  sessions: number;
+  users: number;
+  /** eventName → count, for events fired on this offer's pages. */
+  events: Record<string, number>;
+  /** Every event on this offer's pages, desc — so nothing is hidden. */
+  allEvents: { event: string; count: number }[];
+}
+
+export interface Ga4BookingByOffer {
+  offers: Ga4OfferFunnel[];
+  /** Site-wide count for each booking-funnel event (attribution-independent). */
+  siteEvents: { event: string; count: number }[];
+  period: { from: string; to: string };
+}
+
+/** Which offer a landing/page path belongs to (by offer= param or landing path). */
+function offerOf(path: string): string | null {
+  const p = (path ?? '').toLowerCase();
+  for (const o of BOOKING_OFFERS) {
+    if (p.includes(`offer=${o.key}`) || p.includes(o.landing)) return o.key;
+  }
+  return null;
+}
+
+export async function fetchGa4BookingByOffer(from: string, to: string): Promise<Ga4BookingByOffer> {
+  const analytics = getAnalyticsClient();
+  const property = `properties/${GA4_PROPERTY_ID}`;
+  const dateRanges = [{ startDate: from, endDate: to }];
+
+  const [landingRes, eventsRes, siteEventsRes] = await Promise.all([
+    // 1 — landing-page traffic (bucket to an offer in code).
+    analytics.properties.runReport({
+      property,
+      requestBody: {
+        dateRanges,
+        dimensions: [{ name: 'landingPagePlusQueryString' }],
+        metrics: [{ name: 'sessions' }, { name: 'totalUsers' }],
+        orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+        limit: '1000',
+      },
+    }),
+    // 2 — events on offer pages: pagePath carries offer=… → event × path.
+    analytics.properties.runReport({
+      property,
+      requestBody: {
+        dateRanges,
+        dimensions: [{ name: 'pagePathPlusQueryString' }, { name: 'eventName' }],
+        metrics: [{ name: 'eventCount' }],
+        dimensionFilter: {
+          filter: {
+            fieldName: 'pagePathPlusQueryString',
+            stringFilter: { matchType: 'CONTAINS', value: 'offer=', caseSensitive: false },
+          },
+        },
+        limit: '2000',
+      },
+    }),
+    // 3 — site-wide booking-funnel event totals (attribution-independent).
+    analytics.properties.runReport({
+      property,
+      requestBody: {
+        dateRanges,
+        dimensions: [{ name: 'eventName' }],
+        metrics: [{ name: 'eventCount' }],
+        dimensionFilter: {
+          filter: { fieldName: 'eventName', inListFilter: { values: BOOKING_FUNNEL_EVENTS } },
+        },
+        limit: '50',
+      },
+    }),
+  ]);
+
+  const acc = new Map<string, { sessions: number; users: number; events: Map<string, number> }>();
+  for (const o of BOOKING_OFFERS) acc.set(o.key, { sessions: 0, users: 0, events: new Map() });
+
+  for (const r of landingRes.data.rows ?? []) {
+    const key = offerOf(r.dimensionValues?.[0]?.value ?? '');
+    if (!key) continue;
+    const a = acc.get(key)!;
+    a.sessions += metric(r, 0);
+    a.users += metric(r, 1);
+  }
+
+  for (const r of eventsRes.data.rows ?? []) {
+    const key = offerOf(r.dimensionValues?.[0]?.value ?? '');
+    const event = r.dimensionValues?.[1]?.value;
+    if (!key || !event) continue;
+    const a = acc.get(key)!;
+    a.events.set(event, (a.events.get(event) ?? 0) + metric(r, 0));
+  }
+
+  const offers: Ga4OfferFunnel[] = BOOKING_OFFERS.map((o) => {
+    const a = acc.get(o.key)!;
+    return {
+      key: o.key,
+      label: o.label,
+      laneCode: o.laneCode,
+      sessions: a.sessions,
+      users: a.users,
+      events: Object.fromEntries(a.events),
+      allEvents: [...a.events.entries()]
+        .map(([event, count]) => ({ event, count }))
+        .sort((x, y) => y.count - x.count),
+    };
+  });
+
+  const siteEvents = (siteEventsRes.data.rows ?? [])
+    .map((r) => ({ event: r.dimensionValues?.[0]?.value || '(unknown)', count: metric(r, 0) }))
+    .sort((a, b) => b.count - a.count);
+
+  return { offers, siteEvents, period: { from, to } };
 }
 
 export async function fetchGa4Attribution(from: string, to: string): Promise<Ga4Attribution> {

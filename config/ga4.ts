@@ -73,3 +73,49 @@ export const GA4_LEAD_CHANNEL_DIMENSION =
  */
 export const GA4_WHATSAPP_EVENT = process.env.GA4_WHATSAPP_EVENT?.trim() || 'whatsapp_click';
 export const GA4_CALL_EVENT = process.env.GA4_CALL_EVENT?.trim() || 'call_click';
+
+// ============================================================================
+// Offer landing pages (Website Bookings → "Booking funnel & events by offer").
+// Each paid offer drives to its own landing page; clicking "Book appointment"
+// opens the widget on /en?offer=<key>… . We attribute traffic by the landing
+// page and events by the `offer=<key>` query param, both on GA4's
+// landing/page-path-plus-query-string dimensions.
+// ============================================================================
+export interface OfferDef {
+  key: string; // the ?offer=<key> value, e.g. 'glow-up'
+  label: string;
+  laneCode: string;
+  landing: string; // landing page path fragment, e.g. '/glow-up'
+}
+
+export const BOOKING_OFFERS: OfferDef[] = [
+  { key: 'glow-up', label: 'Glow-Up', laneCode: 'Lane E', landing: '/glow-up' },
+  { key: 'sos', label: 'SOS', laneCode: 'Lane D', landing: '/sos' },
+  { key: 'scan', label: 'Scan', laneCode: 'Lane J', landing: '/scan' },
+];
+
+/** Env-overridable names for the two events whose GTM label can vary. */
+const QUALIFIED_LEAD_EVENT = process.env.GA4_QUALIFIED_LEAD_EVENT?.trim() || 'qualify_lead';
+const BOOKING_CONFIRMED_EVENT = process.env.GA4_BOOKING_CONFIRMED_EVENT?.trim() || 'booking_completed';
+
+/** One stage of the per-offer booking funnel — 'sessions' is the landing-page
+ *  traffic; every other stage is a GA4 eventName counted on the offer's pages. */
+export interface BookingFunnelStage {
+  key: string;
+  label: string;
+  /** 'sessions' = landing-page sessions; otherwise a GA4 eventName. */
+  event: string;
+}
+
+export const BOOKING_FUNNEL: BookingFunnelStage[] = [
+  { key: 'landing', label: 'Landing-page sessions', event: 'sessions' },
+  { key: 'widget', label: 'Booking widget viewed', event: 'booking_widget_viewed' },
+  { key: 'visit_type', label: 'Visit type selected', event: 'booking_visit_type_selected' },
+  { key: 'treatment', label: 'Treatment selected', event: 'booking_treatment_selected' },
+  { key: 'lead', label: 'Lead generated', event: GA4_LEAD_EVENT },
+  { key: 'qualified', label: 'Qualified lead', event: QUALIFIED_LEAD_EVENT },
+  { key: 'confirmed', label: 'Booking confirmed', event: BOOKING_CONFIRMED_EVENT },
+];
+
+/** Every booking-funnel eventName (excludes the synthetic 'sessions' stage). */
+export const BOOKING_FUNNEL_EVENTS = BOOKING_FUNNEL.map((s) => s.event).filter((e) => e !== 'sessions');

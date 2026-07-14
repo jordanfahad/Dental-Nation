@@ -1,5 +1,7 @@
 import type { getRangeReport } from '@/lib/report';
 import { getRecentWidgetBookings } from '@/lib/bookings/recent';
+import { getBookingEventsReport } from '@/lib/bookings/events';
+import { BookingEventsByOffer } from './BookingEventsByOffer';
 import { Card, SectionHeader, Takeaway } from '@/components/ui/Card';
 import { DataGapInline } from '@/components/ui/DataGap';
 import { KpiBand, type KpiItem } from '@/components/charts/KpiBand';
@@ -38,6 +40,8 @@ export async function BookingsReport({ report }: { report: RangeReport }) {
   // Live widget submissions from the Zavis feed (incl. test orders, flagged) —
   // scoped to the same window as the rest of the tab.
   const widget = await getRecentWidgetBookings({ from: range.from, to: range.to });
+  // GA4 on-site booking funnel + events, per offer landing page.
+  const events = await getBookingEventsReport({ from: range.from, to: range.to });
 
   const period = `${dubaiDateLabel(range.from)} → ${dubaiDateLabel(range.to)}`;
 
@@ -162,6 +166,8 @@ export async function BookingsReport({ report }: { report: RangeReport }) {
           )}
         </div>
       </Card>
+
+      <BookingEventsByOffer data={events} />
 
       <Card>
         <SectionHeader tag="W4" eyebrow="Detail" title="Recent bookings" />
