@@ -113,6 +113,13 @@ export function PractoPatientsPanel({ data }: { data: CrmPatientBookings }) {
         <span className="font-medium text-ink">New</span> counts a patient by their <strong>first visit</strong>{' '}
         (earliest appointment date) falling in the range — a follow-up booked far ahead doesn&apos;t make an
         existing patient &quot;new&quot;.{' '}
+        {data.matchedPracto > 0 ? (
+          <>
+            <span className="rounded-full bg-ink/10 px-1.5 py-0.5 text-[10px] font-medium text-ink">Practo DB</span>{' '}
+            {int(data.matchedPracto)} matched to the Practo patient database (phone) → counted as existing regardless
+            of Zavis history.{' '}
+          </>
+        ) : null}
         {data.notYetVisited > 0 ? (
           <>
             <span className="font-medium text-watch">{int(data.notYetVisited)}</span> booked patient
@@ -189,6 +196,14 @@ export function PractoPatientsPanel({ data }: { data: CrmPatientBookings }) {
                   <td className="tnum px-3 py-1.5 text-ink-faint">{phoneFmt(r.phone)}</td>
                   <td className="px-3 py-1.5">
                     <ClassBadge c={r.patientClass} />
+                    {r.knownPracto ? (
+                      <span
+                        className="ml-1 rounded-full bg-ink/10 px-1.5 py-0.5 text-[10px] font-medium text-ink"
+                        title="Matched to the Practo patient database by phone"
+                      >
+                        Practo DB
+                      </span>
+                    ) : null}
                   </td>
                   <td className="tnum px-3 py-1.5 text-ink-soft">
                     {r.appointmentLabel ?? '—'}
@@ -261,6 +276,14 @@ export function PractoPatientsPanel({ data }: { data: CrmPatientBookings }) {
                     <td className="tnum px-3 py-1.5 text-right text-ink-soft">{int(p.appointments)}</td>
                     <td className="px-3 py-1.5">
                       <ClassBadge c={p.patientClass} />
+                      {p.knownPracto ? (
+                        <span
+                          className="ml-1 rounded-full bg-ink/10 px-1.5 py-0.5 text-[10px] font-medium text-ink"
+                          title="Matched to the Practo patient database by phone"
+                        >
+                          Practo DB
+                        </span>
+                      ) : null}
                     </td>
                     <td className="tnum px-3 py-1.5 text-ink-faint">{dlabel(p.patientSince)}</td>
                   </tr>

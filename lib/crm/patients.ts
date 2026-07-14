@@ -45,6 +45,13 @@ function cleanName(raw: string | null | undefined): string {
   return s.replace(/\s+/g, ' ').trim();
 }
 const normPhone = (p: string | null | undefined) => (p ?? '').replace(/\D/g, '');
+/** Last-9-digit phone key (strip 971 / leading 0) — matches practo_patients.phone. */
+function phone9(p: string | null | undefined): string {
+  let d = normPhone(p);
+  if (d.length >= 12 && d.startsWith('971')) d = d.slice(3);
+  d = d.replace(/^0+/, '');
+  return d.length >= 9 ? d.slice(-9) : d.length >= 7 ? d : '';
+}
 function isDummyPhone(p: string): boolean {
   if (!p || p.length < 7) return true;
   if (/0{5,}/.test(p)) return true;
@@ -83,6 +90,7 @@ export interface PatientBooking {
   patientClass: PatientClass; // by first-VISIT date vs the window
   patientSince: string | null; // YYYY-MM-DD first-visit date (null → blank)
   isHousehold: boolean; // shares a real phone with ≥1 other distinct person
+  knownPracto: boolean; // phone matches a patient in the Practo patient database
 }
 
 /** One row of the per-patient "who paid how much" table. */
@@ -96,6 +104,7 @@ export interface PatientPaid {
   patientSince: string | null;
   isHousehold: boolean;
   householdSize: number; // distinct people on the same real phone (1 = solo)
+  knownPracto: boolean; // phone matches a patient in the Practo patient database
 }
 
 export interface CrmPatientBookings {
@@ -104,6 +113,7 @@ export interface CrmPatientBookings {
   newPatients: number; // first VISIT falls in the window (and has occurred)
   existingPatients: number; // first visit was before the window
   notYetVisited: number; // first visit is in the future (booked, not yet seen)
+  matchedPracto: number; // distinct people whose phone is in the Practo patient DB
   households: number; // real phones shared by ≥2 distinct people (in window)
   upcomingAppointments: number; // appointments in the window with a future date
   appointments: number; // total non-test appointments in the window
@@ -149,6 +159,7 @@ export async function getCrmPatientBookings(opts: PatientBookingsQuery = {}): Pr
     newPatients: 0,
     existingPatients: 0,
     notYetVisited: 0,
+    matchedPracto: 0,
     households: 0,
     upcomingAppointments: 0,
     appointments: 0,
@@ -177,6 +188,24 @@ export async function getCrmPatientBookings(opts: PatientBookingsQuery = {}): Pr
       opts.clinic && opts.clinic !== 'all' ? clinicOfDoctor(r.professional_name) === opts.clinic : true,
     );
 
+    // Practo patient database (existing-patient reference): a CRM patient whose
+    // phone is a known Practo patient is EXISTING regardless of Zavis history.
+    const practoPhones = new Set<string>();
+    try {
+      const { data: pp } = await db.from('practo_patients').select('phone');
+      for (const r of (pp as { phone: string }[] | null) ?? []) {
+        const k = phone9(r.phone);
+        if (k) practoPhones.add(k);
+      }
+    } catch {
+      /* practo reference optional */
+    }
+    // Per-person: is any of their appointments' phone a known Practo patient?
+    const knownByPk = new Map<string, boolean>();
+    for (const r of all) {
+      if (practoPhones.has(phone9(r.patient_phone))) knownByPk.set(personKey(r), true);
+    }
+
     const today = todayDubai();
 
     // All-time FIRST-VISIT date per person (earliest appointment date = min
@@ -201,8 +230,11 @@ export async function getCrmPatientBookings(opts: PatientBookingsQuery = {}): Pr
     const householdSizeOf = (phone: string): number =>
       !phone || isDummyPhone(phone) ? 1 : phonePeople.get(phone)?.size ?? 1;
 
-    /** Classify a person by their first-visit date vs the window + today. */
+    /** Classify a person by their first-visit date vs the window + today. A
+     *  patient known to the Practo patient database is EXISTING outright — they
+     *  were a clinic patient before Zavis, even if Zavis only shows them now. */
     const classOf = (pk: string): PatientClass => {
+      if (knownByPk.get(pk)) return 'existing';
       const fv = firstVisit.get(pk);
       if (!fv) return 'existing';
       if (fv > today) return 'upcoming'; // hasn't visited yet
@@ -270,11 +302,13 @@ export async function getCrmPatientBookings(opts: PatientBookingsQuery = {}): Pr
     let newPatients = 0;
     let existingPatients = 0;
     let notYetVisited = 0;
+    let matchedPracto = 0;
     for (const pk of people) {
       const c = classOf(pk);
       if (c === 'new') newPatients += 1;
       else if (c === 'existing') existingPatients += 1;
       else notYetVisited += 1;
+      if (knownByPk.get(pk)) matchedPracto += 1;
     }
 
     const rows: PatientBooking[] = scoped
@@ -299,6 +333,7 @@ export async function getCrmPatientBookings(opts: PatientBookingsQuery = {}): Pr
           patientClass: classOf(pk),
           patientSince: firstVisit.get(pk) ?? null,
           isHousehold: householdSizeOf(phone) >= 2,
+          knownPracto: knownByPk.get(pk) ?? false,
         };
       })
       .sort((a, b) => (b.appointmentDate ?? '').localeCompare(a.appointmentDate ?? ''));
@@ -323,6 +358,7 @@ export async function getCrmPatientBookings(opts: PatientBookingsQuery = {}): Pr
         patientSince: firstVisit.get(pk) ?? null,
         isHousehold: householdSizeOf(a.phone) >= 2,
         householdSize: householdSizeOf(a.phone),
+        knownPracto: knownByPk.get(pk) ?? false,
       }))
       .sort((a, b) => (b.paid ?? -1) - (a.paid ?? -1) || b.appointments - a.appointments);
 
@@ -332,6 +368,7 @@ export async function getCrmPatientBookings(opts: PatientBookingsQuery = {}): Pr
       newPatients,
       existingPatients,
       notYetVisited,
+      matchedPracto,
       households: householdPhones.size,
       upcomingAppointments,
       appointments: scoped.length,
