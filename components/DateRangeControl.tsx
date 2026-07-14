@@ -11,18 +11,20 @@ import type { RangeMeta } from '@/lib/types';
  * the searchParams while PRESERVING `tab`, so the range applies across all tabs.
  * Lives in the header.
  */
-export function DateRangeControl({ range }: { range: RangeMeta }) {
+export function DateRangeControl({ range, basePath = '/' }: { range: RangeMeta; basePath?: string }) {
   const router = useRouter();
   const params = useSearchParams();
   const [pending, startTransition] = useTransition();
   const [from, setFrom] = useState(range.from);
   const [to, setTo] = useState(range.to);
 
-  /** Navigate with the next params, always keeping `tab`. */
+  /** Navigate with the next params, always keeping `tab`. Stays on the current
+   *  page (`basePath`) so it works both on the dashboard and the standalone
+   *  Araby Ads report route. */
   function go(mutate: (p: URLSearchParams) => void) {
     const next = new URLSearchParams(params.toString());
     mutate(next);
-    startTransition(() => router.push(`/?${next.toString()}`));
+    startTransition(() => router.push(`${basePath}?${next.toString()}`));
   }
 
   function onPreset(preset: string) {

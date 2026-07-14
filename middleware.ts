@@ -61,5 +61,5 @@ export const config = {
   // Everything except login, the cron + practo endpoints (CRON_SECRET-gated),
   // the standalone Leave Calendar (Leave-Calendar + api/leave-auth — it runs its
   // own CEO/super-admin-only gate), Next internals and static files.
-  matcher: ['/((?!login|api/cron|api/practo|api/meta|api/google-ads|Leave-Calendar|api/leave-|_next/static|_next/image|favicon.ico).*)'],
+  matcher: ['/((?!login|reports/arabyads|api/cron|api/practo|api/meta|api/google-ads|Leave-Calendar|api/leave-|_next/static|_next/image|favicon.ico).*)'],
 };
