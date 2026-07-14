@@ -207,14 +207,16 @@ export async function BookingsReport({ report }: { report: RangeReport }) {
         </div>
       </Card>
 
-      {/* Live widget submissions from the Zavis feed — includes test/seed orders,
-          flagged, so a test booking can be confirmed end-to-end (mirrors the Araby
-          Ads "Recent bookings" view). Excluded from the KPIs above (is_test=false). */}
+      {/* Live website-widget submissions, read straight from the fresh sheet
+          mirror (raw_zavis) — the FAST path: a booking shows within one sync
+          cycle, carries the Source column (col T → ArabyAds attribution) and
+          INCLUDES test/seed orders (flagged) so a test lead can be confirmed end
+          to end. Website widget only; excluded from the KPIs above (is_test). */}
       <Card>
         <SectionHeader
           tag="W5"
-          eyebrow="Detail · live widget feed"
-          title="Recent widget submissions (incl. test)"
+          eyebrow="Detail · live website widget"
+          title="Recent website-widget submissions (incl. test)"
           right={
             <span className="text-[11px] text-ink-faint">
               {widget.real} real · {widget.test} test
@@ -223,12 +225,14 @@ export async function BookingsReport({ report }: { report: RangeReport }) {
         />
         <div className="px-5 pb-5 pt-4">
           <p className="mb-3 text-[12.5px] leading-snug text-ink-soft">
-            The raw on-site booking-widget stream from the Zavis feed — every submission as it lands, including
-            <strong> test/seed orders</strong> (flagged). Test rows are excluded from the scorecard above; this
-            list is here so a test booking can be confirmed end to end.
+            The raw on-site booking-widget stream from the Google Sheet mirror, refreshed on the sync — every
+            submission as it lands, with its <strong>Source</strong> (ArabyAds landing page + PID/SUB when
+            applicable) and <strong>test/seed orders</strong> flagged. Ordered by when it was booked. This is
+            website-widget only (WhatsApp &amp; Practo-direct bookings arrive through the CRM/Practo feeds), and
+            test rows are excluded from the scorecard above.
           </p>
           {widget.rows.length === 0 ? (
-            <DataGapInline detail="no widget submissions in range" owner={ownerFor('website')} />
+            <DataGapInline detail="no website-widget submissions in range" owner={ownerFor('website')} />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-[12.5px]">
@@ -237,23 +241,34 @@ export async function BookingsReport({ report }: { report: RangeReport }) {
                     <th className="py-2 pr-3 font-medium">Booked on</th>
                     <th className="py-2 pr-3 font-medium">Patient</th>
                     <th className="py-2 pr-3 font-medium">Appointment</th>
+                    <th className="py-2 pr-3 font-medium">Source</th>
                     <th className="py-2 pr-3 font-medium">Treatment</th>
                     <th className="py-2 pr-3 font-medium">Clinic</th>
                     <th className="py-2 pr-3 font-medium">Doctor</th>
-                    <th className="py-2 pr-3 font-medium">Status</th>
+                    <th className="py-2 pr-3 text-right font-medium">Price</th>
                     <th className="py-2 pl-3 font-medium">Flag</th>
                   </tr>
                 </thead>
                 <tbody>
                   {widget.rows.map((r, i) => (
                     <tr key={i} className="border-b border-line/60 last:border-0">
-                      <td className="py-2 pr-3 tabular-nums text-ink-soft">{r.dateLabel ?? '—'}</td>
+                      <td className="py-2 pr-3 tabular-nums text-ink-soft">{r.bookedOnLabel ?? '—'}</td>
                       <td className="py-2 pr-3 font-medium text-ink">{r.patientName}</td>
                       <td className="py-2 pr-3 tabular-nums text-ink-soft">{r.apptLabel ?? '—'}</td>
+                      <td className="py-2 pr-3 text-ink-soft">
+                        {r.sourceLabel}
+                        {r.pid || r.sub ? (
+                          <span className="block text-[10.5px] text-ink-faint">
+                            {[r.pid ? `PID ${r.pid}` : null, r.sub ? `SUB ${r.sub}` : null].filter(Boolean).join(' · ')}
+                          </span>
+                        ) : null}
+                      </td>
                       <td className="py-2 pr-3 text-ink-soft">{r.treatment ?? '—'}</td>
                       <td className="py-2 pr-3 text-ink-soft">{r.clinic}</td>
                       <td className="py-2 pr-3 text-ink-soft">{r.doctor ?? '—'}</td>
-                      <td className="py-2 pr-3 text-ink-soft">{r.status}</td>
+                      <td className="py-2 pr-3 text-right tabular-nums text-ink">
+                        {r.price != null ? aed(r.price) : '—'}
+                      </td>
                       <td className="py-2 pl-3">
                         {r.isTest ? (
                           <span className="text-[11px] text-watch">test</span>
