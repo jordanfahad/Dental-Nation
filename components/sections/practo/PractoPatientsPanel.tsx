@@ -13,6 +13,19 @@ function dlabel(d: string | null): string {
   const [y, m, da] = d.split('-');
   return `${Number(da)} ${MONTHS[Number(m) - 1]} ${y}`;
 }
+/** Show a phone with a leading + for readability. */
+const phoneFmt = (p: string | null) => (p ? `+${p}` : '—');
+/** Small "family" chip for a household member (shared real phone). */
+function HouseholdChip({ size }: { size?: number }) {
+  return (
+    <span
+      className="ml-1 rounded-full bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium text-accent"
+      title="Shares a phone number with other patients — likely one family/household"
+    >
+      family{size && size > 1 ? ` · ${size}` : ''}
+    </span>
+  );
+}
 
 type Filter = 'all' | 'new' | 'existing' | 'booked';
 
@@ -67,6 +80,15 @@ export function PractoPatientsPanel({ data }: { data: CrmPatientBookings }) {
         })}
       </div>
 
+      {data.households > 0 ? (
+        <p className="mt-3 text-[12px] text-ink-soft">
+          <span className="rounded-full bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium text-accent">family</span>{' '}
+          {int(data.households)} household{data.households === 1 ? '' : 's'} — one phone shared by several patients
+          (e.g. a parent books, the family is treated). These are counted as separate patients, not duplicates.
+          Dummy/placeholder numbers are ignored.
+        </p>
+      ) : null}
+
       {filter !== 'all' ? (
         <p className="mt-3 text-[12px] text-ink-soft">
           Filtered to <span className="font-medium text-ink">{filter === 'booked' ? 'booked / confirmed' : `${filter} patients`}</span>
@@ -80,10 +102,11 @@ export function PractoPatientsPanel({ data }: { data: CrmPatientBookings }) {
       {/* Appointments table */}
       <div className="mt-4 overflow-x-auto">
         <div className="max-h-[520px] overflow-y-auto rounded-card border border-line">
-          <table className="w-full min-w-[820px] border-collapse text-[12.5px]">
+          <table className="w-full min-w-[960px] border-collapse text-[12.5px]">
             <thead className="sticky top-0 bg-card">
               <tr className="border-b border-line text-left text-ink-faint">
                 <th className="px-3 py-2 font-medium">Patient</th>
+                <th className="px-3 py-2 font-medium">Phone</th>
                 <th className="px-3 py-2 font-medium">New / existing</th>
                 <th className="px-3 py-2 font-medium">Appointment</th>
                 <th className="px-3 py-2 font-medium">Status</th>
@@ -95,7 +118,11 @@ export function PractoPatientsPanel({ data }: { data: CrmPatientBookings }) {
             <tbody>
               {rows.map((r, i) => (
                 <tr key={i} className="border-b border-line/60 align-top last:border-0">
-                  <td className="px-3 py-1.5 font-medium text-ink">{r.patientName}</td>
+                  <td className="px-3 py-1.5 font-medium text-ink">
+                    {r.patientName}
+                    {r.isHousehold ? <HouseholdChip /> : null}
+                  </td>
+                  <td className="tnum px-3 py-1.5 text-ink-faint">{phoneFmt(r.phone)}</td>
                   <td className="px-3 py-1.5">
                     <span
                       className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
@@ -124,7 +151,7 @@ export function PractoPatientsPanel({ data }: { data: CrmPatientBookings }) {
               ))}
               {rows.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-3 py-6 text-center text-[12.5px] text-ink-faint">
+                  <td colSpan={8} className="px-3 py-6 text-center text-[12.5px] text-ink-faint">
                     No appointments match this filter.
                   </td>
                 </tr>
@@ -146,10 +173,11 @@ export function PractoPatientsPanel({ data }: { data: CrmPatientBookings }) {
         </p>
         <div className="overflow-x-auto">
           <div className="max-h-[420px] overflow-y-auto rounded-card border border-line">
-            <table className="w-full min-w-[560px] border-collapse text-[12.5px]">
+            <table className="w-full min-w-[680px] border-collapse text-[12.5px]">
               <thead className="sticky top-0 bg-card">
                 <tr className="border-b border-line text-left text-ink-faint">
                   <th className="px-3 py-2 font-medium">Patient</th>
+                  <th className="px-3 py-2 font-medium">Phone</th>
                   <th className="px-3 py-2 text-right font-medium">Amount paid</th>
                   <th className="px-3 py-2 text-right font-medium">Appts</th>
                   <th className="px-3 py-2 font-medium">New / existing</th>
@@ -159,7 +187,11 @@ export function PractoPatientsPanel({ data }: { data: CrmPatientBookings }) {
               <tbody>
                 {paid.map((p, i) => (
                   <tr key={i} className="border-b border-line/60 last:border-0">
-                    <td className="px-3 py-1.5 font-medium text-ink">{p.patientName}</td>
+                    <td className="px-3 py-1.5 font-medium text-ink">
+                      {p.patientName}
+                      {p.isHousehold ? <HouseholdChip size={p.householdSize} /> : null}
+                    </td>
+                    <td className="tnum px-3 py-1.5 text-ink-faint">{phoneFmt(p.phone)}</td>
                     <td className="tnum px-3 py-1.5 text-right text-ink">{p.paid != null ? aed(p.paid) : '—'}</td>
                     <td className="tnum px-3 py-1.5 text-right text-ink-soft">{int(p.appointments)}</td>
                     <td className="px-3 py-1.5">
@@ -176,7 +208,7 @@ export function PractoPatientsPanel({ data }: { data: CrmPatientBookings }) {
                 ))}
                 {paid.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-3 py-6 text-center text-[12.5px] text-ink-faint">
+                    <td colSpan={6} className="px-3 py-6 text-center text-[12.5px] text-ink-faint">
                       No patients match this filter.
                     </td>
                   </tr>
