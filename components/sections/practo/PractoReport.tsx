@@ -1,4 +1,5 @@
 import { getPractoSummary } from '@/lib/practo/report';
+import { getCrmPatientBookings } from '@/lib/crm/patients';
 import { Card, SectionHeader, Takeaway } from '@/components/ui/Card';
 import { DataGapInline } from '@/components/ui/DataGap';
 import { KpiBand, type KpiItem } from '@/components/charts/KpiBand';
@@ -29,6 +30,7 @@ const int = (n: number) => Math.round(n).toLocaleString('en-US');
  */
 export async function PractoReport() {
   const p = await getPractoSummary();
+  const cpb = await getCrmPatientBookings();
 
   const period =
     p.periodStart && p.periodEnd
@@ -182,6 +184,86 @@ export async function PractoReport() {
           </div>
         </Card>
       ) : null}
+
+      {/* Patients & appointments — from the Zavis CRM (Practo bills carry no
+          patient name / appointment; the CRM does). */}
+      <Card>
+        <SectionHeader
+          tag="P5"
+          eyebrow="Zavis CRM · patients"
+          title="New patients & appointments booked"
+          right={<span className="text-[11px] text-ink-faint">Zavis CRM feed</span>}
+        />
+        <div className="px-5 pb-5 pt-4">
+          <p className="text-[12.5px] leading-snug text-ink-soft">
+            Patient entries and appointment bookings from the <strong>Zavis CRM</strong> — Practo&apos;s
+            finalized bills don&apos;t carry patient names or appointments, so these come from the CRM.
+            All-time; each row is one appointment with the patient, the visit date and when it was booked.
+          </p>
+
+          {cpb.source === 'empty' ? (
+            <div className="mt-4">
+              <DataGapInline detail="no CRM appointments ingested yet" owner={ownerFor('clinic')} />
+            </div>
+          ) : (
+            <>
+              <div className="mt-4">
+                <KpiBand
+                  items={[
+                    { label: 'New patients', value: int(cpb.patients), hint: 'distinct patients in the CRM' },
+                    { label: 'Appointments', value: int(cpb.appointments), hint: 'all statuses' },
+                    { label: 'Booked / confirmed', value: int(cpb.bookedConfirmed), hint: 'of all appointments' },
+                  ]}
+                />
+              </div>
+
+              <div className="mt-5 overflow-x-auto">
+                <div className="max-h-[520px] overflow-y-auto rounded-card border border-line">
+                  <table className="w-full min-w-[720px] border-collapse text-[12.5px]">
+                    <thead className="sticky top-0 bg-card">
+                      <tr className="border-b border-line text-left text-ink-faint">
+                        <th className="px-3 py-2 font-medium">Patient</th>
+                        <th className="px-3 py-2 font-medium">Appointment</th>
+                        <th className="px-3 py-2 font-medium">Status</th>
+                        <th className="px-3 py-2 font-medium">Booked on</th>
+                        <th className="px-3 py-2 font-medium">Service / doctor</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {cpb.rows.map((r, i) => (
+                        <tr key={i} className="border-b border-line/60 align-top last:border-0">
+                          <td className="px-3 py-1.5 font-medium text-ink">{r.patientName}</td>
+                          <td className="tnum px-3 py-1.5 text-ink-soft">{r.appointmentLabel ?? '—'}</td>
+                          <td className="px-3 py-1.5">
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                                r.booked ? 'bg-good/10 text-good' : 'bg-na/10 text-ink-soft'
+                              }`}
+                            >
+                              {r.status}
+                            </span>
+                          </td>
+                          <td className="tnum px-3 py-1.5 text-ink-faint">
+                            {r.bookedOn ? dubaiDateLabel(r.bookedOn) : '—'}
+                          </td>
+                          <td className="px-3 py-1.5 text-ink-faint">
+                            {[r.service, r.doctor].filter(Boolean).join(' · ') || '—'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {cpb.total > cpb.rows.length ? (
+                  <p className="mt-2 text-[11.5px] text-ink-faint">
+                    Showing {int(cpb.rows.length)} of {int(cpb.total)} appointments (most recent first).
+                  </p>
+                ) : null}
+              </div>
+            </>
+          )}
+        </div>
+      </Card>
     </div>
   );
 }
