@@ -23,14 +23,22 @@ function bar(count: number, top: number): string {
   return `${Math.max(2, Math.round((count / top) * 100))}%`;
 }
 
-export function BookingEventsByOffer({ data }: { data: BookingEventsReport }) {
+export function BookingEventsByOffer({
+  data,
+  tag = 'W6',
+  eyebrow = 'Website widget · GA4',
+}: {
+  data: BookingEventsReport;
+  tag?: string;
+  eyebrow?: string;
+}) {
   const period = data.report ? `${data.report.period.from} → ${data.report.period.to}` : null;
 
   return (
     <Card>
       <SectionHeader
-        tag="W6"
-        eyebrow="Website widget · GA4"
+        tag={tag}
+        eyebrow={eyebrow}
         title="Booking funnel & events by offer"
         right={
           <span className="text-[11px] text-ink-faint">

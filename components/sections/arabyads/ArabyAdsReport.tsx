@@ -1,4 +1,6 @@
 import { getArabyAdsReport } from '@/lib/arabyads/report';
+import { getBookingEventsReport } from '@/lib/bookings/events';
+import { BookingEventsByOffer } from '@/components/sections/bookings/BookingEventsByOffer';
 import { Card, SectionHeader, Takeaway } from '@/components/ui/Card';
 import { DataGapInline } from '@/components/ui/DataGap';
 import { KpiBand, type KpiItem } from '@/components/charts/KpiBand';
@@ -20,6 +22,7 @@ const pct = (n: number) => `${Math.round(n * 100)}%`;
  */
 export async function ArabyAdsReport({ range }: { range: { from: string; to: string } }) {
   const r = await getArabyAdsReport(range);
+  const events = await getBookingEventsReport(range);
   const period = `${dubaiDateLabel(range.from)} → ${dubaiDateLabel(range.to)}`;
   const b = r.bookings;
   const e = r.enquiries;
@@ -339,10 +342,13 @@ export async function ArabyAdsReport({ range }: { range: { from: string; to: str
         </div>
       </Card>
 
+      {/* ── On-site booking funnel & events by offer (GA4) ── */}
+      <BookingEventsByOffer data={events} tag="A6" eyebrow="On-site funnel · GA4" />
+
       {/* ── Recent ArabyAds bookings ── */}
       {b.recent.length > 0 ? (
         <Card>
-          <SectionHeader tag="A6" eyebrow="Detail" title="Recent ArabyAds bookings" />
+          <SectionHeader tag="A7" eyebrow="Detail" title="Recent ArabyAds bookings" />
           <div className="px-5 pb-5 pt-4">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-[12.5px]">
