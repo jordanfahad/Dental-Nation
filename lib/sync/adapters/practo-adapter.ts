@@ -265,6 +265,109 @@ export async function syncPracto(supabase: AdminClient, opts: PractoSyncOpts = {
   }
 }
 
+// ===========================================================================
+// Endpoint DISCOVERY (Option A): does Practo Insta expose an appointments /
+// patient endpoint that returns patient NAMES? Bills.do doesn't (mr_no only), so
+// name-based Practo↔Zavis reconciliation needs a different endpoint. We can't
+// guess blindly-safe write methods, so this only tries read/get-style methods,
+// with our live token, and reports which respond + whether a name/phone field
+// appears. Read-only; nothing is stored. Trigger: /api/practo/probe?...&discover=1
+// ===========================================================================
+
+export interface DiscoverAttempt {
+  label: string;
+  url: string;
+  httpNote: string; // 'json' | 'non-json (status …)'
+  relogin: boolean;
+  envelopeKeys: string[];
+  recordCount: number | null;
+  firstRecordKeys: string[];
+  hasNameOrPhone: boolean;
+  sample: unknown; // trimmed
+}
+
+const NAME_PHONE_RE = /(patient[_ ]?name|full[_ ]?name|first[_ ]?name|last[_ ]?name|\bname\b|mobile|phone|contact)/i;
+
+function analyzeBody(body: unknown): Omit<DiscoverAttempt, 'label' | 'url'> {
+  const relogin = isReloginCode(body);
+  const isObj = body && typeof body === 'object';
+  const nonJson = isObj && (body as Record<string, unknown>)._nonJson === true;
+  const envelopeKeys = isObj && !nonJson ? Object.keys(body as object) : [];
+  // Find the first array of records anywhere shallow in the envelope.
+  let records: unknown[] | null = Array.isArray(body) ? (body as unknown[]) : null;
+  if (!records && isObj) {
+    for (const k of ['appointments', 'patients', 'data', 'records', 'response', 'result', 'visits', 'bills', 'list']) {
+      const v = (body as Record<string, unknown>)[k];
+      if (Array.isArray(v)) { records = v as unknown[]; break; }
+      if (v && typeof v === 'object') {
+        for (const kk of ['appointments', 'patients', 'records', 'list']) {
+          const inner = (v as Record<string, unknown>)[kk];
+          if (Array.isArray(inner)) { records = inner as unknown[]; break; }
+        }
+      }
+      if (records) break;
+    }
+  }
+  const first = records && records[0] && typeof records[0] === 'object' ? (records[0] as Record<string, unknown>) : null;
+  const firstRecordKeys = first ? Object.keys(first) : [];
+  const flat = JSON.stringify(body).slice(0, 4000);
+  return {
+    httpNote: nonJson ? `non-json (status ${(body as Record<string, unknown>).status})` : 'json',
+    relogin,
+    envelopeKeys,
+    recordCount: records ? records.length : null,
+    firstRecordKeys,
+    hasNameOrPhone: NAME_PHONE_RE.test(flat),
+    sample: nonJson ? (body as Record<string, unknown>).body : first ?? body,
+  };
+}
+
+export async function practoDiscover(supabase: AdminClient): Promise<PractoResult<{ sampleMrNo: string | null; attempts: DiscoverAttempt[] }>> {
+  const cfg = getPractoConfig();
+  if (!cfg) return { ok: false, message: 'Practo not configured' };
+  try {
+    const tokenRef = { token: await getPractoToken(supabase) };
+    const iso = (d: Date) => d.toISOString().slice(0, 10);
+    const now = new Date();
+    const from = iso(new Date(now.getTime() - 7 * 86400_000));
+    const to = iso(new Date(now.getTime() + 60 * 86400_000)); // include future bookings
+    // A real mr_no + visit_id from our bills, to test patient/visit lookups.
+    const { data: billRow } = await supabase.from('practo_bills_raw').select('data').limit(1).maybeSingle();
+    const bd = (billRow as { data?: Record<string, unknown> } | null)?.data ?? {};
+    const mr = bd.mr_no != null ? String(bd.mr_no) : '';
+    const visit = bd.visit_id != null ? String(bd.visit_id) : '';
+
+    const base = `${cfg.baseUrl}/${cfg.hospital}/Customer`;
+    const q = (mr ? `&mr_no=${encodeURIComponent(mr)}&patient_mr_no=${encodeURIComponent(mr)}` : '');
+    const dateQ = `from_date=${from}&to_date=${to}`;
+    const candidates: { label: string; url: string }[] = [
+      { label: 'Appointments.getAppointments', url: `${base}/Appointments.do?_method=getAppointments&${dateQ}` },
+      { label: 'Appointment.getAppointmentList', url: `${base}/Appointment.do?_method=getAppointmentList&${dateQ}` },
+      { label: 'Appointments.getAppointmentList', url: `${base}/Appointments.do?_method=getAppointmentList&${dateQ}` },
+      { label: 'Visits.getVisits', url: `${base}/Visits.do?_method=getVisits&${dateQ}` },
+      { label: 'Patient.getPatientDetails', url: `${base}/Patient.do?_method=getPatientDetails?${q.slice(1)}` },
+      { label: 'PatientDetails.getPatientDetails', url: `${base}/PatientDetails.do?_method=getPatientDetails${q}` },
+      { label: 'Patients.getPatients', url: `${base}/Patients.do?_method=getPatients&${dateQ}` },
+      { label: 'Patient.getPatientBasicDetails', url: `${base}/Patient.do?_method=getPatientBasicDetails${q}` },
+      { label: 'Registration.getPatientDetails', url: `${base}/Registration.do?_method=getPatientDetails${q}` },
+      { label: 'Visit.getVisitDetails', url: `${base}/Visit.do?_method=getVisitDetails${visit ? `&visit_id=${encodeURIComponent(visit)}` : ''}` },
+    ];
+
+    const attempts: DiscoverAttempt[] = [];
+    for (const c of candidates) {
+      let body = await postJson(c.url, { request_handler_key: tokenRef.token });
+      if (isReloginCode(body)) {
+        tokenRef.token = await practoLogin(supabase);
+        body = await postJson(c.url, { request_handler_key: tokenRef.token });
+      }
+      attempts.push({ label: c.label, url: c.url, ...analyzeBody(body) });
+    }
+    return { ok: true, data: { sampleMrNo: mr || null, attempts } };
+  } catch (err) {
+    return { ok: false, message: (err as Error).message };
+  }
+}
+
 /** Shape-discovery probe: log in + fetch one recent 7-day page, return RAW.
  *  Used by /api/practo/probe so we can map fields precisely. */
 export async function practoProbe(supabase: AdminClient): Promise<PractoResult<unknown>> {

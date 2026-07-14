@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
-import { practoProbe, syncPracto } from '@/lib/sync/adapters/practo-adapter';
+import { practoDiscover, practoProbe, syncPracto } from '@/lib/sync/adapters/practo-adapter';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // a full-history backfill spans many 7-day windows.
@@ -25,6 +25,11 @@ export async function GET(req: NextRequest) {
   if (!authorized(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const supabase = getSupabaseAdmin();
   if (!supabase) return NextResponse.json({ error: 'Supabase not configured' }, { status: 503 });
+
+  if (req.nextUrl.searchParams.get('discover') === '1') {
+    const result = await practoDiscover(supabase);
+    return NextResponse.json(result, { status: result.ok ? 200 : 502 });
+  }
 
   if (req.nextUrl.searchParams.get('sync') === '1') {
     const sp = req.nextUrl.searchParams;
