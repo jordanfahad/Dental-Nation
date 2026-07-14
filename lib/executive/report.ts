@@ -4,6 +4,7 @@ import { getRangeReport } from '@/lib/report';
 import { getCrmReport } from '@/lib/crm/report';
 import { getPractoSummary } from '@/lib/practo/report';
 import { getAdSpendForRange, getAdFeedFreshness } from '@/lib/marketing/report';
+import type { ClinicFilterKey } from '@/config/clinics';
 import type { ExecKpis, ExecMonthPoint, ExecutiveReport } from './types';
 
 /**
@@ -22,9 +23,17 @@ export interface ExecQuery {
   to?: string;
   preset?: string;
   compare?: string;
+  /** Clinic lens for the clinic-specific populations (CRM appointments + Practo
+   *  revenue). Acquisition sources stay all-clinic regardless. */
+  clinic?: ClinicFilterKey;
 }
 
 export async function getExecutiveReport(query: ExecQuery = {}): Promise<ExecutiveReport> {
+  // Acquisition sources (ad spend, leads, GA4, booking widget) are SHARED across
+  // both clinics — the website + booking widget are the same — so they are never
+  // scoped by clinic. Only the clinic-specific populations (CRM appointments +
+  // Practo bills) take the clinic lens; their byClinic split always carries both.
+  const clinic = query.clinic ?? 'all';
   const [range, crm, practo] = await Promise.all([
     getRangeReport({
       from: query.from,
@@ -32,8 +41,8 @@ export async function getExecutiveReport(query: ExecQuery = {}): Promise<Executi
       preset: query.preset ?? 'all',
       compare: query.compare ?? 'none',
     }),
-    getCrmReport({ from: query.from, to: query.to }),
-    getPractoSummary({ from: query.from, to: query.to }),
+    getCrmReport({ from: query.from, to: query.to, clinic }),
+    getPractoSummary({ from: query.from, to: query.to, clinic }),
   ]);
 
   const { paid, leads, ga4, bookings, series } = range;

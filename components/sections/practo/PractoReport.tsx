@@ -1,5 +1,7 @@
 import { getPractoSummary } from '@/lib/practo/report';
 import { getCrmPatientBookings } from '@/lib/crm/patients';
+import { ClinicCompare } from '@/components/ClinicCompare';
+import type { ClinicFilterKey } from '@/config/clinics';
 import { Card, SectionHeader, Takeaway } from '@/components/ui/Card';
 import { DataGapInline } from '@/components/ui/DataGap';
 import { KpiBand, type KpiItem } from '@/components/charts/KpiBand';
@@ -28,9 +30,13 @@ const int = (n: number) => Math.round(n).toLocaleString('en-US');
  *  - configured but no bills   → "awaiting first bills sync" data gap
  *  - bills present             → KPIs + trend + mix charts, amount-coverage caveat
  */
-export async function PractoReport() {
-  const p = await getPractoSummary();
-  const cpb = await getCrmPatientBookings();
+export async function PractoReport({
+  range,
+}: {
+  range?: { from?: string; to?: string; clinic?: ClinicFilterKey };
+} = {}) {
+  const p = await getPractoSummary(range);
+  const cpb = await getCrmPatientBookings({ from: range?.from, to: range?.to, clinic: range?.clinic });
 
   const period =
     p.periodStart && p.periodEnd
@@ -127,6 +133,26 @@ export async function PractoReport() {
           <KpiBand items={kpis} />
         </div>
       </Card>
+
+      {p.byClinic.length ? (
+        <ClinicCompare
+          tag="P1b"
+          eyebrow="By clinic"
+          title="Finalized revenue by clinic"
+          bars={p.byClinic.map((c) => ({ label: c.label, value: c.revenue }))}
+          barFormat="aed"
+          columns={p.byClinic.map((c) => ({
+            label: c.label,
+            value: aed(c.revenue),
+            sub: `${int(c.bills)} bill${c.bills === 1 ? '' : 's'}`,
+          }))}
+          note={
+            p.byClinic.some((c) => c.clinic === 'dr-tosun' && c.bills === 0)
+              ? 'Dr Tosun reads AED 0 because its Practo bills aren’t syncing yet — this fills in automatically once they arrive (its appointments already show below, from the CRM).'
+              : undefined
+          }
+        />
+      ) : null}
 
       <Card>
         <SectionHeader tag="P2" eyebrow="Daily" title="Finalized revenue & bills over time" />

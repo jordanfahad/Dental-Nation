@@ -1,6 +1,8 @@
 import 'server-only';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
+import { CLINICS, clinicOfDoctor } from '@/config/clinics';
 import type {
+  ClinicApptCounts,
   CrmAppointmentStats,
   CrmConversationSummary,
   CrmCsat,
@@ -81,8 +83,26 @@ function emptyReport(): CrmReport {
     conversation: null,
     traffic: emptyTraffic(),
     csat: emptyCsat(),
+    byClinic: [],
     source: 'empty',
   };
+}
+
+const BOOKED_STATUSES = new Set(['booked', 'confirmed']);
+
+/** Appointment counts per clinic (derived from the conducting doctor). */
+function computeClinicSplit(rows: AppointmentRow[]): ClinicApptCounts[] {
+  const acc = new Map<string, { total: number; booked: number; completed: number }>();
+  for (const c of CLINICS) acc.set(c.key, { total: 0, booked: 0, completed: 0 });
+  for (const r of rows) {
+    const key = clinicOfDoctor(r.professional_name);
+    const a = acc.get(key)!;
+    a.total += 1;
+    const s = (r.status ?? '').trim().toLowerCase();
+    if (BOOKED_STATUSES.has(s)) a.booked += 1;
+    if (s === 'completed') a.completed += 1;
+  }
+  return CLINICS.map((c) => ({ clinic: c.key, label: c.label, ...acc.get(c.key)! }));
 }
 
 /** Sort a label→count map into a descending {label,value} array, top N. */
@@ -302,6 +322,7 @@ export async function getCrmReport(range?: CrmRange): Promise<CrmReport> {
   let conversation: CrmConversationSummary | null = null;
   let traffic: CrmTraffic = emptyTraffic();
   let csat: CrmCsat = emptyCsat();
+  let byClinic: ClinicApptCounts[] = [];
 
   // --- Appointments (non-test only) ----------------------------------------
   try {
@@ -313,7 +334,16 @@ export async function getCrmReport(range?: CrmRange): Promise<CrmReport> {
     if (range?.to) q = q.lte('created_at', `${range.to}T23:59:59+04:00`);
     const { data, error } = await q;
     if (!error && Array.isArray(data)) {
-      appointments = computeAppointments(data as AppointmentRow[]);
+      const all = data as AppointmentRow[];
+      // Comparison is over BOTH clinics in the window; the headline stats scope
+      // to the selected clinic (derived from the conducting doctor).
+      byClinic = computeClinicSplit(all);
+      const clinic = range?.clinic;
+      const scoped =
+        clinic && clinic !== 'all'
+          ? all.filter((r) => clinicOfDoctor(r.professional_name) === clinic)
+          : all;
+      appointments = computeAppointments(scoped);
     }
   } catch {
     appointments = emptyAppointments();
@@ -364,6 +394,7 @@ export async function getCrmReport(range?: CrmRange): Promise<CrmReport> {
     conversation,
     traffic,
     csat,
+    byClinic,
     source: live ? 'live' : 'empty',
   };
 }

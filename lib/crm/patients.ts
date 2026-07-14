@@ -2,6 +2,7 @@ import 'server-only';
 import { formatInTimeZone } from 'date-fns-tz';
 import { parseISO } from 'date-fns';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
+import { clinicOfDoctor, type ClinicFilterKey } from '@/config/clinics';
 
 /**
  * Patient + appointment list from the Zavis CRM booking feed (lane_e.crm_appointments).
@@ -42,7 +43,15 @@ export interface CrmPatientBookings {
 
 const BOOKED = new Set(['booked', 'confirmed']);
 
-export async function getCrmPatientBookings(limit = 250): Promise<CrmPatientBookings> {
+export interface PatientBookingsQuery {
+  from?: string;
+  to?: string;
+  clinic?: ClinicFilterKey;
+  limit?: number;
+}
+
+export async function getCrmPatientBookings(opts: PatientBookingsQuery = {}): Promise<CrmPatientBookings> {
+  const limit = opts.limit ?? 250;
   const empty: CrmPatientBookings = {
     source: 'empty',
     patients: 0,
@@ -54,13 +63,18 @@ export async function getCrmPatientBookings(limit = 250): Promise<CrmPatientBook
   const db = getSupabaseAdmin();
   if (!db) return empty;
   try {
-    const { data, error } = await db
+    // Scope on created_at (when the appointment was booked) — consistent with the
+    // rest of the CRM tab — plus the clinic filter (derived from the doctor).
+    let q = db
       .from('crm_appointments')
       .select('patient_id, patient_name, status, timeslot, created_at, services, complaint, professional_name')
       .eq('is_test', false);
+    if (opts.from) q = q.gte('created_at', `${opts.from}T00:00:00+04:00`);
+    if (opts.to) q = q.lte('created_at', `${opts.to}T23:59:59+04:00`);
+    const { data, error } = await q;
     if (error || !Array.isArray(data) || data.length === 0) return empty;
 
-    const raw = data as {
+    const all = data as {
       patient_id: string | null;
       patient_name: string | null;
       status: string | null;
@@ -70,6 +84,12 @@ export async function getCrmPatientBookings(limit = 250): Promise<CrmPatientBook
       complaint: string | null;
       professional_name: string | null;
     }[];
+
+    // Clinic filter (derived from the conducting doctor).
+    const raw =
+      opts.clinic && opts.clinic !== 'all'
+        ? all.filter((r) => clinicOfDoctor(r.professional_name) === opts.clinic)
+        : all;
 
     const patients = new Set<string>();
     let bookedConfirmed = 0;
@@ -95,7 +115,7 @@ export async function getCrmPatientBookings(limit = 250): Promise<CrmPatientBook
       .sort((a, b) => (b.appointmentDate ?? '').localeCompare(a.appointmentDate ?? ''));
 
     return {
-      source: 'live',
+      source: raw.length ? 'live' : 'empty',
       patients: patients.size,
       appointments: raw.length,
       bookedConfirmed,

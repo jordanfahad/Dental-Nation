@@ -5,6 +5,7 @@ import { ExecKpiBand } from './ExecKpiBand';
 import { ExecPipeline } from './ExecPipeline';
 import { ExecMonthlyTrend } from './ExecMonthlyTrend';
 import { ExecMixRow } from './ExecMixRow';
+import { ExecClinicSplit } from './ExecClinicSplit';
 import { ExecRevenueDeepDive } from './ExecRevenueDeepDive';
 import { ExecWebsite } from './ExecWebsite';
 import { ExecOperations } from './ExecOperations';
@@ -37,6 +38,7 @@ export async function ExecutiveDashboard({ query }: { query?: ExecQuery }) {
         </div>
       ) : null}
       <ExecKpiBand report={report} />
+      <ExecClinicSplit report={report} />
       <ExecPipeline report={report} />
       <ExecMonthlyTrend report={report} />
       <ExecMixRow report={report} />

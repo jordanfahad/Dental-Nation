@@ -1,6 +1,7 @@
 import 'server-only';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
 import { isPractoConfigured } from '@/config/practo';
+import { CLINICS, clinicOfCenter, type ClinicFilterKey } from '@/config/clinics';
 import type { MixRow } from '@/lib/types';
 
 /**
@@ -37,6 +38,16 @@ export interface PractoSummary {
    * so the doctor split reads honestly instead of appearing to lose money.
    */
   doctorUnattributed: number;
+  /** Finalized revenue + bill count per clinic (both clinics, before any clinic
+   *  filter) — for the Dental Nation vs Dr Tosun comparison. */
+  byClinic: PractoClinicSplit[];
+}
+
+export interface PractoClinicSplit {
+  clinic: string;
+  label: string;
+  revenue: number;
+  bills: number;
 }
 
 const empty = (configured: boolean): PractoSummary => ({
@@ -53,6 +64,7 @@ const empty = (configured: boolean): PractoSummary => ({
   byTreatment: [],
   byDoctor: [],
   doctorUnattributed: 0,
+  byClinic: [],
 });
 
 function topMix(map: Map<string, number>, limit = 8): MixRow[] {
@@ -68,7 +80,11 @@ function topMix(map: Map<string, number>, limit = 8): MixRow[] {
 
 const SERVICE_GROUPS = new Set(['Services & Procedures', 'services & procedures']);
 
-export async function getPractoSummary(range?: { from?: string; to?: string }): Promise<PractoSummary> {
+export async function getPractoSummary(range?: {
+  from?: string;
+  to?: string;
+  clinic?: ClinicFilterKey;
+}): Promise<PractoSummary> {
   const configured = isPractoConfigured();
   const supabase = getSupabaseAdmin();
   if (!supabase) return empty(configured);
@@ -78,8 +94,33 @@ export async function getPractoSummary(range?: { from?: string; to?: string }): 
     if (range?.to) q = q.lte('bill_date', range.to);
     const { data, error } = await q;
     if (error) return empty(configured);
-    const rows = (data as { bill_date: string | null; amount: number | null; data: Record<string, unknown> }[]) ?? [];
-    if (rows.length === 0) return empty(configured);
+    const allRows = (data as { bill_date: string | null; amount: number | null; data: Record<string, unknown> }[]) ?? [];
+    if (allRows.length === 0) return empty(configured);
+
+    // Per-clinic revenue split over BOTH clinics in the window (before filtering),
+    // so the comparison always shows Dental Nation vs Dr Tosun.
+    const clinicAcc = new Map<string, { revenue: number; bills: number }>();
+    for (const c of CLINICS) clinicAcc.set(c.key, { revenue: 0, bills: 0 });
+    for (const r of allRows) {
+      const key = clinicOfCenter((r.data?.center_name as string) ?? '');
+      const a = clinicAcc.get(key)!;
+      a.bills += 1;
+      a.revenue += r.amount != null ? Number(r.amount) || 0 : 0;
+    }
+    const byClinic: PractoClinicSplit[] = CLINICS.map((c) => ({
+      clinic: c.key,
+      label: c.label,
+      revenue: Math.round(clinicAcc.get(c.key)!.revenue),
+      bills: clinicAcc.get(c.key)!.bills,
+    }));
+
+    // Scope the headline numbers to the selected clinic (by bill center).
+    const clinic = range?.clinic;
+    const rows =
+      clinic && clinic !== 'all'
+        ? allRows.filter((r) => clinicOfCenter((r.data?.center_name as string) ?? '') === clinic)
+        : allRows;
+    if (rows.length === 0) return { ...empty(configured), source: 'empty', byClinic };
 
     let revenue = 0;
     let amountKnown = 0;
@@ -133,6 +174,7 @@ export async function getPractoSummary(range?: { from?: string; to?: string }): 
       periodStart: dates.length ? dates[0] : null,
       periodEnd: dates.length ? dates[dates.length - 1] : null,
       byDay: [...days.values()].sort((a, b) => a.date.localeCompare(b.date)),
+      byClinic,
       byDepartment: topMix(byDept),
       byTreatment: topMix(byTreatment),
       byDoctor: topMix(byDoctor),

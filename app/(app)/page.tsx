@@ -1,9 +1,11 @@
 import { Suspense } from 'react';
 import { getRangeReport } from '@/lib/report';
 import { resolveTab } from '@/components/tabs';
+import { resolveClinic } from '@/config/clinics';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { TabBar } from '@/components/TabBar';
+import { ClinicFilter } from '@/components/ClinicFilter';
 import { TabSkeleton } from '@/components/TabSkeleton';
 import { DailyControlReport } from '@/components/sections/daily/DailyControlReport';
 import { WeeklyReview } from '@/components/sections/weekly/WeeklyReview';
@@ -40,6 +42,7 @@ export default async function DashboardPage({
     compare?: string;
     tab?: string;
     mtab?: string;
+    clinic?: string;
   }>;
 }) {
   const sp = await searchParams;
@@ -55,26 +58,31 @@ export default async function DashboardPage({
     skipGa4: true,
   });
   const tab = resolveTab(sp.tab);
-  const query = { from: sp.from, to: sp.to, preset: sp.preset, compare: sp.compare };
+  const clinic = resolveClinic(sp.clinic);
+  const query = { from: sp.from, to: sp.to, preset: sp.preset, compare: sp.compare, clinic };
   const range = { from: shell.range.from, to: shell.range.to };
+  // Clinic-aware tabs: Executive / CRM / Practo split by clinic. Acquisition
+  // tabs (bookings/araby/marketing/analytics) are shared across both clinics.
+  const clinicAware = tab === 'executive' || tab === 'crm' || tab === 'practo';
 
   return (
     <main className="mx-auto max-w-[1180px] px-4 py-6 md:px-8">
       <Header range={shell.range} source={shell.source} />
       <TabBar />
+      {clinicAware ? <ClinicFilter active={clinic} /> : null}
 
       {/* Stream the active tab. Keying on tab+params re-arms the boundary on
           navigation so the skeleton shows immediately instead of the shell
           hanging on the tab's data. */}
       <Suspense
-        key={`${tab}|${sp.tab ?? ''}|${sp.from ?? ''}|${sp.to ?? ''}|${sp.preset ?? ''}|${sp.compare ?? ''}|${sp.mtab ?? ''}`}
+        key={`${tab}|${sp.tab ?? ''}|${sp.from ?? ''}|${sp.to ?? ''}|${sp.preset ?? ''}|${sp.compare ?? ''}|${sp.mtab ?? ''}|${clinic}`}
         fallback={<TabSkeleton />}
       >
         {tab === 'executive' ? <ExecutiveDashboard query={query} /> : null}
         {tab === 'daily' ? <DailyControlReport reportDate={sp.from} /> : null}
         {tab === 'weekly' ? <WeeklyReview weekOf={sp.from} /> : null}
-        {tab === 'crm' ? <CrmReport range={range} /> : null}
-        {tab === 'practo' ? <PractoReport /> : null}
+        {tab === 'crm' ? <CrmReport range={{ ...range, clinic }} /> : null}
+        {tab === 'practo' ? <PractoReport range={{ ...range, clinic }} /> : null}
         {tab === 'bookings' ? <BookingsReport report={shell} /> : null}
         {tab === 'arabyads' ? <ArabyAdsReport range={range} /> : null}
         {tab === 'marketing' ? <MarketingReport sub={sp.mtab} /> : null}

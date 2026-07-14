@@ -100,17 +100,31 @@ export interface CrmCsat {
 }
 
 /** The assembled CRM report the tab renders. */
+/** Appointment counts for one clinic (for the by-clinic comparison). */
+export interface ClinicApptCounts {
+  clinic: string;
+  label: string;
+  total: number;
+  booked: number;
+  completed: number;
+}
+
 export interface CrmReport {
   appointments: CrmAppointmentStats;
   conversation: CrmConversationSummary | null;
   traffic: CrmTraffic;
   csat: CrmCsat;
+  /** Appointment counts per clinic within the window (both clinics, unfiltered),
+   *  so the tab can render a Dental Nation vs Dr Tosun comparison. */
+  byClinic: ClinicApptCounts[];
   /** 'live' when at least one table returned rows; 'empty' otherwise / on failure. */
   source: 'live' | 'empty';
 }
 
-/** Optional date range to scope appointment reads (YYYY-MM-DD inclusive). */
+/** Optional date range + clinic filter to scope appointment reads. */
 export interface CrmRange {
   from?: string;
   to?: string;
+  /** Clinic filter: undefined/'all' = both; else scope appointments to one clinic. */
+  clinic?: 'all' | 'dental-nation' | 'dr-tosun';
 }

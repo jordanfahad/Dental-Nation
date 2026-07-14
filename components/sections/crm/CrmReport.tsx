@@ -1,6 +1,7 @@
 import { getCrmReport } from '@/lib/crm/report';
 import type { CrmRange } from '@/lib/crm/types';
 import { currentRole } from '@/lib/auth/role';
+import { ClinicCompare } from '@/components/ClinicCompare';
 import { ZavisUpload } from '@/components/crm/ZavisUpload';
 import { CrmHeader } from './CrmHeader';
 import { CrmScorecards } from './CrmScorecards';
@@ -36,6 +37,20 @@ export async function CrmReport({ range }: { range?: CrmRange }) {
       ) : (
         <>
           <CrmHeader report={report} />
+          {report.byClinic.length ? (
+            <ClinicCompare
+              tag="Z0"
+              eyebrow="By clinic"
+              title="Appointments by clinic"
+              bars={report.byClinic.map((c) => ({ label: c.label, value: c.total }))}
+              columns={report.byClinic.map((c) => ({
+                label: c.label,
+                value: `${c.total.toLocaleString('en-US')}`,
+                sub: `${c.booked} booked · ${c.completed} completed`,
+              }))}
+              note="Split by conducting doctor. Use the Clinic filter above to scope the rest of this tab; this comparison always shows both."
+            />
+          ) : null}
           <CrmScorecards report={report} />
           <CrmFunnel report={report} />
           <CrmBreakdowns report={report} />
