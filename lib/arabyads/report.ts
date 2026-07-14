@@ -153,6 +153,19 @@ function topMix(map: Map<string, number>, limit = 8): MixRow[] {
 
 const inRange = (d: string | null, from: string, to: string) => !!d && d >= from && d <= to;
 
+/**
+ * Booked-on date from the widget "Timestamp" ("07/14/2026, 14:38:21" →
+ * "2026-07-14"). A lead campaign's conversion is WHEN the booking was placed,
+ * not the (often future) appointment date — so all ArabyAds rollups scope on
+ * this, matching the Website Bookings widget view. null on bad input.
+ */
+function bookedOnDate(ts: string): string | null {
+  const m = (ts ?? '').trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (!m) return null;
+  const [, mm, dd, yyyy] = m;
+  return `${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
+}
+
 export async function getArabyAdsReport(range: { from: string; to: string }): Promise<ArabyReport> {
   const { from, to } = range;
   const empty: ArabyReport = {
@@ -198,7 +211,9 @@ export async function getArabyAdsReport(range: { from: string; to: string }): Pr
       const src = String(d['Source'] ?? '').trim();
       const parsed = src ? parseArabySource(src) : null;
       if (!parsed) continue; // not an ArabyAds row
-      const date = String(d['Date'] ?? '').slice(0, 10) || null;
+      // Scope on booked-on (when the lead came in), not the future appointment
+      // date — falling back to the appointment Date when no Timestamp.
+      const date = bookedOnDate(String(d['Timestamp'] ?? '')) ?? (String(d['Date'] ?? '').slice(0, 10) || null);
       if (date && (!firstSeen || date < firstSeen)) firstSeen = date;
 
       const name = String(d['Full Name'] ?? '').trim() || null;
