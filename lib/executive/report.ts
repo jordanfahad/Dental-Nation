@@ -59,16 +59,8 @@ export async function getExecutiveReport(query: ExecQuery = {}): Promise<Executi
     getAdFeedFreshness(),
   ]);
   const marketingSpend = adSpend.rows > 0 ? adSpend.total : (paid.spend.value ?? null);
-
-  // Marketing enquiries from the lead tracker by month, EXCLUDING "platform"
-  // channels (ZAVIS / Inquiry Platform) — those are the booking platform's own
-  // leads and belong in the Bookings stage, not the marketing-enquiry count, so
-  // counting them here would double-count with Zavis. Used for both the monthly
-  // trend and the headline lead figure so they always agree.
-  const leadsMonthly = await leadsByMonth(range.range.from, range.range.to);
-  const marketingLeads = [...leadsMonthly.values()].reduce((a, b) => a + b, 0);
-  const leadsGenerated = marketingLeads > 0 ? marketingLeads : leads.total.value;
-  // Cost per lead = live spend ÷ tracked marketing leads (the two shown together).
+  const leadsGenerated = leads.total.value;
+  // Cost per lead = live spend ÷ tracked leads (the two figures shown together).
   const costPerLead =
     marketingSpend != null && leadsGenerated && leadsGenerated > 0
       ? marketingSpend / leadsGenerated
@@ -106,8 +98,9 @@ export async function getExecutiveReport(query: ExecQuery = {}): Promise<Executi
     if (patch.revenue) row.revenue += patch.revenue;
     months.set(m, row);
   };
-  // Monthly leads from the LEAD TRACKER (platform channels excluded — see above).
-  for (const [m, n] of leadsMonthly) {
+  // Monthly leads from the LEAD TRACKER (lane_e.leads) — the real enquiry log,
+  // grouped by inquiry month (all channels), scoped to the window.
+  for (const [m, n] of await leadsByMonth(range.range.from, range.range.to)) {
     const row =
       months.get(m) ?? { month: m, label: safeMonthLabel(m), spend: 0, leads: 0, appointments: 0, revenue: 0 };
     row.leads += n;
@@ -164,27 +157,19 @@ function safeMonthLabel(m: string): string {
   }
 }
 
-/** Channels that are NOT marketing enquiries — the booking platform's own leads
- *  (ZAVIS) and the mis-imported header row ("Inquiry Platform"). Excluded from
- *  the lead count so enquiries don't double-count the Bookings (Zavis) stage. */
-const PLATFORM_LEAD_CHANNELS = new Set(['zavis', 'inquiryplatform', 'platform']);
-const isPlatformChannel = (c: string | null | undefined) =>
-  PLATFORM_LEAD_CHANNELS.has((c ?? '').toLowerCase().replace(/[^a-z]/g, ''));
-
 /** Lead-tracker (lane_e.leads) enquiry counts grouped by YYYY-MM, scoped to the
- *  window, EXCLUDING platform channels (ZAVIS / Inquiry Platform). The
- *  authoritative monthly marketing-enquiry source for the Executive trend. */
+ *  window (all channels, incl. ZAVIS). The authoritative monthly leads source
+ *  for the Executive trend. */
 async function leadsByMonth(from: string, to: string): Promise<Map<string, number>> {
   const out = new Map<string, number>();
   const db = getSupabaseAdmin();
   if (!db) return out;
   try {
-    let q = db.from('leads').select('inquiry_date, channel_source');
+    let q = db.from('leads').select('inquiry_date');
     if (from) q = q.gte('inquiry_date', from);
     if (to) q = q.lte('inquiry_date', to);
     const { data } = await q;
-    for (const r of (data as { inquiry_date: string | null; channel_source: string | null }[] | null) ?? []) {
-      if (isPlatformChannel(r.channel_source)) continue; // skip platform leads
+    for (const r of (data as { inquiry_date: string | null }[] | null) ?? []) {
       const m = (r.inquiry_date ?? '').slice(0, 7);
       if (m) out.set(m, (out.get(m) ?? 0) + 1);
     }
