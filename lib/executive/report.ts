@@ -1,5 +1,6 @@
 import 'server-only';
 import { parseISO, format, differenceInCalendarDays } from 'date-fns';
+import { getSupabaseAdmin } from '@/lib/supabase/server';
 import { getRangeReport } from '@/lib/report';
 import { getCrmReport } from '@/lib/crm/report';
 import { getPractoSummary } from '@/lib/practo/report';
@@ -97,7 +98,15 @@ export async function getExecutiveReport(query: ExecQuery = {}): Promise<Executi
     if (patch.revenue) row.revenue += patch.revenue;
     months.set(m, row);
   };
-  for (const d of series) bump(d.date, { leads: d.inquiries });
+  // Monthly leads from the LEAD TRACKER (lane_e.leads) — the real enquiry log,
+  // grouped by inquiry month — NOT the sparse daily_snapshot `inquiries` series
+  // (which under-counted the chart to ~3/month). Scoped to the same window.
+  for (const [m, n] of await leadsByMonth(range.range.from, range.range.to)) {
+    const row =
+      months.get(m) ?? { month: m, label: safeMonthLabel(m), spend: 0, leads: 0, appointments: 0, revenue: 0 };
+    row.leads += n;
+    months.set(m, row);
+  }
   // Monthly spend from the LIVE per-day ad spend (Meta + Google), scoped to the
   // window — consistent with the headline.
   for (const d of adSpend.daily) bump(d.date, { spend: d.spend });
@@ -147,4 +156,25 @@ function safeMonthLabel(m: string): string {
   } catch {
     return m;
   }
+}
+
+/** Lead-tracker (lane_e.leads) enquiry counts grouped by YYYY-MM, scoped to the
+ *  window. The authoritative monthly leads source for the Executive trend. */
+async function leadsByMonth(from: string, to: string): Promise<Map<string, number>> {
+  const out = new Map<string, number>();
+  const db = getSupabaseAdmin();
+  if (!db) return out;
+  try {
+    let q = db.from('leads').select('inquiry_date');
+    if (from) q = q.gte('inquiry_date', from);
+    if (to) q = q.lte('inquiry_date', to);
+    const { data } = await q;
+    for (const r of (data as { inquiry_date: string | null }[] | null) ?? []) {
+      const m = (r.inquiry_date ?? '').slice(0, 7);
+      if (m) out.set(m, (out.get(m) ?? 0) + 1);
+    }
+  } catch {
+    /* leave empty on failure */
+  }
+  return out;
 }
