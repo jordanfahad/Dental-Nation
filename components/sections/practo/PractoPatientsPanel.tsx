@@ -52,15 +52,16 @@ export function PractoPatientsPanel({ data }: { data: CrmPatientBookings }) {
   // Search matches on the patient's name (full or any part) or phone digits.
   const term = q.trim().toLowerCase();
   const digits = q.replace(/\D/g, '');
-  const matches = (name: string, phone: string | null): boolean => {
+  const matches = (name: string, phone: string | null, fileNo: string | null): boolean => {
     if (!term) return true;
     const nameHit = name.toLowerCase().includes(term);
     const phoneHit = digits.length > 0 && (phone ?? '').includes(digits);
-    return nameHit || phoneHit;
+    const fileHit = (fileNo ?? '').toLowerCase().includes(term);
+    return nameHit || phoneHit || fileHit;
   };
 
   const rows = data.rows.filter((r) => {
-    if (!matches(r.patientName, r.phone)) return false;
+    if (!matches(r.patientName, r.phone, r.fileNo)) return false;
     if (filter === 'new') return r.patientClass === 'new';
     if (filter === 'existing') return r.patientClass === 'existing';
     if (filter === 'upcoming') return r.isUpcomingAppt;
@@ -68,7 +69,7 @@ export function PractoPatientsPanel({ data }: { data: CrmPatientBookings }) {
     return true;
   });
   const paid = data.paidRows.filter((r) => {
-    if (!matches(r.patientName, r.phone)) return false;
+    if (!matches(r.patientName, r.phone, r.fileNo)) return false;
     if (filter === 'new') return r.patientClass === 'new';
     if (filter === 'existing') return r.patientClass === 'existing';
     if (filter === 'upcoming') return r.patientClass === 'upcoming';
@@ -142,8 +143,8 @@ export function PractoPatientsPanel({ data }: { data: CrmPatientBookings }) {
             type="text"
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search patient by name or phone…"
-            aria-label="Search patient by name or phone"
+            placeholder="Search by name, phone or file no.…"
+            aria-label="Search patient by name, phone or file number"
             className="w-full rounded-card border border-line bg-card px-3 py-2 pr-8 text-[13px] text-ink outline-none placeholder:text-ink-faint focus:border-accent focus:ring-1 focus:ring-accent/40"
           />
           {q ? (
@@ -173,10 +174,11 @@ export function PractoPatientsPanel({ data }: { data: CrmPatientBookings }) {
       {/* Appointments table */}
       <div className="mt-4 overflow-x-auto">
         <div className="max-h-[520px] overflow-y-auto rounded-card border border-line">
-          <table className="w-full min-w-[980px] border-collapse text-[12.5px]">
+          <table className="w-full min-w-[1080px] border-collapse text-[12.5px]">
             <thead className="sticky top-0 bg-card">
               <tr className="border-b border-line text-left text-ink-faint">
                 <th className="px-3 py-2 font-medium">Patient</th>
+                <th className="px-3 py-2 font-medium">File no.</th>
                 <th className="px-3 py-2 font-medium">Phone</th>
                 <th className="px-3 py-2 font-medium">Patient type</th>
                 <th className="px-3 py-2 font-medium">Appointment</th>
@@ -193,6 +195,7 @@ export function PractoPatientsPanel({ data }: { data: CrmPatientBookings }) {
                     {r.patientName}
                     {r.isHousehold ? <HouseholdChip /> : null}
                   </td>
+                  <td className="tnum px-3 py-1.5 text-ink-soft">{r.fileNo ?? '—'}</td>
                   <td className="tnum px-3 py-1.5 text-ink-faint">{phoneFmt(r.phone)}</td>
                   <td className="px-3 py-1.5">
                     <ClassBadge c={r.patientClass} />
@@ -231,7 +234,7 @@ export function PractoPatientsPanel({ data }: { data: CrmPatientBookings }) {
               ))}
               {rows.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-3 py-6 text-center text-[12.5px] text-ink-faint">
+                  <td colSpan={9} className="px-3 py-6 text-center text-[12.5px] text-ink-faint">
                     No appointments match this filter.
                   </td>
                 </tr>
@@ -253,10 +256,11 @@ export function PractoPatientsPanel({ data }: { data: CrmPatientBookings }) {
         </p>
         <div className="overflow-x-auto">
           <div className="max-h-[420px] overflow-y-auto rounded-card border border-line">
-            <table className="w-full min-w-[700px] border-collapse text-[12.5px]">
+            <table className="w-full min-w-[800px] border-collapse text-[12.5px]">
               <thead className="sticky top-0 bg-card">
                 <tr className="border-b border-line text-left text-ink-faint">
                   <th className="px-3 py-2 font-medium">Patient</th>
+                  <th className="px-3 py-2 font-medium">File no.</th>
                   <th className="px-3 py-2 font-medium">Phone</th>
                   <th className="px-3 py-2 text-right font-medium">Amount paid</th>
                   <th className="px-3 py-2 text-right font-medium">Appts</th>
@@ -271,6 +275,7 @@ export function PractoPatientsPanel({ data }: { data: CrmPatientBookings }) {
                       {p.patientName}
                       {p.isHousehold ? <HouseholdChip size={p.householdSize} /> : null}
                     </td>
+                    <td className="tnum px-3 py-1.5 text-ink-soft">{p.fileNo ?? '—'}</td>
                     <td className="tnum px-3 py-1.5 text-ink-faint">{phoneFmt(p.phone)}</td>
                     <td className="tnum px-3 py-1.5 text-right text-ink">{p.paid != null ? aed(p.paid) : '—'}</td>
                     <td className="tnum px-3 py-1.5 text-right text-ink-soft">{int(p.appointments)}</td>
@@ -290,7 +295,7 @@ export function PractoPatientsPanel({ data }: { data: CrmPatientBookings }) {
                 ))}
                 {paid.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-3 py-6 text-center text-[12.5px] text-ink-faint">
+                    <td colSpan={7} className="px-3 py-6 text-center text-[12.5px] text-ink-faint">
                       No patients match this filter.
                     </td>
                   </tr>

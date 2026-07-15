@@ -77,6 +77,7 @@ export type PatientClass = 'new' | 'existing' | 'upcoming';
 export interface PatientBooking {
   patientId: string | null;
   patientName: string;
+  fileNo: string | null; // Practo file/MR number (DNW… / ORN01-…), null if none yet
   phone: string | null;
   status: string;
   booked: boolean;
@@ -97,6 +98,7 @@ export interface PatientBooking {
 export interface PatientPaid {
   patientId: string | null;
   patientName: string;
+  fileNo: string | null; // Practo file/MR number (DNW… / ORN01-…), null if none yet
   phone: string | null;
   paid: number | null; // sum of amounts in the window (null when none priced)
   appointments: number; // appointments in the window
@@ -141,6 +143,7 @@ interface Row {
   patient_id: string | null;
   patient_name: string | null;
   patient_phone: string | null;
+  patient_platform_id: string | null; // Practo file/MR number (DNW… or ORN01-…)
   status: string | null;
   timeslot: string | null;
   created_at: string | null;
@@ -179,7 +182,7 @@ export async function getCrmPatientBookings(opts: PatientBookingsQuery = {}): Pr
     const { data, error } = await db
       .from('crm_appointments')
       .select(
-        'patient_id, patient_name, patient_phone, status, timeslot, created_at, services, complaint, professional_name, amount',
+        'patient_id, patient_name, patient_phone, patient_platform_id, status, timeslot, created_at, services, complaint, professional_name, amount',
       )
       .eq('is_test', false);
     if (error || !Array.isArray(data) || data.length === 0) return empty;
@@ -268,7 +271,7 @@ export async function getCrmPatientBookings(opts: PatientBookingsQuery = {}): Pr
     const byDoctor = new Map<string, number>();
     const paidAcc = new Map<
       string,
-      { pid: string | null; name: string; phone: string; paid: number; priced: boolean; appts: number }
+      { pid: string | null; name: string; fileNo: string | null; phone: string; paid: number; priced: boolean; appts: number }
     >();
 
     for (const r of scoped) {
@@ -289,7 +292,8 @@ export async function getCrmPatientBookings(opts: PatientBookingsQuery = {}): Pr
 
       const acc =
         paidAcc.get(pk) ??
-        { pid: r.patient_id, name: cleanName(r.patient_name) || '—', phone: normPhone(r.patient_phone), paid: 0, priced: false, appts: 0 };
+        { pid: r.patient_id, name: cleanName(r.patient_name) || '—', fileNo: null, phone: normPhone(r.patient_phone), paid: 0, priced: false, appts: 0 };
+      if (!acc.fileNo) acc.fileNo = (r.patient_platform_id ?? '').trim() || null;
       acc.appts += 1;
       if (amt != null) {
         acc.paid += amt;
@@ -320,6 +324,7 @@ export async function getCrmPatientBookings(opts: PatientBookingsQuery = {}): Pr
         return {
           patientId: r.patient_id,
           patientName: cleanName(r.patient_name) || '—',
+          fileNo: (r.patient_platform_id ?? '').trim() || null,
           phone: phone || null,
           status,
           booked: BOOKED.has(status.toLowerCase()),
@@ -351,6 +356,7 @@ export async function getCrmPatientBookings(opts: PatientBookingsQuery = {}): Pr
       .map(([pk, a]) => ({
         patientId: a.pid,
         patientName: a.name,
+        fileNo: a.fileNo,
         phone: a.phone || null,
         paid: a.priced ? Math.round(a.paid) : null,
         appointments: a.appts,
