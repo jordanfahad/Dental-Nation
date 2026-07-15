@@ -103,10 +103,22 @@ export interface RecentEnquiry {
   platformKey: PlatformKey;
   platformLabel: string;
   sourceType: string | null; // medium
+  campaign: string | null; // campaign_name — the entry point / journey
   offer: string | null;
   treatment: string | null;
   qualified: boolean;
   booked: boolean;
+}
+
+/** A campaign / entry point (leads.campaign_name) with its dominant platform. */
+export interface CampaignStat {
+  name: string;
+  enquiries: number;
+  qualified: number;
+  booked: number;
+  platformKey: PlatformKey;
+  platformLabel: string;
+  color: string;
 }
 
 export interface BookingsPlatformsReport {
@@ -119,6 +131,13 @@ export interface BookingsPlatformsReport {
   activePlatforms: number;
   topPlatform: { label: string; enquiries: number } | null;
   platforms: PlatformStat[];
+  /** Campaigns / entry points ranked by enquiries (named campaigns only). */
+  campaigns: CampaignStat[];
+  /** Enquiries with no campaign_name tagged (shown as context, not hidden). */
+  untaggedEnquiries: number;
+  /** The "Talk to Smile Advisor" journey when present: website → official
+   *  WhatsApp → in-house human agent booking. null when it has no enquiries. */
+  smileAdvisor: { enquiries: number; qualified: number; booked: number } | null;
   /** Daily total enquiries across all platforms (for the trend chart). */
   byDay: { date: string; count: number }[];
   recent: RecentEnquiry[];
@@ -131,6 +150,7 @@ interface LeadRow {
   inquiry_date: string | null;
   channel_source: string | null;
   medium: string | null;
+  campaign_name: string | null;
   offer: string | null;
   treatment_signal: string | null;
   is_qualified: boolean | null;
@@ -140,6 +160,16 @@ interface LeadRow {
 function bookedFrom(status: string | null): boolean {
   const s = (status ?? '').trim().toLowerCase();
   return s === 'booked' || s === 'confirmed' || s === 'attended' || s === 'completed';
+}
+
+/** The website "Talk to Smile Advisor" hand-off to WhatsApp (case/spacing-loose). */
+export function isSmileAdvisor(campaign: string | null | undefined): boolean {
+  return /smile\s*advisor/i.test((campaign ?? '').trim());
+}
+
+/** Sheet header value that leaks in as a campaign — never a real campaign. */
+function isCampaignHeader(campaign: string): boolean {
+  return /^campaign\s*\/?\s*offer\s*name$/i.test(campaign.trim());
 }
 
 export async function getBookingsPlatforms(opts: {
@@ -167,6 +197,9 @@ export async function getBookingsPlatforms(opts: {
       sharePct: 0,
       lastDate: null,
     })),
+    campaigns: [],
+    untaggedEnquiries: 0,
+    smileAdvisor: null,
     byDay: [],
     recent: [],
     widgetBookings: opts.widgetBookings ?? null,
@@ -179,7 +212,9 @@ export async function getBookingsPlatforms(opts: {
   try {
     let q = db
       .from('leads')
-      .select('inquiry_date, channel_source, medium, offer, treatment_signal, is_qualified, booking_status');
+      .select(
+        'inquiry_date, channel_source, medium, campaign_name, offer, treatment_signal, is_qualified, booking_status',
+      );
     if (from) q = q.gte('inquiry_date', from);
     if (to) q = q.lte('inquiry_date', to);
     const { data } = await q;
@@ -197,6 +232,13 @@ export async function getBookingsPlatforms(opts: {
 
   const byDayMap = new Map<string, number>();
   const recent: RecentEnquiry[] = [];
+  // Campaign / entry-point rollup: name → counts + platform tally (dominant wins).
+  const camp = new Map<
+    string,
+    { enquiries: number; qualified: number; booked: number; byPlatform: Map<PlatformKey, number> }
+  >();
+  let untaggedEnquiries = 0;
+  const smile = { enquiries: 0, qualified: 0, booked: 0 };
 
   for (const r of rows) {
     const key = classifyPlatform(r.channel_source, r.medium);
@@ -209,17 +251,60 @@ export async function getBookingsPlatforms(opts: {
     if (booked) a.booked += 1;
     if (r.inquiry_date && (!a.lastDate || r.inquiry_date > a.lastDate)) a.lastDate = r.inquiry_date;
     if (r.inquiry_date) byDayMap.set(r.inquiry_date, (byDayMap.get(r.inquiry_date) ?? 0) + 1);
+
+    const campaign = (r.campaign_name ?? '').trim();
+    const namedCampaign = campaign && !isCampaignHeader(campaign) ? campaign : null;
+    if (namedCampaign) {
+      const c = camp.get(namedCampaign) ?? {
+        enquiries: 0,
+        qualified: 0,
+        booked: 0,
+        byPlatform: new Map<PlatformKey, number>(),
+      };
+      c.enquiries += 1;
+      if (qualified) c.qualified += 1;
+      if (booked) c.booked += 1;
+      c.byPlatform.set(key, (c.byPlatform.get(key) ?? 0) + 1);
+      camp.set(namedCampaign, c);
+    } else {
+      untaggedEnquiries += 1;
+    }
+    if (isSmileAdvisor(namedCampaign)) {
+      smile.enquiries += 1;
+      if (qualified) smile.qualified += 1;
+      if (booked) smile.booked += 1;
+    }
+
     recent.push({
       date: r.inquiry_date,
       platformKey: key,
       platformLabel: LABEL_OF.get(key) ?? 'Other',
       sourceType: r.medium,
+      campaign: namedCampaign,
       offer: r.offer,
       treatment: r.treatment_signal,
       qualified,
       booked,
     });
   }
+
+  const campaigns: CampaignStat[] = [...camp.entries()]
+    .map(([name, c]) => {
+      // Dominant platform for the campaign (highest enquiry count).
+      let domKey: PlatformKey = 'other';
+      let domN = -1;
+      for (const [k, n] of c.byPlatform) if (n > domN) ((domN = n), (domKey = k));
+      return {
+        name,
+        enquiries: c.enquiries,
+        qualified: c.qualified,
+        booked: c.booked,
+        platformKey: domKey,
+        platformLabel: LABEL_OF.get(domKey) ?? 'Other',
+        color: COLOR_OF.get(domKey) ?? '#9AA6B2',
+      };
+    })
+    .sort((a, b) => b.enquiries - a.enquiries);
 
   const totalEnquiries = [...acc.values()].reduce((s, v) => s + v.enquiries, 0);
   if (totalEnquiries === 0) return { ...empty(), source: 'empty' };
@@ -256,6 +341,9 @@ export async function getBookingsPlatforms(opts: {
     activePlatforms: ranked.length,
     topPlatform: ranked[0] ? { label: ranked[0].label, enquiries: ranked[0].enquiries } : null,
     platforms,
+    campaigns,
+    untaggedEnquiries,
+    smileAdvisor: smile.enquiries > 0 ? smile : null,
     byDay,
     recent: recent.slice(0, 60),
     widgetBookings: opts.widgetBookings ?? null,

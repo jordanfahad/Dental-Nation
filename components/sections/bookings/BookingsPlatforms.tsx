@@ -94,6 +94,11 @@ export async function BookingsPlatforms({ report }: { report: RangeReport }) {
     { key: 'enquiries', label: 'Enquiries', color: TOKENS.accent, kind: 'area', axis: 'left', valueFormat: 'int' },
   ];
 
+  // Campaigns / entry points — top by enquiries, coloured by dominant platform.
+  const campaignBars: BarDatum[] = data.campaigns
+    .slice(0, 12)
+    .map((c) => ({ label: c.name, value: c.enquiries, color: c.color, note: c.platformLabel }));
+
   return (
     <div className="space-y-5">
       <Card>
@@ -210,6 +215,87 @@ export async function BookingsPlatforms({ report }: { report: RangeReport }) {
       <Card>
         <SectionHeader
           tag="P5"
+          eyebrow="Entry points"
+          title="Campaigns — how they got to the platform"
+        />
+        <div className="px-5 pb-5 pt-4">
+          {data.smileAdvisor ? (
+            <div className="mb-4 rounded-card border border-accent/30 bg-accent/5 px-4 py-3">
+              <p className="text-[12.5px] leading-snug text-ink">
+                <strong>Talk to Smile Advisor</strong> —{' '}
+                <span className="tabular-nums font-semibold">{int(data.smileAdvisor.enquiries)}</span> enquir
+                {data.smileAdvisor.enquiries === 1 ? 'y' : 'ies'} (on <strong>WhatsApp</strong>).
+              </p>
+              <p className="mt-1 text-[11.5px] leading-snug text-ink-soft">
+                This is a website → WhatsApp journey: the visitor clicked <em>“Talk to Smile Advisor”</em> on
+                dentalnation.com, which opened the official Dental Nation WhatsApp, and the booking was made
+                with an <strong>in-house human agent</strong>. So the platform reads <em>WhatsApp</em>, but the
+                origin is the website — the campaign is what ties the two together.
+              </p>
+            </div>
+          ) : null}
+          {campaignBars.length === 0 ? (
+            <DataGapInline detail="no campaign-tagged enquiries in range" owner={owner} />
+          ) : (
+            <>
+              <HBarChart data={campaignBars} valueFormat="int" />
+              <div className="mt-4 overflow-x-auto">
+                <table className="w-full text-left text-[12.5px]">
+                  <thead>
+                    <tr className="border-b border-line text-[10.5px] uppercase tracking-wide text-ink-faint">
+                      <th className="py-2 pr-3 font-medium">Campaign / entry point</th>
+                      <th className="py-2 pr-3 font-medium">Platform</th>
+                      <th className="py-2 pr-3 text-right font-medium">Enquiries</th>
+                      <th className="py-2 pr-3 text-right font-medium">Qualified</th>
+                      <th className="py-2 pl-3 text-right font-medium">Booked</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.campaigns.map((c) => (
+                      <tr key={c.name} className="border-b border-line/60 last:border-0">
+                        <td className="py-2 pr-3 font-medium text-ink">
+                          {c.name}
+                          {/smile\s*advisor/i.test(c.name) ? (
+                            <span className="ml-1.5 rounded-full bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium text-accent">
+                              website → WhatsApp → human agent
+                            </span>
+                          ) : null}
+                        </td>
+                        <td className="py-2 pr-3">
+                          <span className="inline-flex items-center gap-2 text-ink-soft">
+                            <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: c.color }} />
+                            {c.platformLabel}
+                          </span>
+                        </td>
+                        <td className="py-2 pr-3 text-right tabular-nums text-ink">{int(c.enquiries)}</td>
+                        <td className="py-2 pr-3 text-right tabular-nums text-ink-soft">{int(c.qualified)}</td>
+                        <td className="py-2 pl-3 text-right tabular-nums text-ink-soft">{int(c.booked)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {data.untaggedEnquiries > 0 ? (
+                <p className="mt-3 text-[11.5px] text-ink-faint">
+                  {int(data.untaggedEnquiries)} enquir{data.untaggedEnquiries === 1 ? 'y has' : 'ies have'} no
+                  campaign tagged in the tracker — counted in the platform totals above, not shown here.
+                </p>
+              ) : null}
+              <Takeaway>
+                The <strong>campaign</strong> is the entry point — it tells you <em>how</em> someone reached a
+                platform, not just which platform. “Talk to Smile Advisor” is the on-site button that hands the
+                visitor to WhatsApp for a human-agent booking; “Instagram Ads – Book my Offer” and the Ramadan /
+                Eid pushes are paid/promo journeys that also land in WhatsApp. Same platform, very different
+                intent.
+              </Takeaway>
+            </>
+          )}
+        </div>
+      </Card>
+
+      <Card>
+        <SectionHeader
+          tag="P6"
           eyebrow="Detail"
           title="Recent enquiries"
           right={<span className="text-[11px] text-ink-faint">{int(data.recent.length)} shown</span>}
@@ -224,6 +310,7 @@ export async function BookingsPlatforms({ report }: { report: RangeReport }) {
                   <tr className="border-b border-line text-[10.5px] uppercase tracking-wide text-ink-faint">
                     <th className="py-2 pr-3 font-medium">Date</th>
                     <th className="py-2 pr-3 font-medium">Platform</th>
+                    <th className="py-2 pr-3 font-medium">Campaign / entry point</th>
                     <th className="py-2 pr-3 font-medium">Source type</th>
                     <th className="py-2 pr-3 font-medium">Offer</th>
                     <th className="py-2 pr-3 font-medium">Treatment</th>
@@ -235,6 +322,7 @@ export async function BookingsPlatforms({ report }: { report: RangeReport }) {
                     <tr key={i} className="border-b border-line/60 last:border-0">
                       <td className="py-2 pr-3 tabular-nums text-ink-soft">{r.date ? dubaiDateLabel(r.date) : '—'}</td>
                       <td className="py-2 pr-3 text-ink">{r.platformLabel}</td>
+                      <td className="py-2 pr-3 text-ink-soft">{r.campaign ?? '—'}</td>
                       <td className="py-2 pr-3 text-ink-soft">{r.sourceType ?? '—'}</td>
                       <td className="py-2 pr-3 text-ink-soft">{r.offer ?? '—'}</td>
                       <td className="py-2 pr-3 text-ink-soft">{r.treatment ?? '—'}</td>
