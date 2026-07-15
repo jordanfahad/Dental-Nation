@@ -3,6 +3,7 @@ import { dubaiDateLabel } from '@/lib/dates';
 import { ExecHero } from './ExecHero';
 import { ExecKpiBand } from './ExecKpiBand';
 import { ExecPipeline } from './ExecPipeline';
+import { ExecClinicFunnel } from './ExecClinicFunnel';
 import { ExecMonthlyTrend } from './ExecMonthlyTrend';
 import { ExecMixRow } from './ExecMixRow';
 import { ExecClinicSplit } from './ExecClinicSplit';
@@ -40,6 +41,7 @@ export async function ExecutiveDashboard({ query }: { query?: ExecQuery }) {
       <ExecKpiBand report={report} />
       <ExecClinicSplit report={report} />
       <ExecPipeline report={report} />
+      <ExecClinicFunnel range={report.range} clinic={query?.clinic} />
       <ExecMonthlyTrend report={report} />
       <ExecMixRow report={report} />
       <ExecRevenueDeepDive report={report} />
