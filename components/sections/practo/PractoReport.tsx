@@ -1,6 +1,7 @@
 import { getPractoSummary } from '@/lib/practo/report';
 import { getCrmPatientBookings } from '@/lib/crm/patients';
 import { PractoPatientsPanel } from './PractoPatientsPanel';
+import { ClinicJourney } from '@/components/sections/shared/ClinicJourney';
 import { ClinicCompare } from '@/components/ClinicCompare';
 import type { ClinicFilterKey } from '@/config/clinics';
 import { Card, SectionHeader, Takeaway } from '@/components/ui/Card';
@@ -289,6 +290,12 @@ export async function PractoReport({
           )}
         </div>
       </Card>
+
+      <ClinicJourney
+        range={{ from: range?.from ?? '', to: range?.to ?? '' }}
+        clinic={range?.clinic}
+        eyebrow="Practo Insta · patient journey"
+      />
     </div>
   );
 }

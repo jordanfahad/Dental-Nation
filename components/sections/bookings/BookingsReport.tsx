@@ -5,6 +5,7 @@ import { BookingEventsByOffer } from './BookingEventsByOffer';
 import { BookingsSubNav } from './BookingsSubNav';
 import { resolveBookingsSub } from './subtabs';
 import { BookingsPlatforms } from './BookingsPlatforms';
+import { ClinicJourneyStrip } from '@/components/sections/shared/ClinicJourneyStrip';
 import { Card, SectionHeader, Takeaway } from '@/components/ui/Card';
 import { DataGapInline } from '@/components/ui/DataGap';
 import { KpiBand, type KpiItem } from '@/components/charts/KpiBand';
@@ -47,6 +48,9 @@ export async function BookingsReport({ report, sub }: { report: RangeReport; sub
     <div className="space-y-5">
       <BookingsSubNav active={active} />
       {active === 'platforms' ? <BookingsPlatforms report={report} /> : <BookingsWidgetView report={report} />}
+      {/* Where these bookings actually land at the clinic — same on both sub-tabs.
+          Full per-patient drill-down lives on the Executive & Practo tabs. */}
+      <ClinicJourneyStrip range={report.range} eyebrow="Website Bookings · clinic outcome" />
     </div>
   );
 }

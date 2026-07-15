@@ -1,6 +1,7 @@
 import { getMarketingReport } from '@/lib/marketing/report';
 import { MarketingSubNav } from './MarketingSubNav';
 import { resolveMarketingSub } from './subtabs';
+import { ClinicJourneyStrip } from '@/components/sections/shared/ClinicJourneyStrip';
 import { GoogleAdsPerformance } from './GoogleAdsPerformance';
 import { MetaAdsPerformance } from './MetaAdsPerformance';
 import { Card, SectionHeader, Takeaway } from '@/components/ui/Card';
@@ -47,7 +48,7 @@ const periodLabel = (p: { from: string | null; to: string | null }): string => {
  * Marketing tab dispatcher — renders the sub-nav (Overview · Google Ads · Meta
  * Ads) and the active sub-section. Only the chosen section's data is fetched.
  */
-export async function MarketingReport({ sub }: { sub?: string }) {
+export async function MarketingReport({ sub, range }: { sub?: string; range?: { from: string; to: string } }) {
   const active = resolveMarketingSub(sub);
   return (
     <div className="space-y-5">
@@ -59,6 +60,9 @@ export async function MarketingReport({ sub }: { sub?: string }) {
       ) : (
         <MarketingOverview />
       )}
+      {/* Where the marketing effort actually lands at the clinic. Full
+          per-patient drill-down lives on the Executive & Practo tabs. */}
+      {range ? <ClinicJourneyStrip range={range} eyebrow="Marketing · clinic outcome" /> : null}
     </div>
   );
 }

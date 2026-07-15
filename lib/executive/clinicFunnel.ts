@@ -3,25 +3,27 @@ import { getSupabaseAdmin } from '@/lib/supabase/server';
 import { clinicOfDoctor, clinicOfCenter, type ClinicFilterKey } from '@/config/clinics';
 
 /**
- * The clinic conversion funnel — the PATIENT journey we can actually trace end
- * to end, per person:
+ * The clinic conversion funnel + per-patient journey we can actually trace end
+ * to end, joined on the file number:
+ *   crm_appointments.patient_platform_id  ↔  practo_bills_raw.data->>'mr_no'
  *
  *   Booked  →  Showed up  →  Treatment (billed)  →  Paid
  *
- * The join that makes it possible is the patient file number:
- *   crm_appointments.patient_platform_id  ↔  practo_bills_raw.data->>'mr_no'
- * (a matched bill = the patient was treated & charged). Show-up is evidence-
- * based: Zavis `status='completed'` OR a matched Practo bill — because a bill is
- * itself proof the patient attended, and the manual Zavis feed under-records
- * 'completed'. Paid + amount come from the bill's payment_status / payments.
+ * Per patient we also resolve: NEW vs EXISTING (Practo patient DB match, else
+ * first-visit date), the BOOKING CHANNEL (how the appointment was made — website
+ * widget / AI agent / front-desk / walk-in; NOT the marketing platform, which
+ * the booking record doesn't carry), whether they SHOWED (Zavis completed OR a
+ * bill — a bill proves attendance and the manual Zavis feed under-records it),
+ * the NEXT appointment (follow-up) date, and revenue.
  *
  * Honest by construction (CLAUDE.md §15): the FIRST hop — Enquired → Booked — is
- * NOT captured anywhere today (lead-tracker phones match Zavis appointments only
- * ~1%, and the sheet's Conversion column is ~98% blank), so enquiries are carried
- * as top-of-funnel CONTEXT with an explicit "link not captured yet" flag, never
- * fused into a fabricated conversion. A patient with no file number can be
- * booked/showed but never bill-matched — shown truthfully, not force-fitted.
+ * not captured anywhere today (lead phones match Zavis ~1%, the sheet's
+ * Conversion column is ~98% blank), so enquiries are top-of-funnel CONTEXT with
+ * an explicit flag, never fused into a fabricated conversion. A patient with no
+ * file number can be booked/showed but never bill-matched — shown truthfully.
  */
+
+export type PatientClass = 'new' | 'existing' | 'upcoming';
 
 export interface ClinicJourneyPatient {
   key: string;
@@ -30,29 +32,36 @@ export interface ClinicJourneyPatient {
   phone: string | null;
   doctor: string | null;
   services: string | null;
-  lastApptDate: string | null; // ISO date (max timeslot)
+  patientClass: PatientClass;
+  channel: string; // booking channel label
+  firstVisit: string | null; // all-time earliest appointment (ISO date)
+  bookedDate: string | null; // earliest appointment in the window
+  lastApptDate: string | null;
   status: string | null; // most-advanced status seen
   showed: boolean;
   billed: boolean;
   paid: boolean;
   paidAmount: number;
+  nextAppt: string | null; // next future appointment (follow-up), if any
+  visits: number; // total appointments (all-time) for this patient
 }
 
 export interface ClinicFunnelReport {
   from: string;
   to: string;
   source: 'live' | 'empty';
-  /** Top-of-funnel context — enquiries in the window (all-clinic, like the rest
-   *  of the acquisition sources). NOT individually linked to the bookings below. */
   enquiries: number;
-  enquiryLinkTraceable: boolean; // false today — the hop isn't captured
+  enquiryLinkTraceable: boolean;
   booked: number;
   showed: number;
   billed: number;
   paid: number;
   paidAED: number;
-  /** Share of booked patients that tie to a Practo bill (data-quality signal). */
   billMatchRate: number;
+  // New vs existing split of the BOOKED population.
+  newCount: number;
+  existingCount: number;
+  upcomingCount: number;
   patients: ClinicJourneyPatient[];
 }
 
@@ -64,6 +73,8 @@ interface ApptRow {
   services: string | null;
   professional_name: string | null;
   timeslot: string | null;
+  source: string | null;
+  booking_mode: string | null;
 }
 
 interface BillRow {
@@ -76,7 +87,6 @@ const phone9 = (s: string | null | undefined): string => {
   const d = digits(s);
   return d.length >= 9 ? d.slice(-9) : '';
 };
-// Status ranking so a patient's "most advanced" appointment status wins.
 const STATUS_RANK: Record<string, number> = {
   requested: 1,
   booked: 2,
@@ -85,7 +95,32 @@ const STATUS_RANK: Record<string, number> = {
   cancel: 0,
   cancelled: 0,
 };
-const isShowed = (s: string | null): boolean => (s ?? '').trim().toLowerCase() === 'completed';
+const isCompleted = (s: string | null): boolean => (s ?? '').trim().toLowerCase() === 'completed';
+
+/** How the appointment was booked → a human channel label. This is the booking
+ *  channel, NOT the marketing platform (WhatsApp/Instagram aren't on the record). */
+function channelLabel(source: string | null, bookingMode: string | null): string {
+  const s = (source ?? '').trim().toLowerCase();
+  const m = (bookingMode ?? '').trim().toLowerCase();
+  if (s === 'widget') return 'Website widget';
+  if (s === 'aiagent') return 'AI agent';
+  if (s === 'crm') return 'CRM / manual';
+  if (m === 'clinic') return 'Walk-in (clinic)';
+  if (s === 'platform') return 'Front desk (Practo)';
+  return 'Direct';
+}
+
+interface Agg {
+  p: ClinicJourneyPatient;
+  firstTs: string | null; // all-time earliest timeslot
+  inRange: boolean;
+  earliestInRange: string | null;
+  channelSource: string | null;
+  channelMode: string | null;
+  channelTs: string | null; // timeslot of the appt we took the channel from
+  nextFutureTs: string | null;
+  visits: number;
+}
 
 export async function getClinicFunnel(opts: {
   from: string;
@@ -106,31 +141,48 @@ export async function getClinicFunnel(opts: {
     paid: 0,
     paidAED: 0,
     billMatchRate: 0,
+    newCount: 0,
+    existingCount: 0,
+    upcomingCount: 0,
     patients: [],
   };
 
   const db = getSupabaseAdmin();
   if (!db) return base;
 
-  // ── 1. Zavis appointments in the window (non-test), optionally clinic-scoped ──
+  const nowIso = new Date().toISOString();
+  const today = nowIso.slice(0, 10);
+
+  // ── 1. ALL non-test appointments (not range-filtered — we need all-time first
+  //       visit, follow-ups and the next appointment; the window only decides who
+  //       counts as "booked" below). Clinic-scoped by the conducting doctor. ──
   let appts: ApptRow[] = [];
   try {
-    let q = db
+    const { data } = await db
       .from('crm_appointments')
-      .select('patient_platform_id, patient_name, patient_phone, status, services, professional_name, timeslot')
+      .select(
+        'patient_platform_id, patient_name, patient_phone, status, services, professional_name, timeslot, source, booking_mode',
+      )
       .or('is_test.is.null,is_test.eq.false');
-    if (from) q = q.gte('timeslot', `${from}T00:00:00Z`);
-    if (to) q = q.lte('timeslot', `${to}T23:59:59Z`);
-    const { data } = await q;
     appts = (data as ApptRow[] | null) ?? [];
   } catch {
     return base;
   }
-  if (clinic !== 'all') {
-    appts = appts.filter((a) => clinicOfDoctor(a.professional_name) === clinic);
+  if (clinic !== 'all') appts = appts.filter((a) => clinicOfDoctor(a.professional_name) === clinic);
+
+  // ── 2. Practo patient DB (existing-patient authority) — phone-keyed set ──
+  const practoSet = new Set<string>();
+  try {
+    const { data } = await db.from('practo_patients').select('phone');
+    for (const r of (data as { phone: string | null }[] | null) ?? []) {
+      const p9 = phone9(r.phone);
+      if (p9) practoSet.add(p9);
+    }
+  } catch {
+    /* optional */
   }
 
-  // ── 2. Practo bills (small table) → per-file-no billed / paid / amount ──
+  // ── 3. Practo bills → per-file-no billed / paid / amount ──
   const bills = new Map<string, { billed: boolean; paid: boolean; amount: number }>();
   try {
     const { data } = await db.from('practo_bills_raw').select('amount, data');
@@ -139,10 +191,8 @@ export async function getClinicFunnel(opts: {
       const mr = String(d['mr_no'] ?? '').trim();
       if (!mr) continue;
       if (clinic !== 'all' && clinicOfCenter(String(d['center_name'] ?? '')) !== clinic) continue;
-      // A matched Practo bill = the patient was treated & charged. We do NOT gate
-      // "treated" on bill_status=FINALIZED: a bill can be PAID before it's
-      // finalized (advance/deposit), so FINALIZED-only would wrongly show fewer
-      // treated than paid. Paid is the payment_status; the amount is what landed.
+      // A matched bill = treated & charged (not gated on FINALIZED: a bill can be
+      // PAID before it's finalized, so FINALIZED-only would show treated < paid).
       const paid = String(d['payment_status'] ?? '').toUpperCase() === 'PAID';
       const amt = Number(d['total_patient_payments'] ?? d['patient_amount'] ?? b.amount ?? 0) || 0;
       const cur = bills.get(mr) ?? { billed: false, paid: false, amount: 0 };
@@ -152,71 +202,139 @@ export async function getClinicFunnel(opts: {
       bills.set(mr, cur);
     }
   } catch {
-    /* bills optional — funnel degrades to booked/showed only */
+    /* bills optional */
   }
 
-  // ── 3. Collapse appointments to distinct PATIENTS (file no → phone → name) ──
-  const byPatient = new Map<string, ClinicJourneyPatient>();
+  // ── 4. Collapse to distinct PATIENTS (file no → phone → name) ──
+  const agg = new Map<string, Agg>();
+  const inWindow = (ts: string | null): boolean =>
+    !!ts && (!from || ts.slice(0, 10) >= from) && (!to || ts.slice(0, 10) <= to);
+
   for (const a of appts) {
     const fileNo = (a.patient_platform_id ?? '').trim() || null;
     const ph = phone9(a.patient_phone);
     const key = fileNo ?? (ph ? `ph:${ph}` : `nm:${(a.patient_name ?? '').trim().toLowerCase()}`);
     if (!key || key === 'nm:') continue;
-    const apptDate = a.timeslot ? a.timeslot.slice(0, 10) : null;
-    const existing = byPatient.get(key);
-    const statusRank = STATUS_RANK[(a.status ?? '').trim().toLowerCase()] ?? 1;
-    if (!existing) {
-      byPatient.set(key, {
-        key,
-        name: a.patient_name?.trim() || null,
-        fileNo,
-        phone: a.patient_phone?.trim() || null,
-        doctor: a.professional_name?.trim() || null,
-        services: a.services?.trim() || null,
-        lastApptDate: apptDate,
-        status: a.status?.trim() || null,
-        showed: isShowed(a.status),
-        billed: false,
-        paid: false,
-        paidAmount: 0,
-      });
-    } else {
-      if (apptDate && (!existing.lastApptDate || apptDate > existing.lastApptDate)) existing.lastApptDate = apptDate;
-      const curRank = STATUS_RANK[(existing.status ?? '').trim().toLowerCase()] ?? 1;
-      if (statusRank > curRank) existing.status = a.status?.trim() || existing.status;
-      existing.showed = existing.showed || isShowed(a.status);
-      if (!existing.fileNo && fileNo) existing.fileNo = fileNo;
-      if (!existing.doctor && a.professional_name) existing.doctor = a.professional_name.trim();
-      if (!existing.services && a.services) existing.services = a.services.trim();
+    const ts = a.timeslot ?? null;
+    const apptDate = ts ? ts.slice(0, 10) : null;
+
+    let e = agg.get(key);
+    if (!e) {
+      e = {
+        p: {
+          key,
+          name: a.patient_name?.trim() || null,
+          fileNo,
+          phone: a.patient_phone?.trim() || null,
+          doctor: a.professional_name?.trim() || null,
+          services: a.services?.trim() || null,
+          patientClass: 'new',
+          channel: 'Direct',
+          firstVisit: null,
+          bookedDate: null,
+          lastApptDate: null,
+          status: a.status?.trim() || null,
+          showed: false,
+          billed: false,
+          paid: false,
+          paidAmount: 0,
+          nextAppt: null,
+          visits: 0,
+        },
+        firstTs: null,
+        inRange: false,
+        earliestInRange: null,
+        channelSource: null,
+        channelMode: null,
+        channelTs: null,
+        nextFutureTs: null,
+        visits: 0,
+      };
+      agg.set(key, e);
     }
+    const p = e.p;
+    e.visits += 1;
+    if (!p.fileNo && fileNo) p.fileNo = fileNo;
+    if (!p.doctor && a.professional_name) p.doctor = a.professional_name.trim();
+    if (!p.services && a.services) p.services = a.services.trim();
+    if (a.patient_name && !p.name) p.name = a.patient_name.trim();
+
+    // All-time first visit & last appt.
+    if (ts && (!e.firstTs || ts < e.firstTs)) e.firstTs = ts;
+    if (apptDate && (!p.lastApptDate || apptDate > p.lastApptDate)) p.lastApptDate = apptDate;
+
+    // Most-advanced status + completed → showed.
+    const rank = STATUS_RANK[(a.status ?? '').trim().toLowerCase()] ?? 1;
+    const curRank = STATUS_RANK[(p.status ?? '').trim().toLowerCase()] ?? 1;
+    if (rank > curRank) p.status = a.status?.trim() || p.status;
+    if (isCompleted(a.status)) p.showed = true;
+
+    // In-window booking + the channel from the earliest in-window appointment.
+    if (inWindow(ts)) {
+      e.inRange = true;
+      if (apptDate && (!e.earliestInRange || apptDate < e.earliestInRange)) e.earliestInRange = apptDate;
+      if (ts && (!e.channelTs || ts < e.channelTs)) {
+        e.channelTs = ts;
+        e.channelSource = a.source;
+        e.channelMode = a.booking_mode;
+      }
+    }
+
+    // Next future appointment (follow-up).
+    if (ts && ts > nowIso && (!e.nextFutureTs || ts < e.nextFutureTs)) e.nextFutureTs = ts;
   }
 
-  // ── 4. Attach bill match per patient (file-no keyed patients only) ──
-  for (const p of byPatient.values()) {
-    if (!p.fileNo) continue;
-    const bill = bills.get(p.fileNo);
-    if (!bill) continue;
-    p.billed = bill.billed;
-    p.paid = bill.paid;
-    p.paidAmount = bill.amount;
-    // A Practo bill is proof of attendance — Zavis `status` is under-recorded
-    // (the manual feed lags), so a billed/paid patient "showed up" regardless.
-    if (p.billed) p.showed = true;
-  }
+  // ── 5. Finalize: bill match, class, channel — keep only patients booked in range ──
+  const patients: ClinicJourneyPatient[] = [];
+  for (const e of agg.values()) {
+    if (!e.inRange) continue; // booked-in-window population only
+    const p = e.p;
+    p.firstVisit = e.firstTs ? e.firstTs.slice(0, 10) : null;
+    p.bookedDate = e.earliestInRange;
+    p.nextAppt = e.nextFutureTs ? e.nextFutureTs.slice(0, 10) : null;
+    p.visits = e.visits;
+    p.channel = channelLabel(e.channelSource, e.channelMode);
 
-  const patients = [...byPatient.values()].sort(
-    (a, b) => b.paidAmount - a.paidAmount || (b.lastApptDate ?? '').localeCompare(a.lastApptDate ?? ''),
-  );
+    // Bill match (file-no keyed patients only).
+    if (p.fileNo) {
+      const bill = bills.get(p.fileNo);
+      if (bill) {
+        p.billed = bill.billed;
+        p.paid = bill.paid;
+        p.paidAmount = bill.amount;
+        if (p.billed) p.showed = true; // a bill proves attendance
+      }
+    }
+
+    // New vs existing: Practo DB match → existing; else by first-visit date.
+    const known = !!(p.phone && practoSet.has(phone9(p.phone)));
+    if (known || (p.firstVisit && p.firstVisit < from)) {
+      p.patientClass = 'existing';
+    } else if (p.firstVisit && p.firstVisit > today) {
+      p.patientClass = 'upcoming';
+    } else {
+      p.patientClass = 'new';
+    }
+
+    patients.push(p);
+  }
 
   const booked = patients.length;
   if (booked === 0) return base;
+
+  patients.sort(
+    (a, b) => b.paidAmount - a.paidAmount || (b.lastApptDate ?? '').localeCompare(a.lastApptDate ?? ''),
+  );
 
   const showed = patients.filter((p) => p.showed).length;
   const billed = patients.filter((p) => p.billed).length;
   const paid = patients.filter((p) => p.paid).length;
   const paidAED = patients.reduce((s, p) => s + (p.paid ? p.paidAmount : 0), 0);
+  const newCount = patients.filter((p) => p.patientClass === 'new').length;
+  const existingCount = patients.filter((p) => p.patientClass === 'existing').length;
+  const upcomingCount = patients.filter((p) => p.patientClass === 'upcoming').length;
 
-  // ── 5. Enquiries context (all-clinic, like the other acquisition sources) ──
+  // ── 6. Enquiries context (all-clinic, like the other acquisition sources) ──
   let enquiries = 0;
   try {
     let q = db.from('leads').select('id', { count: 'exact', head: true });
@@ -225,7 +343,7 @@ export async function getClinicFunnel(opts: {
     const { count } = await q;
     enquiries = count ?? 0;
   } catch {
-    /* enquiries context optional */
+    /* optional */
   }
 
   return {
@@ -240,6 +358,9 @@ export async function getClinicFunnel(opts: {
     paid,
     paidAED,
     billMatchRate: booked > 0 ? billed / booked : 0,
+    newCount,
+    existingCount,
+    upcomingCount,
     patients,
   };
 }

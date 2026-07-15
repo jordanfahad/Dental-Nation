@@ -86,7 +86,7 @@ export default async function DashboardPage({
         {tab === 'practo' ? <PractoReport range={{ ...range, clinic }} /> : null}
         {tab === 'bookings' ? <BookingsReport report={shell} sub={sp.btab} /> : null}
         {tab === 'arabyads' ? <ArabyAdsReport range={range} /> : null}
-        {tab === 'marketing' ? <MarketingReport sub={sp.mtab} /> : null}
+        {tab === 'marketing' ? <MarketingReport sub={sp.mtab} range={range} /> : null}
         {tab === 'analytics' ? <GoogleAnalyticsReport /> : null}
         {tab === 'clarity' ? <ClarityReport /> : null}
       </Suspense>
