@@ -2,6 +2,9 @@ import type { getRangeReport } from '@/lib/report';
 import { getRecentWidgetBookings } from '@/lib/bookings/recent';
 import { getBookingEventsReport } from '@/lib/bookings/events';
 import { BookingEventsByOffer } from './BookingEventsByOffer';
+import { BookingsSubNav } from './BookingsSubNav';
+import { resolveBookingsSub } from './subtabs';
+import { BookingsPlatforms } from './BookingsPlatforms';
 import { Card, SectionHeader, Takeaway } from '@/components/ui/Card';
 import { DataGapInline } from '@/components/ui/DataGap';
 import { KpiBand, type KpiItem } from '@/components/charts/KpiBand';
@@ -32,7 +35,23 @@ type RangeReport = Awaited<ReturnType<typeof getRangeReport>>;
  * Honest by construction (CLAUDE.md §15): empty → owned data gap, null-guarded
  * derived metrics (avg booking value), never a fabricated 0.
  */
-export async function BookingsReport({ report }: { report: RangeReport }) {
+
+/**
+ * Website Bookings dispatcher — renders the sub-nav (Booking widget · Platforms)
+ * and the active sub-view. Only the chosen sub-view's data is fetched, so the
+ * heavier widget reads don't run while viewing Platforms.
+ */
+export async function BookingsReport({ report, sub }: { report: RangeReport; sub?: string }) {
+  const active = resolveBookingsSub(sub);
+  return (
+    <div className="space-y-5">
+      <BookingsSubNav active={active} />
+      {active === 'platforms' ? <BookingsPlatforms report={report} /> : <BookingsWidgetView report={report} />}
+    </div>
+  );
+}
+
+async function BookingsWidgetView({ report }: { report: RangeReport }) {
   const b = report.bookings;
   const range = report.range;
   const isEmpty = b.empty;

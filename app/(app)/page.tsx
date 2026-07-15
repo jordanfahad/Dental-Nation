@@ -42,6 +42,7 @@ export default async function DashboardPage({
     compare?: string;
     tab?: string;
     mtab?: string;
+    btab?: string;
     clinic?: string;
   }>;
 }) {
@@ -75,7 +76,7 @@ export default async function DashboardPage({
           navigation so the skeleton shows immediately instead of the shell
           hanging on the tab's data. */}
       <Suspense
-        key={`${tab}|${sp.tab ?? ''}|${sp.from ?? ''}|${sp.to ?? ''}|${sp.preset ?? ''}|${sp.compare ?? ''}|${sp.mtab ?? ''}|${clinic}`}
+        key={`${tab}|${sp.tab ?? ''}|${sp.from ?? ''}|${sp.to ?? ''}|${sp.preset ?? ''}|${sp.compare ?? ''}|${sp.mtab ?? ''}|${sp.btab ?? ''}|${clinic}`}
         fallback={<TabSkeleton />}
       >
         {tab === 'executive' ? <ExecutiveDashboard query={query} /> : null}
@@ -83,7 +84,7 @@ export default async function DashboardPage({
         {tab === 'weekly' ? <WeeklyReview weekOf={sp.from} /> : null}
         {tab === 'crm' ? <CrmReport range={{ ...range, clinic }} /> : null}
         {tab === 'practo' ? <PractoReport range={{ ...range, clinic }} /> : null}
-        {tab === 'bookings' ? <BookingsReport report={shell} /> : null}
+        {tab === 'bookings' ? <BookingsReport report={shell} sub={sp.btab} /> : null}
         {tab === 'arabyads' ? <ArabyAdsReport range={range} /> : null}
         {tab === 'marketing' ? <MarketingReport sub={sp.mtab} /> : null}
         {tab === 'analytics' ? <GoogleAnalyticsReport /> : null}
