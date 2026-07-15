@@ -9,8 +9,9 @@ import { clinicOfDoctor, clinicOfCenter, type ClinicFilterKey } from '@/config/c
  *
  *   Booked  →  Showed up  →  Treatment (billed)  →  Paid
  *
- * Per patient we also resolve: NEW vs EXISTING (Practo patient DB match, else
- * first-visit date), the BOOKING CHANNEL (how the appointment was made — website
+ * Per patient we also resolve: NEW vs EXISTING (by the file number — DNW… or
+ * blank = new unless already in the Practo DB; ORN01-… / legacy = existing), the
+ * BOOKING CHANNEL (how the appointment was made — website
  * widget / AI agent / front-desk / walk-in; NOT the marketing platform, which
  * the booking record doesn't carry), whether they SHOWED (Zavis completed OR a
  * bill — a bill proves attendance and the manual Zavis feed under-records it),
@@ -306,14 +307,21 @@ export async function getClinicFunnel(opts: {
       }
     }
 
-    // New vs existing: Practo DB match → existing; else by first-visit date.
+    // New vs existing by the patient FILE NUMBER (the front desk's rule):
+    //   • file no starts with DNW…  or is BLANK  → NEW (Dental Nation's fresh
+    //     new-patient file numbers), UNLESS the patient is already in the Practo
+    //     patient DB — those were reconciled as existing, so they stay existing.
+    //   • anything else (e.g. ORN01-… legacy migrated numbers) → EXISTING, even
+    //     without a phone match: the prefix itself is the existing signal.
+    // A brand-new patient whose first visit is still in the future is shown as
+    // "not yet visited" rather than a realised new patient.
+    const fno = (p.fileNo ?? '').trim().toUpperCase();
+    const dnwOrBlank = fno === '' || fno.startsWith('DNW');
     const known = !!(p.phone && practoSet.has(phone9(p.phone)));
-    if (known || (p.firstVisit && p.firstVisit < from)) {
-      p.patientClass = 'existing';
-    } else if (p.firstVisit && p.firstVisit > today) {
-      p.patientClass = 'upcoming';
+    if (dnwOrBlank && !known) {
+      p.patientClass = p.firstVisit && p.firstVisit > today ? 'upcoming' : 'new';
     } else {
-      p.patientClass = 'new';
+      p.patientClass = 'existing';
     }
 
     patients.push(p);
