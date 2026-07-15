@@ -1,6 +1,9 @@
 import 'server-only';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
 import { clinicOfDoctor, clinicOfCenter, type ClinicFilterKey } from '@/config/clinics';
+import type { PatientClass, ClinicJourneyPatient, ClinicFunnelReport } from './clinicFunnel.types';
+
+export type { PatientClass, ClinicJourneyPatient, ClinicFunnelReport } from './clinicFunnel.types';
 
 /**
  * The clinic conversion funnel + per-patient journey we can actually trace end
@@ -23,48 +26,6 @@ import { clinicOfDoctor, clinicOfCenter, type ClinicFilterKey } from '@/config/c
  * an explicit flag, never fused into a fabricated conversion. A patient with no
  * file number can be booked/showed but never bill-matched — shown truthfully.
  */
-
-export type PatientClass = 'new' | 'existing' | 'upcoming';
-
-export interface ClinicJourneyPatient {
-  key: string;
-  name: string | null;
-  fileNo: string | null;
-  phone: string | null;
-  doctor: string | null;
-  services: string | null;
-  patientClass: PatientClass;
-  channel: string; // booking channel label
-  firstVisit: string | null; // all-time earliest appointment (ISO date)
-  bookedDate: string | null; // earliest appointment in the window
-  lastApptDate: string | null;
-  status: string | null; // most-advanced status seen
-  showed: boolean;
-  billed: boolean;
-  paid: boolean;
-  paidAmount: number;
-  nextAppt: string | null; // next future appointment (follow-up), if any
-  visits: number; // total appointments (all-time) for this patient
-}
-
-export interface ClinicFunnelReport {
-  from: string;
-  to: string;
-  source: 'live' | 'empty';
-  enquiries: number;
-  enquiryLinkTraceable: boolean;
-  booked: number;
-  showed: number;
-  billed: number;
-  paid: number;
-  paidAED: number;
-  billMatchRate: number;
-  // New vs existing split of the BOOKED population.
-  newCount: number;
-  existingCount: number;
-  upcomingCount: number;
-  patients: ClinicJourneyPatient[];
-}
 
 interface ApptRow {
   patient_platform_id: string | null;
