@@ -11,6 +11,8 @@ import { syncGoogleAds } from './adapters/google-ads-adapter';
 import { isGoogleAdsConfigured } from '@/config/google-ads';
 import { syncGmb } from './adapters/gmb-adapter';
 import { isGmbConfigured } from '@/config/gmb';
+import { syncMetaOrganic } from './adapters/meta-organic-adapter';
+import { isMetaOrganicConfigured } from '@/config/meta-organic';
 import {
   normalizePerformance,
   normalizeBlockers,
@@ -264,6 +266,24 @@ export async function runSync(trigger: SyncTrigger): Promise<SyncSummary> {
     } catch (err) {
       sheetsFailed.push('GMB (local performance)');
       dataGaps.push({ area: 'channel', detail: `GMB sync failed: ${(err as Error).message}`, owner: ownerFor('channel') });
+    }
+  }
+
+  // ----- Meta ORGANIC (Instagram + Facebook Page) — followers, reach,
+  // engagement into social_insights. Best-effort.
+  if (isMetaOrganicConfigured()) {
+    try {
+      const mo = await syncMetaOrganic(supabase);
+      if (mo.ok || mo.stored > 0) {
+        sheetsOk.push(`Meta organic (${mo.channels.join('+') || 'IG/FB'}) — ${mo.stored} rows`);
+        rowsIngested += mo.stored;
+      } else {
+        sheetsFailed.push('Meta organic (IG/FB)');
+        dataGaps.push({ area: 'channel', detail: `Meta organic sync failed: ${mo.error ?? 'unknown'}`, owner: ownerFor('channel') });
+      }
+    } catch (err) {
+      sheetsFailed.push('Meta organic (IG/FB)');
+      dataGaps.push({ area: 'channel', detail: `Meta organic sync failed: ${(err as Error).message}`, owner: ownerFor('channel') });
     }
   }
 
