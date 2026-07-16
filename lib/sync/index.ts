@@ -12,7 +12,7 @@ import { isGoogleAdsConfigured } from '@/config/google-ads';
 import { syncGmb } from './adapters/gmb-adapter';
 import { isGmbConfigured } from '@/config/gmb';
 import { syncMetaOrganic } from './adapters/meta-organic-adapter';
-import { isMetaOrganicConfigured } from '@/config/meta-organic';
+import { resolveMetaOrganicConfig } from '@/config/meta-organic';
 import {
   normalizePerformance,
   normalizeBlockers,
@@ -270,13 +270,19 @@ export async function runSync(trigger: SyncTrigger): Promise<SyncSummary> {
   }
 
   // ----- Meta ORGANIC (Instagram + Facebook Page) — followers, reach,
-  // engagement into social_insights. Best-effort.
-  if (isMetaOrganicConfigured()) {
+  // engagement into social_insights; per-media posts/stories into social_posts;
+  // audience demographics into social_demographics. Credentials resolve from env
+  // OR lane_e.app_secrets (non-expiring system-user token), so no Vercel env is
+  // required. Best-effort.
+  const metaOrganicCfg = await resolveMetaOrganicConfig(supabase);
+  if (metaOrganicCfg) {
     try {
-      const mo = await syncMetaOrganic(supabase);
-      if (mo.ok || mo.stored > 0) {
-        sheetsOk.push(`Meta organic (${mo.channels.join('+') || 'IG/FB'}) — ${mo.stored} rows`);
-        rowsIngested += mo.stored;
+      const mo = await syncMetaOrganic(supabase, { config: metaOrganicCfg });
+      if (mo.ok || mo.stored > 0 || mo.posts > 0 || mo.demographics > 0) {
+        sheetsOk.push(
+          `Meta organic (${mo.channels.join('+') || 'IG/FB'}) — ${mo.stored} metrics, ${mo.posts} posts, ${mo.demographics} demo`,
+        );
+        rowsIngested += mo.stored + mo.posts + mo.demographics;
       } else {
         sheetsFailed.push('Meta organic (IG/FB)');
         dataGaps.push({ area: 'channel', detail: `Meta organic sync failed: ${mo.error ?? 'unknown'}`, owner: ownerFor('channel') });

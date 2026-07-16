@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
 import { isAdmin } from '@/lib/auth/role';
 import { syncMetaOrganic } from '@/lib/sync/adapters/meta-organic-adapter';
-import { isMetaOrganicConfigured } from '@/config/meta-organic';
+import { resolveMetaOrganicConfig } from '@/config/meta-organic';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
@@ -26,19 +26,21 @@ export async function GET(req: NextRequest) {
   if (!hasSecret(req) && !(await isAdmin())) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  if (!isMetaOrganicConfigured()) {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return NextResponse.json({ error: 'Supabase not configured' }, { status: 503 });
+
+  const config = await resolveMetaOrganicConfig(supabase);
+  if (!config) {
     return NextResponse.json(
-      { error: 'Meta organic not configured — set META_ORGANIC_TOKEN (or META_ACCESS_TOKEN) + META_FB_PAGE_ID and/or META_IG_USER_ID' },
+      { error: 'Meta organic not configured — set env or store meta_organic_token / meta_fb_page_id / meta_ig_user_id in lane_e.app_secrets' },
       { status: 503 },
     );
   }
-  const supabase = getSupabaseAdmin();
-  if (!supabase) return NextResponse.json({ error: 'Supabase not configured' }, { status: 503 });
 
   const sp = req.nextUrl.searchParams;
   const from = sp.get('from') ?? undefined;
   const to = sp.get('to') ?? undefined;
   const days = sp.get('days') ? Number(sp.get('days')) : undefined;
-  const result = await syncMetaOrganic(supabase, { from, to, days });
+  const result = await syncMetaOrganic(supabase, { from, to, days, config });
   return NextResponse.json(result, { status: result.ok || result.stored > 0 ? 200 : 502 });
 }
