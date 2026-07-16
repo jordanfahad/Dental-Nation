@@ -1,7 +1,7 @@
 import { getMarketingReport } from '@/lib/marketing/report';
 import { MarketingSubNav } from './MarketingSubNav';
 import { resolveMarketingSub } from './subtabs';
-import { ClinicJourneyStrip } from '@/components/sections/shared/ClinicJourneyStrip';
+import { MarketingJourneySection } from '@/components/sections/shared/MarketingJourneySection';
 import { GoogleAdsPerformance } from './GoogleAdsPerformance';
 import { MetaAdsPerformance } from './MetaAdsPerformance';
 import { Card, SectionHeader, Takeaway } from '@/components/ui/Card';
@@ -60,9 +60,10 @@ export async function MarketingReport({ sub, range }: { sub?: string; range?: { 
       ) : (
         <MarketingOverview />
       )}
-      {/* Where the marketing effort actually lands at the clinic. Full
-          per-patient drill-down lives on the Executive & Practo tabs. */}
-      {range ? <ClinicJourneyStrip range={range} eyebrow="Marketing · clinic outcome" /> : null}
+      {/* Where the marketing effort actually lands at the clinic: the outcome
+          strip + the full journey ranked by booking channel with a filterable
+          patient table (booked / showed / paid / re-booked). */}
+      {range ? <MarketingJourneySection range={range} /> : null}
     </div>
   );
 }
