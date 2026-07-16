@@ -9,6 +9,8 @@ import { syncMeta } from './adapters/meta-adapter';
 import { isMetaConfigured } from '@/config/meta';
 import { syncGoogleAds } from './adapters/google-ads-adapter';
 import { isGoogleAdsConfigured } from '@/config/google-ads';
+import { syncGmb } from './adapters/gmb-adapter';
+import { isGmbConfigured } from '@/config/gmb';
 import {
   normalizePerformance,
   normalizeBlockers,
@@ -244,6 +246,24 @@ export async function runSync(trigger: SyncTrigger): Promise<SyncSummary> {
     } catch (err) {
       sheetsFailed.push('Google Ads (insights)');
       dataGaps.push({ area: 'spend', detail: `Google Ads sync failed: ${(err as Error).message}`, owner: 'Acquisition' });
+    }
+  }
+
+  // ----- Google Business Profile (GMB) — organic/local daily performance
+  // (calls, directions, clicks, map views) into social_insights. Best-effort.
+  if (isGmbConfigured()) {
+    try {
+      const gb = await syncGmb(supabase);
+      if (gb.ok) {
+        sheetsOk.push(`GMB (local performance) — ${gb.stored} rows`);
+        rowsIngested += gb.stored;
+      } else {
+        sheetsFailed.push('GMB (local performance)');
+        dataGaps.push({ area: 'channel', detail: `GMB sync failed: ${gb.error ?? 'unknown'}`, owner: ownerFor('channel') });
+      }
+    } catch (err) {
+      sheetsFailed.push('GMB (local performance)');
+      dataGaps.push({ area: 'channel', detail: `GMB sync failed: ${(err as Error).message}`, owner: ownerFor('channel') });
     }
   }
 
