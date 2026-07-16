@@ -16,6 +16,7 @@ export const TABS = [
   { key: 'bookings', label: 'Website Bookings' },
   { key: 'arabyads', label: 'Araby Ads' },
   { key: 'marketing', label: 'Marketing' },
+  { key: 'social', label: 'Social & Local' },
   { key: 'analytics', label: 'Google Analytics' },
   { key: 'clarity', label: 'Heatmaps & Recordings' },
 ] as const;

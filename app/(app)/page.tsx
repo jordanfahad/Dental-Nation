@@ -15,6 +15,7 @@ import { PractoReport } from '@/components/sections/practo/PractoReport';
 import { BookingsReport } from '@/components/sections/bookings/BookingsReport';
 import { ArabyAdsReport } from '@/components/sections/arabyads/ArabyAdsReport';
 import { MarketingReport } from '@/components/sections/marketing/MarketingReport';
+import { SocialReport } from '@/components/sections/social/SocialReport';
 import { GoogleAnalyticsReport } from '@/components/sections/analytics/GoogleAnalyticsReport';
 import { ClarityReport } from '@/components/sections/clarity/ClarityReport';
 
@@ -87,6 +88,7 @@ export default async function DashboardPage({
         {tab === 'bookings' ? <BookingsReport report={shell} sub={sp.btab} /> : null}
         {tab === 'arabyads' ? <ArabyAdsReport range={range} /> : null}
         {tab === 'marketing' ? <MarketingReport sub={sp.mtab} range={range} /> : null}
+        {tab === 'social' ? <SocialReport range={range} /> : null}
         {tab === 'analytics' ? <GoogleAnalyticsReport /> : null}
         {tab === 'clarity' ? <ClarityReport /> : null}
       </Suspense>
