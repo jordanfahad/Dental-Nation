@@ -51,10 +51,8 @@ export function ChannelJourneyView({ report }: { report: ClinicFunnelReport }) {
       c.booked += 1;
       if (p.showed) c.showed += 1;
       if (p.billed) c.treated += 1;
-      if (p.paid) {
-        c.paid += 1;
-        c.revenue += p.paidAmount;
-      }
+      if (p.paid) c.paid += 1;
+      c.revenue += p.revenue; // invoiced bill amount (headline basis)
       if (isRebooked(p)) c.rebooked += 1;
       m.set(p.channel, c);
     }
@@ -80,7 +78,7 @@ export function ChannelJourneyView({ report }: { report: ClinicFunnelReport }) {
         ps = ps.filter(isRebooked);
         break;
     }
-    return [...ps].sort((a, b) => b.paidAmount - a.paidAmount || (b.bookedDate ?? '').localeCompare(a.bookedDate ?? ''));
+    return [...ps].sort((a, b) => b.revenue - a.revenue || (b.bookedDate ?? '').localeCompare(a.bookedDate ?? ''));
   }, [report.patients, filter, channel]);
 
   const shown = rows.slice(0, 100);
@@ -140,7 +138,7 @@ export function ChannelJourneyView({ report }: { report: ClinicFunnelReport }) {
         </div>
 
         <Takeaway>
-          Ranked by revenue, best to low. <strong>Channel</strong> is how the booking was made — the marketing
+          Ranked by revenue (invoiced bill amount — the headline basis), best to low. <strong>Channel</strong> is how the booking was made — the marketing
           platform (WhatsApp / Instagram) isn&apos;t recorded on the booking, so it can&apos;t be carried this far
           (it matches a booked patient ~1%); see the <strong>Website Bookings → Platforms</strong> sub-tab for the
           enquiry-side platform / source / medium ranking. <strong>Re-booked</strong> = the patient has a future
@@ -217,7 +215,7 @@ export function ChannelJourneyView({ report }: { report: ClinicFunnelReport }) {
                     {p.services ?? '—'}
                     {p.doctor ? <span className="block text-[10.5px] text-ink-faint">{p.doctor}</span> : null}
                   </td>
-                  <td className="py-2 pr-3 text-right tabular-nums text-ink">{p.paidAmount > 0 ? fmtAed(p.paidAmount) : '—'}</td>
+                  <td className="py-2 pr-3 text-right tabular-nums text-ink">{p.revenue > 0 ? fmtAed(p.revenue) : '—'}</td>
                   <td className="py-2 pl-3 tabular-nums">
                     {p.nextAppt ? (
                       <span className="text-good">{dubaiDateLabel(p.nextAppt)}</span>

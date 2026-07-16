@@ -101,7 +101,8 @@ export async function getClinicFunnel(opts: {
     showed: 0,
     billed: 0,
     paid: 0,
-    paidAED: 0,
+    revenueAED: 0,
+    invoicedTotalAED: 0,
     billMatchRate: 0,
     newCount: 0,
     existingCount: 0,
@@ -144,8 +145,12 @@ export async function getClinicFunnel(opts: {
     /* optional */
   }
 
-  // ── 3. Practo bills → per-file-no billed / paid / amount ──
-  const bills = new Map<string, { billed: boolean; paid: boolean; amount: number }>();
+  // ── 3. Practo bills → per-file-no billed / paid / invoiced. Revenue is the
+  //       INVOICED bill_amount (same basis as the headline clinic revenue), NOT
+  //       patient co-pay, so the funnel reconciles with the top-line figure.
+  //       We also total ALL invoiced in scope (matched or not) for the note. ──
+  const bills = new Map<string, { billed: boolean; paid: boolean; invoiced: number }>();
+  let invoicedTotalAED = 0;
   try {
     const { data } = await db.from('practo_bills_raw').select('amount, data');
     for (const b of (data as BillRow[] | null) ?? []) {
@@ -156,11 +161,12 @@ export async function getClinicFunnel(opts: {
       // A matched bill = treated & charged (not gated on FINALIZED: a bill can be
       // PAID before it's finalized, so FINALIZED-only would show treated < paid).
       const paid = String(d['payment_status'] ?? '').toUpperCase() === 'PAID';
-      const amt = Number(d['total_patient_payments'] ?? d['patient_amount'] ?? b.amount ?? 0) || 0;
-      const cur = bills.get(mr) ?? { billed: false, paid: false, amount: 0 };
+      const billAmt = Number(d['bill_amount'] ?? b.amount ?? 0) || 0;
+      invoicedTotalAED += billAmt;
+      const cur = bills.get(mr) ?? { billed: false, paid: false, invoiced: 0 };
       cur.billed = true;
       cur.paid = cur.paid || paid;
-      if (paid) cur.amount += amt;
+      cur.invoiced += billAmt;
       bills.set(mr, cur);
     }
   } catch {
@@ -199,7 +205,7 @@ export async function getClinicFunnel(opts: {
           showed: false,
           billed: false,
           paid: false,
-          paidAmount: 0,
+          revenue: 0,
           nextAppt: null,
           visits: 0,
         },
@@ -263,7 +269,7 @@ export async function getClinicFunnel(opts: {
       if (bill) {
         p.billed = bill.billed;
         p.paid = bill.paid;
-        p.paidAmount = bill.amount;
+        p.revenue = bill.invoiced; // invoiced bill_amount — headline basis
         if (p.billed) p.showed = true; // a bill proves attendance
       }
     }
@@ -292,13 +298,14 @@ export async function getClinicFunnel(opts: {
   if (booked === 0) return base;
 
   patients.sort(
-    (a, b) => b.paidAmount - a.paidAmount || (b.lastApptDate ?? '').localeCompare(a.lastApptDate ?? ''),
+    (a, b) => b.revenue - a.revenue || (b.lastApptDate ?? '').localeCompare(a.lastApptDate ?? ''),
   );
 
   const showed = patients.filter((p) => p.showed).length;
   const billed = patients.filter((p) => p.billed).length;
   const paid = patients.filter((p) => p.paid).length;
-  const paidAED = patients.reduce((s, p) => s + (p.paid ? p.paidAmount : 0), 0);
+  // Invoiced revenue attributable to booked patients (same basis as headline).
+  const revenueAED = patients.reduce((s, p) => s + p.revenue, 0);
   const newCount = patients.filter((p) => p.patientClass === 'new').length;
   const existingCount = patients.filter((p) => p.patientClass === 'existing').length;
   const upcomingCount = patients.filter((p) => p.patientClass === 'upcoming').length;
@@ -325,7 +332,8 @@ export async function getClinicFunnel(opts: {
     showed,
     billed,
     paid,
-    paidAED,
+    revenueAED,
+    invoicedTotalAED,
     billMatchRate: booked > 0 ? billed / booked : 0,
     newCount,
     existingCount,

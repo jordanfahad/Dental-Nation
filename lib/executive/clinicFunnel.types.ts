@@ -20,7 +20,9 @@ export interface ClinicJourneyPatient {
   showed: boolean;
   billed: boolean;
   paid: boolean;
-  paidAmount: number;
+  /** Invoiced revenue for this patient = Σ bill_amount of their Practo bills —
+   *  the SAME basis as the headline clinic revenue (not patient co-pay). */
+  revenue: number;
   nextAppt: string | null; // next future appointment (follow-up), if any
   visits: number; // total appointments (all-time) for this patient
 }
@@ -35,7 +37,12 @@ export interface ClinicFunnelReport {
   showed: number;
   billed: number;
   paid: number;
-  paidAED: number;
+  /** Invoiced revenue (Σ bill_amount) for the matched booked patients — the same
+   *  basis as the headline clinic revenue, so the two reconcile. */
+  revenueAED: number;
+  /** Total invoiced across ALL Practo bills in scope (matched or not) — the
+   *  headline figure; revenueAED is the share attributable to booked patients. */
+  invoicedTotalAED: number;
   billMatchRate: number;
   newCount: number;
   existingCount: number;

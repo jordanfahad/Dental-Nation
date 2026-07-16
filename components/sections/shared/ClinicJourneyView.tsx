@@ -45,8 +45,8 @@ export function ClinicJourneyView({
     const showed = ps.filter((p) => p.showed).length;
     const billed = ps.filter((p) => p.billed).length;
     const paid = ps.filter((p) => p.paid).length;
-    const paidAED = ps.reduce((s, p) => s + (p.paid ? p.paidAmount : 0), 0);
-    return { ps, booked: ps.length, showed, billed, paid, paidAED };
+    const revenueAED = ps.reduce((s, p) => s + p.revenue, 0);
+    return { ps, booked: ps.length, showed, billed, paid, revenueAED };
   }, [filter, report.patients]);
 
   const stages: FunnelStageViz[] = [
@@ -55,7 +55,7 @@ export function ClinicJourneyView({
     { label: 'Treatment (billed)', value: view.billed },
     { label: 'Paid', value: view.paid },
   ];
-  const paidPerPatient = view.paid > 0 ? view.paidAED / view.paid : null;
+  const revPerTreated = view.billed > 0 ? view.revenueAED / view.billed : null;
   const rows = view.ps.slice(0, 80);
 
   const chips: { key: Filter; label: string; count: number; style: string }[] = [
@@ -118,13 +118,15 @@ export function ClinicJourneyView({
 
         <div className="mt-4 flex flex-wrap items-baseline gap-x-6 gap-y-1 rounded-card border border-line bg-card px-4 py-3">
           <div>
-            <span className="text-[11px] font-medium uppercase tracking-wide text-ink-faint">Collected</span>{' '}
-            <span className="tnum text-[16px] font-semibold text-ink">{fmtAed(view.paidAED)}</span>
-            <span className="ml-1 text-[11px] text-ink-faint">(Practo paid bills{filter !== 'all' ? ` · ${filter}` : ''})</span>
+            <span className="text-[11px] font-medium uppercase tracking-wide text-ink-faint">Revenue (billed)</span>{' '}
+            <span className="tnum text-[16px] font-semibold text-ink">{fmtAed(view.revenueAED)}</span>
+            <span className="ml-1 text-[11px] text-ink-faint">
+              {filter === 'all' ? `of ${fmtAed(report.invoicedTotalAED)} total invoiced` : `· ${filter}`}
+            </span>
           </div>
-          {paidPerPatient != null ? (
+          {revPerTreated != null ? (
             <div className="text-[12.5px] text-ink-soft">
-              ≈ <span className="tnum font-medium text-ink">{fmtAed(paidPerPatient)}</span> per paying patient
+              ≈ <span className="tnum font-medium text-ink">{fmtAed(revPerTreated)}</span> per treated patient
             </div>
           ) : null}
           {compact ? (
@@ -143,7 +145,9 @@ export function ClinicJourneyView({
               <strong>file number</strong>. <strong>Showed up</strong> = Zavis <em>completed</em> or a bill (proof of
               attendance). <strong>Channel</strong> is how the booking was made; the marketing platform
               (WhatsApp/Instagram) isn&apos;t on the booking record, so it stays an aggregate on the Platforms view.
-              Click <strong>New</strong> / <strong>Existing</strong> above to see each cohort on its own.
+              <strong>Revenue</strong> is the <em>invoiced</em> bill amount (the same basis as the headline clinic
+              revenue), so the two reconcile — the rest of the invoiced total is walk-in/existing bills not in the
+              appointment feed. Click <strong>New</strong> / <strong>Existing</strong> above to see each cohort on its own.
             </Takeaway>
 
             <div className="mt-5 overflow-x-auto">
@@ -192,7 +196,7 @@ export function ClinicJourneyView({
                         {p.services ?? '—'}
                         {p.doctor ? <span className="block text-[10.5px] text-ink-faint">{p.doctor}</span> : null}
                       </td>
-                      <td className="py-2 pr-3 text-right tabular-nums text-ink">{p.paidAmount > 0 ? fmtAed(p.paidAmount) : '—'}</td>
+                      <td className="py-2 pr-3 text-right tabular-nums text-ink">{p.revenue > 0 ? fmtAed(p.revenue) : '—'}</td>
                       <td className="py-2 pl-3 tabular-nums text-ink-soft">
                         {p.nextAppt ? dubaiDateLabel(p.nextAppt) : p.visits > 1 ? <span className="text-ink-faint">{int(p.visits)} visits</span> : '—'}
                       </td>
