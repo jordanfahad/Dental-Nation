@@ -69,6 +69,12 @@ function shortDate(iso: string): string {
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
 }
 
+function monthLabel(iso: string): string {
+  // 'YYYY-MM-DD' → 'MMM yyyy' (e.g. 'Jul 2026') — for monthly roll-up charts.
+  const d = new Date(`${iso}T00:00:00Z`);
+  return d.toLocaleDateString('en-GB', { month: 'short', year: 'numeric', timeZone: 'UTC' });
+}
+
 function EmptyChart({ height = 160, note = 'No data in this window.' }: { height?: number; note?: string }) {
   return (
     <div
@@ -94,19 +100,26 @@ function ChartTooltip({
   label,
   valueFormat,
   labelIsDate,
+  xFormat = 'day',
 }: {
   active?: boolean;
   payload?: TipItem[];
   label?: string;
   valueFormat?: FormatKey;
   labelIsDate?: boolean;
+  xFormat?: 'day' | 'month';
 }) {
   if (!active || !payload || payload.length === 0) return null;
+  const labelText = labelIsDate
+    ? xFormat === 'month'
+      ? monthLabel(String(label))
+      : shortDate(String(label))
+    : String(label);
   return (
     <div className="rounded-md border border-line bg-card px-2.5 py-1.5 shadow-card">
       {label != null ? (
         <p className="mb-1 text-[10.5px] font-medium uppercase tracking-wide text-ink-faint">
-          {labelIsDate ? shortDate(String(label)) : String(label)}
+          {labelText}
         </p>
       ) : null}
       {payload.map((p) => (
@@ -179,15 +192,19 @@ export function TrendChart({
   height = 240,
   leftFormat = 'int',
   rightFormat = 'aed',
+  xFormat = 'day',
 }: {
   data: Record<string, number | string>[];
   series: TrendSeries[];
   height?: number;
   leftFormat?: FormatKey;
   rightFormat?: FormatKey;
+  /** X-axis granularity: 'day' → "1 Jul", 'month' → "Jul 2026". */
+  xFormat?: 'day' | 'month';
 }) {
   if (!data || data.length === 0) return <EmptyChart height={height} />;
   const hasRight = series.some((s) => s.axis === 'right');
+  const xTick = xFormat === 'month' ? monthLabel : shortDate;
   return (
     <div style={{ height }}>
       <ResponsiveContainer width="100%" height="100%">
@@ -203,11 +220,11 @@ export function TrendChart({
           <CartesianGrid stroke={TOKENS.line} vertical={false} />
           <XAxis
             dataKey="date"
-            tickFormatter={shortDate}
+            tickFormatter={xTick}
             tick={{ fontSize: 10.5, fill: TOKENS.inkFaint }}
             tickLine={false}
             axisLine={{ stroke: TOKENS.line }}
-            minTickGap={24}
+            minTickGap={xFormat === 'month' ? 8 : 24}
           />
           <YAxis
             yAxisId="left"
@@ -229,7 +246,7 @@ export function TrendChart({
             />
           ) : null}
           <Tooltip
-            content={<ChartTooltip labelIsDate valueFormat={leftFormat} />}
+            content={<ChartTooltip labelIsDate xFormat={xFormat} valueFormat={leftFormat} />}
             cursor={{ stroke: TOKENS.line }}
           />
           {series.map((s) =>
