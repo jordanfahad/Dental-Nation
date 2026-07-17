@@ -191,8 +191,9 @@ export async function getCrmPatientBookings(opts: PatientBookingsQuery = {}): Pr
       opts.clinic && opts.clinic !== 'all' ? clinicOfDoctor(r.professional_name) === opts.clinic : true,
     );
 
-    // Practo patient database (existing-patient reference): a CRM patient whose
-    // phone is a known Practo patient is EXISTING regardless of Zavis history.
+    // Existing-patient reference: a CRM patient whose phone is a known patient
+    // (Practo DB or lane_e.existing_patients — Dr Tosun etc.) is EXISTING
+    // regardless of Zavis history.
     const practoPhones = new Set<string>();
     try {
       const { data: pp } = await db.from('practo_patients').select('phone');
@@ -200,8 +201,12 @@ export async function getCrmPatientBookings(opts: PatientBookingsQuery = {}): Pr
         const k = phone9(r.phone);
         if (k) practoPhones.add(k);
       }
+      const { data: ex } = await db.from('existing_patients').select('phone9');
+      for (const r of (ex as { phone9: string | null }[] | null) ?? []) {
+        if (r.phone9) practoPhones.add(r.phone9);
+      }
     } catch {
-      /* practo reference optional */
+      /* existing-patient reference optional */
     }
     // Per-person: is any of their appointments' phone a known Practo patient?
     const knownByPk = new Map<string, boolean>();

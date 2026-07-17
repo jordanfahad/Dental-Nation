@@ -15,6 +15,10 @@ const TYPE_LABEL: Record<string, string> = {
   csat: 'CSAT (patient ratings)',
   conversation_summary: 'Conversation summary',
   conversation_traffic: 'Conversation traffic',
+  inbox: 'Inbox report (channels)',
+  agent: 'Agent report',
+  label: 'Label report',
+  existing_patients: 'Patient master (existing patients)',
 };
 
 type Result =
@@ -62,7 +66,8 @@ export function ZavisUpload() {
           Upload a fresh Zavis export
         </h2>
         <p className="mt-1 text-[12.5px] leading-snug text-ink-soft">
-          Drop an appointments, CSAT, conversation summary, or conversation traffic CSV. The type is
+          Drop any Zavis CSV — appointments, CSAT, conversation summary/traffic, inbox/agent/label reports, or a
+          patient master (existing patients). The type is
           detected automatically and rows are upserted (existing records update, not duplicate).
         </p>
       </div>

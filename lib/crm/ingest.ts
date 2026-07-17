@@ -14,7 +14,11 @@ export type ZavisReportType =
   | 'appointments'
   | 'conversation_summary'
   | 'conversation_traffic'
-  | 'csat';
+  | 'csat'
+  | 'inbox'
+  | 'agent'
+  | 'label'
+  | 'existing_patients';
 
 export interface IngestSummary {
   type: ZavisReportType;
@@ -120,9 +124,18 @@ export function detectZavisReport(rows: string[][]): ZavisReportType | null {
   // satisfaction export). Distinct from the agent report, which has neither.
   if (flat.some((r) => r.includes('rating') && r.includes('feedback comment'))) return 'csat';
 
-  // Conversation summary: first line "Reporting period YYYY-MM-DD to YYYY-MM-DD"
+  // Existing-patient master (e.g. Dr Tosun): ProviderName / PatientName / PCode.
+  if (flat.some((r) => r.includes('providername') && (r.includes('patientname') || r.includes('pcode'))))
+    return 'existing_patients';
+
+  // Zavis breakdown reports (each begins with a "Reporting period" line, so these
+  // MUST be checked before the conversation-summary fallback below).
+  if (flat.some((r) => r[0] === 'inbox name')) return 'inbox';
+  if (flat.some((r) => r[0] === 'agent name' && r.includes('assigned conversations'))) return 'agent';
+  if (flat.some((r) => r[0] === 'label' && r.includes('no. of conversations'))) return 'label';
+
+  // Conversation summary: a "Conversations,Messages received,…" header row.
   const firstCell = norm(rows[0]?.[0]);
-  if (firstCell.startsWith('reporting period')) return 'conversation_summary';
   if (flat.some((r) => r[0] === 'conversations' && r.includes('messages received')))
     return 'conversation_summary';
 
@@ -488,6 +501,186 @@ async function ingestCsat(rows: string[][]): Promise<IngestSummary> {
  * table. Throws a friendly Error when the type can't be detected or a write
  * fails — callers (the route) translate that into a JSON error.
  */
+/* ------------------------------------------------- ingest: breakdown reports --- */
+
+/** Text cell → null for empty / "N/A"; also decodes the common &#39; HTML entity. */
+function textCell(v: string | undefined): string | null {
+  let s = (v ?? '').trim();
+  if (!s || /^n\/?a$/i.test(s)) return null;
+  s = s.replace(/&#39;/g, "'").replace(/&amp;/g, '&').replace(/&quot;/g, '"');
+  return s;
+}
+/** Find the 0-based index of the header row whose first cell equals `first`. */
+function findHeader(rows: string[][], first: string): number {
+  return rows.findIndex((r) => norm(r[0]) === first);
+}
+
+async function ingestInbox(rows: string[][]): Promise<IngestSummary> {
+  const db = getSupabaseAdmin();
+  if (!db) return { type: 'inbox', rowsIngested: 0 };
+  const h = findHeader(rows, 'inbox name');
+  if (h === -1) return { type: 'inbox', rowsIngested: 0 };
+  // Positional: name, type, conversations, first-response, reply, resolution, count.
+  const records: Record<string, unknown>[] = [];
+  for (let i = h + 1; i < rows.length; i++) {
+    const r = rows[i];
+    const name = (r[0] ?? '').trim();
+    if (!name) continue;
+    records.push({
+      inbox_name: name,
+      inbox_type: textCell(r[1]),
+      conversations: int(r[2]),
+      avg_first_response_text: textCell(r[3]),
+      avg_resolution_text: textCell(r[5]),
+      resolution_count: int(r[6]),
+      uploaded_at: new Date().toISOString(),
+    });
+  }
+  await db.from('crm_inbox_report').delete().neq('inbox_name', '');
+  if (records.length) {
+    const { error } = await db.from('crm_inbox_report').upsert(records, { onConflict: 'inbox_name' });
+    if (error) throw new Error(`Inbox report failed: ${error.message}`);
+  }
+  return { type: 'inbox', rowsIngested: records.length };
+}
+
+async function ingestAgent(rows: string[][]): Promise<IngestSummary> {
+  const db = getSupabaseAdmin();
+  if (!db) return { type: 'agent', rowsIngested: 0 };
+  const h = findHeader(rows, 'agent name');
+  if (h === -1) return { type: 'agent', rowsIngested: 0 };
+  // Positional: name, assigned, first-response, resolution, waiting, count.
+  const records: Record<string, unknown>[] = [];
+  for (let i = h + 1; i < rows.length; i++) {
+    const r = rows[i];
+    const name = textCell(r[0]);
+    if (!name) continue;
+    records.push({
+      agent_name: name,
+      assigned_conversations: int(r[1]),
+      avg_first_response_text: textCell(r[2]),
+      avg_resolution_text: textCell(r[3]),
+      avg_waiting_text: textCell(r[4]),
+      resolution_count: int(r[5]),
+      uploaded_at: new Date().toISOString(),
+    });
+  }
+  await db.from('crm_agent_report').delete().neq('agent_name', '');
+  if (records.length) {
+    const { error } = await db.from('crm_agent_report').upsert(records, { onConflict: 'agent_name' });
+    if (error) throw new Error(`Agent report failed: ${error.message}`);
+  }
+  return { type: 'agent', rowsIngested: records.length };
+}
+
+async function ingestLabel(rows: string[][]): Promise<IngestSummary> {
+  const db = getSupabaseAdmin();
+  if (!db) return { type: 'label', rowsIngested: 0 };
+  const h = findHeader(rows, 'label');
+  if (h === -1) return { type: 'label', rowsIngested: 0 };
+  // Positional: label, conversations, first-response, resolution, reply, count.
+  const records: Record<string, unknown>[] = [];
+  for (let i = h + 1; i < rows.length; i++) {
+    const r = rows[i];
+    const label = (r[0] ?? '').trim();
+    if (!label) continue;
+    records.push({
+      label,
+      conversations: int(r[1]),
+      avg_first_response_text: textCell(r[2]),
+      avg_resolution_text: textCell(r[3]),
+      avg_reply_text: textCell(r[4]),
+      resolution_count: int(r[5]),
+      uploaded_at: new Date().toISOString(),
+    });
+  }
+  await db.from('crm_label_report').delete().neq('label', '');
+  if (records.length) {
+    const { error } = await db.from('crm_label_report').upsert(records, { onConflict: 'label' });
+    if (error) throw new Error(`Label report failed: ${error.message}`);
+  }
+  return { type: 'label', rowsIngested: records.length };
+}
+
+/* ----------------------------------------- ingest: existing-patient master --- */
+
+/** DD/MM/YYYY (or ISO) → YYYY-MM-DD, else null. */
+function toIsoDate(v: string | undefined): string | null {
+  const s = (v ?? '').trim();
+  if (!s) return null;
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  const m = s.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})/);
+  if (m) {
+    const [, d, mo, y] = m;
+    const yr = y.length === 2 ? `20${y}` : y;
+    return `${yr}-${mo.padStart(2, '0')}-${d.padStart(2, '0')}`;
+  }
+  return null;
+}
+const phone9 = (s: string | undefined) => {
+  const d = String(s ?? '').replace(/\D/g, '');
+  return d.length >= 9 ? d.slice(-9) : '';
+};
+
+/**
+ * Existing-patient master (Dr Tosun / Practo exports). Header:
+ * ProviderName, PatientName, ApptDate, PCode, DateofBirth, Age, MobileNo, Email.
+ * Test rows (test / nabidh) are excluded. Truncate-and-reload for this source so
+ * a re-upload replaces it cleanly. Source is inferred from the provider column.
+ */
+async function ingestExistingPatients(rows: string[][]): Promise<IngestSummary> {
+  const db = getSupabaseAdmin();
+  if (!db) return { type: 'existing_patients', rowsIngested: 0 };
+  const h = flatHeaderIdx(rows, ['providername', 'patientname']);
+  if (h === -1) return { type: 'existing_patients', rowsIngested: 0 };
+  const idx = headerIndex(rows[h]);
+  const col = (r: string[], ...names: string[]) => {
+    for (const nm of names) {
+      const i = idx[nm];
+      if (i != null && (r[i] ?? '').trim()) return (r[i] ?? '').trim();
+    }
+    return '';
+  };
+  const now = new Date().toISOString();
+  const records: Record<string, unknown>[] = [];
+  const source = 'Dr Tosun';
+  for (let i = h + 1; i < rows.length; i++) {
+    const r = rows[i];
+    const name = col(r, 'patientname', 'patient name');
+    if (!name) continue;
+    if (/test|nabidh/i.test(name)) continue; // seed/test rows
+    const phone = col(r, 'mobileno', 'mobile no', 'mobile', 'phone');
+    records.push({
+      source,
+      file_no: col(r, 'pcode', 'p code', 'file no') || null,
+      phone: phone || null,
+      phone9: phone9(phone) || null,
+      name,
+      dob: col(r, 'dateofbirth', 'date of birth', 'dob') || null,
+      email: col(r, 'email') || null,
+      provider: col(r, 'providername', 'provider name', 'provider') || null,
+      last_appt: toIsoDate(col(r, 'apptdate', 'appt date')),
+      ingested_at: now,
+    });
+  }
+  await db.from('existing_patients').delete().eq('source', source);
+  let ingested = 0;
+  for (let i = 0; i < records.length; i += 500) {
+    const { error } = await db.from('existing_patients').insert(records.slice(i, i + 500));
+    if (error) throw new Error(`Existing patients failed: ${error.message}`);
+    ingested += Math.min(500, records.length - i);
+  }
+  return { type: 'existing_patients', rowsIngested: ingested };
+}
+
+/** Find a header row containing ALL the given normalised column names. */
+function flatHeaderIdx(rows: string[][], need: string[]): number {
+  return rows.findIndex((r) => {
+    const set = new Set(r.map(norm));
+    return need.every((n) => set.has(n));
+  });
+}
+
 export async function ingestZavisCsv(text: string): Promise<IngestSummary> {
   const rows = parseCsv(text);
   if (!rows.length) throw new Error('The file is empty.');
@@ -495,7 +688,7 @@ export async function ingestZavisCsv(text: string): Promise<IngestSummary> {
   const type = detectZavisReport(rows);
   if (!type) {
     throw new Error(
-      'Could not recognise this as a Zavis export. Expected an appointments export (header starting "appointment_id,..."), a CSAT export (header with "Rating" and "Feedback Comment"), a conversation summary ("Reporting period …"), or a conversation traffic export ("Timezone,…" / "Start of the hour,…").',
+      'Could not recognise this as a Zavis export. Expected appointments ("appointment_id,…"), CSAT ("Rating" + "Feedback Comment"), a conversation summary/traffic export, an inbox/agent/label report, or a patient master ("ProviderName,PatientName,…,PCode,…").',
     );
   }
 
@@ -508,5 +701,13 @@ export async function ingestZavisCsv(text: string): Promise<IngestSummary> {
       return ingestConversationSummary(rows);
     case 'conversation_traffic':
       return ingestConversationTraffic(rows);
+    case 'inbox':
+      return ingestInbox(rows);
+    case 'agent':
+      return ingestAgent(rows);
+    case 'label':
+      return ingestLabel(rows);
+    case 'existing_patients':
+      return ingestExistingPatients(rows);
   }
 }

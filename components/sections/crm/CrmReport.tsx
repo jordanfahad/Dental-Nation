@@ -10,6 +10,7 @@ import { CrmBreakdowns } from './CrmBreakdowns';
 import { CrmTrend } from './CrmTrend';
 import { CrmConversations } from './CrmConversations';
 import { CrmCsat } from './CrmCsat';
+import { CrmOperations } from './CrmOperations';
 import { CrmPractoRevenue } from './CrmPractoRevenue';
 import { CrmEmptyState } from './CrmEmptyState';
 
@@ -56,6 +57,7 @@ export async function CrmReport({ range }: { range?: CrmRange }) {
           <CrmBreakdowns report={report} />
           <CrmTrend report={report} />
           <CrmConversations report={report} />
+          <CrmOperations />
           <CrmCsat report={report} />
         </>
       )}

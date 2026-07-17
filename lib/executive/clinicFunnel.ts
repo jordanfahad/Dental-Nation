@@ -133,13 +133,18 @@ export async function getClinicFunnel(opts: {
   }
   if (clinic !== 'all') appts = appts.filter((a) => clinicOfDoctor(a.professional_name) === clinic);
 
-  // ── 2. Practo patient DB (existing-patient authority) — phone-keyed set ──
+  // ── 2. Existing-patient authority — phone-keyed set. Practo patient DB +
+  //       lane_e.existing_patients (Dr Tosun and any other clinic masters). ──
   const practoSet = new Set<string>();
   try {
     const { data } = await db.from('practo_patients').select('phone');
     for (const r of (data as { phone: string | null }[] | null) ?? []) {
       const p9 = phone9(r.phone);
       if (p9) practoSet.add(p9);
+    }
+    const { data: ex } = await db.from('existing_patients').select('phone9');
+    for (const r of (ex as { phone9: string | null }[] | null) ?? []) {
+      if (r.phone9) practoSet.add(r.phone9);
     }
   } catch {
     /* optional */
