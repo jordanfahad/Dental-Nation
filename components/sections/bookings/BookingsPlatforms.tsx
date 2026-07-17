@@ -1,5 +1,7 @@
 import type { getRangeReport } from '@/lib/report';
 import { getBookingsPlatforms } from '@/lib/bookings/platforms';
+import { getWidgetEnquiries } from '@/lib/bookings/widgetEnquiries';
+import { WidgetEnquiriesPanel } from './WidgetEnquiriesPanel';
 import { Card, SectionHeader, Takeaway } from '@/components/ui/Card';
 import { DataGapInline } from '@/components/ui/DataGap';
 import { KpiBand, type KpiItem } from '@/components/charts/KpiBand';
@@ -35,28 +37,31 @@ type RangeReport = Awaited<ReturnType<typeof getRangeReport>>;
 export async function BookingsPlatforms({ report }: { report: RangeReport }) {
   const range = report.range;
   const widgetBookings = report.bookings.booked.value;
-  const data = await getBookingsPlatforms({
-    from: range.from,
-    to: range.to,
-    widgetBookings,
-  });
+  const [data, widget] = await Promise.all([
+    getBookingsPlatforms({ from: range.from, to: range.to, widgetBookings }),
+    getWidgetEnquiries({ from: range.from, to: range.to }),
+  ]);
 
   const period = `${dubaiDateLabel(range.from)} → ${dubaiDateLabel(range.to)}`;
   const owner = ownerFor('website');
 
   if (data.source === 'empty') {
     return (
-      <Card>
-        <SectionHeader
-          tag="P"
-          eyebrow="Enquiries by platform · Website Bookings"
-          title="Platforms — how enquiries reach us"
-          right={<span className="text-[11px] text-ink-faint">{period}</span>}
-        />
-        <div className="px-5 pb-5 pt-4">
-          <DataGapInline detail="no lead-tracker enquiries in range" owner={owner} />
-        </div>
-      </Card>
+      <div className="space-y-5">
+        <Card>
+          <SectionHeader
+            tag="P"
+            eyebrow="Enquiries by platform · Website Bookings"
+            title="Platforms — how enquiries reach us"
+            right={<span className="text-[11px] text-ink-faint">{period}</span>}
+          />
+          <div className="px-5 pb-5 pt-4">
+            <DataGapInline detail="no lead-tracker enquiries in range" owner={owner} />
+          </div>
+        </Card>
+        {/* Widget enquiries are a separate source — still show them + the CEO detail table. */}
+        <WidgetEnquiriesPanel report={widget} period={period} />
+      </div>
     );
   }
 
@@ -343,6 +348,10 @@ export async function BookingsPlatforms({ report }: { report: RangeReport }) {
           )}
         </div>
       </Card>
+
+      {/* Website booking-widget enquiries — non-test, with Booked vs Failed-to-book
+          status matched to ZAVIS/Practo, plus the CEO enquiry-detail table. */}
+      <WidgetEnquiriesPanel report={widget} period={period} />
     </div>
   );
 }
