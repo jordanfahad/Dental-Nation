@@ -51,7 +51,9 @@ interface Row {
 }
 
 function base(cfg: MetaOrganicConfig, path: string, params: Record<string, string>): string {
-  const p = new URLSearchParams({ ...params, access_token: cfg.token });
+  // Default to the system-user token, but let callers override via params.access_token
+  // (Facebook Page insights must use the Page access token).
+  const p = new URLSearchParams({ access_token: cfg.token, ...params });
   return `https://graph.facebook.com/${cfg.version}/${path}?${p.toString()}`;
 }
 async function getJson(url: string): Promise<Record<string, unknown> & { error?: { message?: string } }> {
@@ -79,9 +81,10 @@ async function fetchField(
   today: string,
   rows: Row[],
   notes: string[],
+  token: string,
 ): Promise<void> {
   try {
-    const j = await getJson(base(cfg, id, { fields: def.api }));
+    const j = await getJson(base(cfg, id, { fields: def.api, access_token: token }));
     if (j.error) return void notes.push(`${channel}/${def.api}: ${j.error.message}`);
     const value = num(j[def.api]);
     if (Number.isFinite(value)) {
@@ -105,13 +108,29 @@ async function fetchInsight(
   to: string,
   rows: Row[],
   notes: string[],
+  token: string,
 ): Promise<void> {
   try {
-    const j = (await getJson(
-      base(cfg, `${id}/insights`, { metric: def.api, period: 'day', since: String(unix(from)), until: String(unix(to)) }),
-    )) as { data?: { values?: InsightValue[] }[]; error?: { message?: string } };
+    const params: Record<string, string> = {
+      metric: def.api,
+      period: 'day',
+      since: String(unix(from)),
+      until: String(unix(to)),
+      access_token: token,
+    };
+    if (def.totalValue) params.metric_type = 'total_value';
+    const j = (await getJson(base(cfg, `${id}/insights`, params))) as {
+      data?: { values?: InsightValue[]; total_value?: { value?: number } }[];
+      error?: { message?: string };
+    };
     if (j.error) return void notes.push(`${channel}/${def.api}: ${j.error.message}`);
-    for (const v of j.data?.[0]?.values ?? []) {
+    const d0 = j.data?.[0];
+    // total_value metrics return a single period aggregate → store dated `to`.
+    if (def.totalValue) {
+      rows.push({ clinic: CLINIC, channel, integration: id, metric: def.key, metric_label: def.label, day: to, value: num(d0?.total_value?.value) });
+      return;
+    }
+    for (const v of d0?.values ?? []) {
       const day = v.end_time?.slice(0, 10);
       if (!day) continue;
       const raw = typeof v.value === 'object' && v.value ? Object.values(v.value).reduce((s, n) => s + num(n), 0) : v.value;
@@ -119,6 +138,18 @@ async function fetchInsight(
     }
   } catch (e) {
     notes.push(`${channel}/${def.api}: ${(e as Error).message}`);
+  }
+}
+
+/** Fetch the Page's own access token (FB Page insights require it, not the
+ *  system-user token). Falls back to the system-user token on any failure. */
+async function derivePageToken(cfg: MetaOrganicConfig, pageId: string): Promise<string> {
+  try {
+    const j = await getJson(base(cfg, pageId, { fields: 'access_token' }));
+    const t = j.access_token;
+    return typeof t === 'string' && t ? t : cfg.token;
+  } catch {
+    return cfg.token;
   }
 }
 
@@ -348,23 +379,26 @@ export async function syncMetaOrganic(supabase: AdminClient, opts: MetaOrganicOp
   let demographics = 0;
 
   // Instagram — aggregate insights + per-media performance + demographics.
+  // IG business-account insights work with the system-user token.
   const igId = await deriveIgUserId(cfg);
   if (igId) {
     channels.push('instagram');
     for (const def of IG_METRICS) {
-      if (def.kind === 'field') await fetchField(cfg, igId, def, 'instagram', today, rows, notes);
-      else await fetchInsight(cfg, igId, def, 'instagram', from, to, rows, notes);
+      if (def.kind === 'field') await fetchField(cfg, igId, def, 'instagram', today, rows, notes, cfg.token);
+      else await fetchInsight(cfg, igId, def, 'instagram', from, to, rows, notes, cfg.token);
     }
     posts = await pullMedia(cfg, igId, supabase, notes);
     demographics = await pullDemographics(cfg, igId, supabase, today, notes);
   }
 
-  // Facebook Page — aggregate insights.
+  // Facebook Page — aggregate insights. Page insights require the PAGE access
+  // token (derived from the system-user token), not the system-user token itself.
   if (cfg.fbPageId) {
     channels.push('facebook');
+    const pageToken = await derivePageToken(cfg, cfg.fbPageId);
     for (const def of FB_METRICS) {
-      if (def.kind === 'field') await fetchField(cfg, cfg.fbPageId, def, 'facebook', today, rows, notes);
-      else await fetchInsight(cfg, cfg.fbPageId, def, 'facebook', from, to, rows, notes);
+      if (def.kind === 'field') await fetchField(cfg, cfg.fbPageId, def, 'facebook', today, rows, notes, pageToken);
+      else await fetchInsight(cfg, cfg.fbPageId, def, 'facebook', from, to, rows, notes, pageToken);
     }
   }
 

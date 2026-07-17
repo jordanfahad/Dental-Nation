@@ -82,17 +82,22 @@ export interface MetaMetricDef {
   api: string; // graph metric or field name
   key: string; // social_insights metric key
   label: string;
+  /** Newer IG insights (profile_views, etc.) must be requested with
+   *  metric_type=total_value and return a single aggregate, not a daily series. */
+  totalValue?: boolean;
 }
 
 export const IG_METRICS: MetaMetricDef[] = [
   { kind: 'field', api: 'followers_count', key: 'followers', label: 'Followers' },
   { kind: 'insight', api: 'reach', key: 'reach', label: 'Reach' },
-  { kind: 'insight', api: 'profile_views', key: 'profile_views', label: 'Profile Views' },
+  { kind: 'insight', api: 'profile_views', key: 'profile_views', label: 'Profile Views', totalValue: true },
 ];
 
+// Facebook Page insights must be called with a PAGE access token (derived from
+// the system-user token in the adapter). page_impressions was deprecated, so we
+// keep the page-likes stock (fan_count) + post engagements only.
 export const FB_METRICS: MetaMetricDef[] = [
   { kind: 'field', api: 'fan_count', key: 'followers', label: 'Page Likes' },
-  { kind: 'insight', api: 'page_impressions', key: 'reach', label: 'Impressions' },
   { kind: 'insight', api: 'page_post_engagements', key: 'engagement', label: 'Post Engagements' },
 ];
 
