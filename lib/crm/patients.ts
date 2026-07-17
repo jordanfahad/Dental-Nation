@@ -208,10 +208,15 @@ export async function getCrmPatientBookings(opts: PatientBookingsQuery = {}): Pr
     } catch {
       /* existing-patient reference optional */
     }
-    // Per-person: is any of their appointments' phone a known Practo patient?
+    // Per-person: is any of their appointments' phone a known Practo/existing
+    // patient? And their file number (any non-blank one they carry).
     const knownByPk = new Map<string, boolean>();
+    const fileNoByPk = new Map<string, string>();
     for (const r of all) {
-      if (practoPhones.has(phone9(r.patient_phone))) knownByPk.set(personKey(r), true);
+      const pk = personKey(r);
+      if (practoPhones.has(phone9(r.patient_phone))) knownByPk.set(pk, true);
+      const fno = (r.patient_platform_id ?? '').trim();
+      if (fno && !fileNoByPk.has(pk)) fileNoByPk.set(pk, fno.toUpperCase());
     }
 
     const today = todayDubai();
@@ -238,16 +243,20 @@ export async function getCrmPatientBookings(opts: PatientBookingsQuery = {}): Pr
     const householdSizeOf = (phone: string): number =>
       !phone || isDummyPhone(phone) ? 1 : phonePeople.get(phone)?.size ?? 1;
 
-    /** Classify a person by their first-visit date vs the window + today. A
-     *  patient known to the Practo patient database is EXISTING outright — they
-     *  were a clinic patient before Zavis, even if Zavis only shows them now. */
+    /** Classify a person by the front desk's FILE-NUMBER rule (same as the clinic
+     *  journey): a DN-series number (DNW…/DNJ…/DN…, Practo Insta's April-2026
+     *  new-patient numbering) or a BLANK number → NEW, unless the patient is
+     *  already flagged existing (phone in the Practo / existing-patient DB). Any
+     *  other prefix (ORN… legacy Medas, MR…, etc.) → EXISTING. A DN/blank patient
+     *  whose first visit is still in the future is 'upcoming', not 'new'. */
     const classOf = (pk: string): PatientClass => {
       if (knownByPk.get(pk)) return 'existing';
+      const fno = fileNoByPk.get(pk) ?? '';
+      const dnOrBlank = fno === '' || fno.startsWith('DN');
+      if (!dnOrBlank) return 'existing';
       const fv = firstVisit.get(pk);
-      if (!fv) return 'existing';
-      if (fv > today) return 'upcoming'; // hasn't visited yet
-      if (!opts.from) return 'new'; // all-time window → treat past first-visits as new
-      return fv >= opts.from ? 'new' : 'existing';
+      if (fv && fv > today) return 'upcoming'; // hasn't visited yet
+      return 'new';
     };
 
     // Window filter on created_at (appointments BOOKED in the period).

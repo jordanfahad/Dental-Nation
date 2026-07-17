@@ -280,17 +280,19 @@ export async function getClinicFunnel(opts: {
     }
 
     // New vs existing by the patient FILE NUMBER (the front desk's rule):
-    //   • file no starts with DNW…  or is BLANK  → NEW (Dental Nation's fresh
-    //     new-patient file numbers), UNLESS the patient is already in the Practo
-    //     patient DB — those were reconciled as existing, so they stay existing.
-    //   • anything else (e.g. ORN01-… legacy migrated numbers) → EXISTING, even
-    //     without a phone match: the prefix itself is the existing signal.
+    //   • DN-series file no (DNW…, DNJ…, DN…) or BLANK → NEW. The DN series is
+    //     Practo Insta's new-patient numbering (rolled out April 2026); a blank
+    //     number is a fresh patient not yet assigned one. UNLESS the patient is
+    //     already flagged existing (phone in the Practo / existing-patient DB) —
+    //     those were reconciled as existing, so they stay existing.
+    //   • anything else (ORN… legacy Medas EMR numbers, MR…, etc.) → EXISTING,
+    //     even without a phone match: the prefix itself is the existing signal.
     // A brand-new patient whose first visit is still in the future is shown as
     // "not yet visited" rather than a realised new patient.
     const fno = (p.fileNo ?? '').trim().toUpperCase();
-    const dnwOrBlank = fno === '' || fno.startsWith('DNW');
+    const dnOrBlank = fno === '' || fno.startsWith('DN');
     const known = !!(p.phone && practoSet.has(phone9(p.phone)));
-    if (dnwOrBlank && !known) {
+    if (dnOrBlank && !known) {
       p.patientClass = p.firstVisit && p.firstVisit > today ? 'upcoming' : 'new';
     } else {
       p.patientClass = 'existing';
