@@ -82,12 +82,14 @@ export async function getWidgetEnquiries(opts: { from?: string; to?: string } = 
   const db = getSupabaseAdmin();
   if (!db) return empty;
 
-  // Rows + the ZAVIS/Practo phone sets, in parallel.
+  // Rows + the ZAVIS/Practo phone sets, in parallel. The widget's "Bookings" tab
+  // is already mirrored to raw_zavis (same source the W5 stream uses) alongside
+  // the "Cancellations" tab — we keep only the Bookings-shaped rows below.
   let rows: { data: Record<string, unknown> }[] = [];
   const known = new Set<string>();
   try {
     const [enq, zavis, practo] = await Promise.all([
-      db.from('raw_widget_enquiries').select('data'),
+      db.from('raw_zavis').select('data'),
       db.from('crm_appointments').select('patient_phone'),
       db.from('practo_patients').select('phone'),
     ]);
@@ -112,6 +114,10 @@ export async function getWidgetEnquiries(opts: { from?: string; to?: string } = 
   let idx = 0;
   for (const r of rows) {
     const d = r.data ?? {};
+    // raw_zavis mixes the Bookings + Cancellations tabs. Keep only Bookings-shaped
+    // rows (the widget submissions): they carry "Full Name"/"Phone Number";
+    // Cancellations rows use "Client Name"/"Number" instead.
+    if (!('Full Name' in d) && !('Phone Number' in d)) continue;
     const name = pick(d, 'Full Name', 'Name');
     const email = pick(d, 'Email');
     const phone = pick(d, 'Phone Number', 'Phone', 'Contact Number');

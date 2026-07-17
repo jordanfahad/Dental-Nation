@@ -264,23 +264,9 @@ export const sheetMapping: Record<string, SourceMapping> = {
       'Bookings + Cancellations tabs. Test/seed rows (zavis/test/sagar) excluded. Real bookings + revenue + cancellations → dedicated Bookings section (not the paid funnel).',
   },
 
-  // 10b — Website booking-widget ENQUIRY lens. Same sheet, ONLY the `Bookings`
-  // tab, mirrored to its own bronze so the enquiry view has the Phone Number for
-  // matching each widget enquiry to ZAVIS/Practo (Booked vs Failed-to-book). The
-  // booking COUNT stays Practo-sourced; this is enquiries only (target 'none').
-  widgetEnquiries: {
-    key: 'widgetEnquiries',
-    label: 'Website Widget Enquiries',
-    spreadsheetId: '1CtfSiGONthczH6YVOLfAZvOdmFfGP26uVBZJoYjxRQQ',
-    tab: 'Bookings',
-    headerRow: 1,
-    target: 'none',
-    rawTable: 'raw_widget_enquiries',
-    priority: 'medium',
-    columns: {},
-    notes:
-      'Bookings tab only (widget submissions). Enquiry population — non-test rows matched to ZAVIS/Practo by phone for Booked vs Failed-to-book. Not a bookings source (Practo is the source of truth).',
-  },
+  // Note: the widget ENQUIRY lens (Booked/Failed) reads the already-synced
+  // raw_zavis mirror (Bookings-tab rows) — see lib/bookings/widgetEnquiries.ts —
+  // so no separate source is needed here.
 
   // 11 — Caption / copy library (supporting content, §E).
   captions: {
