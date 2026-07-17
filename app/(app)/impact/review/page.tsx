@@ -4,7 +4,9 @@ import { SectionHeading } from "@/components/ui/SectionHeading";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { JobDeleteButton } from "@/components/impact/JobDeleteButton";
 import { formatRelativeTime } from "@/lib/impact/format";
+import { redirect } from "next/navigation";
 import { currentRole } from "@/lib/auth/role";
+import { canSeeGrowthProjects } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 
@@ -16,8 +18,10 @@ const STATUS_PILL: Record<string, string> = {
 };
 
 export default async function ReviewIndexPage() {
+  const role = await currentRole();
+  if (!canSeeGrowthProjects(role)) redirect("/");
   const jobs = await getIngestionJobs();
-  const canEdit = (await currentRole()) === "admin";
+  const canEdit = role === "admin";
   const pending = jobs.filter((j) => j.status === "pending_review");
   const others = jobs.filter((j) => j.status !== "pending_review");
 

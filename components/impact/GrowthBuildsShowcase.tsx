@@ -17,7 +17,7 @@ export function GrowthBuildsShowcase({
 }: {
   builds: Project[];
   evidence: EvidenceFile[];
-  role: "admin" | "viewer" | null;
+  role: "admin" | "viewer" | "staff" | null;
 }) {
   if (!builds.length) return null;
 

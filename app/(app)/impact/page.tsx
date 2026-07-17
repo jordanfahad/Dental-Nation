@@ -15,15 +15,20 @@ import { DashboardTabs } from "@/components/impact/DashboardTabs";
 import { GrowthBuildsShowcase } from "@/components/impact/GrowthBuildsShowcase";
 import { Y1PlanBanner } from "@/components/impact/Y1PlanBanner";
 import { formatDate, formatRelativeTime } from "@/lib/impact/format";
+import { redirect } from "next/navigation";
 import { currentRole } from "@/lib/auth/role";
+import { canSeeGrowthProjects } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Fahad — Growth Projects Dashboard" };
 
 export default async function ImpactPage() {
+  const role = await currentRole();
+  // Restricted staff (Dr Luvi & Gautam) cannot see Growth Projects (also blocked
+  // in middleware — this is defense in depth).
+  if (!canSeeGrowthProjects(role)) redirect("/");
   const data = await getDashboardData();
   const summary = computeSummary(data);
-  const role = await currentRole();
   const canEdit = role === "admin";
   const builds = data.projects.filter((p) => p.featured);
 

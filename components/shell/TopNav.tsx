@@ -8,25 +8,30 @@ import { AddUpdateDrawer } from "@/components/impact/AddUpdateDrawer";
 import { logout } from "@/app/(app)/actions";
 import type { Component, Project } from "@/lib/impact/types";
 
-// The performance report lives at "/" in this app; the Growth Projects dashboard is the new tab.
-const TABS: [string, string][] = [
-  ["/impact", "Growth Projects"],
-  ["/", "Performance Report"],
-];
+// The performance report lives at "/" in this app; Growth Projects is a separate tab.
+const PERFORMANCE_TAB: [string, string] = ["/", "Performance Report"];
+const GROWTH_TAB: [string, string] = ["/impact", "Growth Projects"];
 
 export function TopNav({
   components,
   projects,
   pendingReviewCount,
   canEdit = true,
+  showGrowthProjects = true,
+  showLeaveCalendar = true,
 }: {
   components: Component[];
   projects: Project[];
   pendingReviewCount: number;
   canEdit?: boolean;
+  showGrowthProjects?: boolean;
+  showLeaveCalendar?: boolean;
 }) {
   const pathname = usePathname();
   const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // Restricted (staff) users don't see Growth Projects; everyone sees the report.
+  const tabs: [string, string][] = showGrowthProjects ? [GROWTH_TAB, PERFORMANCE_TAB] : [PERFORMANCE_TAB];
 
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(href + "/");
@@ -43,7 +48,7 @@ export function TopNav({
           </div>
 
           <nav className="flex items-center gap-1">
-            {TABS.map(([href, label]) => {
+            {tabs.map(([href, label]) => {
               const active = isActive(href);
               return (
                 <Link
@@ -59,13 +64,16 @@ export function TopNav({
               );
             })}
             {/* Leave Calendar is a separate, per-user-authenticated app (its own
-                login at /Leave-Calendar). Full navigation, not client routing. */}
-            <a
-              href="/Leave-Calendar"
-              className="rounded-md px-3 py-1.5 text-sm font-medium text-ink-2 transition-colors hover:text-ink"
-            >
-              Leave Calendar
-            </a>
+                login at /Leave-Calendar). Full navigation, not client routing.
+                Hidden from restricted staff (Dr Luvi & Gautam). */}
+            {showLeaveCalendar ? (
+              <a
+                href="/Leave-Calendar"
+                className="rounded-md px-3 py-1.5 text-sm font-medium text-ink-2 transition-colors hover:text-ink"
+              >
+                Leave Calendar
+              </a>
+            ) : null}
           </nav>
 
           <div className="ml-auto flex items-center gap-2">

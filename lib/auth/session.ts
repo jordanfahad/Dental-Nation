@@ -1,14 +1,24 @@
 /**
  * Shared-secret session with a ROLE (§12). The auth cookie is an HMAC-signed
- * token: `<expiryMs>.<role>.<base64url(hmac(expiry.role))>`. Two roles:
+ * token: `<expiryMs>.<role>.<base64url(hmac(expiry.role))>`. Roles:
  *   - admin  : full access (manager — create/update/approve/delete)
  *   - viewer : read-only (the CEO + coordinator can navigate + open evidence)
+ *   - staff  : read-only, restricted (Dr Luvi & Gautam) — same as viewer EXCEPT
+ *              no Growth Projects (/impact) and no Leave Calendar.
  * The role is inside the signed payload, so it cannot be tampered with.
  *
  * Uses Web Crypto so it runs in BOTH the Edge middleware and Node route
  * handlers / server actions.
  */
-export type Role = 'admin' | 'viewer';
+export type Role = 'admin' | 'viewer' | 'staff';
+
+/** Areas that a restricted (staff) role cannot see. admin + viewer see all. */
+export function canSeeGrowthProjects(role: Role | null | undefined): boolean {
+  return role === 'admin' || role === 'viewer';
+}
+export function canSeeLeaveCalendar(role: Role | null | undefined): boolean {
+  return role === 'admin' || role === 'viewer';
+}
 
 export const AUTH_COOKIE = 'lane_e_auth';
 export const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // ~30 days
@@ -46,7 +56,7 @@ export async function verifySession(
   const parts = token.split('.');
   if (parts.length !== 3) return null;
   const [expiry, role, sig] = parts;
-  if (role !== 'admin' && role !== 'viewer') return null;
+  if (role !== 'admin' && role !== 'viewer' && role !== 'staff') return null;
   const expected = await hmac(`${expiry}.${role}`, secret);
   if (sig.length !== expected.length) return null;
   let diff = 0;

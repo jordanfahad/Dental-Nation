@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   AUTH_COOKIE,
   SESSION_TTL_MS,
+  canSeeGrowthProjects,
   createSessionToken,
   safeEqual,
-  verifySessionToken,
+  verifySession,
 } from '@/lib/auth/session';
 
 /** Query param carrying the read-only share token (the CEO's private link). */
@@ -29,8 +30,18 @@ export async function middleware(req: NextRequest) {
   if (!secret || !password) return NextResponse.next();
 
   const token = req.cookies.get(AUTH_COOKIE)?.value;
-  const authed = await verifySessionToken(token, secret);
-  if (authed) return NextResponse.next();
+  const session = await verifySession(token, secret);
+  if (session) {
+    // Restricted staff (Dr Luvi & Gautam) cannot open Growth Projects (/impact).
+    // The Leave Calendar has its own separate gate and is hidden from their nav.
+    if (!canSeeGrowthProjects(session.role) && req.nextUrl.pathname.startsWith('/impact')) {
+      const home = req.nextUrl.clone();
+      home.pathname = '/';
+      home.search = '';
+      return NextResponse.redirect(home);
+    }
+    return NextResponse.next();
+  }
 
   // Private, no-password viewer link → grant a viewer session, then strip the token.
   // Trim the env value so an accidental trailing space/newline from pasting it into
