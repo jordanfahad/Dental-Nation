@@ -16,7 +16,7 @@ function dayLabel(iso: string | null) {
   }
 }
 
-type Filter = 'all' | 'booked' | 'failed';
+type Filter = 'all' | 'booked' | 'pending' | 'failed';
 
 export function WidgetEnquiriesPanel({ report, period }: { report: WidgetEnquiryReport; period: string }) {
   const [filter, setFilter] = useState<Filter>('all');
@@ -42,6 +42,7 @@ export function WidgetEnquiriesPanel({ report, period }: { report: WidgetEnquiry
   const chips: { key: Filter; label: string; n: number; color: string }[] = [
     { key: 'all', label: 'All enquiries', n: report.total, color: 'bg-ink text-panel' },
     { key: 'booked', label: 'Booked', n: report.booked, color: 'bg-good text-white' },
+    { key: 'pending', label: 'Practo sync in progress', n: report.pending, color: 'bg-watch text-white' },
     { key: 'failed', label: 'Failed to book', n: report.failed, color: 'bg-stop text-white' },
   ];
 
@@ -54,7 +55,7 @@ export function WidgetEnquiriesPanel({ report, period }: { report: WidgetEnquiry
       />
       <div className="px-5 pb-5 pt-4">
         {/* KPI band */}
-        <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
           <div className="rounded-xl border border-line bg-panel p-3">
             <p className="text-[19px] font-semibold text-ink">{int(report.total)}</p>
             <p className="text-[10.5px] uppercase tracking-wide text-ink-faint">Enquiries (non-test)</p>
@@ -62,6 +63,10 @@ export function WidgetEnquiriesPanel({ report, period }: { report: WidgetEnquiry
           <div className="rounded-xl border border-line bg-panel p-3">
             <p className="text-[19px] font-semibold text-good">{int(report.booked)}</p>
             <p className="text-[10.5px] uppercase tracking-wide text-ink-faint">Booked (in ZAVIS/Practo)</p>
+          </div>
+          <div className="rounded-xl border border-line bg-panel p-3">
+            <p className="text-[19px] font-semibold text-watch">{int(report.pending)}</p>
+            <p className="text-[10.5px] uppercase tracking-wide text-ink-faint">Practo sync in progress</p>
           </div>
           <div className="rounded-xl border border-line bg-panel p-3">
             <p className="text-[19px] font-semibold text-stop">{int(report.failed)}</p>
@@ -114,6 +119,10 @@ export function WidgetEnquiriesPanel({ report, period }: { report: WidgetEnquiry
                   <td className="py-2 pl-3">
                     {e.status === 'booked' ? (
                       <span className="rounded-full bg-good/10 px-2 py-0.5 text-[11px] font-medium text-good">Booked</span>
+                    ) : e.status === 'pending' ? (
+                      <span className="whitespace-nowrap rounded-full bg-watch/10 px-2 py-0.5 text-[11px] font-medium text-watch">
+                        Practo sync in progress
+                      </span>
                     ) : (
                       <span className="rounded-full bg-stop/10 px-2 py-0.5 text-[11px] font-medium text-stop">Failed to book</span>
                     )}
@@ -131,9 +140,11 @@ export function WidgetEnquiriesPanel({ report, period }: { report: WidgetEnquiry
 
         <Takeaway>
           Every non-test website-widget enquiry, and whether it reached the clinic&apos;s booking system.{' '}
-          <strong>Booked</strong> = the enquirer&apos;s phone matches a real appointment in ZAVIS or Practo;{' '}
-          <strong>Failed to book</strong> = no match — the widget→Practo hand-off didn&apos;t complete. Booking totals
-          elsewhere stay Practo-sourced; this is the enquiry lens only.
+          <strong>Booked</strong> = the enquirer&apos;s phone matches a real appointment in ZAVIS or Practo.{' '}
+          <strong className="text-watch">Practo sync in progress</strong> = enquired in the last ~3 hours and not matched
+          yet — the widget→Practo sync can lag, so it&apos;s not counted as failed until then.{' '}
+          <strong>Failed to book</strong> = older than ~3 hours and still no match. Booking totals elsewhere stay
+          Practo-sourced; this is the enquiry lens only.
         </Takeaway>
       </div>
     </Card>

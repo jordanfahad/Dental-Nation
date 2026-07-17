@@ -12,7 +12,13 @@ import { getSupabaseAdmin } from '@/lib/supabase/server';
  * "failed to book". The booking COUNT stays Practo-sourced; this is enquiries only.
  */
 
-export type EnquiryStatus = 'booked' | 'failed';
+// 'pending' = not yet matched to ZAVIS/Practo but still recent — the widget→Practo
+// sync can lag, so we don't call it "failed" until it's had time to reflect.
+export type EnquiryStatus = 'booked' | 'pending' | 'failed';
+
+// Grace window before an unmatched enquiry is treated as a real failure. Within
+// this window it's shown as "Practo sync in progress", not "Failed to book".
+export const SYNC_GRACE_HOURS = 3;
 
 export interface WidgetEnquiry {
   key: string;
@@ -31,6 +37,7 @@ export interface WidgetEnquiryReport {
   source: 'live' | 'empty';
   total: number;
   booked: number;
+  pending: number;
   failed: number;
   bookedRate: number | null; // booked / total
   enquiries: WidgetEnquiry[];
@@ -41,14 +48,14 @@ const phone9 = (s: string | null | undefined): string => {
   return d.length >= 9 ? d.slice(-9) : '';
 };
 
-/** Widget submission timestamp "MM/DD/YYYY, HH:MM:SS" (or ISO) → YYYY-MM-DD. */
-function parseSubmitted(v: string): string | null {
+/** Widget submission timestamp "MM/DD/YYYY, HH:MM:SS" (or ISO) → epoch ms, or null. */
+function parseSubmittedMs(v: string): number | null {
   const s = String(v ?? '').trim();
   if (!s) return null;
-  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
   const parsed = Date.parse(s);
-  return Number.isNaN(parsed) ? null : new Date(parsed).toISOString().slice(0, 10);
+  return Number.isNaN(parsed) ? null : parsed;
 }
+const msToDate = (ms: number | null): string | null => (ms == null ? null : new Date(ms).toISOString().slice(0, 10));
 function parseApptDate(v: string): string | null {
   const s = String(v ?? '').trim();
   if (!s) return null;
@@ -71,7 +78,7 @@ const pick = (data: Record<string, unknown>, ...keys: string[]): string => {
 };
 
 export async function getWidgetEnquiries(opts: { from?: string; to?: string } = {}): Promise<WidgetEnquiryReport> {
-  const empty: WidgetEnquiryReport = { source: 'empty', total: 0, booked: 0, failed: 0, bookedRate: null, enquiries: [] };
+  const empty: WidgetEnquiryReport = { source: 'empty', total: 0, booked: 0, pending: 0, failed: 0, bookedRate: null, enquiries: [] };
   const db = getSupabaseAdmin();
   if (!db) return empty;
 
@@ -99,6 +106,8 @@ export async function getWidgetEnquiries(opts: { from?: string; to?: string } = 
   if (rows.length === 0) return empty;
 
   const { from, to } = opts;
+  const nowMs = Date.now();
+  const graceMs = SYNC_GRACE_HOURS * 3600_000;
   const out: WidgetEnquiry[] = [];
   let idx = 0;
   for (const r of rows) {
@@ -109,12 +118,21 @@ export async function getWidgetEnquiries(opts: { from?: string; to?: string } = 
     const details = pick(d, 'Additional Details');
     if (isTest(name, email, details)) continue;
 
-    const enquiredAt = parseSubmitted(pick(d, 'Timestamp'));
+    const submittedMs = parseSubmittedMs(pick(d, 'Timestamp'));
+    const enquiredAt = msToDate(submittedMs);
     if (from && enquiredAt && enquiredAt < from) continue;
     if (to && enquiredAt && enquiredAt > to) continue;
 
     const p9 = phone9(phone);
-    const status: EnquiryStatus = p9 && known.has(p9) ? 'booked' : 'failed';
+    let status: EnquiryStatus;
+    if (p9 && known.has(p9)) {
+      status = 'booked';
+    } else if (submittedMs != null && nowMs - submittedMs < graceMs) {
+      // Recent + not yet matched → likely Practo still syncing, not a failure.
+      status = 'pending';
+    } else {
+      status = 'failed';
+    }
     out.push({
       key: `${idx++}-${p9 || email || name}`,
       name: name || null,
@@ -133,11 +151,13 @@ export async function getWidgetEnquiries(opts: { from?: string; to?: string } = 
   out.sort((a, b) => (b.enquiredAt ?? '').localeCompare(a.enquiredAt ?? ''));
   const total = out.length;
   const booked = out.filter((e) => e.status === 'booked').length;
-  const failed = total - booked;
+  const pending = out.filter((e) => e.status === 'pending').length;
+  const failed = out.filter((e) => e.status === 'failed').length;
   return {
     source: total > 0 ? 'live' : 'empty',
     total,
     booked,
+    pending,
     failed,
     bookedRate: total > 0 ? booked / total : null,
     enquiries: out,
