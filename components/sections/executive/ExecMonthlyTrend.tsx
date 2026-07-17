@@ -30,7 +30,7 @@ export function ExecMonthlyTrend({ report }: { report: ExecutiveReport }) {
   const series: TrendSeries[] = [
     { key: 'spend', label: 'Marketing spend (AED)', color: TOKENS.accent400, kind: 'bar', axis: 'right' },
     { key: 'bookings', label: 'Bookings (ZAVIS)', color: TOKENS.watch, kind: 'line', axis: 'left' },
-    { key: 'leads', label: 'Leads (tracker)', color: TOKENS.accent, kind: 'area', axis: 'left' },
+    { key: 'leads', label: 'Enquiries', color: TOKENS.accent, kind: 'area', axis: 'left' },
     { key: 'revenue', label: 'Clinic revenue (AED)', color: TOKENS.good, kind: 'line', axis: 'right' },
   ];
 
@@ -42,7 +42,7 @@ export function ExecMonthlyTrend({ report }: { report: ExecutiveReport }) {
     <Card>
       <SectionHeader
         eyebrow="Executive dashboard · momentum"
-        title="Monthly performance — spend, bookings, leads & revenue"
+        title="Monthly performance — spend, bookings, enquiries & revenue"
       />
       <div className="px-5 pb-5 pt-3">
         <TrendChart data={data} series={series} height={280} leftFormat="int" rightFormat="aed" xFormat="month" />
@@ -52,9 +52,9 @@ export function ExecMonthlyTrend({ report }: { report: ExecutiveReport }) {
             <>
               {months} month{months === 1 ? '' : 's'} of activity — each point is one calendar month
               {lastLabel ? ` (${lastLabel} is month-to-date)` : ''}. <strong>Bookings (ZAVIS)</strong> is the real
-              demand signal — actual patients booked; <strong>Leads (tracker)</strong> is the manual enquiry log, which
-              the team has largely stopped filling in, so it reads low in recent months and shouldn&apos;t be read as low
-              demand. Counts on the left axis; spend &amp; clinic revenue (AED) on the right.
+              demand signal — actual patients booked; <strong>Enquiries</strong> combines the manual lead tracker and the
+              website-widget submissions (non-test), which are still few next to actual bookings. Counts on the left
+              axis; spend &amp; clinic revenue (AED) on the right.
             </>
           ) : (
             'No monthly activity has rolled up yet across the connected sources.'

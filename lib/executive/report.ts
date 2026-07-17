@@ -5,6 +5,7 @@ import { getRangeReport } from '@/lib/report';
 import { getCrmReport } from '@/lib/crm/report';
 import { getPractoSummary } from '@/lib/practo/report';
 import { getAdSpendForRange, getAdFeedFreshness } from '@/lib/marketing/report';
+import { getWidgetEnquiries } from '@/lib/bookings/widgetEnquiries';
 import type { ClinicFilterKey } from '@/config/clinics';
 import type { ExecKpis, ExecMonthPoint, ExecutiveReport } from './types';
 
@@ -98,13 +99,27 @@ export async function getExecutiveReport(query: ExecQuery = {}): Promise<Executi
     if (patch.revenue) row.revenue += patch.revenue;
     months.set(m, row);
   };
-  // Monthly leads from the LEAD TRACKER (lane_e.leads) — the real enquiry log,
-  // grouped by inquiry month (all channels), scoped to the window.
+  // Monthly enquiries: lead tracker (lane_e.leads) + non-test website-widget
+  // enquiries, grouped by month, scoped to the window — so the enquiry line
+  // matches the Platforms tab (e.g. July = 3 tracker + 1 widget = 4).
   for (const [m, n] of await leadsByMonth(range.range.from, range.range.to)) {
     const row =
       months.get(m) ?? { month: m, label: safeMonthLabel(m), spend: 0, leads: 0, appointments: 0, revenue: 0 };
     row.leads += n;
     months.set(m, row);
+  }
+  try {
+    const widgetEnq = await getWidgetEnquiries({ from: range.range.from, to: range.range.to });
+    for (const e of widgetEnq.enquiries) {
+      if (!e.enquiredAt) continue;
+      const m = e.enquiredAt.slice(0, 7);
+      const row =
+        months.get(m) ?? { month: m, label: safeMonthLabel(m), spend: 0, leads: 0, appointments: 0, revenue: 0 };
+      row.leads += 1;
+      months.set(m, row);
+    }
+  } catch {
+    /* widget enquiries best-effort */
   }
   // Monthly spend from the LIVE per-day ad spend (Meta + Google), scoped to the
   // window — consistent with the headline.

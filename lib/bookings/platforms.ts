@@ -1,5 +1,6 @@
 import 'server-only';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
+import { getWidgetEnquiries } from '@/lib/bookings/widgetEnquiries';
 
 /**
  * Enquiries by PLATFORM (the "how did they reach us" lens), read from the
@@ -7,9 +8,10 @@ import { getSupabaseAdmin } from '@/lib/supabase/server';
  *   • Inquiry Platform → leads.channel_source  (WhatsApp, Instagram, Walk-in, …)
  *   • Source Type      → leads.medium          (Lead Forms, Website Inquiry, …)
  *
- * This powers the Website Bookings › Platforms sub-tab. It is an ENQUIRY
- * population, deliberately kept distinct from the website booking WIDGET (a
- * different source, its own sub-tab) — the two are never summed into one number.
+ * This powers the Website Bookings › Platforms sub-tab. The non-test website
+ * booking-WIDGET enquiries are folded in under the Website bucket (per the CEO:
+ * "consider this G-sheet as well"), so the enquiry total + daily trend include
+ * them; the widget's booked/failed detail still lives in its own panel below.
  *
  * Honest by construction (CLAUDE.md §15): the tracker is thin on funnel fields
  * (booking_date / appointment_date are empty, booking_status is almost always
@@ -286,6 +288,37 @@ export async function getBookingsPlatforms(opts: {
       qualified,
       booked,
     });
+  }
+
+  // Fold in the non-test website-widget enquiries (the same population as the
+  // "Website widget enquiries" panel) so the enquiry TOTAL, the daily trend and
+  // the Website bucket include them — per "consider this G-sheet as well". They
+  // land under 'website' (they are website submissions); the recent-table row is
+  // labelled "Website widget" so the origin stays visible.
+  try {
+    const widget = await getWidgetEnquiries({ from, to });
+    const wa = acc.get('website')!;
+    for (const e of widget.enquiries) {
+      wa.enquiries += 1;
+      if (e.status === 'booked') wa.booked += 1;
+      if (e.enquiredAt) {
+        if (!wa.lastDate || e.enquiredAt > wa.lastDate) wa.lastDate = e.enquiredAt;
+        byDayMap.set(e.enquiredAt, (byDayMap.get(e.enquiredAt) ?? 0) + 1);
+      }
+      recent.push({
+        date: e.enquiredAt,
+        platformKey: 'website',
+        platformLabel: 'Website widget',
+        sourceType: 'Website widget',
+        campaign: null,
+        offer: null,
+        treatment: e.treatment,
+        qualified: false,
+        booked: e.status === 'booked',
+      });
+    }
+  } catch {
+    /* widget enquiries are best-effort; the tracker view still renders */
   }
 
   const campaigns: CampaignStat[] = [...camp.entries()]
