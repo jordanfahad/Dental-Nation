@@ -1,6 +1,7 @@
 import { Suspense } from 'react';
 import { getRangeReport } from '@/lib/report';
-import { resolveTab } from '@/components/tabs';
+import { resolveTab, isAdminOnlyTab } from '@/components/tabs';
+import { isAdmin as getIsAdmin } from '@/lib/auth/role';
 import { resolveClinic } from '@/config/clinics';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -18,6 +19,7 @@ import { MarketingReport } from '@/components/sections/marketing/MarketingReport
 import { SocialReport } from '@/components/sections/social/SocialReport';
 import { GoogleAnalyticsReport } from '@/components/sections/analytics/GoogleAnalyticsReport';
 import { ClarityReport } from '@/components/sections/clarity/ClarityReport';
+import { StatusReport } from '@/components/sections/status/StatusReport';
 
 export const dynamic = 'force-dynamic';
 // The Marketing deep-dive sub-tabs make several live Meta/Google ad-API calls;
@@ -59,7 +61,10 @@ export default async function DashboardPage({
     compare: sp.compare,
     skipGa4: true,
   });
-  const tab = resolveTab(sp.tab);
+  const isAdmin = await getIsAdmin();
+  // Admin-only tabs (Status & Rules) fall back to the default for non-admins.
+  const requested = resolveTab(sp.tab);
+  const tab = isAdminOnlyTab(requested) && !isAdmin ? 'executive' : requested;
   const clinic = resolveClinic(sp.clinic);
   const query = { from: sp.from, to: sp.to, preset: sp.preset, compare: sp.compare, clinic };
   const range = { from: shell.range.from, to: shell.range.to };
@@ -70,7 +75,7 @@ export default async function DashboardPage({
   return (
     <main className="mx-auto max-w-[1180px] px-4 py-6 md:px-8">
       <Header range={shell.range} source={shell.source} />
-      <TabBar />
+      <TabBar isAdmin={isAdmin} />
       {clinicAware ? <ClinicFilter active={clinic} /> : null}
 
       {/* Stream the active tab. Keying on tab+params re-arms the boundary on
@@ -91,6 +96,7 @@ export default async function DashboardPage({
         {tab === 'social' ? <SocialReport range={range} /> : null}
         {tab === 'analytics' ? <GoogleAnalyticsReport /> : null}
         {tab === 'clarity' ? <ClarityReport /> : null}
+        {tab === 'status' && isAdmin ? <StatusReport /> : null}
       </Suspense>
 
       <Footer ingestion={shell.ingestion} />

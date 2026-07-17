@@ -19,11 +19,18 @@ export const TABS = [
   { key: 'social', label: 'Social & Local' },
   { key: 'analytics', label: 'Google Analytics' },
   { key: 'clarity', label: 'Heatmaps & Recordings' },
+  { key: 'status', label: 'Status & Rules', adminOnly: true },
 ] as const;
 
 export type TabKey = (typeof TABS)[number]['key'];
 
 export const DEFAULT_TAB: TabKey = 'executive';
+
+/** Admin-only tab keys — hidden from viewer/staff and blocked server-side. */
+const ADMIN_ONLY = new Set<string>(
+  TABS.filter((t) => (t as { adminOnly?: boolean }).adminOnly).map((t) => t.key),
+);
+export const isAdminOnlyTab = (tab: string): boolean => ADMIN_ONLY.has(tab);
 
 /** Normalise an arbitrary ?tab= value to a known tab (default Executive). */
 export function resolveTab(tab: string | undefined): TabKey {
