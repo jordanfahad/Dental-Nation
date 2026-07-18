@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { PRESETS } from '@/lib/range';
 import type { RangeMeta } from '@/lib/types';
 
@@ -17,6 +17,16 @@ export function DateRangeControl({ range, basePath = '/' }: { range: RangeMeta; 
   const [pending, startTransition] = useTransition();
   const [from, setFrom] = useState(range.from);
   const [to, setTo] = useState(range.to);
+
+  // Keep the custom-date inputs in sync with the ACTIVE range. Without this the
+  // inputs only reflect their initial mount value, so choosing a preset (All /
+  // This month / Last month / Last 30/90 days) updated the header + data but left
+  // the two date boxes frozen on the old dates. Syncs only when the applied range
+  // actually changes (preset click or Apply) — it never clobbers mid-edit typing.
+  useEffect(() => {
+    setFrom(range.from);
+    setTo(range.to);
+  }, [range.from, range.to]);
 
   /** Navigate with the next params, always keeping `tab`. Stays on the current
    *  page (`basePath`) so it works both on the dashboard and the standalone
