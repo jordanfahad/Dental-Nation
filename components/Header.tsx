@@ -17,11 +17,18 @@ export function Header({ range, source }: { range: RangeMeta; source: 'live' | '
   async function onRefresh() {
     setRefreshing(true);
     setToast(null);
-    const res = await refreshNow();
-    setRefreshing(false);
-    setToast(res.message);
-    startTransition(() => router.refresh());
-    setTimeout(() => setToast(null), 6000);
+    try {
+      const res = await refreshNow();
+      setToast(res.message);
+      startTransition(() => router.refresh());
+    } catch {
+      // The action can exceed the serverless limit on a heavy sync; the cron
+      // still keeps data current, so surface it rather than spinning forever.
+      setToast('Refresh is taking a while — the background sync keeps data current. Try again shortly.');
+    } finally {
+      setRefreshing(false); // ALWAYS reset so the button never sticks on "Refreshing…"
+      setTimeout(() => setToast(null), 8000);
+    }
   }
 
   return (

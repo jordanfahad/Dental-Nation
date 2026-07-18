@@ -22,9 +22,11 @@ import { ClarityReport } from '@/components/sections/clarity/ClarityReport';
 import { StatusReport } from '@/components/sections/status/StatusReport';
 
 export const dynamic = 'force-dynamic';
-// The Marketing deep-dive sub-tabs make several live Meta/Google ad-API calls;
-// give the function headroom beyond the 10s default so they never truncate.
-export const maxDuration = 60;
+// The Marketing deep-dive sub-tabs make several live Meta/Google ad-API calls,
+// and the "Refresh now" server action runs the full sync (~60–70s, like the
+// cron) from this route — so give it the same headroom as /api/cron/sync (300s)
+// rather than the 60s that was killing the manual refresh mid-run.
+export const maxDuration = 300;
 
 /**
  * The single server-rendered route. Reads searchParams (from/to/preset/compare/
