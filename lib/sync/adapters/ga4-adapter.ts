@@ -5,6 +5,7 @@ import {
   BOOKING_OFFERS,
   GA4_CALL_EVENT,
   GA4_EVENTS,
+  GA4_LANES,
   GA4_LEAD_CHANNEL_DIMENSION,
   GA4_LEAD_EVENT,
   GA4_LOOKBACK_DAYS,
@@ -532,6 +533,84 @@ export async function fetchGa4Audience(from: string, to: string): Promise<Ga4Aud
   ]);
 
   return { totals, byGender, byAge, byDevice, byChannel, events, leadEvents, period: { from, to } };
+}
+
+// ============================================================================
+// Landing-page traffic by LANE (Glow-Up / SOS / Scan / Restore / First-look).
+// One traffic report (sessions/users/new users by landing page) + one on-site
+// event report (generate_lead + booking widget events by landing page), mapped
+// to lanes by the slug in the path.
+// ============================================================================
+export interface Ga4LaneRow {
+  key: string;
+  label: string;
+  path: string;
+  sessions: number;
+  users: number; // unique users (GA4 totalUsers)
+  newUsers: number;
+  leads: number; // on-site generate_lead events
+  widgetViews: number; // booking widget viewed
+  bookingIntent: number; // treatment selected in the widget
+}
+
+export async function fetchGa4Lanes(from: string, to: string): Promise<Ga4LaneRow[]> {
+  const analytics = getAnalyticsClient();
+  const property = `properties/${GA4_PROPERTY_ID}`;
+  const dateRanges = [{ startDate: from, endDate: to }];
+  const LEAD = GA4_LEAD_EVENT;
+  const WIDGET = 'booking_widget_viewed';
+  const TREAT = 'booking_treatment_selected';
+
+  const [trafficRes, eventRes] = await Promise.all([
+    analytics.properties.runReport({
+      property,
+      requestBody: {
+        dateRanges,
+        dimensions: [{ name: 'landingPagePlusQueryString' }],
+        metrics: [{ name: 'sessions' }, { name: 'totalUsers' }, { name: 'newUsers' }],
+        limit: '1000',
+      },
+    }),
+    analytics.properties.runReport({
+      property,
+      requestBody: {
+        dateRanges,
+        dimensions: [{ name: 'landingPagePlusQueryString' }, { name: 'eventName' }],
+        metrics: [{ name: 'eventCount' }],
+        dimensionFilter: { filter: { fieldName: 'eventName', inListFilter: { values: [LEAD, WIDGET, TREAT] } } },
+        limit: '2000',
+      },
+    }),
+  ]);
+
+  const laneOf = (path: string): string | null => {
+    const p = path.toLowerCase();
+    for (const l of GA4_LANES) if (p.includes(l.slug)) return l.key;
+    return null;
+  };
+  const acc = new Map<string, Ga4LaneRow>();
+  for (const l of GA4_LANES) acc.set(l.key, { key: l.key, label: l.label, path: l.path, sessions: 0, users: 0, newUsers: 0, leads: 0, widgetViews: 0, bookingIntent: 0 });
+
+  for (const r of trafficRes.data.rows ?? []) {
+    const k = laneOf(r.dimensionValues?.[0]?.value ?? '');
+    if (!k) continue;
+    const row = acc.get(k)!;
+    row.sessions += metric(r, 0);
+    row.users += metric(r, 1);
+    row.newUsers += metric(r, 2);
+  }
+  for (const r of eventRes.data.rows ?? []) {
+    const k = laneOf(r.dimensionValues?.[0]?.value ?? '');
+    if (!k) continue;
+    const ev = r.dimensionValues?.[1]?.value ?? '';
+    const n = metric(r, 0);
+    const row = acc.get(k)!;
+    if (ev === LEAD) row.leads += n;
+    else if (ev === WIDGET) row.widgetViews += n;
+    else if (ev === TREAT) row.bookingIntent += n;
+  }
+  // Preserve the configured lane order.
+  return GA4_LANES.map((l) => acc.get(l.key)!);
 }
 
 // ============================================================================

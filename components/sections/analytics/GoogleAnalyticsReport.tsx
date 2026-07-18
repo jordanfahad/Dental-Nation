@@ -1,5 +1,6 @@
 import { Suspense } from 'react';
 import { getGoogleAnalyticsReport } from '@/lib/analytics/report';
+import { Ga4Lanes } from '@/components/sections/analytics/Ga4Lanes';
 import type { Ga4Slice } from '@/lib/sync/adapters/ga4-adapter';
 import { SiteSpeed } from '@/components/sections/analytics/SiteSpeed';
 import { Ga4Attribution } from '@/components/sections/analytics/Ga4Attribution';
@@ -48,7 +49,7 @@ function SliceTable({ rows, head }: { rows: Ga4Slice[]; head: string }) {
  * acquisition. Live from the GA4 Data API; honest data gap on any failure.
  */
 export async function GoogleAnalyticsReport() {
-  const { available, note, data } = await getGoogleAnalyticsReport();
+  const { available, note, data, lanes, lanesNote } = await getGoogleAnalyticsReport();
 
   if (!available || !data) {
     return (
@@ -93,6 +94,8 @@ export async function GoogleAnalyticsReport() {
           </p>
         </div>
       </Card>
+
+      {lanes.length > 0 ? <Ga4Lanes lanes={lanes} note={lanesNote} /> : null}
 
       <Card>
         <SectionHeader tag="GA1" eyebrow="Scorecard" title="Audience at a glance" />

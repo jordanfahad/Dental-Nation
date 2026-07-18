@@ -40,6 +40,27 @@ export const GA4_LEAD_EVENT = 'generate_lead';
 export const GA4_EVENTS = [...ONSITE_FUNNEL.map((s) => s.event), GA4_LEAD_EVENT];
 
 /**
+ * The five marketing LANES, each a dedicated landing page. GA4 landing-page
+ * traffic is matched to a lane by the `slug` appearing in the landing-page path
+ * (so /en/glow-up, /en/glow-up?utm=…, /ar/glow-up all count). The widget booking
+ * Source column carries `dental_nation_<wid>` for the three ArabyAds lanes.
+ */
+export interface LaneDef {
+  key: string;
+  label: string;
+  path: string;
+  slug: string; // matched (contains) in the GA4 landing-page path
+  widgetSource: string | null; // dental_nation_<x> token in the widget Source, when campaign-driven
+}
+export const GA4_LANES: LaneDef[] = [
+  { key: 'E', label: 'Lane E · Glow-Up', path: '/en/glow-up', slug: 'glow-up', widgetSource: 'glowup' },
+  { key: 'D', label: 'Lane D · SOS', path: '/en/sos', slug: '/sos', widgetSource: 'sos' },
+  { key: 'J', label: 'Lane J · Scan', path: '/en/scan', slug: '/scan', widgetSource: 'scan' },
+  { key: 'C', label: 'Lane C · Restore', path: '/en/care-journeys/restore', slug: 'restore', widgetSource: null },
+  { key: 'B', label: 'Lane B · First Look', path: '/en/first-look', slug: 'first-look', widgetSource: null },
+];
+
+/**
  * GROSS marketing-lead lens (the "where do leads actually come from" view shown
  * on the Marketing tab, independent of the ad platforms' own conversion
  * tracking). GA4 carries MANY events (qualify_lead, close_convert_lead,
