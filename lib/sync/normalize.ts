@@ -510,9 +510,10 @@ function firstPrice(v: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-/** A row is a test/seed row when the email or name matches the seed patterns. */
-function isTestBooking(email: string, name: string): boolean {
-  return /zavis|test/i.test(email) || /test|sagar/i.test(name);
+/** A row is a test/seed row when the email/name match the seed patterns, or the
+ *  Booking Reference starts with "BK" (agency/test bookings, e.g. BK4272003747). */
+export function isTestBooking(email: string, name: string, bookingRef = ''): boolean {
+  return /zavis|test/i.test(email) || /test|sagar/i.test(name) || /^BK/i.test(bookingRef.trim());
 }
 
 /** Parse a booking date. `Bookings.Date` is already ISO (YYYY-MM-DD); the
@@ -551,9 +552,8 @@ export function normalizeBookings(
 
     const fullName = pick(raw, 'Full Name', 'Client Name');
     const email = pick(raw, 'Email');
-    const is_test = isTestBooking(email, fullName);
-
     const bookingRef = pick(raw, 'Booking Reference', 'Booking ID');
+    const is_test = isTestBooking(email, fullName, bookingRef);
     const bookingDate = isCancellation
       ? parseBookingDate(pick(raw, 'Appointment Time', 'Timestamp'))
       : parseBookingDate(pick(raw, 'Date'));

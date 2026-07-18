@@ -22,10 +22,12 @@ const num = (v: unknown): number | null => {
   return Number.isFinite(n) ? n : null;
 };
 
-/** Same test rule as the sync (normalize.ts isTestBooking + ArabyAds report). */
-function isTestRow(email: string, name: string, pid: string | null): boolean {
+/** Same test rule as the sync (normalize.ts isTestBooking + ArabyAds report):
+ *  seed name/email, a "test" PID, or a Booking Reference starting with "BK". */
+function isTestRow(email: string, name: string, pid: string | null, bookingRef: string): boolean {
   if (/zavis|test/i.test(email) || /test|sagar/i.test(name)) return true;
   if (pid && /test/i.test(pid)) return true;
+  if (/^BK/i.test(bookingRef.trim())) return true;
   return false;
 }
 
@@ -139,7 +141,7 @@ export async function getRecentWidgetBookings(opts: {
       const name = String(d['Full Name'] ?? '').trim();
       const email = String(d['Email'] ?? '').trim();
       const parsed = parseSource(String(d['Source'] ?? ''));
-      const isTest = isTestRow(email, name, parsed.pid);
+      const isTest = isTestRow(email, name, parsed.pid, String(d['Booking Reference'] ?? ''));
       if (isTest) test += 1;
       else real += 1;
 

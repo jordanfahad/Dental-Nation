@@ -133,10 +133,12 @@ function parseArabySource(raw: string): { lane: ArabyLane | null; pid: string | 
   };
 }
 
-/** Mirror the sync's booking test rule (normalize.ts isTestBooking). */
-function isTestRow(email: string, name: string, pid: string | null): boolean {
+/** Mirror the sync's booking test rule (normalize.ts isTestBooking): seed
+ *  name/email, a "test" PID, or a Booking Reference starting with "BK". */
+function isTestRow(email: string, name: string, pid: string | null, bookingRef: string): boolean {
   if (/zavis|test/i.test(email) || /test|sagar/i.test(name)) return true;
   if (pid && /test/i.test(pid)) return true;
+  if (/^BK/i.test(bookingRef.trim())) return true;
   return false;
 }
 
@@ -219,7 +221,7 @@ export async function getArabyAdsReport(range: { from: string; to: string }): Pr
       const name = String(d['Full Name'] ?? '').trim() || null;
       const email = String(d['Email'] ?? '').trim();
       const price = num(d['Price']);
-      const isTest = isTestRow(email, name ?? '', parsed.pid);
+      const isTest = isTestRow(email, name ?? '', parsed.pid, String(d['Booking Reference'] ?? ''));
 
       // All-time real bookings per lane — the campaign-lifetime cost/budget base.
       if (!isTest && parsed.lane) allTimeByLaneKey.set(parsed.lane.key, (allTimeByLaneKey.get(parsed.lane.key) ?? 0) + 1);

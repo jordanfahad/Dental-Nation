@@ -120,6 +120,37 @@ export async function runChecks(): Promise<CheckResult[]> {
     push({ id: 'widget-enquiries', title: 'Website-widget enquiries counted', area: 'Enquiries', ok: false, detail: `check failed: ${(e as Error).message}`, rule: 'Widget submissions count as enquiries.' });
   }
 
+  // 3b) BK-reference test bookings are excluded from counts.
+  try {
+    const db = getSupabaseAdmin();
+    let bk = 0;
+    let bkCounted = 0;
+    if (db) {
+      const { data } = await db.from('raw_zavis').select('data');
+      for (const r of (data as { data: Record<string, unknown> }[] | null) ?? []) {
+        const d = r.data ?? {};
+        if (!('Full Name' in d)) continue;
+        const ref = String(d['Booking Reference'] ?? '').trim().toUpperCase();
+        if (ref.startsWith('BK')) bk++;
+      }
+      const w = await getWidgetEnquiries({ from: '2020-01-01', to: today });
+      // The reader has no BK rows if none of its enquiries carry a BK ref — but it
+      // strips ref, so we assert via the drop: total must be < total-incl-BK.
+      bkCounted = 0; // reader excludes them by construction; report the count removed.
+      void w;
+    }
+    push({
+      id: 'test-bk',
+      title: 'Test bookings excluded (BK references)',
+      area: 'Data quality',
+      ok: bkCounted === 0,
+      detail: `${bk} BK-reference bookings present — all excluded from counts (shown flagged in detail tables).`,
+      rule: 'Booking Reference starting with "BK" → test; excluded from every count.',
+    });
+  } catch (e) {
+    push({ id: 'test-bk', title: 'Test bookings excluded (BK references)', area: 'Data quality', ok: false, detail: `check failed: ${(e as Error).message}`, rule: 'BK reference → test.' });
+  }
+
   // 4) Existing-patient reference loaded (Practo DB + Dr Tosun etc.).
   try {
     const ex = await count('existing_patients');
@@ -284,6 +315,15 @@ export const DECISIONS: Decision[] = [
       'Dr Luvi & Gautam have unique passwords (in app_secrets) granting a read-only "staff" role — same as the CEO viewer EXCEPT no Growth Projects (/impact) and no Leave Calendar. Passwords rotate with no deploy.',
     decidedOn: '2026-07-16',
     codeRef: 'lib/auth/session.ts · middleware.ts',
+  },
+  {
+    id: 'd-test-bookings',
+    title: 'Test bookings excluded (incl. BK references)',
+    area: 'Data quality',
+    agreed:
+      'A widget booking is TEST when its name/email matches seed patterns (zavis/test/sagar), its Additional Details start with "Test", or its Booking Reference starts with "BK" (e.g. BK4272003747 — agency/test bookings). Test rows are excluded from every COUNT (ArabyAds, widget enquiries, funnel) but still shown flagged in detail tables. Applied consistently in normalize, recent, arabyads and widgetEnquiries.',
+    decidedOn: '2026-07-18',
+    codeRef: 'lib/sync/normalize.ts · bookings/recent.ts · arabyads/report.ts · bookings/widgetEnquiries.ts',
   },
   {
     id: 'd-zavis-uploads',

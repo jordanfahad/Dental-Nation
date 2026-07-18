@@ -64,9 +64,15 @@ function parseApptDate(v: string): string | null {
   return Number.isNaN(parsed) ? null : new Date(parsed).toISOString().slice(0, 10);
 }
 
-/** Same test/seed filter used across the widget sources (zavis / test / sagar). */
-function isTest(name: string, email: string, details: string): boolean {
-  return /zavis|test/i.test(email) || /test|sagar/i.test(name) || /^test\b/i.test(details);
+/** Same test/seed filter used across the widget sources: seed name/email/details,
+ *  or a Booking Reference starting with "BK" (agency/test bookings). */
+function isTest(name: string, email: string, details: string, bookingRef: string): boolean {
+  return (
+    /zavis|test/i.test(email) ||
+    /test|sagar/i.test(name) ||
+    /^test\b/i.test(details) ||
+    /^BK/i.test(bookingRef.trim())
+  );
 }
 
 const pick = (data: Record<string, unknown>, ...keys: string[]): string => {
@@ -122,7 +128,7 @@ export async function getWidgetEnquiries(opts: { from?: string; to?: string } = 
     const email = pick(d, 'Email');
     const phone = pick(d, 'Phone Number', 'Phone', 'Contact Number');
     const details = pick(d, 'Additional Details');
-    if (isTest(name, email, details)) continue;
+    if (isTest(name, email, details, pick(d, 'Booking Reference', 'Booking ID'))) continue;
 
     const submittedMs = parseSubmittedMs(pick(d, 'Timestamp'));
     const enquiredAt = msToDate(submittedMs);
