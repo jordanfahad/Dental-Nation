@@ -80,6 +80,8 @@ export const getGoogleAnalyticsReport = unstable_cache(
 
     return { available, note, data, lanes, lanesNote };
   },
-  ['ga4-audience-v2-lanes'],
+  // NOTE: bump this key whenever the returned SHAPE changes — a stale cache of an
+  // older shape served to a newer component crashes the tab (v2→v3 added lane.geo).
+  ['ga4-audience-v3-lanes-geo'],
   { revalidate: 1800 },
 );

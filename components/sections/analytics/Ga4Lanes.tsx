@@ -38,12 +38,14 @@ function sumGeo(geo: Record<string, LaneGeoMetrics>, keys: string[]): LaneGeoMet
   }, { ...empty });
 }
 
-/** Roll a lane's geo breakdown up for the selected geo tab. */
+/** Roll a lane's geo breakdown up for the selected geo tab. Defensive against a
+ *  missing/old-shape `geo` (never throw — that would blank the whole tab). */
 function metricsFor(l: LaneReportRow, geo: string): LaneGeoMetrics {
-  if (geo === 'all') return sumGeo(l.geo, Object.keys(l.geo));
-  if (geo === 'uae') return sumGeo(l.geo, UAE_KEYS);
-  if (geo === 'vpn') return l.geo['nonuae'] ?? empty;
-  return l.geo[geo] ?? empty;
+  const g = l.geo ?? {};
+  if (geo === 'all') return sumGeo(g, Object.keys(g));
+  if (geo === 'uae') return sumGeo(g, UAE_KEYS);
+  if (geo === 'vpn') return g['nonuae'] ?? empty;
+  return g[geo] ?? empty;
 }
 
 export function Ga4Lanes({ lanes, note }: { lanes: LaneReportRow[]; note: string | null }) {
