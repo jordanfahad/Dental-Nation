@@ -61,6 +61,40 @@ export const GA4_LANES: LaneDef[] = [
 ];
 
 /**
+ * UAE emirates for the GA4 geography filter (matched against the GA4 `region`
+ * dimension for country = United Arab Emirates). `key='nonuae'` is the catch-all
+ * for traffic outside the UAE — a proxy for VPN / international visitors (GA4
+ * cannot flag a VPN directly, so we surface non-UAE traffic as that signal).
+ */
+export interface EmirateDef {
+  key: string;
+  label: string;
+  aliases: string[]; // normalised (lowercased, alphanumeric-only) region names
+}
+export const GA4_UAE_COUNTRY = 'United Arab Emirates';
+export const GA4_EMIRATES: EmirateDef[] = [
+  { key: 'dubai', label: 'Dubai', aliases: ['dubai'] },
+  { key: 'abudhabi', label: 'Abu Dhabi', aliases: ['abudhabi', 'abudhabiemirate'] },
+  { key: 'sharjah', label: 'Sharjah', aliases: ['sharjah'] },
+  { key: 'ajman', label: 'Ajman', aliases: ['ajman'] },
+  { key: 'uaq', label: 'Umm Al Quwain', aliases: ['ummalquwain', 'ummulquwain', 'ummalqaywayn'] },
+  { key: 'rak', label: 'Ras Al Khaimah', aliases: ['rasalkhaimah', 'rasalkhaymah'] },
+  { key: 'fujairah', label: 'Fujairah', aliases: ['fujairah', 'alfujairah'] },
+];
+export const GA4_NON_UAE_KEY = 'nonuae';
+
+/** Normalise a GA4 region/country string for matching (lowercase, a–z0–9 only). */
+export const normGeo = (s: string): string => (s ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+/** Map a GA4 (country, region) to an emirate key, 'uaeother', or 'nonuae'. */
+export function geoBucketOf(country: string, region: string): string {
+  if (normGeo(country) !== normGeo(GA4_UAE_COUNTRY)) return GA4_NON_UAE_KEY;
+  const r = normGeo(region);
+  for (const e of GA4_EMIRATES) if (e.aliases.some((a) => r === a || r.includes(a))) return e.key;
+  return 'uaeother';
+}
+
+/**
  * GROSS marketing-lead lens (the "where do leads actually come from" view shown
  * on the Marketing tab, independent of the ad platforms' own conversion
  * tracking). GA4 carries MANY events (qualify_lead, close_convert_lead,

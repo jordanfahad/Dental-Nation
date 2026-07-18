@@ -2,12 +2,52 @@
 
 import { useState } from 'react';
 import type { LaneReportRow } from '@/lib/analytics/report';
+import type { LaneGeoMetrics } from '@/lib/sync/adapters/ga4-adapter';
 import { Card, SectionHeader, Takeaway } from '@/components/ui/Card';
 
 const int = (n: number) => Math.round(n).toLocaleString('en-US');
-const pct = (n: number, d: number) => (d > 0 ? `${Math.round((n / d) * 100)}%` : '—');
+
+// Geography tabs (top). UAE = the emirate buckets; VPN = non-UAE traffic.
+const GEO_TABS = [
+  { key: 'all', label: 'All traffic' },
+  { key: 'uae', label: 'UAE only' },
+  { key: 'dubai', label: 'Dubai' },
+  { key: 'abudhabi', label: 'Abu Dhabi' },
+  { key: 'sharjah', label: 'Sharjah' },
+  { key: 'ajman', label: 'Ajman' },
+  { key: 'uaq', label: 'Umm Al Quwain' },
+  { key: 'rak', label: 'Ras Al Khaimah' },
+  { key: 'fujairah', label: 'Fujairah' },
+  { key: 'vpn', label: 'Non-UAE / VPN' },
+];
+const UAE_KEYS = ['dubai', 'abudhabi', 'sharjah', 'ajman', 'uaq', 'rak', 'fujairah', 'uaeother'];
+const empty: LaneGeoMetrics = { sessions: 0, users: 0, newUsers: 0, leads: 0, widgetViews: 0, bookingIntent: 0 };
+
+function sumGeo(geo: Record<string, LaneGeoMetrics>, keys: string[]): LaneGeoMetrics {
+  return keys.reduce<LaneGeoMetrics>((acc, k) => {
+    const m = geo[k];
+    if (!m) return acc;
+    return {
+      sessions: acc.sessions + m.sessions,
+      users: acc.users + m.users,
+      newUsers: acc.newUsers + m.newUsers,
+      leads: acc.leads + m.leads,
+      widgetViews: acc.widgetViews + m.widgetViews,
+      bookingIntent: acc.bookingIntent + m.bookingIntent,
+    };
+  }, { ...empty });
+}
+
+/** Roll a lane's geo breakdown up for the selected geo tab. */
+function metricsFor(l: LaneReportRow, geo: string): LaneGeoMetrics {
+  if (geo === 'all') return sumGeo(l.geo, Object.keys(l.geo));
+  if (geo === 'uae') return sumGeo(l.geo, UAE_KEYS);
+  if (geo === 'vpn') return l.geo['nonuae'] ?? empty;
+  return l.geo[geo] ?? empty;
+}
 
 export function Ga4Lanes({ lanes, note }: { lanes: LaneReportRow[]; note: string | null }) {
+  const [geo, setGeo] = useState<string>('all');
   const [active, setActive] = useState<string>('all');
 
   if ((!lanes || lanes.length === 0) && note) {
@@ -21,10 +61,13 @@ export function Ga4Lanes({ lanes, note }: { lanes: LaneReportRow[]; note: string
     );
   }
 
-  const shown = active === 'all' ? lanes : lanes.filter((l) => l.key === active);
-  const sum = (f: (l: LaneReportRow) => number) => lanes.reduce((s, l) => s + f(l), 0);
-
-  const chips = [{ key: 'all', label: 'All lanes' }, ...lanes.map((l) => ({ key: l.key, label: l.label }))];
+  const rows = lanes.map((l) => ({ lane: l, m: metricsFor(l, geo) }));
+  const shown = active === 'all' ? rows : rows.filter((r) => r.lane.key === active);
+  const bookedShown = geo === 'all' || geo === 'uae';
+  const totalSessions = rows.reduce((s, r) => s + r.m.sessions, 0);
+  const sum = (f: (m: LaneGeoMetrics) => number) => rows.reduce((s, r) => s + f(r.m), 0);
+  const laneChips = [{ key: 'all', label: 'All lanes' }, ...lanes.map((l) => ({ key: l.key, label: l.label }))];
+  const geoLabel = GEO_TABS.find((g) => g.key === geo)?.label ?? 'All traffic';
 
   return (
     <Card>
@@ -32,16 +75,34 @@ export function Ga4Lanes({ lanes, note }: { lanes: LaneReportRow[]; note: string
         tag="GA"
         eyebrow="GA4 · landing pages"
         title="Landing-page traffic by lane"
-        right={<span className="text-[11px] text-ink-faint">{int(sum((l) => l.sessions))} sessions total</span>}
+        right={<span className="text-[11px] text-ink-faint">{int(totalSessions)} sessions · {geoLabel}</span>}
       />
       <div className="px-5 pb-5 pt-4">
+        {/* Geography filter (top) */}
+        <div className="mb-2 flex flex-wrap gap-1.5">
+          {GEO_TABS.map((g) => (
+            <button
+              key={g.key}
+              onClick={() => setGeo(g.key)}
+              className={`rounded-md px-2.5 py-1 text-[11.5px] font-medium transition-colors ${
+                geo === g.key
+                  ? g.key === 'vpn'
+                    ? 'bg-stop text-white'
+                    : 'bg-ink text-panel'
+                  : 'bg-panel-2 text-ink-soft hover:text-ink'
+              }`}
+            >
+              {g.label}
+            </button>
+          ))}
+        </div>
         {/* Lane filter */}
         <div className="mb-4 flex flex-wrap gap-1.5">
-          {chips.map((c) => (
+          {laneChips.map((c) => (
             <button
               key={c.key}
               onClick={() => setActive(c.key)}
-              className={`rounded-md px-2.5 py-1 text-[11.5px] font-medium transition-colors ${
+              className={`rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors ${
                 active === c.key ? 'bg-accent text-white' : 'bg-panel-2 text-ink-soft hover:text-ink'
               }`}
             >
@@ -51,7 +112,7 @@ export function Ga4Lanes({ lanes, note }: { lanes: LaneReportRow[]; note: string
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[720px] text-[12.5px]">
+          <table className="w-full min-w-[760px] text-[12.5px]">
             <thead>
               <tr className="border-b border-line text-left text-[10px] uppercase tracking-wide text-ink-faint">
                 <th className="py-2 pr-3">Lane / landing page</th>
@@ -65,52 +126,48 @@ export function Ga4Lanes({ lanes, note }: { lanes: LaneReportRow[]; note: string
               </tr>
             </thead>
             <tbody>
-              {shown.map((l) => (
-                <tr key={l.key} className="border-b border-line/60">
+              {shown.map(({ lane, m }) => (
+                <tr key={lane.key} className="border-b border-line/60">
                   <td className="py-2 pr-3">
-                    <span className="block font-medium text-ink">{l.label}</span>
-                    <span className="block font-mono text-[10.5px] text-ink-faint">{l.path}</span>
+                    <span className="block font-medium text-ink">{lane.label}</span>
+                    <span className="block font-mono text-[10.5px] text-ink-faint">{lane.path}</span>
                   </td>
-                  <td className="py-2 pr-3 text-right tabular-nums text-ink">{int(l.sessions)}</td>
-                  <td className="py-2 pr-3 text-right tabular-nums text-ink-soft">{int(l.users)}</td>
-                  <td className="py-2 pr-3 text-right tabular-nums text-ink-soft">{int(l.newUsers)}</td>
-                  <td className="py-2 pr-3 text-right tabular-nums text-ink">{int(l.leads)}</td>
-                  <td className="py-2 pr-3 text-right tabular-nums text-ink-soft">{int(l.widgetViews)}</td>
-                  <td className="py-2 pr-3 text-right tabular-nums text-ink-soft">{int(l.bookingIntent)}</td>
-                  <td className="py-2 pl-3 text-right tabular-nums font-medium text-ink">{int(l.booked)}</td>
+                  <td className="py-2 pr-3 text-right tabular-nums text-ink">{int(m.sessions)}</td>
+                  <td className="py-2 pr-3 text-right tabular-nums text-ink-soft">{int(m.users)}</td>
+                  <td className="py-2 pr-3 text-right tabular-nums text-ink-soft">{int(m.newUsers)}</td>
+                  <td className="py-2 pr-3 text-right tabular-nums text-ink">{int(m.leads)}</td>
+                  <td className="py-2 pr-3 text-right tabular-nums text-ink-soft">{int(m.widgetViews)}</td>
+                  <td className="py-2 pr-3 text-right tabular-nums text-ink-soft">{int(m.bookingIntent)}</td>
+                  <td className="py-2 pl-3 text-right tabular-nums font-medium text-ink">
+                    {bookedShown ? int(lane.booked) : '—'}
+                  </td>
                 </tr>
               ))}
               {active === 'all' ? (
                 <tr className="border-t border-line font-semibold">
-                  <td className="py-2 pr-3 text-ink">All lanes</td>
-                  <td className="py-2 pr-3 text-right tabular-nums text-ink">{int(sum((l) => l.sessions))}</td>
-                  <td className="py-2 pr-3 text-right tabular-nums text-ink">{int(sum((l) => l.users))}</td>
-                  <td className="py-2 pr-3 text-right tabular-nums text-ink">{int(sum((l) => l.newUsers))}</td>
-                  <td className="py-2 pr-3 text-right tabular-nums text-ink">{int(sum((l) => l.leads))}</td>
-                  <td className="py-2 pr-3 text-right tabular-nums text-ink">{int(sum((l) => l.widgetViews))}</td>
-                  <td className="py-2 pr-3 text-right tabular-nums text-ink">{int(sum((l) => l.bookingIntent))}</td>
-                  <td className="py-2 pl-3 text-right tabular-nums text-ink">{int(sum((l) => l.booked))}</td>
+                  <td className="py-2 pr-3 text-ink">All lanes · {geoLabel}</td>
+                  <td className="py-2 pr-3 text-right tabular-nums text-ink">{int(sum((m) => m.sessions))}</td>
+                  <td className="py-2 pr-3 text-right tabular-nums text-ink">{int(sum((m) => m.users))}</td>
+                  <td className="py-2 pr-3 text-right tabular-nums text-ink">{int(sum((m) => m.newUsers))}</td>
+                  <td className="py-2 pr-3 text-right tabular-nums text-ink">{int(sum((m) => m.leads))}</td>
+                  <td className="py-2 pr-3 text-right tabular-nums text-ink">{int(sum((m) => m.widgetViews))}</td>
+                  <td className="py-2 pr-3 text-right tabular-nums text-ink">{int(sum((m) => m.bookingIntent))}</td>
+                  <td className="py-2 pl-3 text-right tabular-nums text-ink">
+                    {bookedShown ? int(lanes.reduce((s, l) => s + l.booked, 0)) : '—'}
+                  </td>
                 </tr>
               ) : null}
             </tbody>
           </table>
         </div>
 
-        {active !== 'all' && shown[0] ? (
-          <p className="mt-3 text-[12px] text-ink-soft">
-            <strong>{shown[0].label}:</strong> {int(shown[0].newUsers)} new of {int(shown[0].users)} users landed here (
-            {pct(shown[0].newUsers, shown[0].users)} new); {int(shown[0].leads)} on-site leads and {int(shown[0].booked)} real
-            widget bookings.
-          </p>
-        ) : null}
-
         <Takeaway>
-          Sessions / users / new users are GA4 traffic to each lane&apos;s landing page. <strong>On-site leads</strong> and
-          <strong> booking intent</strong> are GA4 events fired on that page; <strong>Booked (widget)</strong> is real
-          (non-test) website-widget bookings whose campaign Source maps to the lane — only the three ArabyAds lanes
-          (Glow-Up / SOS / Scan) carry a widget campaign tag, so Restore &amp; First-look show booked as 0 until they run a
-          tagged campaign. &ldquo;Completed&rdquo; / &ldquo;qualified&rdquo; per lane need CRM attribution that isn&apos;t
-          wired to a landing page yet — tracked as a known gap.
+          Sessions / users / new users are GA4 traffic to each lane&apos;s landing page, filtered by geography above:{' '}
+          <strong>UAE only</strong> is all seven emirates; each emirate filters to GA4&apos;s region; <strong>Non-UAE / VPN</strong>{' '}
+          is traffic from outside the UAE (GA4 can&apos;t flag a VPN directly, so out-of-country traffic is the closest signal —
+          useful for spotting inflated/irrelevant visits). <strong>Booked (widget)</strong> isn&apos;t geo-tagged, so it shows only
+          under All / UAE. &ldquo;Completed&rdquo; / &ldquo;qualified&rdquo; per lane still need CRM-per-landing-page attribution
+          (a known gap).
         </Takeaway>
       </div>
     </Card>
