@@ -253,6 +253,14 @@ async function pullMedia(
   notes: string[],
 ): Promise<number> {
   const posts: PostRow[] = [];
+  // Track the feed media the API returned THIS run so we can prune posts that
+  // were deleted on Instagram (they simply stop coming back). We only prune
+  // when the feed fetch cleanly succeeded, and only within the window we
+  // actually queried (posted_at >= the oldest post fetched) so historical
+  // posts below the `limit` window are never touched.
+  const feedIds = new Set<string>();
+  let feedMinTs: string | null = null;
+  let feedOk = false;
 
   // Feed posts + reels (historical).
   try {
@@ -262,7 +270,11 @@ async function pullMedia(
         limit: '24',
       }),
     )) as { data?: MediaNode[]; error?: { message?: string } };
-    if (j.error) notes.push(`media: ${j.error.message}`);
+    if (j.error) {
+      notes.push(`media: ${j.error.message}`);
+    } else {
+      feedOk = true;
+    }
     for (const m of j.data ?? []) {
       // Broad metric set, then fall back to a safe minimum if the version rejects one.
       const ins =
@@ -270,6 +282,8 @@ async function pullMedia(
         (await mediaInsights(cfg, m.id, ['reach'])) ??
         {};
       posts.push(mediaRow(m, false, ins));
+      feedIds.add(m.id);
+      if (m.timestamp && (feedMinTs === null || m.timestamp < feedMinTs)) feedMinTs = m.timestamp;
     }
   } catch (e) {
     notes.push(`media: ${(e as Error).message}`);
@@ -290,6 +304,40 @@ async function pullMedia(
     }
   } catch (e) {
     notes.push(`stories: ${(e as Error).message}`);
+  }
+
+  // Prune FEED posts deleted on Instagram: within the window we actually
+  // queried (posted_at >= oldest fetched), any stored feed row whose media_id
+  // the API no longer returns has been removed on IG and must drop off the
+  // report too. Guarded on a clean fetch (feedOk) so a transient API error
+  // never wipes the grid. Stories are intentionally NOT pruned — the API only
+  // returns the last 24h of stories, so absence there is expiry, not deletion.
+  if (feedOk && feedIds.size > 0 && feedMinTs) {
+    const { data: existing, error: selErr } = await supabase
+      .from('social_posts')
+      .select('media_id')
+      .eq('clinic', CLINIC)
+      .eq('channel', 'instagram')
+      .eq('is_story', false)
+      .gte('posted_at', feedMinTs);
+    if (selErr) {
+      notes.push(`social_posts prune select: ${selErr.message}`);
+    } else {
+      const stale = (existing ?? [])
+        .map((r) => (r as { media_id: string }).media_id)
+        .filter((id) => !feedIds.has(id));
+      if (stale.length > 0) {
+        const { error: delErr } = await supabase
+          .from('social_posts')
+          .delete()
+          .eq('clinic', CLINIC)
+          .eq('channel', 'instagram')
+          .eq('is_story', false)
+          .in('media_id', stale);
+        if (delErr) notes.push(`social_posts prune: ${delErr.message}`);
+        else notes.push(`pruned ${stale.length} deleted post(s)`);
+      }
+    }
   }
 
   if (posts.length === 0) return 0;

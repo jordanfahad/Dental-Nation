@@ -326,6 +326,15 @@ export const DECISIONS: Decision[] = [
     codeRef: 'lib/sync/normalize.ts · bookings/recent.ts · arabyads/report.ts · bookings/widgetEnquiries.ts',
   },
   {
+    id: 'd-social-prune',
+    title: 'Deleted Instagram posts pruned from reporting',
+    area: 'Data quality',
+    agreed:
+      'The Individual post & story performance grid reflects the LIVE account. When a feed post is deleted on Instagram the API stops returning it, so each sync removes any stored feed post the API no longer returns — bounded to the fetched window (posted_at ≥ the oldest post pulled) so older archived posts are never touched, and guarded on a clean fetch so a transient API error can never wipe the grid. Stories are exempt (the API only returns the last 24h, so absence there is expiry, not deletion).',
+    decidedOn: '2026-07-18',
+    codeRef: 'lib/sync/adapters/meta-organic-adapter.ts (pullMedia prune)',
+  },
+  {
     id: 'd-zavis-uploads',
     title: 'Zavis CSV uploads (auto-detected)',
     area: 'Data sources',
