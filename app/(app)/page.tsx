@@ -96,7 +96,7 @@ export default async function DashboardPage({
         {tab === 'arabyads' ? <ArabyAdsReport range={range} /> : null}
         {tab === 'marketing' ? <MarketingReport sub={sp.mtab} range={range} /> : null}
         {tab === 'social' ? <SocialReport range={range} /> : null}
-        {tab === 'analytics' ? <GoogleAnalyticsReport /> : null}
+        {tab === 'analytics' ? <GoogleAnalyticsReport range={range} /> : null}
         {tab === 'clarity' ? <ClarityReport /> : null}
         {tab === 'status' && isAdmin ? <StatusReport /> : null}
       </Suspense>

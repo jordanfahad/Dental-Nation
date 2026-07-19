@@ -48,8 +48,8 @@ function SliceTable({ rows, head }: { rows: Ga4Slice[]; head: string }) {
  * acquisition channel (each with sessions/users/leads) and per-event lead
  * acquisition. Live from the GA4 Data API; honest data gap on any failure.
  */
-export async function GoogleAnalyticsReport() {
-  const { available, note, data, lanes, lanesNote } = await getGoogleAnalyticsReport();
+export async function GoogleAnalyticsReport({ range }: { range?: { from?: string; to?: string } }) {
+  const { available, note, data, lanes, lanesNote } = await getGoogleAnalyticsReport(range ?? {});
 
   if (!available || !data) {
     return (
