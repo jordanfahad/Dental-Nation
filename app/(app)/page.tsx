@@ -48,6 +48,7 @@ export default async function DashboardPage({
     tab?: string;
     mtab?: string;
     btab?: string;
+    ptab?: string;
     clinic?: string;
   }>;
 }) {
@@ -84,14 +85,14 @@ export default async function DashboardPage({
           navigation so the skeleton shows immediately instead of the shell
           hanging on the tab's data. */}
       <Suspense
-        key={`${tab}|${sp.tab ?? ''}|${sp.from ?? ''}|${sp.to ?? ''}|${sp.preset ?? ''}|${sp.compare ?? ''}|${sp.mtab ?? ''}|${sp.btab ?? ''}|${clinic}`}
+        key={`${tab}|${sp.tab ?? ''}|${sp.from ?? ''}|${sp.to ?? ''}|${sp.preset ?? ''}|${sp.compare ?? ''}|${sp.mtab ?? ''}|${sp.btab ?? ''}|${sp.ptab ?? ''}|${clinic}`}
         fallback={<TabSkeleton />}
       >
         {tab === 'executive' ? <ExecutiveDashboard query={query} /> : null}
         {tab === 'daily' ? <DailyControlReport reportDate={sp.from} /> : null}
         {tab === 'weekly' ? <WeeklyReview weekOf={sp.from} /> : null}
         {tab === 'crm' ? <CrmReport range={{ ...range, clinic }} /> : null}
-        {tab === 'practo' ? <PractoReport range={{ ...range, clinic }} /> : null}
+        {tab === 'practo' ? <PractoReport range={{ ...range, clinic }} sub={sp.ptab} /> : null}
         {tab === 'bookings' ? <BookingsReport report={shell} sub={sp.btab} /> : null}
         {tab === 'arabyads' ? <ArabyAdsReport range={range} /> : null}
         {tab === 'marketing' ? <MarketingReport sub={sp.mtab} range={range} /> : null}

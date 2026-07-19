@@ -1,6 +1,9 @@
 import { getPractoSummary } from '@/lib/practo/report';
 import { getCrmPatientBookings } from '@/lib/crm/patients';
 import { PractoPatientsPanel } from './PractoPatientsPanel';
+import { PractoSubNav } from './PractoSubNav';
+import { resolvePractoSub } from './subtabs';
+import { AppointmentAnalytics } from './AppointmentAnalytics';
 import { ClinicJourney } from '@/components/sections/shared/ClinicJourney';
 import { ClinicCompare } from '@/components/ClinicCompare';
 import type { ClinicFilterKey } from '@/config/clinics';
@@ -34,9 +37,30 @@ const int = (n: number) => Math.round(n).toLocaleString('en-US');
  */
 export async function PractoReport({
   range,
+  sub,
 }: {
   range?: { from?: string; to?: string; clinic?: ClinicFilterKey };
+  sub?: string;
 } = {}) {
+  const active = resolvePractoSub(sub);
+  return (
+    <div className="space-y-4">
+      <PractoSubNav active={active} />
+      {active === 'appointments' ? (
+        <AppointmentAnalytics range={{ from: range?.from, to: range?.to }} />
+      ) : (
+        <PractoRevenue range={range} />
+      )}
+    </div>
+  );
+}
+
+/** The original Practo Insta view — finalized-bill revenue + CRM patient panels. */
+async function PractoRevenue({
+  range,
+}: {
+  range?: { from?: string; to?: string; clinic?: ClinicFilterKey };
+}) {
   const p = await getPractoSummary(range);
   const cpb = await getCrmPatientBookings({ from: range?.from, to: range?.to, clinic: range?.clinic });
 
