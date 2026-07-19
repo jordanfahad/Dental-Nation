@@ -3,6 +3,8 @@ import { getAnalyticsClient } from '../google-auth';
 import {
   BOOKING_FUNNEL_EVENTS,
   BOOKING_OFFERS,
+  GA4_BOOKING_COMPLETED_EVENT,
+  GA4_BOOKING_INTENT_EVENT,
   GA4_CALL_EVENT,
   GA4_EVENTS,
   GA4_LANES,
@@ -12,6 +14,8 @@ import {
   GA4_LOOKBACK_DAYS,
   GA4_MARKETING_LEAD_EVENTS,
   GA4_PROPERTY_ID,
+  GA4_QUALIFIED_LEAD_EVENTS,
+  GA4_VALUE_METRIC,
   GA4_WHATSAPP_EVENT,
   ONSITE_FUNNEL,
 } from '@/config/ga4';
@@ -549,6 +553,8 @@ export interface LaneGeoMetrics {
   leads: number; // on-site generate_lead events
   widgetViews: number; // booking widget viewed
   bookingIntent: number; // treatment selected in the widget
+  qualified: number; // qualify_lead events (OTP verified + booking completed)
+  value: number; // treatment fee (AED) — eventValue on booking_completed (realized)
 }
 export interface Ga4LaneRow {
   key: string;
@@ -559,7 +565,7 @@ export interface Ga4LaneRow {
   geo: Record<string, LaneGeoMetrics>;
 }
 
-const emptyGeo = (): LaneGeoMetrics => ({ sessions: 0, users: 0, newUsers: 0, leads: 0, widgetViews: 0, bookingIntent: 0 });
+const emptyGeo = (): LaneGeoMetrics => ({ sessions: 0, users: 0, newUsers: 0, leads: 0, widgetViews: 0, bookingIntent: 0, qualified: 0, value: 0 });
 
 export async function fetchGa4Lanes(from: string, to: string): Promise<Ga4LaneRow[]> {
   const analytics = getAnalyticsClient();
@@ -567,7 +573,9 @@ export async function fetchGa4Lanes(from: string, to: string): Promise<Ga4LaneRo
   const dateRanges = [{ startDate: from, endDate: to }];
   const LEAD = GA4_LEAD_EVENT;
   const WIDGET = 'booking_widget_viewed';
-  const TREAT = 'booking_treatment_selected';
+  const TREAT = GA4_BOOKING_INTENT_EVENT;
+  const QUAL = GA4_QUALIFIED_LEAD_EVENTS; // qualify_lead
+  const DONE = GA4_BOOKING_COMPLETED_EVENT; // booking_completed (carries realized fee)
 
   // Only pull the five lane landing pages (keeps the geo cross-tab small).
   const laneFilter = {
@@ -577,7 +585,8 @@ export async function fetchGa4Lanes(from: string, to: string): Promise<Ga4LaneRo
       })),
     },
   };
-  const eventFilter = { filter: { fieldName: 'eventName', inListFilter: { values: [LEAD, WIDGET, TREAT] } } };
+  const eventNames = [LEAD, WIDGET, TREAT, ...QUAL, DONE];
+  const eventFilter = { filter: { fieldName: 'eventName', inListFilter: { values: eventNames } } };
 
   const [trafficRes, eventRes] = await Promise.all([
     analytics.properties.runReport({
@@ -595,7 +604,7 @@ export async function fetchGa4Lanes(from: string, to: string): Promise<Ga4LaneRo
       requestBody: {
         dateRanges,
         dimensions: [{ name: 'landingPagePlusQueryString' }, { name: 'country' }, { name: 'region' }, { name: 'eventName' }],
-        metrics: [{ name: 'eventCount' }],
+        metrics: [{ name: 'eventCount' }, { name: GA4_VALUE_METRIC }],
         dimensionFilter: { andGroup: { expressions: [laneFilter, eventFilter] } },
         limit: '100000',
       },
@@ -628,11 +637,14 @@ export async function fetchGa4Lanes(from: string, to: string): Promise<Ga4LaneRo
     if (!k) continue;
     const g = geoBucketOf(r.dimensionValues?.[1]?.value ?? '', r.dimensionValues?.[2]?.value ?? '');
     const ev = r.dimensionValues?.[3]?.value ?? '';
-    const n = metric(r, 0);
+    const n = metric(r, 0); // eventCount
+    const v = metric(r, 1); // eventValue (AED)
     const m = bucket(k, g);
     if (ev === LEAD) m.leads += n;
     else if (ev === WIDGET) m.widgetViews += n;
     else if (ev === TREAT) m.bookingIntent += n;
+    else if (QUAL.includes(ev)) m.qualified += n;
+    if (ev === DONE) m.value += v; // realized treatment fee on completed bookings
   }
   return GA4_LANES.map((l) => acc.get(l.key)!);
 }

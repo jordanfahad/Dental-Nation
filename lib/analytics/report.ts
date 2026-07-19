@@ -99,8 +99,10 @@ const getReport = unstable_cache(
   },
   // NOTE: bump this key whenever the returned SHAPE changes — a stale cache of an
   // older shape served to a newer component crashes the tab (v2→v3 added lane.geo;
-  // v4 makes the whole report range-aware via from/to args).
-  ['ga4-audience-v4-range'],
+  // v4 makes the whole report range-aware via from/to args; v5 adds lane
+  // qualified + value to LaneGeoMetrics — a stale v4 geo bucket lacks those keys
+  // and would sum to NaN, so the key MUST bump with the shape).
+  ['ga4-audience-v5-qualified-value'],
   { revalidate: 1800 },
 );
 

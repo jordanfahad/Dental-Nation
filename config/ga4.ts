@@ -180,29 +180,35 @@ const BOOKING_CONFIRMED_EVENT = process.env.GA4_BOOKING_CONFIRMED_EVENT?.trim() 
 // selected → booking completed.
 // ============================================================================
 
-/** "Booking intent" = the first booking-flow card click that starts the flow. */
+/** "Booking intent" = the first booking-flow card click that starts the flow.
+ *  Confirmed (2026-07-19): the treatment-selection step. */
 export const GA4_BOOKING_INTENT_EVENT =
   process.env.GA4_BOOKING_INTENT_EVENT?.trim() || 'booking_treatment_selected';
 
-/** OTP-verified event (phone confirmed) — one of the two Qualified-lead signals. */
-export const GA4_OTP_VERIFIED_EVENT = process.env.GA4_OTP_VERIFIED_EVENT?.trim() || 'otp_verified';
+/** OTP-verified event (phone confirmed). Confirmed live name: booking_otp_verified. */
+export const GA4_OTP_VERIFIED_EVENT = process.env.GA4_OTP_VERIFIED_EVENT?.trim() || 'booking_otp_verified';
+
+/** Booking-completed conversion event — carries the realized treatment fee (AED). */
+export const GA4_BOOKING_COMPLETED_EVENT =
+  process.env.GA4_BOOKING_COMPLETED_EVENT?.trim() || BOOKING_CONFIRMED_EVENT;
 
 /** "On-site leads" = the single catch-all lead event fired at every touchpoint. */
 export const GA4_ONSITE_LEAD_EVENT = GA4_LEAD_EVENT;
 
 /**
- * "Qualified lead" fires at TWO moments (OTP verified + booking completed) — both
- * intentional — so we count BOTH events. Override with GA4_QUALIFIED_LEAD_EVENTS
- * (CSV) once the live event names are confirmed.
+ * "Qualified lead" — confirmed (2026-07-19) to be the single `qualify_lead`
+ * event, which the site fires at BOTH higher-intent moments (OTP verified +
+ * booking completed); both firings are intentional. Override with
+ * GA4_QUALIFIED_LEAD_EVENTS (CSV) if that ever changes.
  */
-export const GA4_QUALIFIED_LEAD_EVENTS: string[] = (
-  process.env.GA4_QUALIFIED_LEAD_EVENTS || [GA4_OTP_VERIFIED_EVENT, BOOKING_CONFIRMED_EVENT].join(',')
-)
+export const GA4_QUALIFIED_LEAD_EVENTS: string[] = (process.env.GA4_QUALIFIED_LEAD_EVENTS || 'qualify_lead')
   .split(',')
   .map((s) => s.trim())
   .filter(Boolean);
 
-/** The GA4 metric carrying the treatment fee (AED) on lead/conversion events. */
+/** The GA4 metric carrying the treatment fee (AED) on lead/conversion events.
+ *  The lane "Value (AED)" sums this on the booking-completed conversion so a
+ *  multi-step journey's fee is counted once (realized value), not per stage. */
 export const GA4_VALUE_METRIC = process.env.GA4_VALUE_METRIC?.trim() || 'eventValue';
 
 /** One stage of the per-offer booking funnel — 'sessions' is the landing-page

@@ -6,6 +6,7 @@ import type { LaneGeoMetrics } from '@/lib/sync/adapters/ga4-adapter';
 import { Card, SectionHeader, Takeaway } from '@/components/ui/Card';
 
 const int = (n: number) => Math.round(n).toLocaleString('en-US');
+const aed = (n: number) => (n > 0 ? `AED ${Math.round(n).toLocaleString('en-US')}` : '—');
 
 // Geography tabs (top). UAE = the emirate buckets; VPN = non-UAE traffic.
 const GEO_TABS = [
@@ -21,7 +22,7 @@ const GEO_TABS = [
   { key: 'vpn', label: 'Non-UAE / VPN' },
 ];
 const UAE_KEYS = ['dubai', 'abudhabi', 'sharjah', 'ajman', 'uaq', 'rak', 'fujairah', 'uaeother'];
-const empty: LaneGeoMetrics = { sessions: 0, users: 0, newUsers: 0, leads: 0, widgetViews: 0, bookingIntent: 0 };
+const empty: LaneGeoMetrics = { sessions: 0, users: 0, newUsers: 0, leads: 0, widgetViews: 0, bookingIntent: 0, qualified: 0, value: 0 };
 
 function sumGeo(geo: Record<string, LaneGeoMetrics>, keys: string[]): LaneGeoMetrics {
   return keys.reduce<LaneGeoMetrics>((acc, k) => {
@@ -34,6 +35,8 @@ function sumGeo(geo: Record<string, LaneGeoMetrics>, keys: string[]): LaneGeoMet
       leads: acc.leads + m.leads,
       widgetViews: acc.widgetViews + m.widgetViews,
       bookingIntent: acc.bookingIntent + m.bookingIntent,
+      qualified: acc.qualified + m.qualified,
+      value: acc.value + m.value,
     };
   }, { ...empty });
 }
@@ -114,7 +117,7 @@ export function Ga4Lanes({ lanes, note }: { lanes: LaneReportRow[]; note: string
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[760px] text-[12.5px]">
+          <table className="w-full min-w-[920px] text-[12.5px]">
             <thead>
               <tr className="border-b border-line text-left text-[10px] uppercase tracking-wide text-ink-faint">
                 <th className="py-2 pr-3">Lane / landing page</th>
@@ -124,6 +127,8 @@ export function Ga4Lanes({ lanes, note }: { lanes: LaneReportRow[]; note: string
                 <th className="py-2 pr-3 text-right">On-site leads</th>
                 <th className="py-2 pr-3 text-right">Widget opened</th>
                 <th className="py-2 pr-3 text-right">Booking intent</th>
+                <th className="py-2 pr-3 text-right">Qualified</th>
+                <th className="py-2 pr-3 text-right">Value (AED)</th>
                 <th className="py-2 pl-3 text-right">Booked (widget)</th>
               </tr>
             </thead>
@@ -140,6 +145,8 @@ export function Ga4Lanes({ lanes, note }: { lanes: LaneReportRow[]; note: string
                   <td className="py-2 pr-3 text-right tabular-nums text-ink">{int(m.leads)}</td>
                   <td className="py-2 pr-3 text-right tabular-nums text-ink-soft">{int(m.widgetViews)}</td>
                   <td className="py-2 pr-3 text-right tabular-nums text-ink-soft">{int(m.bookingIntent)}</td>
+                  <td className="py-2 pr-3 text-right tabular-nums text-ink">{int(m.qualified)}</td>
+                  <td className="py-2 pr-3 text-right tabular-nums text-ink-soft">{aed(m.value)}</td>
                   <td className="py-2 pl-3 text-right tabular-nums font-medium text-ink">
                     {bookedShown ? int(lane.booked) : '—'}
                   </td>
@@ -154,6 +161,8 @@ export function Ga4Lanes({ lanes, note }: { lanes: LaneReportRow[]; note: string
                   <td className="py-2 pr-3 text-right tabular-nums text-ink">{int(sum((m) => m.leads))}</td>
                   <td className="py-2 pr-3 text-right tabular-nums text-ink">{int(sum((m) => m.widgetViews))}</td>
                   <td className="py-2 pr-3 text-right tabular-nums text-ink">{int(sum((m) => m.bookingIntent))}</td>
+                  <td className="py-2 pr-3 text-right tabular-nums text-ink">{int(sum((m) => m.qualified))}</td>
+                  <td className="py-2 pr-3 text-right tabular-nums text-ink">{aed(sum((m) => m.value))}</td>
                   <td className="py-2 pl-3 text-right tabular-nums text-ink">
                     {bookedShown ? int(lanes.reduce((s, l) => s + l.booked, 0)) : '—'}
                   </td>
@@ -175,9 +184,9 @@ export function Ga4Lanes({ lanes, note }: { lanes: LaneReportRow[]; note: string
             On-site event columns follow the product definitions: <strong>Widget opened</strong> = the booking widget scrolled into
             view (a view, once per page load); <strong>Booking intent</strong> = the first booking-flow card clicked to start a
             booking (browsing → intending); <strong>On-site leads</strong> = the catch-all lead event fired at every touchpoint
-            (booking start, personal-info step, phone &amp; WhatsApp clicks, footer newsletter). Higher-intent{' '}
-            <strong>Qualified lead</strong> (OTP verified + booking completed) and lead <strong>value (AED)</strong> will flow in
-            once the live GA4 event names are confirmed.
+            (booking start, personal-info step, phone &amp; WhatsApp clicks, footer newsletter); <strong>Qualified</strong> =
+            higher-intent <code>qualify_lead</code> (fires at OTP verified + booking completed); <strong>Value (AED)</strong> = the
+            treatment fee carried on completed bookings (counted once per booking, so a multi-step journey isn&apos;t double-counted).
           </span>
         </Takeaway>
       </div>
