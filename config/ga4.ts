@@ -153,6 +153,58 @@ export const BOOKING_OFFERS: OfferDef[] = [
 const QUALIFIED_LEAD_EVENT = process.env.GA4_QUALIFIED_LEAD_EVENT?.trim() || 'qualify_lead';
 const BOOKING_CONFIRMED_EVENT = process.env.GA4_BOOKING_CONFIRMED_EVENT?.trim() || 'booking_completed';
 
+// ============================================================================
+// ANALYTICS EVENT DEFINITIONS — authoritative (product team, 2026-07-19).
+// This is the CONTRACT for what each on-site metric on the Google Analytics tab
+// counts; the UI copy mirrors these definitions. Event NAMES are env-overridable
+// so a GTM rename never needs a redeploy. NOTE: the names below are best-guess
+// defaults — confirm against the live GA4 event list before relying on the
+// Qualified-lead / Value columns (the in-widget funnel was renamed).
+//
+//   • Widget opened  — booking widget scrolled INTO VIEW (a view, not a click);
+//                      fires once per page load.            → booking_widget_viewed
+//   • Booking intent — user clicked a booking-flow card in the FIRST widget step
+//                      to begin (browsing → intending).      → GA4_BOOKING_INTENT_EVENT
+//   • On-site leads  — catch-all lead event at EVERY lead touchpoint, tagged with
+//                      where: booking start, personal-info step (name/email/phone),
+//                      phone + WhatsApp clicks (top strip + WhatsApp widget), and
+//                      footer newsletter sign-up.            → generate_lead
+//   • Qualified lead — higher intent; fires at BOTH (a) successful OTP verification
+//                      (phone confirmed / contactable) and (b) a completed booking.
+//                      Both firings are intentional.         → GA4_QUALIFIED_LEAD_EVENTS
+//   • Value (AED)    — lead/conversion events carry the treatment fee as GA4 `value`
+//                      (AED) when known, so revenue flows into reporting.
+//
+// Fuller in-widget funnel (reference): service selected → doctor/slot selected →
+// OTP requested → OTP verified → personal info submitted → payment method
+// selected → booking completed.
+// ============================================================================
+
+/** "Booking intent" = the first booking-flow card click that starts the flow. */
+export const GA4_BOOKING_INTENT_EVENT =
+  process.env.GA4_BOOKING_INTENT_EVENT?.trim() || 'booking_treatment_selected';
+
+/** OTP-verified event (phone confirmed) — one of the two Qualified-lead signals. */
+export const GA4_OTP_VERIFIED_EVENT = process.env.GA4_OTP_VERIFIED_EVENT?.trim() || 'otp_verified';
+
+/** "On-site leads" = the single catch-all lead event fired at every touchpoint. */
+export const GA4_ONSITE_LEAD_EVENT = GA4_LEAD_EVENT;
+
+/**
+ * "Qualified lead" fires at TWO moments (OTP verified + booking completed) — both
+ * intentional — so we count BOTH events. Override with GA4_QUALIFIED_LEAD_EVENTS
+ * (CSV) once the live event names are confirmed.
+ */
+export const GA4_QUALIFIED_LEAD_EVENTS: string[] = (
+  process.env.GA4_QUALIFIED_LEAD_EVENTS || [GA4_OTP_VERIFIED_EVENT, BOOKING_CONFIRMED_EVENT].join(',')
+)
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+/** The GA4 metric carrying the treatment fee (AED) on lead/conversion events. */
+export const GA4_VALUE_METRIC = process.env.GA4_VALUE_METRIC?.trim() || 'eventValue';
+
 /** One stage of the per-offer booking funnel — 'sessions' is the landing-page
  *  traffic; every other stage is a GA4 eventName counted on the offer's pages. */
 export interface BookingFunnelStage {

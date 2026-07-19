@@ -326,6 +326,15 @@ export const DECISIONS: Decision[] = [
     codeRef: 'lib/sync/normalize.ts · bookings/recent.ts · arabyads/report.ts · bookings/widgetEnquiries.ts',
   },
   {
+    id: 'd-ga4-events',
+    title: 'GA4 on-site event definitions',
+    area: 'Analytics',
+    agreed:
+      'Authoritative meaning of the Google Analytics on-site metrics: Widget opened = the booking widget scrolled into view (a VIEW, once per page load). Booking intent = the first booking-flow card click that starts a booking (browsing → intending). On-site leads = the single catch-all generate_lead event fired at EVERY touchpoint (booking start, personal-info step, phone + WhatsApp clicks, footer newsletter). Qualified lead = fires at BOTH OTP verification (phone confirmed) and booking completed — both intentional. Lead/conversion events carry the treatment fee as GA4 value (AED). Event names are env-overridable (GA4_BOOKING_INTENT_EVENT, GA4_OTP_VERIFIED_EVENT, GA4_QUALIFIED_LEAD_EVENTS, GA4_VALUE_METRIC); the in-widget funnel was renamed (service selected → doctor/slot → OTP requested/verified → personal info → payment → completed), so the live names must be confirmed before the Qualified-lead / Value columns are wired.',
+    decidedOn: '2026-07-19',
+    codeRef: 'config/ga4.ts (ANALYTICS EVENT DEFINITIONS) · components/sections/analytics/Ga4Lanes.tsx',
+  },
+  {
     id: 'd-social-prune',
     title: 'Deleted Instagram posts pruned from reporting',
     area: 'Data quality',

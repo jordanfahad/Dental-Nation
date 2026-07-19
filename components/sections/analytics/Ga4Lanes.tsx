@@ -164,12 +164,21 @@ export function Ga4Lanes({ lanes, note }: { lanes: LaneReportRow[]; note: string
         </div>
 
         <Takeaway>
-          Sessions / users / new users are GA4 traffic to each lane&apos;s landing page, filtered by geography above:{' '}
-          <strong>UAE only</strong> is all seven emirates; each emirate filters to GA4&apos;s region; <strong>Non-UAE / VPN</strong>{' '}
-          is traffic from outside the UAE (GA4 can&apos;t flag a VPN directly, so out-of-country traffic is the closest signal —
-          useful for spotting inflated/irrelevant visits). <strong>Booked (widget)</strong> isn&apos;t geo-tagged, so it shows only
-          under All / UAE. &ldquo;Completed&rdquo; / &ldquo;qualified&rdquo; per lane still need CRM-per-landing-page attribution
-          (a known gap).
+          <span className="block">
+            Sessions / users / new users are GA4 traffic to each lane&apos;s landing page, filtered by geography above:{' '}
+            <strong>UAE only</strong> is all seven emirates; each emirate filters to GA4&apos;s region; <strong>Non-UAE / VPN</strong>{' '}
+            is traffic from outside the UAE (GA4 can&apos;t flag a VPN directly, so out-of-country traffic is the closest signal —
+            useful for spotting inflated/irrelevant visits). <strong>Booked (widget)</strong> isn&apos;t geo-tagged, so it shows only
+            under All / UAE.
+          </span>
+          <span className="mt-2 block">
+            On-site event columns follow the product definitions: <strong>Widget opened</strong> = the booking widget scrolled into
+            view (a view, once per page load); <strong>Booking intent</strong> = the first booking-flow card clicked to start a
+            booking (browsing → intending); <strong>On-site leads</strong> = the catch-all lead event fired at every touchpoint
+            (booking start, personal-info step, phone &amp; WhatsApp clicks, footer newsletter). Higher-intent{' '}
+            <strong>Qualified lead</strong> (OTP verified + booking completed) and lead <strong>value (AED)</strong> will flow in
+            once the live GA4 event names are confirmed.
+          </span>
         </Takeaway>
       </div>
     </Card>
