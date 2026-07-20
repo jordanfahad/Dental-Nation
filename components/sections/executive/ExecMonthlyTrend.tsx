@@ -1,6 +1,6 @@
 import type { ExecutiveReport } from '@/lib/executive/types';
 import { Card, SectionHeader, Takeaway } from '@/components/ui/Card';
-import { TrendChart, ChartLegend, TOKENS, type TrendSeries } from '@/components/charts/Charts';
+import { TrendChart, ChartLegend, type TrendSeries } from '@/components/charts/Charts';
 
 /**
  * Monthly performance across the business. Each point is one CALENDAR MONTH
@@ -27,11 +27,16 @@ export function ExecMonthlyTrend({ report }: { report: ExecutiveReport }) {
     revenue: m.revenue,
   }));
 
+  // Distinct, colorblind-safe categorical hues (validated: lightness band, chroma
+  // floor, adjacent-pair CVD ≥ normal-vision floor; the legend + tooltip carry
+  // identity so no line depends on colour alone). Different mark types (bar vs
+  // line vs area) add a second cue. Replaces the old all-blue shades.
+  const COLORS = { spend: '#D55E00', bookings: '#0072B2', enquiries: '#CC79A7', revenue: '#009E73' };
   const series: TrendSeries[] = [
-    { key: 'spend', label: 'Marketing spend (AED)', color: TOKENS.accent400, kind: 'bar', axis: 'right' },
-    { key: 'bookings', label: 'Bookings (ZAVIS)', color: TOKENS.watch, kind: 'line', axis: 'left' },
-    { key: 'leads', label: 'Enquiries', color: TOKENS.accent, kind: 'area', axis: 'left' },
-    { key: 'revenue', label: 'Clinic revenue (AED)', color: TOKENS.good, kind: 'line', axis: 'right' },
+    { key: 'spend', label: 'Marketing spend (AED)', color: COLORS.spend, kind: 'bar', axis: 'right' },
+    { key: 'bookings', label: 'Bookings (ZAVIS)', color: COLORS.bookings, kind: 'line', axis: 'left' },
+    { key: 'leads', label: 'Enquiries', color: COLORS.enquiries, kind: 'area', axis: 'left' },
+    { key: 'revenue', label: 'Clinic revenue (AED)', color: COLORS.revenue, kind: 'line', axis: 'right' },
   ];
 
   const months = monthly.length;
