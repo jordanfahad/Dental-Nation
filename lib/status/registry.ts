@@ -326,6 +326,15 @@ export const DECISIONS: Decision[] = [
     codeRef: 'lib/sync/normalize.ts · bookings/recent.ts · arabyads/report.ts · bookings/widgetEnquiries.ts',
   },
   {
+    id: 'd-widget-practo-conversion',
+    title: 'Widget → Practo conversion panel',
+    area: 'Enquiries',
+    agreed:
+      'Under Practo Insta, a "Did widget bookings reach Practo?" panel matches each non-test website-widget booking (raw_zavis) by phone (last 9 digits) to the LIVE Practo appointment feed and shows the real outcome: Attended (Arrived/Completed), Booked (Confirmed/Booked/Requested), No-show, Cancelled, or "Not in Practo" (phone never reached the PMS → the widget→Practo hand-off dropped it). When a phone has several appointments, the one on/after the submission date with the most-advanced status wins. Factual — no sync-grace guessing. Bookings stay Practo-sourced; this is a conversion lens, not a new booking count.',
+    decidedOn: '2026-07-20',
+    codeRef: 'lib/practo/widgetConversion.ts · components/sections/practo/WidgetPractoConversion.tsx',
+  },
+  {
     id: 'd-practo-appts',
     title: 'Practo Insta appointments — live API (authoritative)',
     area: 'Data sources',

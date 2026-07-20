@@ -4,6 +4,8 @@ import { PractoPatientsPanel } from './PractoPatientsPanel';
 import { PractoSubNav } from './PractoSubNav';
 import { resolvePractoSub } from './subtabs';
 import { AppointmentAnalytics } from './AppointmentAnalytics';
+import { WidgetPractoConversion } from './WidgetPractoConversion';
+import { getWidgetConversion } from '@/lib/practo/widgetConversion';
 import { ClinicJourney } from '@/components/sections/shared/ClinicJourney';
 import { ClinicCompare } from '@/components/ClinicCompare';
 import type { ClinicFilterKey } from '@/config/clinics';
@@ -63,6 +65,7 @@ async function PractoRevenue({
 }) {
   const p = await getPractoSummary(range);
   const cpb = await getCrmPatientBookings({ from: range?.from, to: range?.to, clinic: range?.clinic });
+  const wc = await getWidgetConversion({ from: range?.from, to: range?.to });
 
   const period =
     p.periodStart && p.periodEnd
@@ -284,6 +287,10 @@ async function PractoRevenue({
           </div>
         </Card>
       ) : null}
+
+      {/* Website widget → Practo conversion: did each widget booking actually
+          reach the PMS? Matched by phone to the live Practo appointment feed. */}
+      <WidgetPractoConversion data={wc} />
 
       {/* Patients & appointments — from the Zavis CRM (Practo bills carry no
           patient name / appointment; the CRM does). Interactive: the scorecards
