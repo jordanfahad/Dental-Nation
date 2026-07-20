@@ -81,4 +81,11 @@ body {
   .tab-panel {
     display: block !important;
   }
+  /* Board Report: print backgrounds/colours exactly (the dark cover band,
+     accent cards, chart fills) instead of the browser dropping them. */
+  .report,
+  .report * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
 }

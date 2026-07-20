@@ -9,7 +9,7 @@ export function Footer({ ingestion }: { ingestion: IngestionStatus | null }) {
   const synced = ingestion?.finished_at ? dubaiTime(ingestion.finished_at) : '—';
 
   return (
-    <footer className="mt-6">
+    <footer className="no-print mt-6">
       {degraded ? (
         <div className="mb-3 rounded-md border border-watch/30 bg-watch/5 px-3 py-2 text-[12.5px] text-watch">
           <span className="font-semibold">Sync {status}.</span>{' '}

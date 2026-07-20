@@ -21,6 +21,7 @@ import { GoogleAnalyticsReport } from '@/components/sections/analytics/GoogleAna
 import { ClarityReport } from '@/components/sections/clarity/ClarityReport';
 import { StatusReport } from '@/components/sections/status/StatusReport';
 import { ClinicalOps } from '@/components/sections/ops/ClinicalOps';
+import { BoardReport } from '@/components/sections/report/BoardReport';
 
 export const dynamic = 'force-dynamic';
 // The Marketing deep-dive sub-tabs make several live Meta/Google ad-API calls,
@@ -50,6 +51,8 @@ export default async function DashboardPage({
     mtab?: string;
     btab?: string;
     ptab?: string;
+    rdate?: string;
+    rcad?: string;
     clinic?: string;
   }>;
 }) {
@@ -87,7 +90,7 @@ export default async function DashboardPage({
           navigation so the skeleton shows immediately instead of the shell
           hanging on the tab's data. */}
       <Suspense
-        key={`${tab}|${sp.tab ?? ''}|${sp.from ?? ''}|${sp.to ?? ''}|${sp.preset ?? ''}|${sp.compare ?? ''}|${sp.mtab ?? ''}|${sp.btab ?? ''}|${sp.ptab ?? ''}|${clinic}`}
+        key={`${tab}|${sp.tab ?? ''}|${sp.from ?? ''}|${sp.to ?? ''}|${sp.preset ?? ''}|${sp.compare ?? ''}|${sp.mtab ?? ''}|${sp.btab ?? ''}|${sp.ptab ?? ''}|${sp.rdate ?? ''}|${sp.rcad ?? ''}|${clinic}`}
         fallback={<TabSkeleton />}
       >
         {tab === 'executive' ? <ExecutiveDashboard query={query} /> : null}
@@ -102,6 +105,7 @@ export default async function DashboardPage({
         {tab === 'social' ? <SocialReport range={range} /> : null}
         {tab === 'analytics' ? <GoogleAnalyticsReport range={range} /> : null}
         {tab === 'clarity' ? <ClarityReport /> : null}
+        {tab === 'report' && isAdmin ? <BoardReport date={sp.rdate} cadence={sp.rcad} clinic={clinic} /> : null}
         {tab === 'status' && isAdmin ? <StatusReport /> : null}
       </Suspense>
 
