@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
 import { getExecutiveReport } from '@/lib/executive/report';
+import { getArabyAdsReport } from '@/lib/arabyads/report';
+import { getDoctorPerformance } from '@/lib/executive/doctors';
 import type { ClinicFilterKey } from '@/config/clinics';
 import { ReportControls } from './ReportControls';
 import { TrendChart, Donut, HBarChart, type TrendSeries, type BarDatum } from '@/components/charts/Charts';
@@ -37,7 +39,11 @@ export async function BoardReport({
   const cadence: 'daily' | 'weekly' = rawCadence === 'daily' ? 'daily' : 'weekly';
   const anchor = date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : iso(new Date());
   const { from, to } = boardWindow(date, cadence);
-  const report = await getExecutiveReport({ from, to, preset: 'custom', clinic });
+  const [report, araby, doctors] = await Promise.all([
+    getExecutiveReport({ from, to, preset: 'custom', clinic }),
+    getArabyAdsReport({ from, to }),
+    getDoctorPerformance({ from, to }),
+  ]);
 
   const k = report.kpis;
   const a = report.acquisition;
@@ -116,6 +122,53 @@ export async function BoardReport({
           </Insight>
         </Section>
 
+        {/* ArabyAds — the big pay-per-booking campaign */}
+        {araby.bookings.total > 0 || araby.bookings.test > 0 || araby.enquiries.total > 0 || araby.cost.toDateCost > 0 || araby.firstSeen != null ? (
+          <Section eyebrow="Campaign" title="ArabyAds — pay-per-booking performance" breakBefore>
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              <Metric
+                label="Confirmed bookings"
+                value={int(araby.bookings.total)}
+                sub={araby.bookings.test > 0 ? `${int(araby.bookings.test)} test excluded` : 'real (billable)'}
+                accent
+              />
+              <Metric label="Campaign cost" value={aed(araby.cost.windowCost)} sub="billed per booking" />
+              <Metric label="Budget used" value={pct(araby.cost.utilization)} sub={`${aedK(araby.cost.toDateCost)} of ${aedK(araby.cost.budgetCap)}`} />
+              <Metric label="Enquiries" value={int(araby.enquiries.total)} sub="all channels" />
+            </div>
+            {araby.cost.perLane.length ? (
+              <div className="mt-4 overflow-x-auto">
+                <table className="w-full min-w-[420px] text-[12.5px]">
+                  <thead>
+                    <tr className="border-b border-line text-left text-[10px] uppercase tracking-wide text-ink-faint">
+                      <th className="py-2 pr-3">Lane / offer</th>
+                      <th className="py-2 pr-3 text-right">Bookings</th>
+                      <th className="py-2 pr-3 text-right">Rate / booking</th>
+                      <th className="py-2 pl-3 text-right">Cost</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {araby.cost.perLane.map((l) => (
+                      <tr key={l.laneCode} className="border-b border-line/60">
+                        <td className="py-2 pr-3 text-ink">
+                          {l.billingName} <span className="text-[10.5px] text-ink-faint">· {l.laneCode}</span>
+                        </td>
+                        <td className="py-2 pr-3 text-right tabular-nums text-ink">{int(l.bookings)}</td>
+                        <td className="py-2 pr-3 text-right tabular-nums text-ink-soft">{aed(l.rate)}</td>
+                        <td className="py-2 pl-3 text-right tabular-nums font-medium text-ink">{aed(l.cost)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : null}
+            <Insight>
+              ArabyAds bills <strong>per confirmed booking</strong> and is invoiced separately from Meta/Google, so its cost is
+              NOT in the marketing-spend figure above. Budget cap {aedK(araby.cost.budgetCap)}; {aedK(araby.cost.remaining)} remaining.
+            </Insight>
+          </Section>
+        ) : null}
+
         {/* Demand funnel */}
         <Section eyebrow="Demand" title="Enquiry → booking → revenue">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
@@ -124,6 +177,16 @@ export async function BoardReport({
             <Funnel label="Completed" value={int(k.appointmentsCompleted)} note={pct(k.completionRate)} />
             <Funnel label="New patients" value={int(a.billedNewPatients)} note="billed" />
             <Funnel label="Revenue" value={aedK(k.clinicRevenue)} note={`${int(p.billCount)} bills`} strong />
+          </div>
+        </Section>
+
+        {/* Service quality & efficiency */}
+        <Section eyebrow="Quality" title="Service quality & efficiency">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <Metric label="Completion rate" value={pct(k.completionRate)} sub="attended ÷ concluded" />
+            <Metric label="Cancellation rate" value={pct(k.cancellationRate)} />
+            <Metric label="Conversations handled" value={int(k.conversationsHandled)} sub="Zavis CRM" />
+            <Metric label="Avg first response" value={k.avgFirstResponseHours != null ? `${k.avgFirstResponseHours.toFixed(1)}h` : '—'} sub="patient enquiries" />
           </div>
         </Section>
 
@@ -140,6 +203,39 @@ export async function BoardReport({
                 <HBarChart data={p.byTreatment as BarDatum[]} valueFormat="aed" />
               </div>
             </div>
+          </Section>
+        ) : null}
+
+        {/* Doctor performance */}
+        {doctors.length ? (
+          <Section eyebrow="Providers" title="Doctor performance">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[520px] text-[12.5px]">
+                <thead>
+                  <tr className="border-b border-line text-left text-[10px] uppercase tracking-wide text-ink-faint">
+                    <th className="py-2 pr-3">Doctor</th>
+                    <th className="py-2 pr-3">Department</th>
+                    <th className="py-2 pr-3 text-right">Appointments</th>
+                    <th className="py-2 pl-3 text-right">Revenue</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {doctors.map((d) => (
+                    <tr key={d.doctor} className="border-b border-line/60">
+                      <td className="py-2 pr-3 font-medium text-ink">{d.doctor}</td>
+                      <td className="py-2 pr-3 text-ink-soft">{d.department ?? '—'}</td>
+                      <td className="py-2 pr-3 text-right tabular-nums text-ink">{int(d.appointments)}</td>
+                      <td className="py-2 pl-3 text-right tabular-nums font-medium text-ink">{aed(d.revenue)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <Insight>
+              Appointments come from the live Practo book; revenue is finalized bill charges by conducting doctor. Much of the
+              clinic&apos;s revenue still carries no doctor on the bill (a Practo data-entry gap), so named-doctor revenue understates
+              the true split.
+            </Insight>
           </Section>
         ) : null}
 
