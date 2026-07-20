@@ -260,15 +260,19 @@ export async function BoardReport({
             <Metric label="SEO score" value={digital.seo?.seo != null ? `${digital.seo.seo}/100` : '—'} sub="Lighthouse on-page" accent />
           </div>
           <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <Metric label="Widget viewed → submitted" value={`${int(digital.funnel.viewed)} → ${int(digital.funnel.submitted)}`} sub="booking widget" />
+            <Metric
+              label="Organic search"
+              value={digital.search?.available ? `${int(digital.search.clicks)} clicks` : '—'}
+              sub={digital.search?.available ? `${int(digital.search.impressions)} impressions · pos ${digital.search.position != null ? digital.search.position.toFixed(1) : '—'}` : 'Search Console'}
+            />
+            <Metric label="Pages indexed" value={digital.pagesIndexed != null ? int(digital.pagesIndexed) : '—'} sub="Search Console" />
             <Metric label="Top emirate" value={digital.byEmirate[0]?.label ?? '—'} sub={digital.byEmirate[0] ? `${int(digital.byEmirate[0].sessions)} sessions` : undefined} />
             <Metric label="Social followers" value={int(digital.social.reduce((s, x) => s + (x.followers ?? 0), 0) || null)} sub={digital.social.map((s) => s.label).join(' + ') || 'IG / FB'} />
-            <Metric label="Pages indexed" value="—" sub="connect Search Console" />
           </div>
           <Insight>
-            SEO score is Google Lighthouse&apos;s on-page health (0–100). <strong>Pages indexed</strong> and organic
-            keyword/impression data need Google Search Console (being wired next). Full breakdowns — channels, emirates,
-            demographics, social — are on the Digital &amp; SEO tab.
+            SEO score is Google Lighthouse&apos;s on-page health (0–100); organic search (clicks / impressions / position) and pages
+            indexed come live from Google Search Console. Full breakdowns — channels, emirates, demographics, social, top queries —
+            are on the Digital &amp; SEO tab.
           </Insight>
         </Section>
 

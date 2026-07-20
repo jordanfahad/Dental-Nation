@@ -1,8 +1,10 @@
 import 'server-only';
 import { getGoogleAnalyticsReport } from './report';
 import { getSiteSpeedReport } from './site-speed';
+import { getSearchConsoleReport } from './search-console';
 import { getSocialReport } from '@/lib/social/report';
 import { GA4_EMIRATES } from '@/config/ga4';
+import type { SearchConsoleReport } from '@/lib/sync/adapters/search-console-adapter';
 
 /**
  * Digital & SEO composite for the dashboard tab + the board report. Pulls from
@@ -31,6 +33,7 @@ export interface DigitalSeoReport {
   seo: { seo: number | null; accessibility: number | null; bestPractices: number | null; performance: number | null } | null;
   social: SocialSnap[];
   pagesIndexed: number | null;
+  search: SearchConsoleReport | null; // Google Search Console (organic search)
 }
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
@@ -40,10 +43,11 @@ const isPaid = (c: string) => /paid|cpc|display|shopping/i.test(c);
 export async function getDigitalSeo(range: { from?: string; to?: string }): Promise<DigitalSeoReport> {
   const from = range.from ?? '2026-01-01';
   const to = range.to ?? iso(new Date());
-  const [ga, speed, social] = await Promise.all([
+  const [ga, speed, social, search] = await Promise.all([
     getGoogleAnalyticsReport(range),
     getSiteSpeedReport().catch(() => null),
     getSocialReport({ from, to }).catch(() => null),
+    getSearchConsoleReport(range).catch(() => null),
   ]);
 
   const data = ga.data;
@@ -103,6 +107,7 @@ export async function getDigitalSeo(range: { from?: string; to?: string }): Prom
     age,
     seo,
     social: socialSnap,
-    pagesIndexed: null, // wired when Google Search Console is connected
+    pagesIndexed: search?.pagesIndexed ?? null,
+    search: search ?? null,
   };
 }

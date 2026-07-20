@@ -6,6 +6,8 @@ import { HBarChart, Donut, type BarDatum } from '@/components/charts/Charts';
 import { ownerFor } from '@/config/data-gap-owners';
 
 const int = (n: number | null | undefined) => (n == null ? '—' : Math.round(n).toLocaleString('en-US'));
+const pct1 = (n: number | null | undefined) => (n == null ? '—' : `${(n * 100).toFixed(1)}%`);
+const pos = (n: number | null | undefined) => (n == null ? '—' : n.toFixed(1));
 const scoreTone = (s: number | null) => (s == null ? 'text-ink-faint' : s >= 90 ? 'text-good' : s >= 50 ? 'text-watch' : 'text-stop');
 
 function Score({ label, value }: { label: string; value: number | null }) {
@@ -33,7 +35,7 @@ export async function DigitalSeo({ range }: { range?: { from?: string; to?: stri
     { label: 'Organic (SEO) traffic', value: d.ga4Available ? int(d.organicSessions) : null, hint: 'Organic Search sessions' },
     { label: 'Paid traffic', value: d.ga4Available ? int(d.paidSessions) : null, hint: 'paid channels' },
     { label: 'SEO score', value: d.seo?.seo != null ? String(d.seo.seo) : null, hint: 'Lighthouse · /100', gapDetail: 'PageSpeed unavailable', gapOwner: ownerFor('tracking') },
-    { label: 'Pages indexed', value: d.pagesIndexed != null ? int(d.pagesIndexed) : null, hint: 'Search Console', gapDetail: 'connect Google Search Console', gapOwner: ownerFor('tracking') },
+    { label: 'Pages indexed', value: d.pagesIndexed != null ? int(d.pagesIndexed) : null, hint: 'Search Console', gapDetail: d.search?.note ?? 'connect Google Search Console', gapOwner: ownerFor('tracking') },
   ];
 
   return (
@@ -61,6 +63,65 @@ export async function DigitalSeo({ range }: { range?: { from?: string; to?: stri
             On-page SEO health from Google Lighthouse (0–100) — structure, meta, crawlability. <strong>Pages indexed</strong> and
             organic keyword/impression/click data require <strong>Google Search Console</strong>, which isn&apos;t connected yet.
           </Takeaway>
+        </div>
+      </Card>
+
+      {/* Organic search · Search Console */}
+      <Card>
+        <SectionHeader
+          tag="D1b"
+          eyebrow="Organic search · Search Console"
+          title="How the site performs in Google Search"
+          right={d.search?.siteUrl ? <span className="text-[11px] text-ink-faint">{d.search.siteUrl.replace('sc-domain:', '')}</span> : undefined}
+        />
+        <div className="px-5 pb-5 pt-4">
+          {d.search?.available ? (
+            <>
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
+                <SearchStat label="Clicks" value={int(d.search.clicks)} />
+                <SearchStat label="Impressions" value={int(d.search.impressions)} />
+                <SearchStat label="CTR" value={pct1(d.search.ctr)} />
+                <SearchStat label="Avg position" value={pos(d.search.position)} />
+                <SearchStat label="Pages indexed" value={d.pagesIndexed != null ? int(d.pagesIndexed) : '—'} />
+              </div>
+              {d.search.topQueries.length ? (
+                <div className="mt-4 overflow-x-auto">
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-ink-faint">Top search queries</p>
+                  <table className="w-full min-w-[480px] text-[12.5px]">
+                    <thead>
+                      <tr className="border-b border-line text-left text-[10px] uppercase tracking-wide text-ink-faint">
+                        <th className="py-2 pr-3">Query</th>
+                        <th className="py-2 pr-3 text-right">Clicks</th>
+                        <th className="py-2 pr-3 text-right">Impressions</th>
+                        <th className="py-2 pl-3 text-right">Avg pos</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {d.search.topQueries.map((q) => (
+                        <tr key={q.query} className="border-b border-line/60">
+                          <td className="py-2 pr-3 text-ink">{q.query}</td>
+                          <td className="py-2 pr-3 text-right tabular-nums text-ink">{int(q.clicks)}</td>
+                          <td className="py-2 pr-3 text-right tabular-nums text-ink-soft">{int(q.impressions)}</td>
+                          <td className="py-2 pl-3 text-right tabular-nums text-ink-soft">{pos(q.position)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : null}
+              <Takeaway>
+                Live Google Search Console: <strong>{int(d.search.impressions)}</strong> impressions →{' '}
+                <strong>{int(d.search.clicks)}</strong> clicks ({pct1(d.search.ctr)} CTR) at avg position{' '}
+                <strong>{pos(d.search.position)}</strong>. Pages indexed: <strong>{d.pagesIndexed != null ? int(d.pagesIndexed) : '—'}</strong>
+                {d.pagesIndexed == null ? ' (no sitemap counts — submit a sitemap in Search Console for an exact figure)' : ''}.
+              </Takeaway>
+            </>
+          ) : (
+            <DataGapInline
+              detail={d.search?.note ?? 'Search Console not returning data yet — access may still be propagating (allow a few minutes), or the property has no recent search data.'}
+              owner={ownerFor('tracking')}
+            />
+          )}
         </div>
       </Card>
 
@@ -170,6 +231,15 @@ export async function DigitalSeo({ range }: { range?: { from?: string; to?: stri
           )}
         </div>
       </Card>
+    </div>
+  );
+}
+
+function SearchStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-card border border-line p-4 text-center">
+      <p className="text-[11px] font-medium uppercase tracking-wide text-ink-faint">{label}</p>
+      <p className="mt-1 text-[22px] font-semibold tabular-nums text-ink">{value}</p>
     </div>
   );
 }
