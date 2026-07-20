@@ -10,10 +10,12 @@ import type { ClinicFilterKey } from '@/config/clinics';
 import type { ExecKpis, ExecMonthPoint, ExecutiveReport } from './types';
 
 /**
- * Assemble the Executive Dashboard report. Reads every source over its FULL
- * history (preset 'all' for the range sources; all-time for CRM + Practo) so the
- * hero shows the complete business picture. Pure composition — each underlying
- * read already degrades gracefully, so this never throws.
+ * Assemble the Executive Dashboard report. Every source honours the header date
+ * picker via one RESOLVED window (range.range): the default 'All' shows the
+ * complete business picture, and any preset/custom range scopes the KPIs, the
+ * revenue mix (department / doctor / treatment) and appointments to that window,
+ * consistently with leads/spend/GA4. Pure composition — each underlying read
+ * already degrades gracefully, so this never throws.
  *
  * Marketing spend comes from the LIVE Meta + Google ad APIs (the same source as
  * the Marketing tab) — NOT the older manual social sheet — so the hero and the
@@ -36,15 +38,27 @@ export async function getExecutiveReport(query: ExecQuery = {}): Promise<Executi
   // scoped by clinic. Only the clinic-specific populations (CRM appointments +
   // Practo bills) take the clinic lens; their byClinic split always carries both.
   const clinic = query.clinic ?? 'all';
-  const [range, crm, practo] = await Promise.all([
-    getRangeReport({
-      from: query.from,
-      to: query.to,
-      preset: query.preset ?? 'all',
-      compare: query.compare ?? 'none',
-    }),
-    getCrmReport({ from: query.from, to: query.to, clinic }),
-    getPractoSummary({ from: query.from, to: query.to, clinic }),
+  // Resolve the range FIRST. The date picker DELETES ?from/?to when a preset is
+  // chosen, so query.from/to are undefined under any preset — reading CRM/Practo
+  // with those would silently return ALL-TIME while leads/spend/GA4 follow the
+  // picker (the misalignment the CEO flagged). Scope the clinic populations to
+  // the RESOLVED window instead; 'All' stays unbounded so the hero's all-time
+  // totals never clip early bills.
+  const range = await getRangeReport({
+    from: query.from,
+    to: query.to,
+    preset: query.preset ?? 'all',
+    compare: query.compare ?? 'none',
+  });
+  const isAll = range.range.preset === 'all';
+  const clinicFrom = isAll ? undefined : range.range.from;
+  const clinicTo = isAll ? undefined : range.range.to;
+
+  const [crm, practo, adSpend, freshness] = await Promise.all([
+    getCrmReport({ from: clinicFrom, to: clinicTo, clinic }),
+    getPractoSummary({ from: clinicFrom, to: clinicTo, clinic }),
+    getAdSpendForRange(range.range.from, range.range.to),
+    getAdFeedFreshness(),
   ]);
 
   const { paid, leads, ga4, bookings, series } = range;
@@ -55,10 +69,7 @@ export async function getExecutiveReport(query: ExecQuery = {}): Promise<Executi
   // window — so the headline always matches the picker (over the full span it
   // equals the all-time total on the Marketing tab). Falls back to the manual
   // RAW_Performance spend only when there is no live ad data in the window.
-  const [adSpend, freshness] = await Promise.all([
-    getAdSpendForRange(range.range.from, range.range.to),
-    getAdFeedFreshness(),
-  ]);
+  // (adSpend + freshness are fetched with the sources above.)
   const marketingSpend = adSpend.rows > 0 ? adSpend.total : (paid.spend.value ?? null);
   const leadsGenerated = leads.total.value;
   // Cost per lead = live spend ÷ tracked leads (the two figures shown together).

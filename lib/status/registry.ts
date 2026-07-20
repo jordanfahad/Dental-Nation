@@ -326,6 +326,15 @@ export const DECISIONS: Decision[] = [
     codeRef: 'lib/sync/normalize.ts · bookings/recent.ts · arabyads/report.ts · bookings/widgetEnquiries.ts',
   },
   {
+    id: 'd-exec-date-scope',
+    title: 'Executive dashboard honours the date picker',
+    area: 'Revenue',
+    agreed:
+      'Every Executive panel is scoped to ONE resolved window. The date control deletes ?from/?to when a preset is clicked, so CRM appointments + Practo revenue (clinic revenue by department, revenue by doctor, top treatments) must read the RESOLVED range (range.range), not the raw query.from/to — otherwise they silently show all-time while leads/spend/GA4 follow the picker. Default "All" stays unbounded (no clip of early bills); any preset/custom scopes revenue + appointments to that window. Verified: all-time AED ~488k vs July-to-19 AED ~286k.',
+    decidedOn: '2026-07-20',
+    codeRef: 'lib/executive/report.ts (resolved range → getPractoSummary / getCrmReport)',
+  },
+  {
     id: 'd-widget-practo-conversion',
     title: 'Widget → Practo conversion panel',
     area: 'Enquiries',
