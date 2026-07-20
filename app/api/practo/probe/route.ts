@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
 import { isAdmin } from '@/lib/auth/role';
-import { practoDiscover, practoProbe, syncPracto } from '@/lib/sync/adapters/practo-adapter';
+import {
+  practoAppointmentsProbe,
+  practoDiscover,
+  practoProbe,
+  syncPracto,
+  syncPractoAppointments,
+} from '@/lib/sync/adapters/practo-adapter';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // a full-history backfill spans many 7-day windows.
@@ -23,11 +29,16 @@ function authorized(req: NextRequest): boolean {
 }
 
 export async function GET(req: NextRequest) {
-  const wantsDiscover = req.nextUrl.searchParams.get('discover') === '1';
-  // Discovery is read-only (no writes), so a signed-in admin may run it from the
-  // browser without the CRON_SECRET (which is hidden once marked Sensitive).
-  // Everything else (sync/backfill, which writes) still requires the secret.
-  const ok = authorized(req) || (wantsDiscover && (await isAdmin()));
+  const sp = req.nextUrl.searchParams;
+  const wantsDiscover = sp.get('discover') === '1';
+  const wantsApptProbe = sp.get('appointments') === '1';
+  const wantsApptSync = sp.get('appt_sync') === '1';
+  // Read-only discovery/probes may run from the browser as a signed-in admin
+  // (no CRON_SECRET needed). The appointments backfill only upserts into a fresh
+  // bronze table (non-destructive, idempotent), so we let an admin trigger it
+  // too; the bills sync/backfill still requires the secret.
+  const adminOk = (wantsDiscover || wantsApptProbe || wantsApptSync) && (await isAdmin());
+  const ok = authorized(req) || adminOk;
   if (!ok) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const supabase = getSupabaseAdmin();
   if (!supabase) return NextResponse.json({ error: 'Supabase not configured' }, { status: 503 });
@@ -37,8 +48,21 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(result, { status: result.ok ? 200 : 502 });
   }
 
-  if (req.nextUrl.searchParams.get('sync') === '1') {
-    const sp = req.nextUrl.searchParams;
+  if (wantsApptProbe) {
+    const result = await practoAppointmentsProbe(supabase);
+    return NextResponse.json(result, { status: result.ok ? 200 : 502 });
+  }
+
+  if (wantsApptSync) {
+    const from = sp.get('from') ?? undefined;
+    const to = sp.get('to') ?? undefined;
+    const daysRaw = sp.get('days');
+    const days = daysRaw ? Number(daysRaw) : undefined;
+    const result = await syncPractoAppointments(supabase, { from, to, days });
+    return NextResponse.json(result, { status: result.ok ? 200 : 502 });
+  }
+
+  if (sp.get('sync') === '1') {
     const from = sp.get('from') ?? undefined;
     const to = sp.get('to') ?? undefined;
     const daysRaw = sp.get('days');

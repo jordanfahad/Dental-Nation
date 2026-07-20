@@ -389,3 +389,191 @@ export async function practoProbe(supabase: AdminClient): Promise<PractoResult<u
     return { ok: false, message: (err as Error).message };
   }
 }
+
+// ===========================================================================
+// APPOINTMENTS — Practo Insta doctorscheduler.do getPatientAppointments.
+// Confirmed by the Practo dev team (2026-07-19): same login → request_handler_key
+// auth as bills, GET with search_by_patient=N so ALL appointments come back (no
+// per-patient MR needed). Returns appointments[] (status, time, doctor,
+// department, mr_no, cancel_reason…). Stored raw (bronze) in
+// lane_e.practo_appointments_raw with best-effort normalized columns; the exact
+// field names are confirmed via the appointments probe, then refined.
+// ===========================================================================
+
+/** GET JSON with the Practo handler-key header (appointments API uses GET). */
+async function getJsonReq(url: string, headers: Record<string, string>): Promise<unknown> {
+  const res = await fetch(url, { method: 'GET', headers, cache: 'no-store' });
+  const text = await res.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { _nonJson: true, status: res.status, body: text.slice(0, 2000) };
+  }
+}
+
+function apptUrl(cfg: PractoConfig, from: string, to: string): string {
+  return (
+    `${cfg.baseUrl}/${cfg.hospital}/Customer/doctorscheduler.do?_method=getPatientAppointments` +
+    `&from_date=${from}&to_date=${to}&search_by_patient=N&filter_by_appointment_date=Y`
+  );
+}
+
+/** Split [from,to] into ≤`size`-day windows (getPatientAppointments has no stated
+ *  cap; 30-day windows keep each call small and match the sibling endpoints). */
+function dayChunks(from: string, to: string, size: number): { from: string; to: string }[] {
+  const out: { from: string; to: string }[] = [];
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  let start = new Date(`${from}T00:00:00Z`);
+  const end = new Date(`${to}T00:00:00Z`);
+  let guard = 0;
+  while (start <= end && guard < 400) {
+    const chunkEnd = new Date(Math.min(start.getTime() + (size - 1) * 86400_000, end.getTime()));
+    out.push({ from: iso(start), to: iso(chunkEnd) });
+    start = new Date(chunkEnd.getTime() + 86400_000);
+    guard++;
+  }
+  return out;
+}
+
+/** Pull the appointments array out of whatever envelope Insta returns. */
+function extractAppointments(body: unknown): Record<string, unknown>[] {
+  if (Array.isArray(body)) return body as Record<string, unknown>[];
+  if (!body || typeof body !== 'object') return [];
+  const obj = body as Record<string, unknown>;
+  for (const k of ['appointments', 'APPOINTMENTS', 'patient_appointments', 'data', 'response', 'result', 'records', 'list']) {
+    const v = obj[k];
+    if (Array.isArray(v)) return v as Record<string, unknown>[];
+    if (v && typeof v === 'object') {
+      for (const kk of ['appointments', 'APPOINTMENTS', 'records', 'list']) {
+        const inner = (v as Record<string, unknown>)[kk];
+        if (Array.isArray(inner)) return inner as Record<string, unknown>[];
+      }
+    }
+  }
+  return [];
+}
+
+const APPT_DATE_KEYS = ['appointment_date', 'appt_date', 'date', 'scheduled_date', 'slot_date'];
+const APPT_TIME_KEYS = ['appointment_time', 'appt_time', 'scheduled_time', 'start_time', 'slot_time', 'time'];
+const APPT_DATETIME_KEYS = ['appointment_datetime', 'appt_datetime', 'scheduled_datetime', 'start_datetime', 'appointment_date_time'];
+
+function apptDate(a: Record<string, unknown>): string | null {
+  const raw = pick(a, APPT_DATE_KEYS);
+  if (raw) {
+    if (/^\d{4}-\d{2}-\d{2}/.test(raw)) return raw.slice(0, 10);
+    const d = new Date(raw);
+    if (!Number.isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+  }
+  const ts = apptTimestamp(a);
+  return ts ? ts.slice(0, 10) : null;
+}
+function apptTimestamp(a: Record<string, unknown>): string | null {
+  const dt = pick(a, APPT_DATETIME_KEYS);
+  if (dt) {
+    const d = new Date(dt);
+    if (!Number.isNaN(d.getTime())) return d.toISOString();
+  }
+  const date = pick(a, APPT_DATE_KEYS);
+  const time = pick(a, APPT_TIME_KEYS);
+  if (date) {
+    const d = new Date(time ? `${date} ${time}` : date);
+    if (!Number.isNaN(d.getTime())) return d.toISOString();
+  }
+  return null;
+}
+function apptKey(a: Record<string, unknown>): string {
+  const id = pick(a, ['appointment_id', 'appointmentId', 'appt_id', 'patient_appointment_id', 'appointment_no', 'id']);
+  if (id) return id;
+  return createHash('sha1').update(JSON.stringify(a)).digest('hex').slice(0, 24);
+}
+
+export interface PractoApptSyncResult {
+  ok: boolean;
+  fetched: number;
+  stored: number;
+  windows: number;
+  error?: string;
+}
+
+/** Fetch one appointment window, re-logging in once on a 1001 / "login again". */
+async function fetchApptWindow(
+  supabase: AdminClient,
+  cfg: PractoConfig,
+  tokenRef: { token: string },
+  from: string,
+  to: string,
+): Promise<Record<string, unknown>[]> {
+  let body = await getJsonReq(apptUrl(cfg, from, to), { request_handler_key: tokenRef.token });
+  if (isReloginCode(body)) {
+    tokenRef.token = await practoLogin(supabase);
+    body = await getJsonReq(apptUrl(cfg, from, to), { request_handler_key: tokenRef.token });
+  }
+  return extractAppointments(body);
+}
+
+/** Sync Practo Insta appointments into the bronze table. Trailing `days` window
+ *  by default (keeps recent bookings fresh); pass {from,to} to backfill. Rows
+ *  upsert by appointment id, so a backfill + ongoing trailing sync coexist. */
+export async function syncPractoAppointments(
+  supabase: AdminClient,
+  opts: PractoSyncOpts = {},
+): Promise<PractoApptSyncResult> {
+  const cfg = getPractoConfig();
+  if (!cfg) return { ok: false, fetched: 0, stored: 0, windows: 0, error: 'not_configured' };
+  try {
+    const iso = (d: Date) => d.toISOString().slice(0, 10);
+    const days = opts.days ?? 30;
+    const to = opts.to ?? iso(new Date());
+    const from = opts.from ?? iso(new Date(new Date(to).getTime() - (days - 1) * 86400_000));
+    const windows = dayChunks(from, to, 30);
+    const tokenRef = { token: await getPractoToken(supabase) };
+
+    const raw: Record<string, unknown>[] = [];
+    for (const w of windows) raw.push(...(await fetchApptWindow(supabase, cfg, tokenRef, w.from, w.to)));
+
+    const rows = raw.map((a) => ({
+      appt_key: apptKey(a),
+      appt_date: apptDate(a),
+      appt_time: apptTimestamp(a),
+      status: pick(a, ['status', 'appointment_status', 'appt_status', 'current_status']),
+      mr_no: pick(a, ['mr_no', 'mrno', 'mr_number', 'patient_mr_no']),
+      doctor: pick(a, ['doctor_name', 'doctor', 'provider_name', 'conducting_doctor', 'resource_name', 'doctor_id']),
+      department: pick(a, ['department_name', 'department', 'speciality', 'specialty', 'dept', 'department_id']),
+      cancel_reason: pick(a, ['cancel_reason', 'cancellation_reason', 'cancelled_reason', 'reason']),
+      data: a,
+      fetched_at: new Date().toISOString(),
+    }));
+    const byKey = new Map(rows.map((r) => [r.appt_key, r]));
+    const deduped = [...byKey.values()];
+    for (let i = 0; i < deduped.length; i += 500) {
+      await supabase.from('practo_appointments_raw').upsert(deduped.slice(i, i + 500), { onConflict: 'appt_key' });
+    }
+    return { ok: true, fetched: raw.length, stored: deduped.length, windows: windows.length };
+  } catch (err) {
+    return { ok: false, fetched: 0, stored: 0, windows: 0, error: (err as Error).message };
+  }
+}
+
+/** Shape-discovery probe for appointments: one recent 30-day window, RAW first
+ *  record + envelope keys, so we can confirm the field names precisely. */
+export async function practoAppointmentsProbe(supabase: AdminClient): Promise<PractoResult<unknown>> {
+  const cfg = getPractoConfig();
+  if (!cfg) return { ok: false, message: 'Practo not configured' };
+  try {
+    const tokenRef = { token: await getPractoToken(supabase) };
+    const to = new Date();
+    const from = new Date(to.getTime() - 29 * 86400_000);
+    const iso = (d: Date) => d.toISOString().slice(0, 10);
+    const appts = await fetchApptWindow(supabase, cfg, tokenRef, iso(from), iso(to));
+    return {
+      ok: true,
+      data: {
+        sampleCount: appts.length,
+        firstAppointment: appts[0] ?? null,
+        firstRecordKeys: appts[0] ? Object.keys(appts[0]) : [],
+      },
+    };
+  } catch (err) {
+    return { ok: false, message: (err as Error).message };
+  }
+}

@@ -3,7 +3,7 @@ import { type AdminClient, getSupabaseAdmin, isSupabaseConfigured } from '@/lib/
 import { getSheetsClient, isGoogleConfigured } from './google-auth';
 import { SheetsAdapter } from './adapters/sheets-adapter';
 import { fetchGa4Summary } from './adapters/ga4-adapter';
-import { syncPracto } from './adapters/practo-adapter';
+import { syncPracto, syncPractoAppointments } from './adapters/practo-adapter';
 import { isPractoConfigured } from '@/config/practo';
 import { syncMeta } from './adapters/meta-adapter';
 import { isMetaConfigured } from '@/config/meta';
@@ -206,6 +206,31 @@ export async function runSync(trigger: SyncTrigger): Promise<SyncSummary> {
       dataGaps.push({
         area: 'clinic',
         detail: `Practo Insta sync failed: ${(err as Error).message}`,
+        owner: 'Data/Analytics',
+      });
+    }
+
+    // Practo Insta APPOINTMENTS — doctorscheduler.do getPatientAppointments
+    // (search_by_patient=N → all bookings). Same token as bills; lands in the
+    // bronze table lane_e.practo_appointments_raw. Best-effort, never aborts.
+    try {
+      const pa = await syncPractoAppointments(supabase);
+      if (pa.ok) {
+        sheetsOk.push(`Practo Insta (appointments) — ${pa.stored} stored`);
+        rowsIngested += pa.stored;
+      } else {
+        sheetsFailed.push('Practo Insta (appointments)');
+        dataGaps.push({
+          area: 'clinic',
+          detail: `Practo appointments sync failed: ${pa.error ?? 'unknown'}`,
+          owner: 'Data/Analytics',
+        });
+      }
+    } catch (err) {
+      sheetsFailed.push('Practo Insta (appointments)');
+      dataGaps.push({
+        area: 'clinic',
+        detail: `Practo appointments sync failed: ${(err as Error).message}`,
         owner: 'Data/Analytics',
       });
     }
