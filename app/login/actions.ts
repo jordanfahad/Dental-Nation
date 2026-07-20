@@ -12,11 +12,11 @@ import { getSupabaseAdmin } from '@/lib/supabase/server';
  * deploy. Each person has a unique password; all of them grant the same
  * restricted 'staff' role (read-only, no Growth Projects / Leave Calendar).
  */
-async function matchesStaffPassword(entered: string): Promise<boolean> {
+async function matchesSecretPassword(entered: string, keyPrefix: string): Promise<boolean> {
   const db = getSupabaseAdmin();
   if (!db || !entered) return false;
   try {
-    const { data } = await db.from('app_secrets').select('key, value').like('key', 'staff_password_%');
+    const { data } = await db.from('app_secrets').select('key, value').like('key', `${keyPrefix}%`);
     for (const row of (data ?? []) as { key: string; value: string }[]) {
       if (row.value && safeEqual(entered, row.value)) return true;
     }
@@ -29,9 +29,11 @@ async function matchesStaffPassword(entered: string): Promise<boolean> {
 /**
  * Verify a shared password, rate-limit attempts, and set the signed cookie with
  * the matching role. Passwords:
- *   - DASHBOARD_PASSWORD → admin (manager: full access)
- *   - VIEWER_PASSWORD    → viewer (CEO + coordinator: read-only)
- *   - staff_password_*   → staff (Dr Luvi & Gautam: restricted read-only)
+ *   - DASHBOARD_PASSWORD    → admin (manager: full access)
+ *   - VIEWER_PASSWORD       → viewer (CEO + coordinator: read-only)
+ *   - staff_password_*      → staff (Dr Luvi & Gautam: restricted read-only)
+ *   - receptionist_password_* → receptionist (reception desk: ONLY the Clinical
+ *     Operations tab). Passwords live in app_secrets so they rotate without a deploy.
  */
 export async function login(_prev: { error?: string } | undefined, formData: FormData) {
   const password = process.env.DASHBOARD_PASSWORD;
@@ -52,7 +54,8 @@ export async function login(_prev: { error?: string } | undefined, formData: For
   let role: Role | null = null;
   if (entered === password) role = 'admin';
   else if (viewerPassword && entered === viewerPassword) role = 'viewer';
-  else if (await matchesStaffPassword(entered)) role = 'staff';
+  else if (await matchesSecretPassword(entered, 'staff_password_')) role = 'staff';
+  else if (await matchesSecretPassword(entered, 'receptionist_password_')) role = 'receptionist';
   if (!role) {
     return { error: 'Incorrect password.' };
   }

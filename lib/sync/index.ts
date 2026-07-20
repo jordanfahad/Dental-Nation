@@ -13,6 +13,7 @@ import { syncGmb } from './adapters/gmb-adapter';
 import { isGmbConfigured } from '@/config/gmb';
 import { syncMetaOrganic } from './adapters/meta-organic-adapter';
 import { resolveMetaOrganicConfig } from '@/config/meta-organic';
+import { sendNewLeadAlerts } from '@/lib/ops/alerts';
 import {
   normalizePerformance,
   normalizeBlockers,
@@ -316,6 +317,17 @@ export async function runSync(trigger: SyncTrigger): Promise<SyncSummary> {
       sheetsFailed.push('Meta organic (IG/FB)');
       dataGaps.push({ area: 'channel', detail: `Meta organic sync failed: ${(err as Error).message}`, owner: ownerFor('channel') });
     }
+  }
+
+  // ----- New-lead email alerts (reception + ops). Best-effort; gated on
+  // RESEND_API_KEY (no key → skipped). raw_zavis was refreshed above, so any
+  // form newer than the last-alerted mark emails the ops inbox.
+  try {
+    const alerts = await sendNewLeadAlerts(supabase);
+    if (alerts.sent > 0) sheetsOk.push(`Lead alerts — ${alerts.sent} sent`);
+    if (alerts.error) dataGaps.push({ area: 'clinic', detail: `Lead alert send failed: ${alerts.error}`, owner: ownerFor('clinic') });
+  } catch (err) {
+    dataGaps.push({ area: 'clinic', detail: `Lead alert send failed: ${(err as Error).message}`, owner: ownerFor('clinic') });
   }
 
   // ----- Silver upserts -----

@@ -326,6 +326,15 @@ export const DECISIONS: Decision[] = [
     codeRef: 'lib/sync/normalize.ts · bookings/recent.ts · arabyads/report.ts · bookings/widgetEnquiries.ts',
   },
   {
+    id: 'd-clinical-ops',
+    title: 'Clinical Operations tab + receptionist role + lead alerts',
+    area: 'Access',
+    agreed:
+      'A Clinical Operations tab (reception + ops) lists every non-test website booking-widget lead form — contact details, requested appointment, and whether it reached Practo (matched by phone). A new "receptionist" role sees ONLY this tab (locked at the tab layer, page resolver, and middleware → dashboard root only); la.dayag@dentalnation.com uses it (password in app_secrets key receptionist_password_*, rotatable without deploy). The tab is visible to admin + viewer + receptionist (hidden from staff/doctors). New lead forms email an alert to the ops inbox (lu.kaprani, la.dayag, fa.siddiqui — OPS_ALERT_EMAILS) via Resend; alerts are gated on RESEND_API_KEY + a verified sender, seed the high-water mark to "now" on first enable (no historical blast), and never re-send.',
+    decidedOn: '2026-07-20',
+    codeRef: 'components/tabs.ts · lib/auth/session.ts · lib/ops/leadForms.ts · lib/ops/alerts.ts · config/ops.ts',
+  },
+  {
     id: 'd-exec-date-scope',
     title: 'Executive dashboard honours the date picker',
     area: 'Revenue',

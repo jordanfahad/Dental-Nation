@@ -5,19 +5,27 @@
  *   - viewer : read-only (the CEO + coordinator can navigate + open evidence)
  *   - staff  : read-only, restricted (Dr Luvi & Gautam) — same as viewer EXCEPT
  *              no Growth Projects (/impact) and no Leave Calendar.
+ *   - receptionist : read-only, sees ONLY the Clinical Operations tab (reception
+ *              desk — la.dayag). Nothing else in the dashboard.
  * The role is inside the signed payload, so it cannot be tampered with.
  *
  * Uses Web Crypto so it runs in BOTH the Edge middleware and Node route
  * handlers / server actions.
  */
-export type Role = 'admin' | 'viewer' | 'staff';
+export type Role = 'admin' | 'viewer' | 'staff' | 'receptionist';
 
-/** Areas that a restricted (staff) role cannot see. admin + viewer see all. */
+const VALID_ROLES: readonly Role[] = ['admin', 'viewer', 'staff', 'receptionist'];
+
+/** Areas that a restricted role cannot see. Only admin + viewer see all. */
 export function canSeeGrowthProjects(role: Role | null | undefined): boolean {
   return role === 'admin' || role === 'viewer';
 }
 export function canSeeLeaveCalendar(role: Role | null | undefined): boolean {
   return role === 'admin' || role === 'viewer';
+}
+/** Receptionist is locked to the Clinical Operations tab — no other route/tab. */
+export function isReceptionist(role: Role | null | undefined): boolean {
+  return role === 'receptionist';
 }
 
 export const AUTH_COOKIE = 'lane_e_auth';
@@ -56,7 +64,7 @@ export async function verifySession(
   const parts = token.split('.');
   if (parts.length !== 3) return null;
   const [expiry, role, sig] = parts;
-  if (role !== 'admin' && role !== 'viewer' && role !== 'staff') return null;
+  if (!VALID_ROLES.includes(role as Role)) return null;
   const expected = await hmac(`${expiry}.${role}`, secret);
   if (sig.length !== expected.length) return null;
   let diff = 0;

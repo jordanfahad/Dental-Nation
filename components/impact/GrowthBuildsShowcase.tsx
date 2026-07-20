@@ -2,6 +2,7 @@ import { AcknowledgeButton } from "./AcknowledgeButton";
 import { AttachEvidence } from "@/components/forms/AttachEvidence";
 import { formatDate } from "@/lib/impact/format";
 import type { EvidenceFile, Project } from "@/lib/impact/types";
+import type { Role } from "@/lib/auth/session";
 
 /**
  * "Growth Builds" — featured projects presented as CEO case studies: what it
@@ -17,7 +18,7 @@ export function GrowthBuildsShowcase({
 }: {
   builds: Project[];
   evidence: EvidenceFile[];
-  role: "admin" | "viewer" | "staff" | null;
+  role: Role | null;
 }) {
   if (!builds.length) return null;
 

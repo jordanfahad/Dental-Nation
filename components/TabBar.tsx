@@ -2,20 +2,24 @@
 
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { TABS, resolveTab, isAdminOnlyTab, type TabKey } from '@/components/tabs';
+import { TABS, resolveTabForRole, visibleTabsFor, type TabKey } from '@/components/tabs';
+import type { Role } from '@/lib/auth/session';
 
 /**
  * Tab navigation. The active tab comes from `?tab=` (default Executive). Links
  * PRESERVE the date params (from/to/preset/compare) so switching tabs keeps the
- * selected range. Admin-only tabs (Status & Rules) are hidden unless isAdmin.
- * The tab definitions + resolveTab live in ./tabs (a plain, non-client module)
- * so the SERVER page can call resolveTab without crossing the RSC boundary.
+ * selected range. Tabs are filtered by ROLE — admin-only (Status & Rules) and
+ * ops tabs (Clinical Operations) show only where allowed, and a receptionist
+ * sees ONLY Clinical Operations. The tab definitions live in ./tabs (a plain,
+ * non-client module) so the SERVER page can resolve tabs without crossing the
+ * RSC boundary.
  */
 
-export function TabBar({ isAdmin = false }: { isAdmin?: boolean }) {
+export function TabBar({ role = null }: { role?: Role | null }) {
   const params = useSearchParams();
-  const active = resolveTab(params.get('tab') ?? undefined);
-  const tabs = TABS.filter((t) => isAdmin || !isAdminOnlyTab(t.key));
+  const active = resolveTabForRole(params.get('tab') ?? undefined, role);
+  const visible = new Set(visibleTabsFor(role));
+  const tabs = TABS.filter((t) => visible.has(t.key));
 
   const hrefFor = (tab: TabKey) => {
     const next = new URLSearchParams(params.toString());

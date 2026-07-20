@@ -4,6 +4,7 @@ import {
   SESSION_TTL_MS,
   canSeeGrowthProjects,
   createSessionToken,
+  isReceptionist,
   safeEqual,
   verifySession,
 } from '@/lib/auth/session';
@@ -32,6 +33,14 @@ export async function middleware(req: NextRequest) {
   const token = req.cookies.get(AUTH_COOKIE)?.value;
   const session = await verifySession(token, secret);
   if (session) {
+    // Receptionist is locked to the dashboard root (which itself shows ONLY the
+    // Clinical Operations tab) — any other in-app route bounces home.
+    if (isReceptionist(session.role) && req.nextUrl.pathname !== '/') {
+      const home = req.nextUrl.clone();
+      home.pathname = '/';
+      home.search = '';
+      return NextResponse.redirect(home);
+    }
     // Restricted staff (Dr Luvi & Gautam) cannot open Growth Projects (/impact).
     // The Leave Calendar has its own separate gate and is hidden from their nav.
     if (!canSeeGrowthProjects(session.role) && req.nextUrl.pathname.startsWith('/impact')) {

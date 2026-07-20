@@ -1,7 +1,7 @@
 import { Suspense } from 'react';
 import { getRangeReport } from '@/lib/report';
-import { resolveTab, isAdminOnlyTab } from '@/components/tabs';
-import { isAdmin as getIsAdmin } from '@/lib/auth/role';
+import { resolveTabForRole } from '@/components/tabs';
+import { currentRole } from '@/lib/auth/role';
 import { resolveClinic } from '@/config/clinics';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -20,6 +20,7 @@ import { SocialReport } from '@/components/sections/social/SocialReport';
 import { GoogleAnalyticsReport } from '@/components/sections/analytics/GoogleAnalyticsReport';
 import { ClarityReport } from '@/components/sections/clarity/ClarityReport';
 import { StatusReport } from '@/components/sections/status/StatusReport';
+import { ClinicalOps } from '@/components/sections/ops/ClinicalOps';
 
 export const dynamic = 'force-dynamic';
 // The Marketing deep-dive sub-tabs make several live Meta/Google ad-API calls,
@@ -64,10 +65,11 @@ export default async function DashboardPage({
     compare: sp.compare,
     skipGa4: true,
   });
-  const isAdmin = await getIsAdmin();
-  // Admin-only tabs (Status & Rules) fall back to the default for non-admins.
-  const requested = resolveTab(sp.tab);
-  const tab = isAdminOnlyTab(requested) && !isAdmin ? 'executive' : requested;
+  const role = await currentRole();
+  const isAdmin = role === 'admin';
+  // Role-aware: admin-only (Status) and ops (Clinical Operations) tabs resolve
+  // against what the role may see; a receptionist is locked to Clinical Operations.
+  const tab = resolveTabForRole(sp.tab, role);
   const clinic = resolveClinic(sp.clinic);
   const query = { from: sp.from, to: sp.to, preset: sp.preset, compare: sp.compare, clinic };
   const range = { from: shell.range.from, to: shell.range.to };
@@ -78,7 +80,7 @@ export default async function DashboardPage({
   return (
     <main className="mx-auto max-w-[1180px] px-4 py-6 md:px-8">
       <Header range={shell.range} source={shell.source} />
-      <TabBar isAdmin={isAdmin} />
+      <TabBar role={role} />
       {clinicAware ? <ClinicFilter active={clinic} /> : null}
 
       {/* Stream the active tab. Keying on tab+params re-arms the boundary on
@@ -89,6 +91,7 @@ export default async function DashboardPage({
         fallback={<TabSkeleton />}
       >
         {tab === 'executive' ? <ExecutiveDashboard query={query} /> : null}
+        {tab === 'clinical-ops' ? <ClinicalOps range={range} /> : null}
         {tab === 'daily' ? <DailyControlReport reportDate={sp.from} /> : null}
         {tab === 'weekly' ? <WeeklyReview weekOf={sp.from} /> : null}
         {tab === 'crm' ? <CrmReport range={{ ...range, clinic }} /> : null}
