@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { startOfMonth, endOfMonth, subMonths, subDays, parseISO, format, differenceInCalendarDays } from 'date-fns';
 import { getExecutiveReport } from '@/lib/executive/report';
 import { getArabyAdsReport } from '@/lib/arabyads/report';
 import { getDoctorPerformance } from '@/lib/executive/doctors';
@@ -20,37 +21,74 @@ const pct = (n: number | null | undefined) => (n == null ? '—' : `${Math.round
 
 const MOMENTUM_COLORS = { spend: '#D55E00', bookings: '#0072B2', enquiries: '#CC79A7', revenue: '#009E73' };
 
-/** Anchor date + cadence → the report window. */
-function boardWindow(date: string | undefined, cadence: 'daily' | 'weekly'): { from: string; to: string } {
-  const anchor = date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : iso(new Date());
-  if (cadence === 'daily') return { from: anchor, to: anchor };
-  const from = iso(new Date(Date.parse(`${anchor}T00:00:00Z`) - 6 * 86400_000));
-  return { from, to: anchor };
+const VALID_PERIODS = new Set(['daily', 'weekly', 'month', 'lastmonth', 'last90', 'all']);
+const REPORT_TITLE: Record<string, string> = {
+  daily: 'Daily Business Review',
+  weekly: 'Weekly Business Review',
+  month: 'Monthly Business Review',
+  lastmonth: 'Monthly Business Review',
+  last90: 'Quarterly Business Review',
+  all: 'Business Review',
+};
+const fmt = (d: Date) => format(d, 'yyyy-MM-dd');
+
+/** Period + anchor date → the report window. */
+function boardWindow(period: string, anchorIso: string): { from: string; to: string; isAll: boolean } {
+  const today = new Date();
+  const anchor = /^\d{4}-\d{2}-\d{2}$/.test(anchorIso) ? parseISO(anchorIso) : today;
+  switch (period) {
+    case 'daily': return { from: fmt(anchor), to: fmt(anchor), isAll: false };
+    case 'weekly': return { from: fmt(subDays(anchor, 6)), to: fmt(anchor), isAll: false };
+    case 'lastmonth': { const lm = subMonths(today, 1); return { from: fmt(startOfMonth(lm)), to: fmt(endOfMonth(lm)), isAll: false }; }
+    case 'last90': return { from: fmt(subDays(today, 89)), to: fmt(today), isAll: false };
+    case 'all': return { from: '2026-01-01', to: fmt(today), isAll: true };
+    case 'month':
+    default: return { from: fmt(startOfMonth(today)), to: fmt(today), isAll: false };
+  }
+}
+/** The equal-length window immediately before [from,to]. */
+function priorWindow(from: string, to: string): { from: string; to: string } {
+  const f = parseISO(from);
+  const days = differenceInCalendarDays(parseISO(to), f) + 1;
+  return { from: fmt(subDays(f, days)), to: fmt(subDays(f, 1)) };
 }
 
 export async function BoardReport({
   date,
-  cadence: rawCadence,
+  cadence: rawPeriod,
+  compare = false,
   clinic,
 }: {
   date?: string;
   cadence?: string;
+  compare?: boolean;
   clinic?: ClinicFilterKey;
 }) {
-  const cadence: 'daily' | 'weekly' = rawCadence === 'daily' ? 'daily' : 'weekly';
+  const period = rawPeriod && VALID_PERIODS.has(rawPeriod) ? rawPeriod : 'month';
   const anchor = date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : iso(new Date());
-  const { from, to } = boardWindow(date, cadence);
-  const [report, araby, doctors, digital] = await Promise.all([
-    getExecutiveReport({ from, to, preset: 'custom', clinic }),
+  const { from, to, isAll } = boardWindow(period, anchor);
+  const doCompare = compare && !isAll;
+  const prev = doCompare ? priorWindow(from, to) : null;
+
+  const [report, araby, doctors, digital, priorReport] = await Promise.all([
+    getExecutiveReport({ from: isAll ? undefined : from, to: isAll ? undefined : to, preset: isAll ? 'all' : 'custom', clinic }),
     getArabyAdsReport({ from, to }),
     getDoctorPerformance({ from, to }),
     getDigitalSeo({ from, to }),
+    prev ? getExecutiveReport({ from: prev.from, to: prev.to, preset: 'custom', clinic }) : Promise.resolve(null),
   ]);
 
   const k = report.kpis;
   const a = report.acquisition;
   const p = report.practo;
-  const period = `${dubaiDateLabel(from)} → ${dubaiDateLabel(to)}`;
+  const pk = priorReport?.kpis ?? null;
+  const pa = priorReport?.acquisition ?? null;
+  // Fractional change vs the previous period (null when not comparable).
+  const chg = (cur: number | null | undefined, prevVal: number | null | undefined): number | null =>
+    cur != null && prevVal != null && prevVal !== 0 ? (cur - prevVal) / prevVal : null;
+
+  const periodStr = `${dubaiDateLabel(from)} → ${dubaiDateLabel(to)}`;
+  const compareNote = doCompare && prev ? `vs ${dubaiDateLabel(prev.from)} → ${dubaiDateLabel(prev.to)}` : null;
 
   const trendData = report.monthly.map((m) => ({ date: `${m.month}-01`, spend: m.spend, bookings: m.appointments, leads: m.leads, revenue: m.revenue }));
   const trendSeries: TrendSeries[] = [
@@ -62,7 +100,7 @@ export async function BoardReport({
 
   return (
     <div>
-      <ReportControls cadence={cadence} date={anchor} />
+      <ReportControls period={period} date={anchor} compare={compare} />
 
       <article className="report mx-auto max-w-[900px]">
         {/* Cover */}
@@ -70,15 +108,15 @@ export async function BoardReport({
           <div className="px-7 py-8 sm:px-10 sm:py-10">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/70">Dental Nation · Performance Report</p>
             <h1 className="mt-2 text-[26px] font-semibold leading-tight tracking-tight sm:text-[32px]">
-              {cadence === 'weekly' ? 'Weekly' : 'Daily'} Business Review
+              {REPORT_TITLE[period]}
             </h1>
-            <p className="mt-2 text-[13.5px] text-white/85">{period}</p>
+            <p className="mt-2 text-[13.5px] text-white/85">{periodStr}{compareNote ? <span className="text-white/60"> · {compareNote}</span> : null}</p>
             <div className="mt-6 flex flex-wrap gap-x-8 gap-y-2 border-t border-white/15 pt-5 text-[12.5px]">
-              <Cover label="Marketing spend" value={aedK(k.marketingSpend)} />
-              <Cover label="New patients" value={int(a.billedNewPatients)} />
-              <Cover label="Cost / new patient" value={aed(a.cpaAll)} />
-              <Cover label="Clinic revenue" value={aedK(k.clinicRevenue)} />
-              <Cover label="New-patient ROAS" value={a.roas != null ? `${a.roas.toFixed(1)}×` : '—'} />
+              <Cover label="Marketing spend" value={aedK(k.marketingSpend)} delta={chg(k.marketingSpend, pk?.marketingSpend)} goodUp={false} />
+              <Cover label="New patients" value={int(a.billedNewPatients)} delta={chg(a.billedNewPatients, pa?.billedNewPatients)} />
+              <Cover label="Cost / new patient" value={aed(a.cpaAll)} delta={chg(a.cpaAll, pa?.cpaAll)} goodUp={false} />
+              <Cover label="Clinic revenue" value={aedK(k.clinicRevenue)} delta={chg(k.clinicRevenue, pk?.clinicRevenue)} />
+              <Cover label="New-patient ROAS" value={a.roas != null ? `${a.roas.toFixed(1)}×` : '—'} delta={chg(a.roas, pa?.roas)} />
             </div>
           </div>
         </header>
@@ -86,7 +124,7 @@ export async function BoardReport({
         {/* Headline */}
         <Section eyebrow="Summary" title="The story in one line">
           <p className="text-[15px] leading-relaxed text-ink">
-            Over this {cadence} window, <strong>{aed(k.marketingSpend)}</strong> of marketing acquired{' '}
+            Over this period, <strong>{aed(k.marketingSpend)}</strong> of marketing acquired{' '}
             <strong>{int(a.billedNewPatients)} new patients</strong>
             {a.cpaAll != null ? <> at <strong>{aed(a.cpaAll)}</strong> each</> : null}, contributing{' '}
             <strong>{aed(a.newPatientRevenue)}</strong> of new-patient revenue
@@ -98,15 +136,16 @@ export async function BoardReport({
 
         {/* Executive KPIs */}
         <Section eyebrow="Scorecard" title="Headline metrics">
+          {compareNote ? <p className="mb-3 text-[11px] text-ink-faint">Change shown {compareNote}.</p> : null}
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-            <Metric label="Marketing spend" value={aed(k.marketingSpend)} sub="Meta + Google · live" />
-            <Metric label="New patients (billed)" value={int(a.billedNewPatients)} sub="distinct · revenue-backed" />
-            <Metric label="Cost / new patient" value={aed(a.cpaAll)} sub="blended (all sources)" accent />
-            <Metric label="New-patient revenue" value={aed(a.newPatientRevenue)} sub={a.revenuePerNewPatient != null ? `${aed(a.revenuePerNewPatient)} / patient` : undefined} />
-            <Metric label="Bookings" value={int(k.appointmentsBooked)} sub={k.aiAgentBookings != null ? `${int(k.aiAgentBookings)} by AI agent` : undefined} />
-            <Metric label="Completed" value={int(k.appointmentsCompleted)} sub={k.completionRate != null ? `${pct(k.completionRate)} of concluded` : undefined} />
-            <Metric label="Clinic revenue" value={aed(k.clinicRevenue)} sub={k.avgBillValue != null ? `${aed(k.avgBillValue)} avg bill` : undefined} accent />
-            <Metric label="Website sessions" value={int(k.websiteSessions)} sub={k.websiteConversions != null ? `${int(k.websiteConversions)} conversions` : 'GA4'} />
+            <Metric label="Marketing spend" value={aed(k.marketingSpend)} sub="Meta + Google · live" delta={chg(k.marketingSpend, pk?.marketingSpend)} goodUp={false} />
+            <Metric label="New patients (billed)" value={int(a.billedNewPatients)} sub="distinct · revenue-backed" delta={chg(a.billedNewPatients, pa?.billedNewPatients)} />
+            <Metric label="Cost / new patient" value={aed(a.cpaAll)} sub="blended (all sources)" accent delta={chg(a.cpaAll, pa?.cpaAll)} goodUp={false} />
+            <Metric label="New-patient revenue" value={aed(a.newPatientRevenue)} sub={a.revenuePerNewPatient != null ? `${aed(a.revenuePerNewPatient)} / patient` : undefined} delta={chg(a.newPatientRevenue, pa?.newPatientRevenue)} />
+            <Metric label="Bookings" value={int(k.appointmentsBooked)} sub={k.aiAgentBookings != null ? `${int(k.aiAgentBookings)} by AI agent` : undefined} delta={chg(k.appointmentsBooked, pk?.appointmentsBooked)} />
+            <Metric label="Completed" value={int(k.appointmentsCompleted)} sub={k.completionRate != null ? `${pct(k.completionRate)} of concluded` : undefined} delta={chg(k.appointmentsCompleted, pk?.appointmentsCompleted)} />
+            <Metric label="Clinic revenue" value={aed(k.clinicRevenue)} sub={k.avgBillValue != null ? `${aed(k.avgBillValue)} avg bill` : undefined} accent delta={chg(k.clinicRevenue, pk?.clinicRevenue)} />
+            <Metric label="Website sessions" value={int(k.websiteSessions)} sub={k.websiteConversions != null ? `${int(k.websiteConversions)} conversions` : 'GA4'} delta={chg(k.websiteSessions, pk?.websiteSessions)} />
           </div>
         </Section>
 
@@ -276,6 +315,22 @@ export async function BoardReport({
           </Insight>
         </Section>
 
+        {/* Session demographics */}
+        {digital.gender.length || digital.age.length ? (
+          <Section eyebrow="Audience" title="Session demographics">
+            <div className="grid gap-8 lg:grid-cols-2">
+              <div>
+                <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-ink-faint">Sessions by gender</p>
+                <Donut data={digital.gender.map((g) => ({ label: g.label, value: g.sessions })) as BarDatum[]} valueFormat="int" centerLabel="sessions" height={190} />
+              </div>
+              <div>
+                <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-ink-faint">Sessions by age</p>
+                <HBarChart data={digital.age.map((ag) => ({ label: ag.label, value: ag.sessions })) as BarDatum[]} valueFormat="int" />
+              </div>
+            </div>
+          </Section>
+        ) : null}
+
         {/* Takeaways */}
         <Section eyebrow="So what" title="Takeaways">
           <ul className="space-y-2.5 text-[13.5px] leading-relaxed text-ink">
@@ -306,11 +361,31 @@ export async function BoardReport({
 
 /* ---------------------------------------------------------------- primitives */
 
-function Cover({ label, value }: { label: string; value: string }) {
+/** ▲/▼ change chip. `goodUp` says which direction is good (spend/CPA = down good). */
+function Delta({ delta, goodUp = true, onDark }: { delta: number | null | undefined; goodUp?: boolean; onDark?: boolean }) {
+  if (delta == null || !Number.isFinite(delta)) return null;
+  const flat = Math.abs(delta) < 0.005;
+  const up = delta > 0;
+  const good = flat ? null : up === goodUp;
+  const arrow = flat ? '→' : up ? '▲' : '▼';
+  const color = onDark
+    ? good == null ? 'text-white/60' : good ? 'text-[#7CE0B0]' : 'text-[#FCA5A5]'
+    : good == null ? 'text-ink-faint' : good ? 'text-good' : 'text-stop';
+  return (
+    <span className={`ml-1.5 text-[11px] font-medium tabular-nums ${color}`}>
+      {arrow} {Math.abs(Math.round(delta * 100))}%
+    </span>
+  );
+}
+
+function Cover({ label, value, delta, goodUp }: { label: string; value: string; delta?: number | null; goodUp?: boolean }) {
   return (
     <div>
       <p className="text-[10.5px] uppercase tracking-wide text-white/60">{label}</p>
-      <p className="mt-0.5 text-[19px] font-semibold tabular-nums">{value}</p>
+      <p className="mt-0.5 text-[19px] font-semibold tabular-nums">
+        {value}
+        <Delta delta={delta} goodUp={goodUp} onDark />
+      </p>
     </div>
   );
 }
@@ -327,11 +402,14 @@ function Section({ eyebrow, title, children, breakBefore }: { eyebrow: string; t
   );
 }
 
-function Metric({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: boolean }) {
+function Metric({ label, value, sub, accent, delta, goodUp }: { label: string; value: string; sub?: string; accent?: boolean; delta?: number | null; goodUp?: boolean }) {
   return (
     <div className={`rounded-card border p-4 ${accent ? 'border-accent/30 bg-accent/5' : 'border-line'}`}>
       <p className="text-[11px] font-medium uppercase tracking-wide text-ink-faint">{label}</p>
-      <p className="mt-1 text-[21px] font-semibold tabular-nums text-ink">{value}</p>
+      <p className="mt-1 text-[21px] font-semibold tabular-nums text-ink">
+        {value}
+        <Delta delta={delta} goodUp={goodUp} />
+      </p>
       {sub ? <p className="mt-0.5 text-[11px] text-ink-faint">{sub}</p> : null}
     </div>
   );

@@ -54,6 +54,7 @@ export default async function DashboardPage({
     ptab?: string;
     rdate?: string;
     rcad?: string;
+    rcmp?: string;
     clinic?: string;
   }>;
 }) {
@@ -91,7 +92,7 @@ export default async function DashboardPage({
           navigation so the skeleton shows immediately instead of the shell
           hanging on the tab's data. */}
       <Suspense
-        key={`${tab}|${sp.tab ?? ''}|${sp.from ?? ''}|${sp.to ?? ''}|${sp.preset ?? ''}|${sp.compare ?? ''}|${sp.mtab ?? ''}|${sp.btab ?? ''}|${sp.ptab ?? ''}|${sp.rdate ?? ''}|${sp.rcad ?? ''}|${clinic}`}
+        key={`${tab}|${sp.tab ?? ''}|${sp.from ?? ''}|${sp.to ?? ''}|${sp.preset ?? ''}|${sp.compare ?? ''}|${sp.mtab ?? ''}|${sp.btab ?? ''}|${sp.ptab ?? ''}|${sp.rdate ?? ''}|${sp.rcad ?? ''}|${sp.rcmp ?? ''}|${clinic}`}
         fallback={<TabSkeleton />}
       >
         {tab === 'executive' ? <ExecutiveDashboard query={query} /> : null}
@@ -107,7 +108,7 @@ export default async function DashboardPage({
         {tab === 'analytics' ? <GoogleAnalyticsReport range={range} /> : null}
         {tab === 'digital' ? <DigitalSeo range={range} /> : null}
         {tab === 'clarity' ? <ClarityReport /> : null}
-        {tab === 'report' && isAdmin ? <BoardReport date={sp.rdate} cadence={sp.rcad} clinic={clinic} /> : null}
+        {tab === 'report' && isAdmin ? <BoardReport date={sp.rdate} cadence={sp.rcad} compare={sp.rcmp === '1'} clinic={clinic} /> : null}
         {tab === 'status' && isAdmin ? <StatusReport /> : null}
       </Suspense>
 
