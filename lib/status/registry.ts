@@ -326,6 +326,15 @@ export const DECISIONS: Decision[] = [
     codeRef: 'lib/sync/normalize.ts · bookings/recent.ts · arabyads/report.ts · bookings/widgetEnquiries.ts',
   },
   {
+    id: 'd-practo-appts',
+    title: 'Practo Insta appointments — live API (authoritative)',
+    area: 'Data sources',
+    agreed:
+      'Appointments now sync live from Practo Insta (Customer/doctorscheduler.do?_method=getPatientAppointments&search_by_patient=N, same login→request_handler_key auth as bills) into lane_e.practo_appointments_raw on the 15-min cron. Confirmed field shape: appointment_time (ISO datetime), appointment_status, doctor_name, department_name (both NAMES, no masterdata lookup needed), mr_no, patient_contact (phone), duration. Appointment Analytics reads this Practo feed as authoritative (reconciles with the clinic Practo screen — Arrived 67 / Completed 46 matched exactly), falling back to the ZAVIS crm_appointments feed when the Practo table is empty. ZAVIS stays as the CRM/omnichannel-enquiry source — Practo is added alongside, not as a replacement. Test rows flagged by patient_name (zavis/test/sagar).',
+    decidedOn: '2026-07-20',
+    codeRef: 'lib/sync/adapters/practo-adapter.ts (syncPractoAppointments) · lib/practo/appointmentAnalytics.ts',
+  },
+  {
     id: 'd-ga4-events',
     title: 'GA4 on-site event definitions',
     area: 'Analytics',

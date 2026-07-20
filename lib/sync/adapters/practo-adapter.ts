@@ -453,9 +453,11 @@ function extractAppointments(body: unknown): Record<string, unknown>[] {
   return [];
 }
 
+// Confirmed live shape: `appointment_time` is a full ISO datetime (there is no
+// separate date field), so it leads the datetime keys.
 const APPT_DATE_KEYS = ['appointment_date', 'appt_date', 'date', 'scheduled_date', 'slot_date'];
-const APPT_TIME_KEYS = ['appointment_time', 'appt_time', 'scheduled_time', 'start_time', 'slot_time', 'time'];
-const APPT_DATETIME_KEYS = ['appointment_datetime', 'appt_datetime', 'scheduled_datetime', 'start_datetime', 'appointment_date_time'];
+const APPT_TIME_KEYS = ['appt_time', 'scheduled_time', 'start_time', 'slot_time', 'time'];
+const APPT_DATETIME_KEYS = ['appointment_time', 'appointment_datetime', 'appt_datetime', 'scheduled_datetime', 'start_datetime', 'appointment_date_time'];
 
 function apptDate(a: Record<string, unknown>): string | null {
   const raw = pick(a, APPT_DATE_KEYS);
@@ -535,11 +537,18 @@ export async function syncPractoAppointments(
       appt_key: apptKey(a),
       appt_date: apptDate(a),
       appt_time: apptTimestamp(a),
-      status: pick(a, ['status', 'appointment_status', 'appt_status', 'current_status']),
+      status: pick(a, ['appointment_status', 'status', 'appt_status', 'current_status']),
       mr_no: pick(a, ['mr_no', 'mrno', 'mr_number', 'patient_mr_no']),
-      doctor: pick(a, ['doctor_name', 'doctor', 'provider_name', 'conducting_doctor', 'resource_name', 'doctor_id']),
-      department: pick(a, ['department_name', 'department', 'speciality', 'specialty', 'dept', 'department_id']),
+      doctor: pick(a, ['doctor_name', 'doctor', 'provider_name', 'conducting_doctor', 'resource_name']),
+      department: pick(a, ['department_name', 'department', 'speciality', 'specialty', 'dept']),
       cancel_reason: pick(a, ['cancel_reason', 'cancellation_reason', 'cancelled_reason', 'reason']),
+      patient_name: pick(a, ['patient_name', 'name']),
+      patient_phone: pick(a, ['patient_contact', 'patient_phone', 'contact', 'mobile', 'phone']),
+      duration_minutes: (() => {
+        const d = Number(pick(a, ['duration', 'duration_minutes', 'slot_duration']) ?? '');
+        return Number.isFinite(d) && d > 0 ? Math.round(d) : null;
+      })(),
+      center_name: pick(a, ['center_name', 'centre_name', 'branch_name', 'clinic_name']),
       data: a,
       fetched_at: new Date().toISOString(),
     }));

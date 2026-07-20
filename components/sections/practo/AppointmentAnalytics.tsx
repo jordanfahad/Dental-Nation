@@ -75,9 +75,16 @@ export async function AppointmentAnalytics({ range }: { range?: { from?: string;
         />
         <div className="px-5 pb-5 pt-4">
           <p className="text-[12.5px] leading-snug text-ink-soft">
-            The clinic&apos;s appointment book and money view — appointment volume, status mix and peak hours from the ZAVIS
-            appointment feed, with billed / collected revenue and per-doctor performance from Practo Insta bills.{' '}
-            <span className="text-ink-faint">Driven by the date range above.</span>
+            The clinic&apos;s appointment book and money view — appointment volume, status mix and peak hours from the{' '}
+            {a.apptSource === 'practo' ? 'Practo Insta appointment book' : 'ZAVIS appointment feed'}, with billed / collected
+            revenue and per-doctor performance from Practo Insta bills. <span className="text-ink-faint">Driven by the date range above.</span>
+          </p>
+          <p className="mt-1.5 text-[11px] text-ink-faint">
+            Appointments:{' '}
+            <span className="font-medium text-ink-soft">
+              {a.apptSource === 'practo' ? 'Practo Insta (live API)' : a.apptSource === 'zavis' ? 'ZAVIS CRM feed' : '—'}
+            </span>{' '}
+            · Revenue: <span className="font-medium text-ink-soft">Practo Insta bills</span>
           </p>
         </div>
       </Card>

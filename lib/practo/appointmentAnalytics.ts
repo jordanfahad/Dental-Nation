@@ -42,6 +42,22 @@ const numOf = (v: unknown): number => {
 };
 const inRange = (day: string | null, from: string, to: string) => !!day && day >= from && day <= to;
 
+/** Same seed/test filter used across the widget sources. */
+function isTestName(name: string | null | undefined): boolean {
+  return /zavis|test|sagar/i.test(String(name ?? ''));
+}
+
+/** A source-agnostic appointment used by the aggregation loop. */
+interface NormAppt {
+  statusRaw: string;
+  tsUtc: string | null; // ISO timestamp
+  durationMin: number;
+  patientKey: string;
+  provider: string;
+  department: string | null;
+  isTest: boolean;
+}
+
 export interface StatusSlice { label: string; value: number }
 export interface DayCount { date: string; count: number }
 export interface NamedAmount { label: string; amount: number; count?: number }
@@ -58,6 +74,7 @@ export interface ProviderDay {
 
 export interface AppointmentAnalytics {
   source: 'live' | 'empty';
+  apptSource: 'practo' | 'zavis' | null; // which feed drove the appointment half
   from: string;
   to: string;
   // Appointment KPIs
@@ -104,6 +121,7 @@ const STATUS_ORDER = ['Confirmed', 'Arrived', 'Completed', 'Booked', 'Requested'
 
 const empty = (from: string, to: string): AppointmentAnalytics => ({
   source: 'empty',
+  apptSource: null,
   from,
   to,
   total: 0,
@@ -145,23 +163,56 @@ export async function getAppointmentAnalytics(range: { from?: string; to?: strin
   const db = getSupabaseAdmin();
   if (!db) return empty(from, to);
 
-  // Pull both sources in parallel.
-  let appts: Record<string, unknown>[] = [];
+  // Pull the appointment sources (Practo Insta authoritative, ZAVIS CRM
+  // fallback) + the Practo bills, in parallel.
+  let practoRows: Record<string, unknown>[] = [];
+  let zavisRows: Record<string, unknown>[] = [];
   let bills: { data: BillData }[] = [];
   try {
-    const [a, b] = await Promise.all([
+    const [pa, za, b] = await Promise.all([
+      db
+        .from('practo_appointments_raw')
+        .select('status, appt_time, duration_minutes, mr_no, patient_phone, patient_name, doctor, department')
+        .gte('appt_date', from)
+        .lte('appt_date', to),
       db
         .from('crm_appointments')
         .select('status, timeslot, duration_minutes, patient_id, professional_name, professional_department, is_test'),
       db.from('practo_bills_raw').select('data'),
     ]);
-    appts = (a.data as Record<string, unknown>[] | null) ?? [];
+    practoRows = (pa.data as Record<string, unknown>[] | null) ?? [];
+    zavisRows = (za.data as Record<string, unknown>[] | null) ?? [];
     bills = (b.data as { data: BillData }[] | null) ?? [];
   } catch {
     return empty(from, to);
   }
 
-  // ---- Appointment half (CRM feed) ------------------------------------------
+  // Prefer the Practo Insta appointment book when present (authoritative — it
+  // reconciles with the clinic's Practo screen); otherwise fall back to the
+  // ZAVIS CRM feed so the tab still works before/without a Practo sync.
+  const usePracto = practoRows.length > 0;
+  const apptSource: 'practo' | 'zavis' = usePracto ? 'practo' : 'zavis';
+  const norm: NormAppt[] = usePracto
+    ? practoRows.map((r) => ({
+        statusRaw: String(r.status ?? ''),
+        tsUtc: (r.appt_time as string | null) ?? null,
+        durationMin: numOf(r.duration_minutes) || 30,
+        patientKey: String(r.mr_no || r.patient_phone || r.patient_name || '').trim(),
+        provider: String(r.doctor ?? '').trim() || 'Unassigned',
+        department: String(r.department ?? '').trim() || null,
+        isTest: isTestName(r.patient_name as string | null),
+      }))
+    : zavisRows.map((r) => ({
+        statusRaw: String(r.status ?? ''),
+        tsUtc: (r.timeslot as string | null) ?? null,
+        durationMin: numOf(r.duration_minutes) || 30,
+        patientKey: String(r.patient_id ?? '').trim(),
+        provider: String(r.professional_name ?? '').trim() || 'Unassigned',
+        department: String(r.professional_department ?? '').trim() || null,
+        isTest: r.is_test === true,
+      }));
+
+  // ---- Appointment half -----------------------------------------------------
   const trendMap = new Map<string, number>();
   const statusMap = new Map<string, number>();
   const hourCount = new Array<number>(24).fill(0);
@@ -172,31 +223,30 @@ export async function getAppointmentAnalytics(range: { from?: string; to?: strin
   let completed = 0;
   let cancelled = 0;
 
-  for (const r of appts) {
-    if (r.is_test === true) continue;
-    const parts = dubaiParts(r.timeslot as string | null);
+  for (const r of norm) {
+    if (r.isTest) continue;
+    const parts = dubaiParts(r.tsUtc);
     if (!parts || !inRange(parts.date, from, to)) continue;
     total++;
     trendMap.set(parts.date, (trendMap.get(parts.date) ?? 0) + 1);
     hourCount[parts.hour]++;
-    const pid = String(r.patient_id ?? '').trim();
-    if (pid) patients.add(pid);
+    if (r.patientKey) patients.add(r.patientKey);
 
-    const raw = String(r.status ?? '').trim().toLowerCase().replace(/\s+/g, '');
+    const raw = r.statusRaw.trim().toLowerCase().replace(/\s+/g, '');
     const label = STATUS_LABEL[raw] ?? (raw ? raw[0].toUpperCase() + raw.slice(1) : 'Unknown');
     statusMap.set(label, (statusMap.get(label) ?? 0) + 1);
     if (label === 'Completed' || label === 'Arrived') completed++;
     if (label === 'Cancelled') cancelled++;
 
-    const provider = String(r.professional_name ?? '').trim() || 'Unassigned';
-    const dept = String(r.professional_department ?? '').trim() || null;
+    const provider = r.provider;
+    const dept = r.department;
     const k = keyOf(provider, parts.date);
     const pd =
       provDay.get(k) ??
       { provider, department: dept, date: parts.date, dow: parts.dow, revenue: 0, collected: 0, appts: 0, bookedMinutes: 0 };
     if (!pd.department && dept) pd.department = dept;
     pd.appts++;
-    pd.bookedMinutes += numOf(r.duration_minutes) || 30; // 30-min default slot
+    pd.bookedMinutes += r.durationMin;
     provDay.set(k, pd);
   }
 
@@ -303,6 +353,7 @@ export async function getAppointmentAnalytics(range: { from?: string; to?: strin
 
   return {
     source: hasData ? 'live' : 'empty',
+    apptSource: total > 0 ? apptSource : null,
     from,
     to,
     total,
