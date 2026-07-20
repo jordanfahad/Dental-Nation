@@ -6,6 +6,7 @@ import { getCrmReport } from '@/lib/crm/report';
 import { getPractoSummary } from '@/lib/practo/report';
 import { getAdSpendForRange, getAdFeedFreshness } from '@/lib/marketing/report';
 import { getWidgetEnquiries } from '@/lib/bookings/widgetEnquiries';
+import { getNewPatientAcquisition } from './acquisition';
 import type { ClinicFilterKey } from '@/config/clinics';
 import type { ExecKpis, ExecMonthPoint, ExecutiveReport } from './types';
 
@@ -71,6 +72,9 @@ export async function getExecutiveReport(query: ExecQuery = {}): Promise<Executi
   // RAW_Performance spend only when there is no live ad data in the window.
   // (adSpend + freshness are fetched with the sources above.)
   const marketingSpend = adSpend.rows > 0 ? adSpend.total : (paid.spend.value ?? null);
+  // New-patient acquisition economics (cost per new patient, ROAS) over the same
+  // resolved window + spend — the real replacement for the manual-tracker CPL.
+  const acquisition = await getNewPatientAcquisition({ from: clinicFrom, to: clinicTo, spend: marketingSpend });
   const leadsGenerated = leads.total.value;
   // Cost per lead = live spend ÷ tracked leads (the two figures shown together).
   const costPerLead =
@@ -170,6 +174,7 @@ export async function getExecutiveReport(query: ExecQuery = {}): Promise<Executi
     practo,
     kpis,
     monthly,
+    acquisition,
     coverage,
     source: range.source === 'mock' ? 'mock' : anyLive ? 'live' : 'empty',
   };

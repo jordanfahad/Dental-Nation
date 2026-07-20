@@ -35,7 +35,7 @@ export function ExecKpiBand({ report }: { report: ExecutiveReport }) {
       value: kpis.leadsGenerated == null ? null : fmtInt(kpis.leadsGenerated),
       spark: leadsSpark,
       sparkColor: TOKENS.accent,
-      hint: kpis.costPerLead != null ? `AED ${Math.round(kpis.costPerLead)} / lead` : 'lead tracker',
+      hint: kpis.costPerLead != null ? `AED ${Math.round(kpis.costPerLead)} / lead · manual tracker` : 'manual tracker',
       gapDetail: 'lead tracker not sourced',
       gapOwner: ownerFor('attribution'),
     },

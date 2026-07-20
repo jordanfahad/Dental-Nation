@@ -8,6 +8,7 @@ import type {
 } from '@/lib/types';
 import type { CrmReport } from '@/lib/crm/types';
 import type { PractoSummary } from '@/lib/practo/report';
+import type { NewPatientAcquisition } from './acquisition';
 
 /**
  * The Executive Dashboard model — the investor-facing hero. It composes EVERY
@@ -72,6 +73,8 @@ export interface ExecutiveReport {
   practo: PractoSummary;
   kpis: ExecKpis;
   monthly: ExecMonthPoint[];
+  /** New-patient acquisition economics (cost per new patient, ROAS). */
+  acquisition: NewPatientAcquisition;
   /** Coverage flags so the UI can narrate which engines are wired/live. */
   coverage: {
     paid: boolean;

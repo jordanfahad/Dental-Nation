@@ -2,6 +2,7 @@ import { getExecutiveReport, type ExecQuery } from '@/lib/executive/report';
 import { dubaiDateLabel } from '@/lib/dates';
 import { ExecHero } from './ExecHero';
 import { ExecKpiBand } from './ExecKpiBand';
+import { ExecAcquisition } from './ExecAcquisition';
 import { ExecPipeline } from './ExecPipeline';
 import { ClinicJourney } from '@/components/sections/shared/ClinicJourney';
 import { ExecMonthlyTrend } from './ExecMonthlyTrend';
@@ -39,6 +40,7 @@ export async function ExecutiveDashboard({ query }: { query?: ExecQuery }) {
         </div>
       ) : null}
       <ExecKpiBand report={report} />
+      <ExecAcquisition report={report} />
       <ExecClinicSplit report={report} />
       <ExecPipeline report={report} />
       <ClinicJourney

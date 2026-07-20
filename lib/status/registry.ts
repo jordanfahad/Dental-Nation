@@ -335,6 +335,15 @@ export const DECISIONS: Decision[] = [
     codeRef: 'components/tabs.ts · lib/auth/session.ts · lib/ops/leadForms.ts · lib/ops/alerts.ts · config/ops.ts',
   },
   {
+    id: 'd-new-patient-cpa',
+    title: 'Cost per new patient (replaces manual-tracker CPL)',
+    area: 'Revenue',
+    agreed:
+      'The Executive dashboard now shows real acquisition economics: New patients (billed) = distinct DN-series (new) patients with a Practo bill in the window (revenue-backed, counted once each); Cost / new patient · All = ad spend ÷ all billed new patients (a BLENDED CAC — total spend over all new patients incl. organic/walk-in, not pure paid-CPL); Cost / new patient · Website = ad spend ÷ billed new patients whose phone matches a non-test website-widget submission; plus New-patient revenue and ROAS. The old "Leads generated / CPL" card is kept but relabelled "manual tracker" (largely unmaintained since April — reads ~3 vs 48 real billed new patients for July). Verified July: 48 billed new patients, 2 website-sourced, AED 95,132 revenue, spend AED 4,507 → CPA(All) ~AED 94, ROAS ~21×.',
+    decidedOn: '2026-07-20',
+    codeRef: 'lib/executive/acquisition.ts · components/sections/executive/ExecAcquisition.tsx',
+  },
+  {
     id: 'd-exec-date-scope',
     title: 'Executive dashboard honours the date picker',
     area: 'Revenue',
