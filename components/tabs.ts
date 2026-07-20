@@ -21,6 +21,7 @@ export const TABS = [
   { key: 'marketing', label: 'Marketing' },
   { key: 'social', label: 'Social & Local' },
   { key: 'analytics', label: 'Google Analytics' },
+  { key: 'digital', label: 'Digital & SEO' },
   { key: 'clarity', label: 'Heatmaps & Recordings' },
   { key: 'report', label: 'Board Report', adminOnly: true },
   { key: 'status', label: 'Status & Rules', adminOnly: true },

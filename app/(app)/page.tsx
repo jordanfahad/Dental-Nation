@@ -22,6 +22,7 @@ import { ClarityReport } from '@/components/sections/clarity/ClarityReport';
 import { StatusReport } from '@/components/sections/status/StatusReport';
 import { ClinicalOps } from '@/components/sections/ops/ClinicalOps';
 import { BoardReport } from '@/components/sections/report/BoardReport';
+import { DigitalSeo } from '@/components/sections/digital/DigitalSeo';
 
 export const dynamic = 'force-dynamic';
 // The Marketing deep-dive sub-tabs make several live Meta/Google ad-API calls,
@@ -104,6 +105,7 @@ export default async function DashboardPage({
         {tab === 'marketing' ? <MarketingReport sub={sp.mtab} range={range} /> : null}
         {tab === 'social' ? <SocialReport range={range} /> : null}
         {tab === 'analytics' ? <GoogleAnalyticsReport range={range} /> : null}
+        {tab === 'digital' ? <DigitalSeo range={range} /> : null}
         {tab === 'clarity' ? <ClarityReport /> : null}
         {tab === 'report' && isAdmin ? <BoardReport date={sp.rdate} cadence={sp.rcad} clinic={clinic} /> : null}
         {tab === 'status' && isAdmin ? <StatusReport /> : null}

@@ -26,6 +26,9 @@ export interface LabMetric {
 export interface StrategyResult {
   strategy: 'mobile' | 'desktop';
   performanceScore: number | null; // 0–100
+  seoScore: number | null; // 0–100 (Lighthouse SEO)
+  accessibilityScore: number | null; // 0–100
+  bestPracticesScore: number | null; // 0–100
   overallCategory: CwvCategory; // field overall
   field: {
     lcp: FieldMetric | null;
@@ -65,7 +68,10 @@ async function runStrategy(url: string, strategy: 'mobile' | 'desktop', apiKey: 
   const u = new URL(PSI_ENDPOINT);
   u.searchParams.set('url', url);
   u.searchParams.set('strategy', strategy);
-  u.searchParams.append('category', 'PERFORMANCE');
+  // Request the SEO / accessibility / best-practices Lighthouse categories too,
+  // so the site-health block can show an on-page SEO score (0–100) alongside
+  // performance — no new integration needed.
+  for (const c of ['PERFORMANCE', 'SEO', 'ACCESSIBILITY', 'BEST_PRACTICES']) u.searchParams.append('category', c);
   if (apiKey) u.searchParams.set('key', apiKey);
 
   const res = await fetch(u.toString(), { cache: 'no-store' });
@@ -76,18 +82,27 @@ async function runStrategy(url: string, strategy: 'mobile' | 'desktop', apiKey: 
   const json = (await res.json()) as {
     loadingExperience?: { metrics?: Record<string, { percentile?: number; category?: string }>; overall_category?: string };
     lighthouseResult?: {
-      categories?: { performance?: { score?: number | null } };
+      categories?: {
+        performance?: { score?: number | null };
+        seo?: { score?: number | null };
+        accessibility?: { score?: number | null };
+        'best-practices'?: { score?: number | null };
+      };
       audits?: Record<string, { title?: string; displayValue?: string; numericValue?: number }>;
     };
   };
 
   const le = json.loadingExperience?.metrics ?? {};
-  const perf = json.lighthouseResult?.categories?.performance?.score;
+  const cats = json.lighthouseResult?.categories ?? {};
   const audits = json.lighthouseResult?.audits ?? {};
+  const score100 = (s: number | null | undefined) => (typeof s === 'number' ? Math.round(s * 100) : null);
 
   return {
     strategy,
-    performanceScore: typeof perf === 'number' ? Math.round(perf * 100) : null,
+    performanceScore: score100(cats.performance?.score),
+    seoScore: score100(cats.seo?.score),
+    accessibilityScore: score100(cats.accessibility?.score),
+    bestPracticesScore: score100(cats['best-practices']?.score),
     overallCategory: (json.loadingExperience?.overall_category as CwvCategory) ?? 'NONE',
     field: {
       lcp: fieldMetric(le, 'LARGEST_CONTENTFUL_PAINT_MS'),

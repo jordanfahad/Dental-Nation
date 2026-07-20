@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { getExecutiveReport } from '@/lib/executive/report';
 import { getArabyAdsReport } from '@/lib/arabyads/report';
 import { getDoctorPerformance } from '@/lib/executive/doctors';
+import { getDigitalSeo } from '@/lib/analytics/digital';
 import type { ClinicFilterKey } from '@/config/clinics';
 import { ReportControls } from './ReportControls';
 import { TrendChart, Donut, HBarChart, type TrendSeries, type BarDatum } from '@/components/charts/Charts';
@@ -39,10 +40,11 @@ export async function BoardReport({
   const cadence: 'daily' | 'weekly' = rawCadence === 'daily' ? 'daily' : 'weekly';
   const anchor = date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : iso(new Date());
   const { from, to } = boardWindow(date, cadence);
-  const [report, araby, doctors] = await Promise.all([
+  const [report, araby, doctors, digital] = await Promise.all([
     getExecutiveReport({ from, to, preset: 'custom', clinic }),
     getArabyAdsReport({ from, to }),
     getDoctorPerformance({ from, to }),
+    getDigitalSeo({ from, to }),
   ]);
 
   const k = report.kpis;
@@ -248,6 +250,27 @@ export async function BoardReport({
             </p>
           </Section>
         ) : null}
+
+        {/* Digital & SEO */}
+        <Section eyebrow="Digital & SEO" title="Website, search & social" breakBefore>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <Metric label="Website sessions" value={digital.traffic ? int(digital.traffic.sessions) : '—'} sub="GA4 · all traffic" />
+            <Metric label="Organic (SEO) traffic" value={digital.ga4Available ? int(digital.organicSessions) : '—'} sub="Organic Search sessions" />
+            <Metric label="Paid traffic" value={digital.ga4Available ? int(digital.paidSessions) : '—'} sub="paid channels" />
+            <Metric label="SEO score" value={digital.seo?.seo != null ? `${digital.seo.seo}/100` : '—'} sub="Lighthouse on-page" accent />
+          </div>
+          <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <Metric label="Widget viewed → submitted" value={`${int(digital.funnel.viewed)} → ${int(digital.funnel.submitted)}`} sub="booking widget" />
+            <Metric label="Top emirate" value={digital.byEmirate[0]?.label ?? '—'} sub={digital.byEmirate[0] ? `${int(digital.byEmirate[0].sessions)} sessions` : undefined} />
+            <Metric label="Social followers" value={int(digital.social.reduce((s, x) => s + (x.followers ?? 0), 0) || null)} sub={digital.social.map((s) => s.label).join(' + ') || 'IG / FB'} />
+            <Metric label="Pages indexed" value="—" sub="connect Search Console" />
+          </div>
+          <Insight>
+            SEO score is Google Lighthouse&apos;s on-page health (0–100). <strong>Pages indexed</strong> and organic
+            keyword/impression data need Google Search Console (being wired next). Full breakdowns — channels, emirates,
+            demographics, social — are on the Digital &amp; SEO tab.
+          </Insight>
+        </Section>
 
         {/* Takeaways */}
         <Section eyebrow="So what" title="Takeaways">
