@@ -3,8 +3,12 @@
  * token: `<expiryMs>.<role>.<base64url(hmac(expiry.role))>`. Roles:
  *   - admin  : full access (manager — create/update/approve/delete)
  *   - viewer : read-only (the CEO + coordinator can navigate + open evidence)
- *   - staff  : read-only, restricted (Dr Luvi & Gautam) — same as viewer EXCEPT
- *              no Growth Projects (/impact) and no Leave Calendar.
+ *   - staff  : read-only, restricted — same as viewer EXCEPT no Growth Projects
+ *              (/impact) and no Leave Calendar.
+ *   - clinician : staff access PLUS the Clinical Operations and Group Revenue
+ *              tabs (Dr Luvi).
+ *   - opsstaff  : staff access PLUS the Clinical Operations tab, but NOT Group
+ *              Revenue (Gautam).
  *   - receptionist : read-only, sees ONLY the Clinical Operations tab (reception
  *              desk — la.dayag). Nothing else in the dashboard.
  * The role is inside the signed payload, so it cannot be tampered with.
@@ -12,9 +16,9 @@
  * Uses Web Crypto so it runs in BOTH the Edge middleware and Node route
  * handlers / server actions.
  */
-export type Role = 'admin' | 'viewer' | 'staff' | 'receptionist';
+export type Role = 'admin' | 'viewer' | 'staff' | 'clinician' | 'opsstaff' | 'receptionist';
 
-const VALID_ROLES: readonly Role[] = ['admin', 'viewer', 'staff', 'receptionist'];
+const VALID_ROLES: readonly Role[] = ['admin', 'viewer', 'staff', 'clinician', 'opsstaff', 'receptionist'];
 
 /** Areas that a restricted role cannot see. Only admin + viewer see all. */
 export function canSeeGrowthProjects(role: Role | null | undefined): boolean {

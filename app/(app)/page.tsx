@@ -110,7 +110,9 @@ export default async function DashboardPage({
         {tab === 'analytics' ? <GoogleAnalyticsReport range={range} /> : null}
         {tab === 'digital' ? <DigitalSeo range={range} /> : null}
         {tab === 'clarity' ? <ClarityReport /> : null}
-        {tab === 'group' && isAdmin ? (
+        {/* Group Revenue: admin + clinician (Dr Luvi). resolveTabForRole already
+            gates the tab to permitted roles, so no extra role check here. */}
+        {tab === 'group' ? (
           <GroupRevenue range={{ from: shell.range.from, to: shell.range.to, preset: shell.range.preset }} sub={sp.gtab} />
         ) : null}
         {tab === 'report' && isAdmin ? <BoardReport date={sp.rdate} cadence={sp.rcad} compare={sp.rcmp === '1'} clinic={clinic} /> : null}

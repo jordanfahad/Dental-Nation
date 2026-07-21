@@ -48,18 +48,39 @@ export function resolveTab(tab: string | undefined): TabKey {
 }
 
 /**
+ * Tabs granted to a role BEYOND the standard set — i.e. specific ops / admin-only
+ * tabs a restricted role is allowed to see. Lets us hand individual people access
+ * to a single gated tab without opening the whole admin/viewer surface:
+ *  - clinician (Dr Luvi) → Clinical Operations + Group Revenue.
+ *  - opsstaff  (Gautam)  → Clinical Operations only.
+ */
+function extraGrantsFor(role: Role | null | undefined): Set<string> {
+  switch (role) {
+    case 'clinician':
+      return new Set<string>(['clinical-ops', 'group']);
+    case 'opsstaff':
+      return new Set<string>(['clinical-ops']);
+    default:
+      return new Set<string>();
+  }
+}
+
+/**
  * Which tabs a role may see:
  *  - receptionist → ONLY the Clinical Operations tab (nothing else).
  *  - staff        → everything except admin-only AND ops tabs.
+ *  - clinician    → staff tabs + Clinical Operations + Group Revenue.
+ *  - opsstaff     → staff tabs + Clinical Operations.
  *  - viewer       → everything except admin-only (includes Clinical Operations).
  *  - admin        → everything.
  */
 export function visibleTabsFor(role: Role | null | undefined): TabKey[] {
   if (role === 'receptionist') return TABS.filter((t) => isOpsTab(t.key)).map((t) => t.key);
+  const extra = extraGrantsFor(role);
   return TABS.filter((t) => {
-    if (isAdminOnlyTab(t.key)) return role === 'admin';
-    if (isOpsTab(t.key)) return role === 'admin' || role === 'viewer';
-    return true; // standard tabs: admin / viewer / staff
+    if (isAdminOnlyTab(t.key)) return role === 'admin' || extra.has(t.key);
+    if (isOpsTab(t.key)) return role === 'admin' || role === 'viewer' || extra.has(t.key);
+    return true; // standard tabs: admin / viewer / staff / clinician / opsstaff
   }).map((t) => t.key);
 }
 
