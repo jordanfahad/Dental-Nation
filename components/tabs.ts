@@ -26,6 +26,7 @@ export const TABS = [
   { key: 'group', label: 'Group Revenue', adminOnly: true },
   { key: 'report', label: 'Board Report', adminOnly: true },
   { key: 'status', label: 'Status & Rules', adminOnly: true },
+  { key: 'users', label: 'Users', adminOnly: true },
 ] as const;
 
 export type TabKey = (typeof TABS)[number]['key'];
@@ -93,4 +94,48 @@ export function defaultTabFor(role: Role | null | undefined): TabKey {
 export function resolveTabForRole(tab: string | undefined, role: Role | null | undefined): TabKey {
   const wanted = resolveTab(tab);
   return visibleTabsFor(role).includes(wanted) ? wanted : defaultTabFor(role);
+}
+
+/**
+ * A specific user's effective tabs: the base role's tabs, PLUS per-user
+ * `extra_tabs`, MINUS per-user `removed_tabs`. `admin` always keeps every tab
+ * (its access can't be trimmed from the directory — an admin is an admin).
+ */
+/**
+ * Security-sensitive tabs that are admin-only and can NEVER be granted to a
+ * non-admin via extra_tabs (granting Users would let someone escalate their own
+ * access; Status exposes internal config). Group Revenue / Board Report ARE
+ * grantable — those are the intended per-person grants.
+ */
+export const UNGRANTABLE_TABS = new Set<string>(['users', 'status']);
+
+export function effectiveVisibleTabs(
+  role: Role | null | undefined,
+  extra: readonly string[] = [],
+  removed: readonly string[] = [],
+): TabKey[] {
+  if (role === 'admin') return TABS.map((t) => t.key);
+  const known = new Set<string>(TABS.map((t) => t.key));
+  const set = new Set<string>(visibleTabsFor(role));
+  for (const t of extra) if (known.has(t) && !UNGRANTABLE_TABS.has(t)) set.add(t);
+  for (const t of removed) set.delete(t);
+  return TABS.filter((t) => set.has(t.key)).map((t) => t.key);
+}
+
+/** Tabs an admin may hand out per-user in the Users tab (everything grantable). */
+export function grantableTabs(): { key: TabKey; label: string }[] {
+  return TABS.filter((t) => !UNGRANTABLE_TABS.has(t.key)).map((t) => ({ key: t.key, label: t.label }));
+}
+
+/** Resolve ?tab= against an explicit visible-tab set (per-user); safe fallback. */
+export function resolveTabInSet(
+  tab: string | undefined,
+  visible: readonly TabKey[],
+  role: Role | null | undefined,
+): TabKey {
+  const wanted = resolveTab(tab);
+  if (visible.includes(wanted)) return wanted;
+  const dflt = defaultTabFor(role);
+  if (visible.includes(dflt)) return dflt;
+  return visible[0] ?? DEFAULT_TAB;
 }

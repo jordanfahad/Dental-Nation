@@ -1,7 +1,7 @@
 import { Suspense } from 'react';
 import { getRangeReport } from '@/lib/report';
-import { resolveTabForRole } from '@/components/tabs';
-import { currentRole } from '@/lib/auth/role';
+import { effectiveVisibleTabs, resolveTabInSet } from '@/components/tabs';
+import { currentUser } from '@/lib/auth/role';
 import { resolveClinic } from '@/config/clinics';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -24,6 +24,7 @@ import { ClinicalOps } from '@/components/sections/ops/ClinicalOps';
 import { BoardReport } from '@/components/sections/report/BoardReport';
 import { DigitalSeo } from '@/components/sections/digital/DigitalSeo';
 import { GroupRevenue } from '@/components/sections/clinics/GroupRevenue';
+import { UserManagement } from '@/components/sections/users/UserManagement';
 
 export const dynamic = 'force-dynamic';
 // The Marketing deep-dive sub-tabs make several live Meta/Google ad-API calls,
@@ -72,11 +73,13 @@ export default async function DashboardPage({
     compare: sp.compare,
     skipGa4: true,
   });
-  const role = await currentRole();
+  const me = await currentUser();
+  const role = me?.role ?? null;
   const isAdmin = role === 'admin';
-  // Role-aware: admin-only (Status) and ops (Clinical Operations) tabs resolve
-  // against what the role may see; a receptionist is locked to Clinical Operations.
-  const tab = resolveTabForRole(sp.tab, role);
+  // Per-user access: base role's tabs, plus any individual grants / removals from
+  // the Users directory. The active tab resolves within THAT effective set.
+  const visibleTabs = effectiveVisibleTabs(role, me?.extraTabs, me?.removedTabs);
+  const tab = resolveTabInSet(sp.tab, visibleTabs, role);
   const clinic = resolveClinic(sp.clinic);
   const query = { from: sp.from, to: sp.to, preset: sp.preset, compare: sp.compare, clinic };
   const range = { from: shell.range.from, to: shell.range.to };
@@ -87,7 +90,7 @@ export default async function DashboardPage({
   return (
     <main className="mx-auto max-w-[1180px] px-4 py-6 md:px-8">
       <Header range={shell.range} source={shell.source} />
-      <TabBar role={role} />
+      <TabBar role={role} visibleTabs={visibleTabs} />
       {clinicAware ? <ClinicFilter active={clinic} /> : null}
 
       {/* Stream the active tab. Keying on tab+params re-arms the boundary on
@@ -110,13 +113,16 @@ export default async function DashboardPage({
         {tab === 'analytics' ? <GoogleAnalyticsReport range={range} /> : null}
         {tab === 'digital' ? <DigitalSeo range={range} /> : null}
         {tab === 'clarity' ? <ClarityReport /> : null}
-        {/* Group Revenue: admin + clinician (Dr Luvi). resolveTabForRole already
-            gates the tab to permitted roles, so no extra role check here. */}
+        {/* Group Revenue + Board Report are grantable per-user: resolveTabInSet
+            already restricts `tab` to the viewer's effective set, so membership
+            alone gates them (no extra isAdmin check). Status + Users stay hard
+            admin-only (ungrantable — see UNGRANTABLE_TABS). */}
         {tab === 'group' ? (
           <GroupRevenue range={{ from: shell.range.from, to: shell.range.to, preset: shell.range.preset }} sub={sp.gtab} />
         ) : null}
-        {tab === 'report' && isAdmin ? <BoardReport date={sp.rdate} cadence={sp.rcad} compare={sp.rcmp === '1'} clinic={clinic} /> : null}
+        {tab === 'report' ? <BoardReport date={sp.rdate} cadence={sp.rcad} compare={sp.rcmp === '1'} clinic={clinic} /> : null}
         {tab === 'status' && isAdmin ? <StatusReport /> : null}
+        {tab === 'users' && isAdmin ? <UserManagement /> : null}
       </Suspense>
 
       <Footer ingestion={shell.ingestion} />

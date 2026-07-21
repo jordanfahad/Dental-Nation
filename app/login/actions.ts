@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { AUTH_COOKIE, SESSION_TTL_MS, createSessionToken, safeEqual, type Role } from '@/lib/auth/session';
 import { checkRateLimit } from '@/lib/auth/rate-limit';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
+import { findUserByPassword } from '@/lib/auth/users';
 
 /**
  * Restricted staff passwords (Dr Luvi & Gautam) live in lane_e.app_secrets under
@@ -61,18 +62,27 @@ export async function login(_prev: { error?: string } | undefined, formData: For
 
   const entered = String(formData.get('password') ?? '');
   let role: Role | null = null;
+  let uid: string | null = null;
   if (entered === password) role = 'admin';
   else if (viewerPassword && entered === viewerPassword) role = 'viewer';
   else {
-    const staffKey = await matchSecretKey(entered, 'staff_password_');
-    if (staffKey) role = STAFF_ROLE_BY_KEY[staffKey] ?? 'staff';
-    else if (await matchSecretKey(entered, 'receptionist_password_')) role = 'receptionist';
+    // Managed users (the admin Users tab) take precedence over the legacy
+    // app_secrets logins, so edits to a person's role/access apply on next login.
+    const user = await findUserByPassword(entered);
+    if (user) {
+      role = user.baseRole;
+      uid = String(user.id);
+    } else {
+      const staffKey = await matchSecretKey(entered, 'staff_password_');
+      if (staffKey) role = STAFF_ROLE_BY_KEY[staffKey] ?? 'staff';
+      else if (await matchSecretKey(entered, 'receptionist_password_')) role = 'receptionist';
+    }
   }
   if (!role) {
     return { error: 'Incorrect password.' };
   }
 
-  const token = await createSessionToken(secret!, role);
+  const token = await createSessionToken(secret!, role, uid);
   const jar = await cookies();
   jar.set(AUTH_COOKIE, token, {
     httpOnly: true,

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { TABS, resolveTabForRole, visibleTabsFor, type TabKey } from '@/components/tabs';
+import { TABS, resolveTabForRole, resolveTabInSet, visibleTabsFor, type TabKey } from '@/components/tabs';
 import type { Role } from '@/lib/auth/session';
 
 /**
@@ -15,10 +15,15 @@ import type { Role } from '@/lib/auth/session';
  * RSC boundary.
  */
 
-export function TabBar({ role = null }: { role?: Role | null }) {
+export function TabBar({ role = null, visibleTabs }: { role?: Role | null; visibleTabs?: TabKey[] }) {
   const params = useSearchParams();
-  const active = resolveTabForRole(params.get('tab') ?? undefined, role);
-  const visible = new Set(visibleTabsFor(role));
+  // A per-user visible set (from the server) wins; otherwise fall back to the
+  // plain role-based set so the component still works without the prop.
+  const visibleList = visibleTabs ?? visibleTabsFor(role);
+  const active = visibleTabs
+    ? resolveTabInSet(params.get('tab') ?? undefined, visibleList, role)
+    : resolveTabForRole(params.get('tab') ?? undefined, role);
+  const visible = new Set<string>(visibleList);
   const tabs = TABS.filter((t) => visible.has(t.key));
 
   const hrefFor = (tab: TabKey) => {

@@ -52,31 +52,45 @@ async function hmac(message: string, secret: string): Promise<string> {
   return b64url(sig);
 }
 
-/** Create a signed token (carrying the role) valid for SESSION_TTL_MS. */
-export async function createSessionToken(secret: string, role: Role = 'admin'): Promise<string> {
-  const payload = `${Date.now() + SESSION_TTL_MS}.${role}`;
+/**
+ * Create a signed token carrying the role and (optionally) the dashboard_users
+ * id, valid for SESSION_TTL_MS. Token shape: `<expiry>.<role>[.<uid>].<sig>` —
+ * the uid segment is present only for table-backed users (env admin/viewer omit
+ * it), and old 3-part tokens stay valid (uid → null).
+ */
+export async function createSessionToken(
+  secret: string,
+  role: Role = 'admin',
+  uid?: string | number | null,
+): Promise<string> {
+  const base = `${Date.now() + SESSION_TTL_MS}.${role}`;
+  const payload = uid != null && String(uid) !== '' ? `${base}.${uid}` : base;
   const sig = await hmac(payload, secret);
   return `${payload}.${sig}`;
 }
 
-/** Verify signature + expiry; returns the session (with role) or null. */
+/** Verify signature + expiry; returns the session (role + optional uid) or null. */
 export async function verifySession(
   token: string | undefined,
   secret: string,
-): Promise<{ role: Role } | null> {
+): Promise<{ role: Role; uid: string | null } | null> {
   if (!token || !secret) return null;
   const parts = token.split('.');
-  if (parts.length !== 3) return null;
-  const [expiry, role, sig] = parts;
+  if (parts.length < 3 || parts.length > 4) return null;
+  const sig = parts[parts.length - 1];
+  const payload = parts.slice(0, -1).join('.');
+  const expiry = parts[0];
+  const role = parts[1];
+  const uid = parts.length === 4 ? parts[2] : null;
   if (!VALID_ROLES.includes(role as Role)) return null;
-  const expected = await hmac(`${expiry}.${role}`, secret);
+  const expected = await hmac(payload, secret);
   if (sig.length !== expected.length) return null;
   let diff = 0;
   for (let i = 0; i < sig.length; i++) diff |= sig.charCodeAt(i) ^ expected.charCodeAt(i);
   if (diff !== 0) return null;
   const expiryMs = Number(expiry);
   if (!Number.isFinite(expiryMs) || expiryMs <= Date.now()) return null;
-  return { role: role as Role };
+  return { role: role as Role, uid };
 }
 
 /** Boolean convenience (any valid role). */
