@@ -23,6 +23,7 @@ export const TABS = [
   { key: 'analytics', label: 'Google Analytics' },
   { key: 'digital', label: 'Digital & SEO' },
   { key: 'clarity', label: 'Heatmaps & Recordings' },
+  { key: 'group', label: 'Group Revenue', adminOnly: true },
   { key: 'report', label: 'Board Report', adminOnly: true },
   { key: 'status', label: 'Status & Rules', adminOnly: true },
 ] as const;
