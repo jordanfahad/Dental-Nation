@@ -12,11 +12,14 @@ import { getSupabaseAdmin } from '@/lib/supabase/server';
  * clinic x year x month x doctor x department x payer x metric). Because the
  * clinics report different money measures (collected vs billed), each clinic
  * carries its own `metric` and the UI labels it — the combined total is a
- * portfolio sum, NOT a like-for-like figure (surfaced honestly in the tab).
+ * portfolio sum, NOT a like-for-like figure.
  *
- * Al Maher's 2020–2025 rows have no per-treatment service date in the source,
- * so they live in a single '2020–2025' bucket (txn_year null) rather than being
- * fabricated into per-year splits.
+ * Date alignment: the report scopes to the dashboard's date window unless the
+ * window is "All". Rows are dated at month grain (Tosun / Al Wasl), year grain
+ * (Al Maher single-year files) or are undated (Al Maher's 2020–2025 file, which
+ * has no per-treatment service date). We include a row when its period OVERLAPS
+ * the window; undated/year rows are all-or-nothing (can't be split) and are
+ * flagged in the UI.
  *
  * Never throws — a missing table / empty load degrades to `available:false`.
  */
@@ -68,6 +71,10 @@ export interface YearPoint {
   year: number | null; // null = undated multi-year bucket (sorts last)
   gross: number;
 }
+export interface MonthPoint {
+  month: string; // 'YYYY-MM'
+  gross: number;
+}
 
 export interface ClinicRevenue {
   key: GroupClinicKey;
@@ -81,21 +88,24 @@ export interface ClinicRevenue {
   yearFrom: number | null;
   yearTo: number | null;
   byYear: YearPoint[];
+  monthly: MonthPoint[]; // dated months only, sorted — for the detail trend
   topDoctors: NamedValue[];
-  /** Department mix (Al Wasl) or payer mix (Tosun / Al Maher). */
   mixLabel: string;
   mix: NamedValue[];
-  /** Al Maher only: patient co-pay vs insurer-paid split of the billed total. */
   payerSplit: { patientShare: number; insuranceNet: number } | null;
+  /** Latest month/year with data in the source (independent of the window). */
+  dataThrough: string | null; // 'YYYY-MM' or 'YYYY'
+  dataThroughLabel: string; // e.g. 'Jul 2026'
+  hasUndated: boolean; // window includes the AMC 2020–2025 bucket
 }
 
 export interface GroupRevenueReport {
   available: boolean;
+  isAll: boolean;
+  windowLabel: string;
   clinics: ClinicRevenue[];
   combinedTotal: number;
-  /** Years where every clinic has data — for a like-period comparison note. */
   overlapYears: number[];
-  /** Combined revenue by year (only years present), for the portfolio trend. */
   combinedByYear: YearPoint[];
 }
 
@@ -119,12 +129,44 @@ const num = (v: number | string | null | undefined): number => {
   return Number.isFinite(n) ? n : 0;
 };
 
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+function monthLabel(ym: string): string {
+  const [y, m] = ym.split('-');
+  const mi = Number(m) - 1;
+  return mi >= 0 && mi < 12 ? `${MONTHS[mi]} ${y}` : ym;
+}
+
 function topN(map: Map<string, number>, n: number): NamedValue[] {
   return [...map.entries()]
     .filter(([, v]) => v > 0)
     .map(([label, value]) => ({ label, value }))
     .sort((a, b) => b.value - a.value)
     .slice(0, n);
+}
+
+/** Two 4-digit years out of a period label like '2020–2025' / '2020-2025'. */
+function spanOf(label: string | null): [number, number] | null {
+  const m = (label ?? '').match(/(\d{4})\D+(\d{4})/);
+  if (!m) return null;
+  return [Number(m[1]), Number(m[2])];
+}
+
+interface Window {
+  fromYM: string;
+  toYM: string;
+  fromY: number;
+  toY: number;
+  isAll: boolean;
+}
+
+/** Does a row's period overlap the window? Undated/year rows are all-or-nothing. */
+function inWindow(r: Row, w: Window): boolean {
+  if (w.isAll) return true;
+  if (r.txn_month) return r.txn_month >= w.fromYM && r.txn_month <= w.toYM;
+  if (r.txn_year != null) return r.txn_year >= w.fromY && r.txn_year <= w.toY;
+  const span = spanOf(r.period_label);
+  if (span) return !(span[1] < w.fromY || span[0] > w.toY);
+  return true; // truly unlabelled — keep rather than silently drop
 }
 
 async function fetchAllRows(): Promise<Row[] | null> {
@@ -145,12 +187,30 @@ async function fetchAllRows(): Promise<Row[] | null> {
   return out;
 }
 
-function buildClinic(meta: GroupClinicMeta, rows: Row[]): ClinicRevenue {
+/** Latest 'YYYY-MM' (preferred) or 'YYYY' present across a clinic's rows. */
+function dataThroughOf(rows: Row[]): string | null {
+  let bestMonth: string | null = null;
+  let bestYear: number | null = null;
+  for (const r of rows) {
+    if (r.txn_month && (!bestMonth || r.txn_month > bestMonth)) bestMonth = r.txn_month;
+    if (r.txn_year != null && (bestYear == null || r.txn_year > bestYear)) bestYear = r.txn_year;
+    const span = spanOf(r.period_label);
+    if (span && (bestYear == null || span[1] > bestYear)) bestYear = span[1];
+  }
+  if (bestMonth) return bestMonth;
+  if (bestYear != null) return String(bestYear);
+  return null;
+}
+
+function buildClinic(meta: GroupClinicMeta, all: Row[], w: Window): ClinicRevenue {
+  const rows = all.filter((r) => inWindow(r, w));
   let total = 0;
   let txnCount = 0;
   let patientShare = 0;
   let insuranceNet = 0;
+  let hasUndated = false;
   const byYear = new Map<string, YearPoint>();
+  const byMonth = new Map<string, number>();
   const doctors = new Map<string, number>();
   const mix = new Map<string, number>();
   const useDept = meta.key === 'dn-alwasl';
@@ -161,11 +221,14 @@ function buildClinic(meta: GroupClinicMeta, rows: Row[]): ClinicRevenue {
     txnCount += r.txn_count ?? 0;
     patientShare += num(r.patient_share);
     insuranceNet += num(r.insurance_net);
+    if (r.txn_year == null && r.txn_month == null) hasUndated = true;
 
     const yLabel = r.period_label ?? (r.txn_year != null ? String(r.txn_year) : 'Undated');
-    const existing = byYear.get(yLabel);
-    if (existing) existing.gross += g;
+    const ey = byYear.get(yLabel);
+    if (ey) ey.gross += g;
     else byYear.set(yLabel, { label: yLabel, year: r.txn_year, gross: g });
+
+    if (r.txn_month) byMonth.set(r.txn_month, (byMonth.get(r.txn_month) ?? 0) + g);
 
     const doc = (r.doctor ?? '').trim();
     if (doc) doctors.set(doc, (doctors.get(doc) ?? 0) + g);
@@ -180,6 +243,11 @@ function buildClinic(meta: GroupClinicMeta, rows: Row[]): ClinicRevenue {
     if (b.year == null) return -1;
     return a.year - b.year;
   });
+  const monthly: MonthPoint[] = [...byMonth.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([month, gross]) => ({ month, gross }));
+
+  const dt = dataThroughOf(all);
 
   return {
     key: meta.key,
@@ -193,18 +261,39 @@ function buildClinic(meta: GroupClinicMeta, rows: Row[]): ClinicRevenue {
     yearFrom: years.length ? Math.min(...years) : null,
     yearTo: years.length ? Math.max(...years) : null,
     byYear: byYearArr,
-    topDoctors: topN(doctors, 6),
+    monthly,
+    topDoctors: topN(doctors, 8),
     mixLabel: useDept ? 'Revenue by department' : 'Revenue by payment type',
     mix: topN(mix, 8),
     payerSplit: meta.key === 'al-maher' ? { patientShare, insuranceNet } : null,
+    dataThrough: dt,
+    dataThroughLabel: dt ? (dt.includes('-') ? monthLabel(dt) : dt) : '—',
+    hasUndated,
   };
 }
 
-export async function getGroupRevenue(): Promise<GroupRevenueReport> {
+export async function getGroupRevenue(range?: {
+  from?: string;
+  to?: string;
+  preset?: string;
+  isAll?: boolean;
+}): Promise<GroupRevenueReport> {
   const rows = await fetchAllRows();
   if (!rows || rows.length === 0) {
-    return { available: false, clinics: [], combinedTotal: 0, overlapYears: [], combinedByYear: [] };
+    return { available: false, isAll: true, windowLabel: 'All time', clinics: [], combinedTotal: 0, overlapYears: [], combinedByYear: [] };
   }
+
+  const from = range?.from ?? '2015-01-01';
+  const to = range?.to ?? '2100-12-31';
+  const isAll = range?.isAll ?? range?.preset === 'all';
+  const w: Window = {
+    fromYM: from.slice(0, 7),
+    toYM: to.slice(0, 7),
+    fromY: Number(from.slice(0, 4)),
+    toY: Number(to.slice(0, 4)),
+    isAll,
+  };
+  const windowLabel = isAll ? 'All time' : `${monthLabel(w.fromYM)} – ${monthLabel(w.toYM)}`;
 
   const byClinic = new Map<string, Row[]>();
   for (const r of rows) {
@@ -213,18 +302,16 @@ export async function getGroupRevenue(): Promise<GroupRevenueReport> {
     else byClinic.set(r.clinic, [r]);
   }
 
-  const clinics = GROUP_CLINICS.map((m) => buildClinic(m, byClinic.get(m.key) ?? []));
+  const clinics = GROUP_CLINICS.map((m) => buildClinic(m, byClinic.get(m.key) ?? [], w));
   const combinedTotal = clinics.reduce((s, c) => s + c.total, 0);
 
-  // Years present per clinic (real years only), overlap = years all three share.
-  const yearSets = clinics.map((c) => new Set(rows.filter((r) => r.clinic === c.key && r.txn_year != null).map((r) => r.txn_year as number)));
-  const allYears = [...new Set(rows.map((r) => r.txn_year).filter((y): y is number => y != null))].sort((a, b) => a - b);
+  const scoped = rows.filter((r) => inWindow(r, w));
+  const yearSets = clinics.map((c) => new Set(scoped.filter((r) => r.clinic === c.key && r.txn_year != null).map((r) => r.txn_year as number)));
+  const allYears = [...new Set(scoped.map((r) => r.txn_year).filter((y): y is number => y != null))].sort((a, b) => a - b);
   const overlapYears = allYears.filter((y) => yearSets.every((s) => s.has(y)));
 
-  // Combined by year (dated rows only; the AMC 2020–2025 bucket is excluded here
-  // and reported separately in its own clinic card).
   const combined = new Map<number, number>();
-  for (const r of rows) {
+  for (const r of scoped) {
     if (r.txn_year == null) continue;
     combined.set(r.txn_year, (combined.get(r.txn_year) ?? 0) + num(r.gross));
   }
@@ -232,5 +319,5 @@ export async function getGroupRevenue(): Promise<GroupRevenueReport> {
     .sort((a, b) => a[0] - b[0])
     .map(([year, gross]) => ({ label: String(year), year, gross }));
 
-  return { available: true, clinics, combinedTotal, overlapYears, combinedByYear };
+  return { available: true, isAll, windowLabel, clinics, combinedTotal, overlapYears, combinedByYear };
 }

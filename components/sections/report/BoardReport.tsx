@@ -4,6 +4,7 @@ import { getExecutiveReport } from '@/lib/executive/report';
 import { getArabyAdsReport } from '@/lib/arabyads/report';
 import { getDoctorPerformance } from '@/lib/executive/doctors';
 import { getDigitalSeo } from '@/lib/analytics/digital';
+import { getGroupRevenue } from '@/lib/clinics/groupRevenue';
 import type { ClinicFilterKey } from '@/config/clinics';
 import { ReportControls } from './ReportControls';
 import { TrendChart, Donut, HBarChart, type TrendSeries, type BarDatum } from '@/components/charts/Charts';
@@ -70,12 +71,13 @@ export async function BoardReport({
   const doCompare = compare && !isAll;
   const prev = doCompare ? priorWindow(from, to) : null;
 
-  const [report, araby, doctors, digital, priorReport] = await Promise.all([
+  const [report, araby, doctors, digital, priorReport, group] = await Promise.all([
     getExecutiveReport({ from: isAll ? undefined : from, to: isAll ? undefined : to, preset: isAll ? 'all' : 'custom', clinic }),
     getArabyAdsReport({ from, to }),
     getDoctorPerformance({ from, to }),
     getDigitalSeo({ from, to }),
     prev ? getExecutiveReport({ from: prev.from, to: prev.to, preset: 'custom', clinic }) : Promise.resolve(null),
+    getGroupRevenue({ from, to, preset: isAll ? 'all' : 'custom', isAll }),
   ]);
 
   const k = report.kpis;
@@ -328,6 +330,31 @@ export async function BoardReport({
                 <HBarChart data={digital.age.map((ag) => ({ label: ag.label, value: ag.sessions })) as BarDatum[]} valueFormat="int" />
               </div>
             </div>
+          </Section>
+        ) : null}
+
+        {/* Group clinics */}
+        {group.available && group.combinedTotal > 0 ? (
+          <Section eyebrow="Group" title="Sister-clinic revenue" breakBefore>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <Metric label="Group total" value={aedK(group.combinedTotal)} accent sub="collected + billed" />
+              {group.clinics.map((c) => (
+                <Metric key={c.key} label={c.label} value={aedK(c.total)} sub={`${c.metricLabel} · ${c.total > 0 ? 'in window' : 'no data in window'}`} />
+              ))}
+            </div>
+            <Insight>
+              Portfolio revenue across the group&apos;s sister clinics for this window. Not like-for-like — Dr Tosun and Al Wasl
+              are cash <strong>collected</strong>; Al Maher (AMC) is gross <strong>billed</strong> (≈99.8% insurance), which runs
+              above what is ultimately collected. Data available through:{' '}
+              {group.clinics.map((c, i) => (
+                <span key={c.key}>
+                  {i > 0 ? ' · ' : ''}
+                  {c.label.replace('Dental Nation ', '').replace(' Dental Clinic', '').replace(' Medical Centre', '')}{' '}
+                  {c.dataThroughLabel}
+                </span>
+              ))}
+              .
+            </Insight>
           </Section>
         ) : null}
 
