@@ -57,10 +57,17 @@ function CoverageNote({ report }: { report: GroupRevenueReport }) {
   );
 }
 
-function EmptyWindow({ label }: { label: string }) {
+function EmptyWindow({ label, through }: { label: string; through?: string }) {
   return (
     <p className="rounded-card border border-dashed border-line px-4 py-6 text-center text-[12.5px] text-ink-soft">
-      No {label} revenue in this date window. Widen the range (or pick “All”) to see history.
+      No {label} revenue in this window.{' '}
+      {through ? (
+        <>
+          This clinic&apos;s historical export runs only through <span className="font-medium text-ink">{through}</span> —
+          nothing has been exported for later dates.{' '}
+        </>
+      ) : null}
+      Pick “All” (or an earlier range) to see its history.
     </p>
   );
 }
@@ -87,7 +94,7 @@ function ClinicCard({ c }: { c: ClinicRevenue }) {
       />
       <div className="px-5 pb-5 pt-4">
         {c.total <= 0 ? (
-          <EmptyWindow label={c.label} />
+          <EmptyWindow label={c.label} through={c.dataThroughLabel} />
         ) : (
           <>
             <div className="flex flex-wrap items-end gap-x-8 gap-y-3">
@@ -186,7 +193,7 @@ function ClinicDetail({ c }: { c: ClinicRevenue }) {
       {c.total <= 0 ? (
         <Card>
           <div className="p-5">
-            <EmptyWindow label={c.label} />
+            <EmptyWindow label={c.label} through={c.dataThroughLabel} />
           </div>
         </Card>
       ) : (
@@ -283,7 +290,11 @@ export async function GroupRevenue({ range, sub }: { range?: { from?: string; to
   // Portfolio (All clinics) view.
   const kpis: KpiItem[] = [
     { label: 'Group total', value: aedShort(data.combinedTotal), hint: 'collected + billed · portfolio' },
-    ...data.clinics.map((c): KpiItem => ({ label: c.label, value: aedShort(c.total), hint: `${c.metricLabel} · ${coverage(c)}` })),
+    ...data.clinics.map((c): KpiItem =>
+      c.total > 0
+        ? { label: c.label, value: aedShort(c.total), hint: `${c.metricLabel} · ${coverage(c)}` }
+        : { label: c.label, value: '—', hint: `no data in window · ends ${c.dataThroughLabel}` },
+    ),
   ];
 
   return (
