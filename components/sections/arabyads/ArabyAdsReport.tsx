@@ -300,6 +300,24 @@ export async function ArabyAdsReport({ range }: { range: { from: string; to: str
                   )}
                 </div>
               </div>
+              {ga4.araby.bySourceMedium.length ? (
+                <div>
+                  <p className="mb-3 text-[11px] font-medium uppercase tracking-wide text-ink-faint">
+                    How ArabyAds visitors arrived — source / medium
+                  </p>
+                  <HBarChart
+                    data={ga4.araby.bySourceMedium.slice(0, 8).map((s) => ({ label: s.sourceMedium, value: s.sessions }))}
+                    valueFormat="int"
+                    accent={TOKENS.accent}
+                  />
+                  <p className="mt-2 text-[10.5px] leading-snug text-ink-faint">
+                    This is how GA4 saw the traffic (e.g. <em>direct / none</em> vs <em>arabyads / display</em>). GA4 groups all
+                    ArabyAds traffic under one source — it does <strong>not</strong> reveal the individual DSP sites. The per-site
+                    breakdown can only come from the booking Source&apos;s PID/SUB, which ArabyAds is currently sending as empty
+                    placeholders (<code>[PID]</code> / <code>[SUB_ID]</code>) — ask them to populate the macros to see sub-sources.
+                  </p>
+                </div>
+              ) : null}
             </div>
           )}
         </div>

@@ -746,6 +746,8 @@ export interface Ga4ArabyAds {
     conversions: number;
     byCampaign: { campaign: string; sessions: number; conversions: number }[];
     byLandingPage: { page: string; sessions: number }[];
+    /** How the ArabyAds visitors actually arrived — source / medium (direct vs referral vs the DSP source). */
+    bySourceMedium: { sourceMedium: string; sessions: number }[];
     daily: { date: string; sessions: number }[];
   };
   period: { from: string; to: string };
@@ -772,7 +774,7 @@ export async function fetchGa4ArabyAds(from: string, to: string, campaigns: stri
     },
   };
 
-  const [dailyAllRes, channelRes, campRes, lpRes, dailyArabyRes] = await Promise.all([
+  const [dailyAllRes, channelRes, campRes, lpRes, dailyArabyRes, srcMedRes] = await Promise.all([
     // 1 — overall daily sessions (all channels)
     analytics.properties.runReport({
       property,
@@ -831,6 +833,18 @@ export async function fetchGa4ArabyAds(from: string, to: string, campaigns: stri
         limit: '400',
       },
     }),
+    // 6 — ArabyAds sessions by source / medium (direct vs referral vs DSP source)
+    analytics.properties.runReport({
+      property,
+      requestBody: {
+        dateRanges,
+        dimensions: [{ name: 'sessionSourceMedium' }],
+        metrics: [{ name: 'sessions' }],
+        dimensionFilter: campaignFilter,
+        orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+        limit: '25',
+      },
+    }),
   ]);
 
   const dailyAll = (dailyAllRes.data.rows ?? [])
@@ -839,6 +853,7 @@ export async function fetchGa4ArabyAds(from: string, to: string, campaigns: stri
   const byChannel = (channelRes.data.rows ?? []).map((r) => ({ channel: r.dimensionValues?.[0]?.value || 'Unassigned', sessions: metric(r, 0) }));
   const byCampaign = (campRes.data.rows ?? []).map((r) => ({ campaign: r.dimensionValues?.[0]?.value || '(not set)', sessions: metric(r, 0), conversions: metric(r, 1) }));
   const byLandingPage = (lpRes.data.rows ?? []).map((r) => ({ page: r.dimensionValues?.[0]?.value || '(not set)', sessions: metric(r, 0) }));
+  const bySourceMedium = (srcMedRes.data.rows ?? []).map((r) => ({ sourceMedium: r.dimensionValues?.[0]?.value || '(not set)', sessions: metric(r, 0) }));
   const arabyDaily = (dailyArabyRes.data.rows ?? [])
     .map((r) => ({ date: ga4DateToIso(r.dimensionValues?.[0]?.value) ?? '', sessions: metric(r, 0) }))
     .filter((d) => d.date);
@@ -856,6 +871,7 @@ export async function fetchGa4ArabyAds(from: string, to: string, campaigns: stri
       conversions: arabyConversions,
       byCampaign,
       byLandingPage,
+      bySourceMedium,
       daily: arabyDaily,
     },
     period: { from, to },
