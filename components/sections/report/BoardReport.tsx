@@ -2,6 +2,8 @@ import type { ReactNode } from 'react';
 import { startOfMonth, endOfMonth, subMonths, subDays, parseISO, format, differenceInCalendarDays } from 'date-fns';
 import { getExecutiveReport } from '@/lib/executive/report';
 import { getArabyAdsReport } from '@/lib/arabyads/report';
+import { getArabyLeadStatus } from '@/lib/arabyads/leadStatus';
+import { getArabyPractoOutcome } from '@/lib/arabyads/practoOutcome';
 import { getDoctorPerformance } from '@/lib/executive/doctors';
 import { getDigitalSeo } from '@/lib/analytics/digital';
 import { getGroupRevenue } from '@/lib/clinics/groupRevenue';
@@ -71,13 +73,15 @@ export async function BoardReport({
   const doCompare = compare && !isAll;
   const prev = doCompare ? priorWindow(from, to) : null;
 
-  const [report, araby, doctors, digital, priorReport, group] = await Promise.all([
+  const [report, araby, doctors, digital, priorReport, group, leadStatus, arabyOutcome] = await Promise.all([
     getExecutiveReport({ from: isAll ? undefined : from, to: isAll ? undefined : to, preset: isAll ? 'all' : 'custom', clinic }),
     getArabyAdsReport({ from, to }),
     getDoctorPerformance({ from, to }),
     getDigitalSeo({ from, to }),
     prev ? getExecutiveReport({ from: prev.from, to: prev.to, preset: 'custom', clinic }) : Promise.resolve(null),
     getGroupRevenue({ from, to, preset: isAll ? 'all' : 'custom', isAll }),
+    getArabyLeadStatus(),
+    getArabyPractoOutcome({ from, to }),
   ]);
 
   const k = report.kpis;
@@ -91,6 +95,18 @@ export async function BoardReport({
 
   const periodStr = `${dubaiDateLabel(from)} → ${dubaiDateLabel(to)}`;
   const compareNote = doCompare && prev ? `vs ${dubaiDateLabel(prev.from)} → ${dubaiDateLabel(prev.to)}` : null;
+
+  // ArabyAds effort → quality → outcome (for the Campaign section).
+  const oc = arabyOutcome;
+  const arabyBills = araby.bookings.total;
+  const arabyCost = araby.cost.windowCost;
+  const arabyNotAttended = oc.noshow + oc.cancelled + oc.notFound;
+  const costPerAttended = oc.attended > 0 ? arabyCost / oc.attended : null;
+  const vt = leadStatus.available ? leadStatus.totals : null;
+  // Outcome/quality palette — validated (dataviz six-checks, light): normal-vision
+  // ΔE floor passes; every segment is directly labelled so identity is never
+  // colour-alone. Green=good, blue=in-flight, orange=warning, gray=neutral, red=lost.
+  const QUAL = { attended: '#15803D', upcoming: '#5B7BA3', noshow: '#D97706', cancelled: '#9CA3AF', notfound: '#B91C1C', valid: '#15803D', invalid: '#B91C1C', pending: '#9CA3AF' };
 
   const trendData = report.monthly.map((m) => ({ date: `${m.month}-01`, spend: m.spend, bookings: m.appointments, leads: m.leads, revenue: m.revenue }));
   const trendSeries: TrendSeries[] = [
@@ -165,22 +181,61 @@ export async function BoardReport({
           </Insight>
         </Section>
 
-        {/* ArabyAds — the big pay-per-booking campaign */}
+        {/* ArabyAds — effort vs. lead quality vs. clinic outcome */}
         {araby.bookings.total > 0 || araby.bookings.test > 0 || araby.enquiries.total > 0 || araby.cost.toDateCost > 0 || araby.firstSeen != null ? (
-          <Section eyebrow="Campaign" title="ArabyAds — pay-per-booking performance" breakBefore>
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <Section eyebrow="Campaign" title="ArabyAds — effort vs. lead quality" breakBefore>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
               <Metric
-                label="Confirmed bookings"
-                value={int(araby.bookings.total)}
-                sub={araby.bookings.test > 0 ? `${int(araby.bookings.test)} test excluded` : 'real (billable)'}
+                label="Leads brought in"
+                value={int(arabyBills)}
+                sub={araby.bookings.test > 0 ? `${int(araby.bookings.test)} test excluded` : 'billable bookings'}
                 accent
               />
-              <Metric label="Campaign cost" value={aed(araby.cost.windowCost)} sub="billed per booking" />
-              <Metric label="Budget used" value={pct(araby.cost.utilization)} sub={`${aedK(araby.cost.toDateCost)} of ${aedK(araby.cost.budgetCap)}`} />
-              <Metric label="Enquiries" value={int(araby.enquiries.total)} sub="all channels" />
+              <Metric label="Attended" value={int(oc.attended)} sub="showed at the clinic" />
+              <Metric label="No-show / lost" value={int(arabyNotAttended)} sub="billed, didn't attend" />
+              <Metric label="Campaign cost" value={aed(arabyCost)} sub="billed per booking" />
+              <Metric label="Cost / attended" value={costPerAttended != null ? aed(costPerAttended) : '—'} sub="effective CAC" accent />
+              <Metric
+                label="Valid leads"
+                value={vt && vt.validationRate != null ? pct(vt.validationRate) : '—'}
+                sub={vt ? `${int(vt.valid)} of ${int(vt.valid + vt.invalid)} reviewed` : 'lead sheet pending'}
+              />
             </div>
+
+            {oc.total > 0 ? (
+              <div className="mt-6">
+                <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-ink-faint">
+                  What happened to the {int(oc.total)} billed bookings
+                </p>
+                <QualityBar
+                  segments={[
+                    { label: 'Attended', value: oc.attended, color: QUAL.attended },
+                    { label: 'Upcoming', value: oc.upcoming, color: QUAL.upcoming },
+                    { label: 'No-show', value: oc.noshow, color: QUAL.noshow },
+                    { label: 'Cancelled', value: oc.cancelled, color: QUAL.cancelled },
+                    { label: 'Not in Practo', value: oc.notFound, color: QUAL.notfound },
+                  ]}
+                />
+              </div>
+            ) : null}
+
+            {vt && vt.total > 0 ? (
+              <div className="mt-6">
+                <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-ink-faint">
+                  Lead validation to date — {int(vt.total)} leads
+                </p>
+                <QualityBar
+                  segments={[
+                    { label: 'Valid', value: vt.valid, color: QUAL.valid },
+                    { label: 'Invalid', value: vt.invalid, color: QUAL.invalid },
+                    { label: 'Pending', value: vt.pending, color: QUAL.pending },
+                  ]}
+                />
+              </div>
+            ) : null}
+
             {araby.cost.perLane.length ? (
-              <div className="mt-4 overflow-x-auto">
+              <div className="mt-6 overflow-x-auto">
                 <table className="w-full min-w-[420px] text-[12.5px]">
                   <thead>
                     <tr className="border-b border-line text-left text-[10px] uppercase tracking-wide text-ink-faint">
@@ -205,9 +260,29 @@ export async function BoardReport({
                 </table>
               </div>
             ) : null}
+
             <Insight>
-              ArabyAds bills <strong>per confirmed booking</strong> and is invoiced separately from Meta/Google, so its cost is
-              NOT in the marketing-spend figure above. Budget cap {aedK(araby.cost.budgetCap)}; {aedK(araby.cost.remaining)} remaining.
+              {int(arabyBills)} bookings brought in for {aed(arabyCost)}
+              {oc.total > 0 ? (
+                <>
+                  {' '}— but only <strong>{int(oc.attended)}</strong> attended
+                  {arabyNotAttended > 0 ? (
+                    <> while <strong>{int(arabyNotAttended)}</strong> no-showed, cancelled or never reached Practo</>
+                  ) : null}
+                  {costPerAttended != null ? (
+                    <>, an effective <strong>{aed(costPerAttended)}</strong> per attended patient</>
+                  ) : null}
+                  .
+                </>
+              ) : '.'}
+              {vt && vt.validationRate != null ? (
+                <>
+                  {' '}Lead validation stands at <strong>{pct(vt.validationRate)}</strong>
+                  {vt.invalid > vt.valid ? ' — most rejected leads are wrong / unreachable contacts' : ''}.
+                </>
+              ) : null}{' '}
+              ArabyAds bills per confirmed booking and is invoiced separately, so this cost is not in the marketing-spend figure
+              above. Budget cap {aedK(araby.cost.budgetCap)}; {aedK(araby.cost.remaining)} remaining.
             </Insight>
           </Section>
         ) : null}
@@ -413,6 +488,43 @@ function Cover({ label, value, delta, goodUp }: { label: string; value: string; 
         {value}
         <Delta delta={delta} goodUp={goodUp} onDark />
       </p>
+    </div>
+  );
+}
+
+/**
+ * A single 100%-stacked bar with a labelled legend — a print-clean infographic
+ * for part-to-whole quality splits (built from divs, not a chart lib, so it
+ * survives the PDF). Identity is never colour-alone: every segment is named with
+ * its count + share below. Reserved status colours carry meaning.
+ */
+function QualityBar({ segments, height = 30 }: { segments: { label: string; value: number; color: string }[]; height?: number }) {
+  const total = segments.reduce((a, s) => a + s.value, 0);
+  if (total <= 0) return <p className="text-[12px] text-ink-faint">No data in this window.</p>;
+  const shown = segments.filter((s) => s.value > 0);
+  return (
+    <div>
+      <div className="flex w-full overflow-hidden rounded-md" style={{ height, gap: 2 }}>
+        {shown.map((s) => (
+          <div
+            key={s.label}
+            className="flex items-center justify-center"
+            style={{ width: `${(s.value / total) * 100}%`, background: s.color, printColorAdjust: 'exact' }}
+            title={`${s.label}: ${s.value}`}
+          >
+            {s.value / total >= 0.1 ? <span className="text-[11px] font-semibold text-white tabular-nums">{s.value}</span> : null}
+          </div>
+        ))}
+      </div>
+      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+        {segments.map((s) => (
+          <span key={s.label} className="inline-flex items-center gap-1.5 text-[11px] text-ink-soft">
+            <span className="h-2.5 w-2.5 rounded-sm" style={{ background: s.color, printColorAdjust: 'exact' }} />
+            {s.label} <span className="font-semibold text-ink tabular-nums">{s.value}</span>
+            <span className="text-ink-faint">({Math.round((s.value / total) * 100)}%)</span>
+          </span>
+        ))}
+      </div>
     </div>
   );
 }
