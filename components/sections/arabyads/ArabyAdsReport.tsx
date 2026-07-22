@@ -1,5 +1,6 @@
 import { getArabyAdsReport } from '@/lib/arabyads/report';
 import { getBookingEventsReport } from '@/lib/bookings/events';
+import { ArabyLeadStatus } from '@/components/sections/arabyads/ArabyLeadStatus';
 import { BookingEventsByOffer } from '@/components/sections/bookings/BookingEventsByOffer';
 import { Card, SectionHeader, Takeaway } from '@/components/ui/Card';
 import { DataGapInline } from '@/components/ui/DataGap';
@@ -381,6 +382,10 @@ export async function ArabyAdsReport({ range }: { range: { from: string; to: str
           </div>
         </Card>
       ) : null}
+
+      {/* Lead validation status — same tables as the external Araby report, so
+          the team sees them inside the dashboard too. From the manual sheet. */}
+      <ArabyLeadStatus />
     </div>
   );
 }

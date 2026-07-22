@@ -3,7 +3,6 @@ import { getRangeReport } from '@/lib/report';
 import { dubaiDateLabel, dubaiToday } from '@/lib/dates';
 import { ARABY_COOKIE, verifyArabyToken } from '@/lib/auth/araby-report';
 import { ArabyAdsReport } from '@/components/sections/arabyads/ArabyAdsReport';
-import { ArabyLeadStatus } from '@/components/sections/arabyads/ArabyLeadStatus';
 import { DateRangeControl } from '@/components/DateRangeControl';
 import { ArabyReportLogin } from './ArabyReportLogin';
 import { arabyLogout } from './actions';
@@ -68,10 +67,6 @@ export default async function ArabyReportsPage({
       </header>
 
       <ArabyAdsReport range={range} />
-
-      {/* Lead validation status — from the team's manually-maintained sheet.
-          Independent of the date control (it's the full running lead list). */}
-      <ArabyLeadStatus />
 
       <footer className="mt-6 border-t border-line pt-3 text-[11.5px] text-ink-faint">
         Live figures — reload to refresh. Dental Nation · Araby Ads lead campaign.
