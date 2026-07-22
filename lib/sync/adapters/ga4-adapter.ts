@@ -749,6 +749,18 @@ export interface Ga4ArabyAds {
     /** How the ArabyAds visitors actually arrived — source / medium (direct vs referral vs the DSP source). */
     bySourceMedium: { sourceMedium: string; sessions: number }[];
     daily: { date: string; sessions: number }[];
+    /** Behavioural quality of traffic hitting the ArabyAds landing pages — the
+     *  independent "is this grey/bot inventory?" signal (near-zero engagement,
+     *  instant bounce, odd geo/device = junk). Scoped by landing page, so it
+     *  works even when the DSP doesn't tag utm_source. */
+    quality: {
+      sessions: number;
+      engagementRate: number | null; // 0–1
+      bounceRate: number | null; // 0–1
+      avgSessionDuration: number | null; // seconds
+      byDevice: { device: string; sessions: number; engagementRate: number | null }[];
+      byCountry: { country: string; sessions: number }[];
+    } | null;
   };
   period: { from: string; to: string };
 }
@@ -773,8 +785,19 @@ export async function fetchGa4ArabyAds(from: string, to: string, campaigns: stri
       ],
     },
   };
+  // The ArabyAds landing pages (Glow-Up / SOS / Scan). Filtering the quality
+  // signals by landing page — not by source — means we still measure the traffic
+  // even when the DSP fails to tag utm_source (which is exactly the case here).
+  const arabyPages = GA4_LANES.filter((l) => l.widgetSource);
+  const landingFilter = {
+    orGroup: {
+      expressions: arabyPages.map((l) => ({
+        filter: { fieldName: 'landingPagePlusQueryString', stringFilter: { matchType: 'CONTAINS' as const, value: l.slug, caseSensitive: false } },
+      })),
+    },
+  };
 
-  const [dailyAllRes, channelRes, campRes, lpRes, dailyArabyRes, srcMedRes] = await Promise.all([
+  const [dailyAllRes, channelRes, campRes, lpRes, dailyArabyRes, srcMedRes, qTotRes, qDevRes, qGeoRes] = await Promise.all([
     // 1 — overall daily sessions (all channels)
     analytics.properties.runReport({
       property,
@@ -845,6 +868,39 @@ export async function fetchGa4ArabyAds(from: string, to: string, campaigns: stri
         limit: '25',
       },
     }),
+    // 7 — quality totals on the ArabyAds landing pages (engagement / bounce / duration)
+    analytics.properties.runReport({
+      property,
+      requestBody: {
+        dateRanges,
+        metrics: [{ name: 'sessions' }, { name: 'engagementRate' }, { name: 'bounceRate' }, { name: 'averageSessionDuration' }],
+        dimensionFilter: landingFilter,
+      },
+    }),
+    // 8 — by device
+    analytics.properties.runReport({
+      property,
+      requestBody: {
+        dateRanges,
+        dimensions: [{ name: 'deviceCategory' }],
+        metrics: [{ name: 'sessions' }, { name: 'engagementRate' }],
+        dimensionFilter: landingFilter,
+        orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+        limit: '10',
+      },
+    }),
+    // 9 — by country (geography anomaly check)
+    analytics.properties.runReport({
+      property,
+      requestBody: {
+        dateRanges,
+        dimensions: [{ name: 'country' }],
+        metrics: [{ name: 'sessions' }],
+        dimensionFilter: landingFilter,
+        orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+        limit: '10',
+      },
+    }),
   ]);
 
   const dailyAll = (dailyAllRes.data.rows ?? [])
@@ -854,6 +910,25 @@ export async function fetchGa4ArabyAds(from: string, to: string, campaigns: stri
   const byCampaign = (campRes.data.rows ?? []).map((r) => ({ campaign: r.dimensionValues?.[0]?.value || '(not set)', sessions: metric(r, 0), conversions: metric(r, 1) }));
   const byLandingPage = (lpRes.data.rows ?? []).map((r) => ({ page: r.dimensionValues?.[0]?.value || '(not set)', sessions: metric(r, 0) }));
   const bySourceMedium = (srcMedRes.data.rows ?? []).map((r) => ({ sourceMedium: r.dimensionValues?.[0]?.value || '(not set)', sessions: metric(r, 0) }));
+
+  // Quality signals on the ArabyAds landing pages.
+  const qRow = qTotRes.data.rows?.[0];
+  const qSessions = metric(qRow, 0);
+  const quality =
+    qSessions > 0
+      ? {
+          sessions: qSessions,
+          engagementRate: metric(qRow, 1),
+          bounceRate: metric(qRow, 2),
+          avgSessionDuration: metric(qRow, 3),
+          byDevice: (qDevRes.data.rows ?? []).map((r) => ({
+            device: r.dimensionValues?.[0]?.value || '(other)',
+            sessions: metric(r, 0),
+            engagementRate: metric(r, 1),
+          })),
+          byCountry: (qGeoRes.data.rows ?? []).map((r) => ({ country: r.dimensionValues?.[0]?.value || '(not set)', sessions: metric(r, 0) })),
+        }
+      : null;
   const arabyDaily = (dailyArabyRes.data.rows ?? [])
     .map((r) => ({ date: ga4DateToIso(r.dimensionValues?.[0]?.value) ?? '', sessions: metric(r, 0) }))
     .filter((d) => d.date);
@@ -873,6 +948,7 @@ export async function fetchGa4ArabyAds(from: string, to: string, campaigns: stri
       byLandingPage,
       bySourceMedium,
       daily: arabyDaily,
+      quality,
     },
     period: { from, to },
   };

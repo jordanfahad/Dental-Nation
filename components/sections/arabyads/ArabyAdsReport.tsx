@@ -328,6 +328,68 @@ export async function ArabyAdsReport({ range }: { range: { from: string; to: str
         </div>
       </Card>
 
+      {/* ── Traffic quality signals (is this grey / bot inventory?) ── */}
+      <Card>
+        <SectionHeader tag="A4b" eyebrow="Traffic quality" title="Are these real visits? (ArabyAds landing pages)" />
+        <div className="px-5 pb-5 pt-4">
+          {!ga4 || !ga4.araby.quality ? (
+            <DataGapInline detail="no GA4 sessions on the ArabyAds landing pages in this window" owner={ownerFor('tracking')} />
+          ) : (
+            <>
+              <KpiBand
+                items={[
+                  { label: 'Sessions (Araby pages)', value: int(ga4.araby.quality.sessions), hint: 'landed on Glow-Up / SOS / Scan' },
+                  {
+                    label: 'Engagement rate',
+                    value: ga4.araby.quality.engagementRate != null ? `${Math.round(ga4.araby.quality.engagementRate * 100)}%` : null,
+                    hint: 'engaged / all — low = junk',
+                  },
+                  {
+                    label: 'Bounce rate',
+                    value: ga4.araby.quality.bounceRate != null ? `${Math.round(ga4.araby.quality.bounceRate * 100)}%` : null,
+                    hint: 'left immediately — high = junk',
+                  },
+                  {
+                    label: 'Avg session',
+                    value:
+                      ga4.araby.quality.avgSessionDuration != null
+                        ? `${Math.floor(ga4.araby.quality.avgSessionDuration / 60)}m ${Math.round(ga4.araby.quality.avgSessionDuration % 60)}s`
+                        : null,
+                    hint: 'near-0 = bot / grey',
+                  },
+                ]}
+              />
+              <div className="mt-5 grid gap-6 lg:grid-cols-2">
+                <div>
+                  <p className="mb-3 text-[11px] font-medium uppercase tracking-wide text-ink-faint">By device</p>
+                  {ga4.araby.quality.byDevice.length === 0 ? (
+                    <DataGapInline detail="no device data" owner={ownerFor('tracking')} />
+                  ) : (
+                    <HBarChart data={ga4.araby.quality.byDevice.map((d) => ({ label: d.device, value: d.sessions }))} valueFormat="int" accent={TOKENS.accent} />
+                  )}
+                </div>
+                <div>
+                  <p className="mb-3 text-[11px] font-medium uppercase tracking-wide text-ink-faint">By country (geo anomaly check)</p>
+                  {ga4.araby.quality.byCountry.length === 0 ? (
+                    <DataGapInline detail="no geography data" owner={ownerFor('tracking')} />
+                  ) : (
+                    <HBarChart data={ga4.araby.quality.byCountry.slice(0, 8).map((c) => ({ label: c.country, value: c.sessions }))} valueFormat="int" accent={TOKENS.accent600} />
+                  )}
+                </div>
+              </div>
+              <p className="mt-4 border-l-2 border-accent/40 pl-3 text-[12px] italic leading-relaxed text-ink-soft">
+                Grey / MFA-site or bot traffic has a tell-tale signature: very low engagement, high bounce, near-zero session
+                duration, and geography / device that doesn&apos;t match your real patients. Read this next to the lead outcomes
+                above — <strong>~100% &ldquo;wrong contact&rdquo; invalid leads with 0 attended</strong>, on traffic that behaves
+                like this, points to low-quality DSP inventory rather than genuine local demand. It does <strong>not</strong> name
+                the individual sites — only ArabyAds&apos; placement report or the PID/SUB macros can — but it quantifies how the
+                traffic behaves, which is the evidence to take back to them.
+              </p>
+            </>
+          )}
+        </div>
+      </Card>
+
       {/* ── Enquiry surge ── */}
       <Card>
         <SectionHeader tag="A5" eyebrow="Enquiries" title="Are enquiries surging? (all channels)" />
