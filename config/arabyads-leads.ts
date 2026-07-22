@@ -14,9 +14,13 @@ export const ARABY_LEADS_SHEET = {
   sheetGid: process.env.ARABY_LEADS_SHEET_GID ? Number(process.env.ARABY_LEADS_SHEET_GID) : 1596657498,
 };
 
-/** The campaign lanes shown in the summary (in order). Matched on "Lane <X>". */
-export const ARABY_LANES: { key: string; label: string }[] = [
-  { key: 'D', label: 'Lane D — SOS' },
-  { key: 'J', label: 'Lane J — Scan' },
-  { key: 'E', label: 'Lane E — Glow Up' },
+/**
+ * The campaign lanes shown in the summary (in order). The lead sheet carries the
+ * campaign in its `Source` column (e.g. "ArabyAds / dental_nation_scan (PID:…)"),
+ * so each lane is matched by a keyword found in that Source string.
+ */
+export const ARABY_LANES: { key: string; label: string; match: string }[] = [
+  { key: 'D', label: 'Lane D — SOS', match: 'sos' },
+  { key: 'J', label: 'Lane J — Scan', match: 'scan' },
+  { key: 'E', label: 'Lane E — Glow Up', match: 'glow' },
 ];

@@ -3,16 +3,27 @@ import { getSheetsClient } from '@/lib/sync/google-auth';
 import { ARABY_LEADS_SHEET, ARABY_LANES } from '@/config/arabyads-leads';
 
 /**
- * Reads the manually-maintained Araby Ads lead-status sheet and shapes it into
- * the two tables the ads team asked for: a per-lead detail list, and a lane
- * summary (total / valid / invalid / validation rate / booked).
+ * Reads the manually-maintained Araby Ads lead sheet (the booking-flow export
+ * the team keeps up to date with Lead Status + Reason for Rejection) and shapes
+ * it into the two tables the ads team asked for: a per-lead detail list, and a
+ * lane summary (total / valid / invalid / validation rate / booked).
+ *
+ * The sheet's real columns are: Timestamp, Full Name, Email, Phone, Title,
+ * Lead Status, Reason for Rejection, Condition, Treatment, Type, Date, Time,
+ * Clinic Name, Price, Insurance, Additional Details, Doctor, Booking Reference,
+ * Payment Method, Source. We map:
+ *   - Lead ID          ← Booking Reference
+ *   - Date & Time      ← Timestamp (submission)
+ *   - Lane / Service   ← parsed from Source (dental_nation_sos/scan/glowup)
+ *   - Notes / Appt.    ← the requested appointment Date (+ Time)
  *
  * Definitions (agreed with the client):
- *   - Lead Status normalises to Valid / Invalid / Pending (Invalid wins if the
- *     cell says "invalid"; blank → Pending).
+ *   - Valid  = accurate, reachable patient data (regardless of whether reception
+ *     finally booked it); the team sets Lead Status by hand.
  *   - Validation Rate = Valid / (Valid + Invalid)  — Pending excluded.
- *   - Booked = the "Notes / Appointment Date" cell carries a booking/date signal.
- *   - Lane = parsed from "Interested Lane / Service" as "Lane <letter>".
+ *   - Booked = a Valid lead that carries a real PMS booking reference (BK…).
+ *   - Test leads (status "Test Lead", or test/zavis/sagar/owner emails) excluded.
+ *   - Only ArabyAds-sourced leads (a recognised lane) are included.
  *
  * Never throws — a missing / unshared sheet degrades to available:false + note.
  */
@@ -40,7 +51,7 @@ export interface LaneSummary {
   valid: number;
   invalid: number;
   pending: number;
-  validationRate: number | null; // valid / (valid+invalid)
+  validationRate: number | null;
   booked: number;
 }
 
@@ -58,34 +69,49 @@ function normStatus(raw: string): LeadStatus {
   const t = raw.toLowerCase();
   if (t.includes('invalid')) return 'Invalid'; // check first — "invalid" contains "valid"
   if (t.includes('valid')) return 'Valid';
-  if (t.includes('pending')) return 'Pending';
-  return 'Pending';
+  return 'Pending'; // pending / blank / anything else awaiting review
 }
 
-/** A "Notes / Appointment Date" cell that carries a booking/date signal. */
-function isBooked(notes: string): boolean {
-  if (!notes) return false;
-  return /\d|book|appt|appointment|scheduled|confirmed|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec/i.test(notes);
+function isTestLead(name: string, email: string, status: string): boolean {
+  if (/test/i.test(status)) return true; // "Test Lead"
+  const hay = `${name} ${email}`.toLowerCase();
+  if (/test|zavis|sagar/.test(hay)) return true;
+  if (email.toLowerCase() === 'jordan.fahad@gmail.com') return true;
+  return false;
 }
 
-function laneKeyOf(service: string): string | null {
-  const m = service.match(/lane\s*([a-z])/i);
-  return m ? m[1].toUpperCase() : null;
+function laneKeyOf(source: string): string | null {
+  const t = source.toLowerCase();
+  for (const l of ARABY_LANES) if (t.includes(l.match)) return l.key;
+  return null;
+}
+const laneLabel = (key: string | null): string => ARABY_LANES.find((l) => l.key === key)?.label ?? '—';
+
+/** A real PMS booking reference (BK…) — distinguishes a genuine booking. */
+const hasBooking = (ref: string): boolean => /^bk/i.test(ref);
+
+/** "07/17/2026, 11:06:52" → epoch ms for sorting (newest first); 0 if unparseable. */
+function tsMs(v: string): number {
+  const m = v.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})[,\s]+(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+  if (!m) return 0;
+  return Date.UTC(+m[3], +m[1] - 1, +m[2], +m[4], +m[5], m[6] ? +m[6] : 0);
 }
 
-/** Match a header cell to a known column by tolerant keyword search. */
 function buildColumnMap(header: string[]): Record<string, number> {
   const find = (re: RegExp) => header.findIndex((h) => re.test(h));
   return {
-    leadId: find(/lead\s*id/i),
-    dateTime: find(/date/i),
-    patient: find(/patient|name/i),
-    phone: find(/phone|contact|number/i),
+    timestamp: find(/timestamp|date\s*&|date\s*and\s*time/i),
+    fullName: find(/full\s*name/i) >= 0 ? find(/full\s*name/i) : find(/patient/i),
+    email: find(/email/i),
+    phone: find(/phone/i),
+    status: find(/lead\s*status/i) >= 0 ? find(/lead\s*status/i) : find(/\bstatus\b/i),
+    reason: find(/reason|rejection/i),
+    date: find(/^date$/i),
+    time: find(/^time$/i),
     clinic: find(/clinic/i),
-    service: find(/lane|service|interested/i),
-    status: find(/status/i),
-    reason: find(/reason|rejection|invalid/i),
-    notes: find(/notes|appointment/i),
+    additional: find(/additional/i),
+    bookingRef: find(/booking\s*ref/i),
+    source: find(/source/i),
   };
 }
 
@@ -115,7 +141,6 @@ const emptySummary = (key: string, label: string): LaneSummary => ({
 
 function summarise(rows: LeadRow[]): { lanes: LaneSummary[]; totals: LaneSummary } {
   const known = new Map(ARABY_LANES.map((l) => [l.key, emptySummary(l.key, l.label)]));
-  const other = emptySummary('other', 'Other / unmatched');
   const totals = emptySummary('total', 'Total');
 
   const bump = (sum: LaneSummary, r: LeadRow) => {
@@ -125,22 +150,17 @@ function summarise(rows: LeadRow[]): { lanes: LaneSummary[]; totals: LaneSummary
     else sum.pending += 1;
     if (r.booked) sum.booked += 1;
   };
-
   for (const r of rows) {
-    const sum = (r.laneKey && known.get(r.laneKey)) || other;
-    bump(sum, r);
+    const sum = r.laneKey ? known.get(r.laneKey) : undefined;
+    if (sum) bump(sum, r);
     bump(totals, r);
   }
-
   const finalize = (sum: LaneSummary) => {
     const denom = sum.valid + sum.invalid;
     sum.validationRate = denom > 0 ? sum.valid / denom : null;
     return sum;
   };
-
-  const lanes = [...known.values()].map(finalize);
-  if (other.total > 0) lanes.push(finalize(other));
-  return { lanes, totals: finalize(totals) };
+  return { lanes: [...known.values()].map(finalize), totals: finalize(totals) };
 }
 
 export async function getArabyLeadStatus(): Promise<LeadStatusReport> {
@@ -152,7 +172,7 @@ export async function getArabyLeadStatus(): Promise<LeadStatusReport> {
     totals: emptySummary('total', 'Total'),
   });
 
-  if (!ARABY_LEADS_SHEET.spreadsheetId) return empty('Lead-status sheet not configured.');
+  if (!ARABY_LEADS_SHEET.spreadsheetId) return empty('Lead sheet not configured.');
 
   let sheets: ReturnType<typeof getSheetsClient>;
   try {
@@ -171,38 +191,60 @@ export async function getArabyLeadStatus(): Promise<LeadStatusReport> {
     const grid = (res.data.values ?? []) as string[][];
     if (grid.length < 2) return empty('The lead sheet has no rows yet.');
 
-    // Find the header row (the one containing "Lead ID"); default to row 0.
-    let headerIdx = grid.findIndex((row) => row.some((c) => /lead\s*id/i.test(s(c))));
+    let headerIdx = grid.findIndex((row) => row.some((c) => /lead\s*status/i.test(s(c))));
     if (headerIdx < 0) headerIdx = 0;
     const col = buildColumnMap(grid[headerIdx].map(s));
-    if (col.leadId < 0) return empty('Could not find a "Lead ID" column in the sheet.');
+    if (col.source < 0 && col.status < 0) return empty('Could not find the Lead Status / Source columns in the sheet.');
 
+    const at = (row: string[], i: number) => (i >= 0 ? s(row[i]) : '');
     const leads: LeadRow[] = [];
+    let excludedTest = 0;
+    let excludedNonAraby = 0;
+
     for (let i = headerIdx + 1; i < grid.length; i++) {
       const row = grid[i];
-      const leadId = s(row[col.leadId]);
-      if (!leadId) continue; // skips the reason-option rows (no Lead ID)
-      const notes = col.notes >= 0 ? s(row[col.notes]) : '';
-      const service = col.service >= 0 ? s(row[col.service]) : '';
+      const name = at(row, col.fullName);
+      const email = at(row, col.email);
+      const statusRaw = at(row, col.status);
+      // A row is "real" if it has a name or a booking ref; skip fully blank rows.
+      const ref = at(row, col.bookingRef);
+      if (!name && !ref && !statusRaw) continue;
+      if (isTestLead(name, email, statusRaw)) {
+        excludedTest += 1;
+        continue;
+      }
+      const source = at(row, col.source);
+      const laneKey = laneKeyOf(source);
+      if (!laneKey) {
+        excludedNonAraby += 1;
+        continue; // Araby report → only their campaign lanes
+      }
+      const apptDate = at(row, col.date);
+      const notes = apptDate || at(row, col.additional);
       leads.push({
-        leadId,
-        dateTime: col.dateTime >= 0 ? s(row[col.dateTime]) : '',
-        patient: col.patient >= 0 ? s(row[col.patient]) : '',
-        phone: col.phone >= 0 ? s(row[col.phone]) : '',
-        clinic: col.clinic >= 0 ? s(row[col.clinic]) : '',
-        service,
-        laneKey: laneKeyOf(service),
-        status: normStatus(col.status >= 0 ? s(row[col.status]) : ''),
-        reason: col.reason >= 0 ? s(row[col.reason]) : '',
+        leadId: ref || '—',
+        dateTime: at(row, col.timestamp),
+        patient: name || '—',
+        phone: at(row, col.phone),
+        clinic: at(row, col.clinic),
+        service: laneLabel(laneKey),
+        laneKey,
+        status: normStatus(statusRaw),
+        reason: at(row, col.reason),
         notes,
-        booked: isBooked(notes),
+        booked: normStatus(statusRaw) === 'Valid' && hasBooking(ref),
       });
     }
 
-    if (leads.length === 0) return empty('No leads recorded in the sheet yet.');
+    if (leads.length === 0) {
+      return empty(
+        excludedNonAraby + excludedTest > 0
+          ? `No ArabyAds leads to show yet (${excludedTest} test, ${excludedNonAraby} non-ArabyAds rows skipped).`
+          : 'No leads recorded in the sheet yet.',
+      );
+    }
 
-    // Newest first by Date & Time (string compare works for ISO; falls back to sheet order).
-    leads.sort((a, b) => (b.dateTime > a.dateTime ? 1 : b.dateTime < a.dateTime ? -1 : 0));
+    leads.sort((a, b) => tsMs(b.dateTime) - tsMs(a.dateTime));
     const { lanes, totals } = summarise(leads);
     return { available: true, note: null, leads, lanes, totals };
   } catch (e) {

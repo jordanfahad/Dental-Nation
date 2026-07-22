@@ -77,8 +77,10 @@ export async function ArabyLeadStatus() {
             </table>
           </div>
           <p className="mt-2 text-[10.5px] leading-snug text-ink-faint">
-            Validation Rate = Valid ÷ (Valid + Invalid) — Pending leads are excluded until reviewed. Booked = the lead has an
-            appointment noted. Status is maintained by the Dental Nation team.
+            <span className="font-medium text-ink-soft">Valid</span> = accurate, reachable patient data, based on lead
+            submission — regardless of the final booking status by reception. Validation Rate = Valid ÷ (Valid + Invalid),
+            Pending excluded. <span className="font-medium text-ink-soft">Booked</span> = a valid lead carrying a confirmed
+            booking reference. ArabyAds leads only; test leads excluded. Status is maintained by the Dental Nation team.
           </p>
         </div>
       </Card>
