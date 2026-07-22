@@ -7,8 +7,10 @@ import { getArabyPractoOutcome } from '@/lib/arabyads/practoOutcome';
 import { getDoctorPerformance } from '@/lib/executive/doctors';
 import { getDigitalSeo } from '@/lib/analytics/digital';
 import { getGroupRevenue } from '@/lib/clinics/groupRevenue';
+import { getCommentary } from '@/lib/report/commentary';
 import type { ClinicFilterKey } from '@/config/clinics';
 import { ReportControls } from './ReportControls';
+import { CommentaryBlock } from './CommentaryBlock';
 import { TrendChart, Donut, HBarChart, type TrendSeries, type BarDatum } from '@/components/charts/Charts';
 import { dubaiDateLabel } from '@/lib/dates';
 
@@ -83,6 +85,7 @@ export async function BoardReport({
     getArabyLeadStatus(),
     getArabyPractoOutcome({ from, to }),
   ]);
+  const [arabyCommentary, mgmtCommentary] = await Promise.all([getCommentary('araby'), getCommentary('management')]);
 
   const k = report.kpis;
   const a = report.acquisition;
@@ -284,6 +287,14 @@ export async function BoardReport({
               ArabyAds bills per confirmed booking and is invoiced separately, so this cost is not in the marketing-spend figure
               above. Budget cap {aedK(araby.cost.budgetCap)}; {aedK(araby.cost.remaining)} remaining.
             </Insight>
+            <div className="mt-5 rounded-card border border-line bg-panel/30 p-4">
+              <p className="mb-2 text-[10.5px] font-semibold uppercase tracking-[0.16em] text-accent">Commentary</p>
+              <CommentaryBlock
+                slug="araby"
+                body={arabyCommentary}
+                placeholder="Total leads, what happened, traffic quality, source-tracking status, campaign pause/restart…"
+              />
+            </div>
           </Section>
         ) : null}
 
@@ -432,6 +443,15 @@ export async function BoardReport({
             </Insight>
           </Section>
         ) : null}
+
+        {/* Management commentary — the manager's narrative for the boss */}
+        <Section eyebrow="Commentary" title="Management notes" breakBefore>
+          <CommentaryBlock
+            slug="management"
+            body={mgmtCommentary}
+            placeholder="Team & hiring, marketing initiatives, vendor status, anything the board should know this period…"
+          />
+        </Section>
 
         {/* Takeaways */}
         <Section eyebrow="So what" title="Takeaways">
