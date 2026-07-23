@@ -1,6 +1,6 @@
 import 'server-only';
 import type { AdminClient } from '@/lib/supabase/server';
-import { sendEmail } from '@/lib/notify/resend';
+import { sendEmail, emailConfigured } from '@/lib/notify/email';
 import { OPS_ALERT_EMAILS, OPS_ALERT_FROM, OPS_ALERT_MAX_PER_RUN } from '@/config/ops';
 
 /**
@@ -57,7 +57,7 @@ function leadHtml(f: Record<string, string>): string {
 }
 
 export async function sendNewLeadAlerts(supabase: AdminClient): Promise<LeadAlertResult> {
-  if (!process.env.RESEND_API_KEY) return { sent: 0, skipped: true, note: 'alerts disabled (no RESEND_API_KEY)' };
+  if (!emailConfigured()) return { sent: 0, skipped: true, note: 'alerts disabled (no SMTP_* / RESEND_API_KEY)' };
   if (OPS_ALERT_EMAILS.length === 0) return { sent: 0, skipped: true, note: 'no OPS_ALERT_EMAILS' };
 
   try {

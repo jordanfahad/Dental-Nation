@@ -3,9 +3,10 @@
  * and the email sender. Recipients + sender are env-overridable (CSV / string)
  * so they rotate without a deploy; defaults are the reception + ops inbox.
  *
- * Email delivery uses Resend (RESEND_API_KEY). Until that key + a verified
- * sender domain are set in Vercel, alerts are safely skipped (the Clinical
- * Operations tab still works — it reads the same lead forms live).
+ * Email delivery prefers the clinic's own SMTP mailbox (SMTP_* env — e.g.
+ * Microsoft 365) and falls back to Resend (RESEND_API_KEY). Until one is set in
+ * Vercel, alerts are safely skipped (the Clinical Operations tab still works —
+ * it reads the same lead forms live).
  */
 export const OPS_ALERT_EMAILS: string[] = (
   process.env.OPS_ALERT_EMAILS ||
