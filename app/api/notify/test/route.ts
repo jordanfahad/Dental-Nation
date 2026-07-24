@@ -21,6 +21,10 @@ async function authorized(req: NextRequest): Promise<boolean> {
     if (req.headers.get('authorization') === `Bearer ${secret}`) return true;
     if (req.nextUrl.searchParams.get('secret') === secret) return true;
   }
+  // This route SENDS mail, so it must fail closed: with the password gate
+  // unconfigured, isAdmin() treats every request as admin (fine for read-only
+  // scaffold pages, not here) — never accept that implicit admin.
+  if (!process.env.AUTH_SESSION_SECRET || !process.env.DASHBOARD_PASSWORD) return false;
   return isAdmin();
 }
 
@@ -32,7 +36,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       ok: false,
       transport,
-      error: 'No email transport configured — set SMTP_HOST / SMTP_USER / SMTP_PASS (or RESEND_API_KEY) in Vercel env.',
+      error:
+        'No email transport configured — set MS_GRAPH_TENANT_ID / MS_GRAPH_CLIENT_ID / MS_GRAPH_CLIENT_SECRET (preferred), or SMTP_HOST / SMTP_USER / SMTP_PASS, or RESEND_API_KEY in Vercel env.',
     });
   }
 

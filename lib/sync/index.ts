@@ -319,9 +319,10 @@ export async function runSync(trigger: SyncTrigger): Promise<SyncSummary> {
     }
   }
 
-  // ----- New-lead email alerts (reception + ops). Best-effort; gated on
-  // RESEND_API_KEY (no key → skipped). raw_zavis was refreshed above, so any
-  // form newer than the last-alerted mark emails the ops inbox.
+  // ----- New-lead email alerts (reception + ops). Best-effort; gated on an
+  // email transport being configured (MS_GRAPH_* / SMTP_* / RESEND_API_KEY —
+  // none set → skipped). raw_zavis was refreshed above, so any form newer than
+  // the last-alerted mark emails the ops inbox.
   try {
     const alerts = await sendNewLeadAlerts(supabase);
     if (alerts.sent > 0) sheetsOk.push(`Lead alerts — ${alerts.sent} sent`);

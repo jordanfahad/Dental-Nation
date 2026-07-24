@@ -8,9 +8,10 @@ import { OPS_ALERT_EMAILS, OPS_ALERT_FROM, OPS_ALERT_MAX_PER_RUN } from '@/confi
  * submission newer than the last-alerted high-water mark emails the ops inbox
  * (OPS_ALERT_EMAILS). The mark lives in app_secrets so it survives deploys.
  *
- * Safety: gated on RESEND_API_KEY (no key → no send, no mark change). The FIRST
- * run after enabling seeds the mark to "now" so historical forms are NOT blasted
- * — only forms that arrive from then on alert.
+ * Safety: gated on emailConfigured() — no transport (MS_GRAPH_* / SMTP_* /
+ * RESEND_API_KEY) → no send, no mark change. The FIRST run after enabling seeds
+ * the mark to "now" so historical forms are NOT blasted — only forms that
+ * arrive from then on alert.
  */
 
 const MARK_KEY = 'ops_last_lead_alert_ms';
@@ -57,7 +58,7 @@ function leadHtml(f: Record<string, string>): string {
 }
 
 export async function sendNewLeadAlerts(supabase: AdminClient): Promise<LeadAlertResult> {
-  if (!emailConfigured()) return { sent: 0, skipped: true, note: 'alerts disabled (no SMTP_* / RESEND_API_KEY)' };
+  if (!emailConfigured()) return { sent: 0, skipped: true, note: 'alerts disabled (no MS_GRAPH_* / SMTP_* / RESEND_API_KEY)' };
   if (OPS_ALERT_EMAILS.length === 0) return { sent: 0, skipped: true, note: 'no OPS_ALERT_EMAILS' };
 
   try {
