@@ -34,3 +34,6 @@ pnpm-debug.log*
 
 # introspection output may contain real sheet data — keep it local
 sheet-introspection.md
+
+# Artifact from the synthetic widget check (uploaded by CI, never committed)
+widget-failure.png

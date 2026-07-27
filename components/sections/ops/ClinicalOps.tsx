@@ -1,5 +1,6 @@
 import { getLeadForms, type LeadOutcome } from '@/lib/ops/leadForms';
 import { UnverifiedLeads } from './UnverifiedLeads';
+import { WidgetHealth } from './WidgetHealth';
 import { OPS_ALERT_EMAILS } from '@/config/ops';
 import { Card, SectionHeader } from '@/components/ui/Card';
 import { DataGapInline } from '@/components/ui/DataGap';
@@ -150,6 +151,10 @@ export async function ClinicalOps({ range }: { range?: { from?: string; to?: str
       </Card>
 
       <UnverifiedLeads range={range} />
+
+      {/* Is the booking widget actually usable right now? Reception needs to know
+          to fall back to phone bookings the moment it stops serving slots. */}
+      <WidgetHealth />
     </div>
   );
 }

@@ -1,0 +1,45 @@
+name: Booking widget health
+
+# A real browser is too heavy for a Vercel function, so the synthetic check runs
+# here instead and reports back to the dashboard, which stores and displays it.
+on:
+  schedule:
+    - cron: '*/15 * * * *' # every 15 minutes (UTC)
+  workflow_dispatch: {} # lets you run it on demand from the Actions tab
+
+# Never let two checks overlap; a slow run should be skipped, not queued.
+concurrency:
+  group: widget-health
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # Only Playwright + its Chromium — this job never builds the dashboard.
+      - name: Install Playwright
+        run: npm install --no-save playwright@1.56.1 && npx playwright install --with-deps chromium
+
+      - name: Run the robot-patient check
+        env:
+          SITE_URL: ${{ vars.SITE_URL || 'https://www.dentalnation.com/en/' }}
+          DASHBOARD_URL: ${{ secrets.DASHBOARD_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: node scripts/widget-check.mjs
+
+      # What the robot actually saw, when it saw a problem.
+      - name: Upload failure screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: widget-failure-${{ github.run_id }}
+          path: widget-failure.png
+          if-no-files-found: ignore
+          retention-days: 14
