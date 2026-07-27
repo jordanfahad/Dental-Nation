@@ -2,6 +2,7 @@ import { getArabyAdsReport } from '@/lib/arabyads/report';
 import { getBookingEventsReport } from '@/lib/bookings/events';
 import { ArabyLeadStatus } from '@/components/sections/arabyads/ArabyLeadStatus';
 import { ArabyPractoOutcome } from '@/components/sections/arabyads/ArabyPractoOutcome';
+import { ArabyDropOff } from '@/components/sections/arabyads/ArabyDropOff';
 import { BookingEventsByOffer } from '@/components/sections/bookings/BookingEventsByOffer';
 import { Card, SectionHeader, Takeaway } from '@/components/ui/Card';
 import { DataGapInline } from '@/components/ui/DataGap';
@@ -476,6 +477,10 @@ export async function ArabyAdsReport({ range }: { range: { from: string; to: str
       {/* Real (billable) ArabyAds bookings matched to their Practo outcome — the
           full picture beyond the lead sheet (attended / no-show / cancelled). */}
       <ArabyPractoOutcome range={range} />
+
+      {/* The step BEFORE a booking exists: started the flow, never verified.
+          Aggregate only — the contact list stays internal to Clinical Ops. */}
+      <ArabyDropOff range={range} />
     </div>
   );
 }

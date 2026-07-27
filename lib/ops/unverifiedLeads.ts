@@ -2,6 +2,7 @@ import 'server-only';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
 import { GA4_LANES } from '@/config/ga4';
 import { getLeadVerdictsByPhone, type SheetVerdict } from '@/lib/arabyads/leadStatus';
+import { parseArabySource } from '@/lib/arabyads/report';
 
 /**
  * Unverified website enquiries — the booking sheet's "Leads" tab.
@@ -66,6 +67,8 @@ export interface UnverifiedLead {
   requestedDate: string | null;
   status: string | null; // the widget's own status, e.g. "OTP Requested"
   lane: string | null;
+  /** ArabyAds lane key (glowup|sos|scan), or null when the Source isn't tagged. */
+  laneKey: string | null;
   state: LeadState;
   /** The team's hand-set verdict from the feedback sheet: 'Invalid', 'Pending'… */
   reviewStatus: string | null;
@@ -309,6 +312,7 @@ export async function getUnverifiedLeads(range: { from?: string; to?: string } =
       requestedDate: pick(d, 'Date') || null,
       status: pick(d, 'Status') || null,
       lane: laneOf(pick(d, 'Source')),
+      laneKey: parseArabySource(pick(d, 'Source'))?.lane?.key ?? null,
       state,
       reviewStatus: verdict && verdict.status !== 'Pending' ? verdict.status : null,
       reviewReason: verdict?.reason || null,

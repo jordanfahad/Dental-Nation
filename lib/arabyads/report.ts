@@ -119,8 +119,13 @@ const num = (v: unknown): number | null => {
   return Number.isFinite(n) ? n : null;
 };
 
-/** Parse the widget "Source" cell → {lane, pid, sub} when it's an ArabyAds row. */
-function parseArabySource(raw: string): { lane: ArabyLane | null; pid: string | null; sub: string | null } | null {
+/**
+ * Parse the widget "Source" cell → {lane, pid, sub} when it's an ArabyAds row.
+ * Exported so the unverified-lead drop-off panel attributes lanes with exactly
+ * the same rule as the bookings panel — two different matchers would eventually
+ * disagree and show conflicting lane counts on the same report.
+ */
+export function parseArabySource(raw: string): { lane: ArabyLane | null; pid: string | null; sub: string | null } | null {
   if (!/arabyads/i.test(raw)) return null;
   const m = raw.match(/dental_nation_(glowup|sos|scan)/i);
   const lane = m ? LANE_BY_CAMPAIGN.get(`dental_nation_${m[1].toLowerCase()}`) ?? null : null;
