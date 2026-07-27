@@ -1,6 +1,4 @@
-import { getLeadForms, type LeadOutcome } from '@/lib/ops/leadForms';
-import { UnverifiedLeads } from './UnverifiedLeads';
-import { OPS_ALERT_EMAILS } from '@/config/ops';
+import { getUnverifiedLeads, type LeadState } from '@/lib/ops/unverifiedLeads';
 import { Card, SectionHeader } from '@/components/ui/Card';
 import { DataGapInline } from '@/components/ui/DataGap';
 import { KpiBand, type KpiItem } from '@/components/charts/KpiBand';
@@ -9,15 +7,12 @@ import { dubaiDateLabel } from '@/lib/dates';
 
 const int = (n: number) => Math.round(n).toLocaleString('en-US');
 
-const OUTCOME: Record<LeadOutcome, { label: string; cls: string }> = {
-  attended: { label: 'Attended', cls: 'bg-good/10 text-good' },
-  booked: { label: 'Booked', cls: 'bg-accent/10 text-accent' },
-  noshow: { label: 'No-show', cls: 'bg-watch/10 text-watch' },
-  cancelled: { label: 'Cancelled', cls: 'bg-panel-2 text-ink-soft' },
-  notfound: { label: 'Not in Practo', cls: 'bg-stop/10 text-stop' },
+const STATE: Record<LeadState, { label: string; cls: string; hint: string }> = {
+  converted: { label: 'Converted', cls: 'bg-good/10 text-good', hint: 'later booked (verified)' },
+  inpracto: { label: 'In Practo', cls: 'bg-accent/10 text-accent', hint: 'appointment exists' },
+  open: { label: 'Needs call', cls: 'bg-stop/10 text-stop', hint: 'no booking yet' },
 };
 
-/** "3m ago" / "2h ago" / "4d ago" from an epoch-ms. */
 function ago(ms: number | null): string {
   if (ms == null) return '—';
   const s = Math.max(0, Math.floor((Date.now() - ms) / 1000));
@@ -36,59 +31,50 @@ function dateTime(iso: string | null): string {
 }
 
 /**
- * Clinical Operations tab — the reception + ops desk view. Live website
- * booking-widget lead forms with the contact + requested-appointment details to
- * follow up, and whether each has reached Practo yet. New submissions also fire
- * an email alert to the ops inbox (see the notice below).
+ * Unverified enquiries (the booking sheet's "Leads" tab) — people who started
+ * the booking flow and requested an OTP but never completed WhatsApp
+ * verification. Separate population from the verified bookings above; shown as
+ * a call-centre worklist, with whether each person later booked anyway.
  */
-export async function ClinicalOps({ range }: { range?: { from?: string; to?: string } }) {
-  const data = await getLeadForms(range ?? {});
+export async function UnverifiedLeads({ range }: { range?: { from?: string; to?: string } }) {
+  const data = await getUnverifiedLeads(range ?? {});
 
   const kpis: KpiItem[] = [
     { label: 'New today', value: int(data.today), hint: 'last 24 hours' },
     { label: 'Last 7 days', value: int(data.last7d) },
-    { label: 'Total (range)', value: int(data.total), hint: 'non-test lead forms' },
-    { label: 'Reached Practo', value: int(data.reachedPracto), hint: 'matched by phone' },
-    { label: 'Needs follow-up', value: int(data.notInPracto), hint: 'not in Practo yet' },
+    { label: 'Total (range)', value: int(data.total), hint: 'unverified enquiries' },
+    { label: 'Converted later', value: int(data.converted), hint: 'same phone, verified booking' },
+    { label: 'Needs a call', value: int(data.open), hint: 'no booking anywhere' },
   ];
 
   return (
-    <div className="space-y-5">
-      <Card>
-        <SectionHeader
-          tag="OPS"
-          eyebrow="Reception & operations"
-          title="Website lead forms"
-          right={<span className="text-[11px] text-ink-faint">live · booking widget</span>}
-        />
-        <div className="px-5 pb-5 pt-4">
-          <p className="text-[12.5px] leading-snug text-ink-soft">
-            Every <span className="font-medium text-ink-soft">verified</span> lead form submitted on the website booking
-            widget (WhatsApp/OTP confirmed), newest first — with the contact details and requested appointment to follow up,
-            and whether it has reached Practo yet. Enquiries that never completed verification are in{' '}
-            <span className="font-medium text-ink-soft">Unverified enquiries</span> below.{' '}
-            <span className="font-medium text-ink-soft">Needs follow-up</span> = the phone isn&apos;t in Practo, so it still needs
-            booking.
-          </p>
-          <p className="mt-2 rounded-card border border-line bg-panel/40 px-3 py-2 text-[11.5px] text-ink-soft">
-            🔔 New submissions alert:{' '}
-            <span className="font-medium text-ink">{OPS_ALERT_EMAILS.join(', ')}</span>
-          </p>
-        </div>
-      </Card>
+    <Card>
+      <SectionHeader
+        tag="OPS3"
+        eyebrow="Call-centre worklist"
+        title="Unverified enquiries"
+        right={<span className="text-[11px] text-ink-faint">live · booking widget → Leads</span>}
+      />
+      <div className="px-5 pb-5 pt-4">
+        <p className="text-[12.5px] leading-snug text-ink-soft">
+          People who started a booking and gave their details but never completed WhatsApp/OTP verification — so they never
+          became a booking. Lower intent, but real demand worth calling.{' '}
+          <span className="font-medium text-ink-soft">Needs a call</span> = the phone has no verified booking and no Practo
+          appointment.
+        </p>
 
-      <Card>
-        <SectionHeader tag="OPS1" eyebrow="At a glance" title="Lead volume" />
-        <div className="px-5 pb-5 pt-4">
+        <div className="mt-4">
           <KpiBand items={kpis} />
         </div>
-      </Card>
 
-      <Card>
-        <SectionHeader tag="OPS2" eyebrow="Inbox" title="Lead forms to action" />
-        <div className="px-5 pb-5 pt-4">
-          {data.source === 'empty' ? (
-            <DataGapInline detail="No website lead forms in this period." owner={ownerFor('clinic')} />
+        <div className="mt-4">
+          {data.source === 'missing' ? (
+            <DataGapInline
+              detail="Unverified-lead feed not set up yet — run migration 0011_unverified_leads.sql, then the next sync fills it."
+              owner={ownerFor('clinic')}
+            />
+          ) : data.source === 'empty' ? (
+            <DataGapInline detail="No unverified enquiries in this period." owner={ownerFor('clinic')} />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[900px] text-[12.5px]">
@@ -97,16 +83,16 @@ export async function ClinicalOps({ range }: { range?: { from?: string; to?: str
                     <th className="py-2 pr-3">Received</th>
                     <th className="py-2 pr-3">Name</th>
                     <th className="py-2 pr-3">Phone</th>
-                    <th className="py-2 pr-3">Treatment</th>
+                    <th className="py-2 pr-3">Service / treatment</th>
                     <th className="py-2 pr-3">Preferred clinic</th>
                     <th className="py-2 pr-3">Requested</th>
-                    <th className="py-2 pr-3">Lane</th>
-                    <th className="py-2 pl-3">Practo</th>
+                    <th className="py-2 pr-3">Widget status</th>
+                    <th className="py-2 pl-3">Follow-up</th>
                   </tr>
                 </thead>
                 <tbody>
                   {data.rows.map((r) => {
-                    const o = OUTCOME[r.outcome];
+                    const st = STATE[r.state];
                     return (
                       <tr key={r.key} className="border-b border-line/60 align-top">
                         <td className="py-2.5 pr-3 whitespace-nowrap">
@@ -127,17 +113,23 @@ export async function ClinicalOps({ range }: { range?: { from?: string; to?: str
                           )}
                         </td>
                         <td className="py-2.5 pr-3 text-ink-soft">
-                          <span className="block">{r.treatment ?? '—'}</span>
-                          {r.details ? <span className="block max-w-[200px] truncate text-[10.5px] text-ink-faint" title={r.details}>{r.details}</span> : null}
+                          <span className="block">{r.service ?? '—'}</span>
+                          {r.treatment ? (
+                            <span className="block max-w-[200px] truncate text-[10.5px] text-ink-faint" title={r.treatment}>
+                              {r.treatment}
+                            </span>
+                          ) : null}
                         </td>
                         <td className="py-2.5 pr-3 text-ink-soft">
                           <span className="block">{r.clinic ?? '—'}</span>
                           {r.doctor ? <span className="block text-[10.5px] text-ink-faint">{r.doctor}</span> : null}
                         </td>
                         <td className="py-2.5 pr-3 whitespace-nowrap text-ink-soft">{r.requestedDate ?? '—'}</td>
-                        <td className="py-2.5 pr-3 text-ink-soft">{r.lane ?? '—'}</td>
+                        <td className="py-2.5 pr-3 text-ink-soft">{r.status ?? '—'}</td>
                         <td className="py-2.5 pl-3">
-                          <span className={`inline-block rounded px-1.5 py-0.5 text-[10.5px] font-medium ${o.cls}`}>{o.label}</span>
+                          <span className={`inline-block rounded px-1.5 py-0.5 text-[10.5px] font-medium ${st.cls}`} title={st.hint}>
+                            {st.label}
+                          </span>
                         </td>
                       </tr>
                     );
@@ -147,9 +139,7 @@ export async function ClinicalOps({ range }: { range?: { from?: string; to?: str
             </div>
           )}
         </div>
-      </Card>
-
-      <UnverifiedLeads range={range} />
-    </div>
+      </div>
+    </Card>
   );
 }
