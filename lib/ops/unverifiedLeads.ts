@@ -15,13 +15,43 @@ import { GA4_LANES } from '@/config/ga4';
  *   converted  — the same phone later shows up as a VERIFIED booking
  *   in-practo  — the phone is in the Practo appointment book (booked by any route)
  *   open       — neither; still needs a call
+ *
+ * Reception then works that list, and what they DID is recorded in
+ * lane_e.lead_call_log (migration 0012) — the bronze lead table is
+ * truncate-and-reloaded, so the outcome cannot live on the lead row itself.
+ * A terminal outcome (booked / not interested / wrong number) takes a lead off
+ * the worklist; no-answer and call-back keep it on with an attempt count, so the
+ * same person stops reappearing as an untouched "Needs a call" forever.
+ *
  * Never throws: a missing table (migration not yet run) returns an empty report.
  */
 
 export type LeadState = 'converted' | 'inpracto' | 'open';
 
+/** What reception did about a lead. See migration 0012. */
+export type CallOutcome = 'booked' | 'callback' | 'noanswer' | 'notinterested' | 'wrongnumber';
+
+/**
+ * Outcomes that close a lead out of the worklist. `noanswer` and `callback`
+ * deliberately stay open — they still need working; we just show the attempts.
+ */
+export const TERMINAL_OUTCOMES: readonly CallOutcome[] = ['booked', 'notinterested', 'wrongnumber'];
+const isTerminal = (o: CallOutcome | null | undefined): boolean =>
+  !!o && (TERMINAL_OUTCOMES as readonly string[]).includes(o);
+
+export interface LeadCall {
+  outcome: CallOutcome;
+  note: string | null;
+  by: string | null;
+  atIso: string | null;
+  /** Times this lead has been logged, including the latest. */
+  attempts: number;
+}
+
 export interface UnverifiedLead {
   key: string;
+  /** Stable across syncs — the key the call log is written against. */
+  ref: string;
   leadId: string | null;
   submittedIso: string | null;
   submittedMs: number | null;
@@ -36,6 +66,10 @@ export interface UnverifiedLead {
   status: string | null; // the widget's own status, e.g. "OTP Requested"
   lane: string | null;
   state: LeadState;
+  /** Latest logged call, or null if never worked. */
+  call: LeadCall | null;
+  /** Still on the worklist: no booking anywhere and no terminal disposition. */
+  needsCall: boolean;
 }
 
 export interface UnverifiedLeadsReport {
@@ -46,6 +80,10 @@ export interface UnverifiedLeadsReport {
   last7d: number;
   converted: number;
   open: number;
+  /** Leads with at least one logged call attempt. */
+  worked: number;
+  /** False when migration 0012 hasn't run — the UI hides the logging controls. */
+  callLogReady: boolean;
   rows: UnverifiedLead[];
 }
 
@@ -72,15 +110,64 @@ function laneOf(source: string): string | null {
   return source ? 'Website widget' : null;
 }
 
-const empty = (source: UnverifiedLeadsReport['source']): UnverifiedLeadsReport => ({
+/**
+ * Stable identity for a lead across syncs. raw_dn_leads is truncate-and-reload,
+ * so row order and ids churn — the widget's own "Lead ID" is the real key. When
+ * a row predates that column, fall back to phone+timestamp, which is stable for
+ * a given sheet row even though it is not guaranteed unique.
+ */
+export function leadRefOf(leadId: string, phone9digits: string, submittedIso: string | null): string {
+  return leadId || `${phone9digits}|${submittedIso ?? ''}`;
+}
+
+const empty = (
+  source: UnverifiedLeadsReport['source'],
+  callLogReady = true,
+): UnverifiedLeadsReport => ({
   source,
   total: 0,
   today: 0,
   last7d: 0,
   converted: 0,
   open: 0,
+  worked: 0,
+  callLogReady,
   rows: [],
 });
+
+/**
+ * Record a call attempt against a lead. Append-only — the history is the point.
+ * Returns a plain result object; never throws at the caller.
+ */
+export async function recordLeadCall(input: {
+  leadRef: string;
+  outcome: CallOutcome;
+  note?: string | null;
+  by?: string | null;
+  uid?: string | null;
+}): Promise<{ ok: boolean; error?: string }> {
+  const db = getSupabaseAdmin();
+  if (!db) return { ok: false, error: 'Supabase not configured.' };
+  const leadRef = input.leadRef.trim();
+  if (!leadRef) return { ok: false, error: 'Missing lead reference.' };
+  const note = (input.note ?? '').trim();
+  try {
+    const { error } = await db.from('lead_call_log').insert({
+      lead_ref: leadRef,
+      outcome: input.outcome,
+      note: note || null,
+      logged_by: input.by ?? null,
+      logged_uid: input.uid ?? null,
+    });
+    if (error) {
+      // Most likely cause by far: migration 0012 hasn't been run yet.
+      return { ok: false, error: `Could not save: ${error.message}` };
+    }
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'save failed' };
+  }
+}
 
 export async function getUnverifiedLeads(range: { from?: string; to?: string } = {}): Promise<UnverifiedLeadsReport> {
   const db = getSupabaseAdmin();
@@ -113,6 +200,48 @@ export async function getUnverifiedLeads(range: { from?: string; to?: string } =
     // Cross-checks are best-effort — without them every lead simply reads "open".
   }
 
+  // Logged call outcomes, newest first. A missing table (migration 0012 not run)
+  // is not an error here: the worklist still works, it just can't be dispositioned.
+  const latestCall = new Map<string, LeadCall>();
+  let callLogReady = true;
+  {
+    // id desc is the tiebreaker, not decoration: created_at defaults to now(),
+    // which is TRANSACTION time, so two calls logged in one transaction share a
+    // timestamp and would otherwise come back in arbitrary order — picking the
+    // wrong "latest" outcome. id is monotonic, so it always breaks the tie right.
+    const log = await db
+      .from('lead_call_log')
+      .select('lead_ref, outcome, note, logged_by, created_at, id')
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false });
+    if (log.error) {
+      callLogReady = false;
+    } else {
+      type LogRow = {
+        lead_ref: string;
+        outcome: string;
+        note: string | null;
+        logged_by: string | null;
+        created_at: string;
+        id: number;
+      };
+      for (const c of (log.data as LogRow[] | null) ?? []) {
+        const prev = latestCall.get(c.lead_ref);
+        if (prev) {
+          prev.attempts += 1; // ordered desc, so the first one seen is the latest
+          continue;
+        }
+        latestCall.set(c.lead_ref, {
+          outcome: c.outcome as CallOutcome,
+          note: c.note,
+          by: c.logged_by,
+          atIso: c.created_at,
+          attempts: 1,
+        });
+      }
+    }
+  }
+
   const rows: UnverifiedLead[] = [];
   let idx = 0;
   for (const r of rawLeads) {
@@ -134,9 +263,14 @@ export async function getUnverifiedLeads(range: { from?: string; to?: string } =
     const p9 = phone9(phone);
     const state: LeadState = p9 && verified.has(p9) ? 'converted' : p9 && inPracto.has(p9) ? 'inpracto' : 'open';
 
+    const leadId = pick(d, 'Lead ID');
+    const ref = leadRefOf(leadId, p9, submittedIso);
+    const call = latestCall.get(ref) ?? null;
+
     rows.push({
       key: `${idx++}-${p9 || name}`,
-      leadId: pick(d, 'Lead ID') || null,
+      ref,
+      leadId: leadId || null,
       submittedIso,
       submittedMs,
       name: name || null,
@@ -150,10 +284,12 @@ export async function getUnverifiedLeads(range: { from?: string; to?: string } =
       status: pick(d, 'Status') || null,
       lane: laneOf(pick(d, 'Source')),
       state,
+      call,
+      needsCall: state === 'open' && !isTerminal(call?.outcome),
     });
   }
 
-  if (rows.length === 0) return empty('empty');
+  if (rows.length === 0) return empty('empty', callLogReady);
   rows.sort((a, b) => (b.submittedMs ?? 0) - (a.submittedMs ?? 0));
   const now = Date.now();
   return {
@@ -162,7 +298,9 @@ export async function getUnverifiedLeads(range: { from?: string; to?: string } =
     today: rows.filter((r) => r.submittedMs && now - r.submittedMs < 86400_000).length,
     last7d: rows.filter((r) => r.submittedMs && now - r.submittedMs < 7 * 86400_000).length,
     converted: rows.filter((r) => r.state === 'converted').length,
-    open: rows.filter((r) => r.state === 'open').length,
+    open: rows.filter((r) => r.needsCall).length,
+    worked: rows.filter((r) => r.call).length,
+    callLogReady,
     rows,
   };
 }

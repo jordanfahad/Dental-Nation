@@ -1,4 +1,5 @@
 import { getUnverifiedLeads, type LeadState } from '@/lib/ops/unverifiedLeads';
+import { LeadCallControl } from './LeadCallControl';
 import { Card, SectionHeader } from '@/components/ui/Card';
 import { DataGapInline } from '@/components/ui/DataGap';
 import { KpiBand, type KpiItem } from '@/components/charts/KpiBand';
@@ -12,6 +13,8 @@ const STATE: Record<LeadState, { label: string; cls: string; hint: string }> = {
   inpracto: { label: 'In Practo', cls: 'bg-accent/10 text-accent', hint: 'appointment exists' },
   open: { label: 'Needs call', cls: 'bg-stop/10 text-stop', hint: 'no booking yet' },
 };
+/** An open lead that reception has closed off by phone (not interested / wrong number). */
+const CLOSED = { label: 'Closed', cls: 'bg-panel-2 text-ink-soft', hint: 'worked by reception — no booking' };
 
 function ago(ms: number | null): string {
   if (ms == null) return '—';
@@ -44,7 +47,8 @@ export async function UnverifiedLeads({ range }: { range?: { from?: string; to?:
     { label: 'Last 7 days', value: int(data.last7d) },
     { label: 'Total (range)', value: int(data.total), hint: 'unverified enquiries' },
     { label: 'Converted later', value: int(data.converted), hint: 'same phone, verified booking' },
-    { label: 'Needs a call', value: int(data.open), hint: 'no booking anywhere' },
+    { label: 'Worked', value: int(data.worked), hint: 'at least one logged call' },
+    { label: 'Needs a call', value: int(data.open), hint: 'no booking, not yet closed off' },
   ];
 
   return (
@@ -60,8 +64,19 @@ export async function UnverifiedLeads({ range }: { range?: { from?: string; to?:
           People who started a booking and gave their details but never completed WhatsApp/OTP verification — so they never
           became a booking. Lower intent, but real demand worth calling.{' '}
           <span className="font-medium text-ink-soft">Needs a call</span> = the phone has no verified booking and no Practo
-          appointment.
+          appointment, and reception hasn&rsquo;t closed it off yet. Log what happened on each call —{' '}
+          <span className="font-medium text-ink-soft">Booked</span>, <span className="font-medium text-ink-soft">Not interested</span>{' '}
+          and <span className="font-medium text-ink-soft">Wrong number</span> take a lead off the list;{' '}
+          <span className="font-medium text-ink-soft">No answer</span> and <span className="font-medium text-ink-soft">Call back</span>{' '}
+          keep it on with an attempt count.
         </p>
+
+        {data.source === 'live' && !data.callLogReady ? (
+          <p className="mt-2 text-[12px] leading-snug text-watch">
+            Call logging is off until migration <span className="font-mono">0012_lead_call_log.sql</span> is run — the worklist
+            below is read-only in the meantime.
+          </p>
+        ) : null}
 
         <div className="mt-4">
           <KpiBand items={kpis} />
@@ -77,7 +92,7 @@ export async function UnverifiedLeads({ range }: { range?: { from?: string; to?:
             <DataGapInline detail="No unverified enquiries in this period." owner={ownerFor('clinic')} />
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[900px] text-[12.5px]">
+              <table className="w-full min-w-[1060px] text-[12.5px]">
                 <thead>
                   <tr className="border-b border-line text-left text-[10px] uppercase tracking-wide text-ink-faint">
                     <th className="py-2 pr-3">Received</th>
@@ -87,12 +102,14 @@ export async function UnverifiedLeads({ range }: { range?: { from?: string; to?:
                     <th className="py-2 pr-3">Preferred clinic</th>
                     <th className="py-2 pr-3">Requested</th>
                     <th className="py-2 pr-3">Widget status</th>
-                    <th className="py-2 pl-3">Follow-up</th>
+                    <th className="py-2 pr-3">Follow-up</th>
+                    <th className="py-2 pl-3">Call outcome</th>
                   </tr>
                 </thead>
                 <tbody>
                   {data.rows.map((r) => {
-                    const st = STATE[r.state];
+                    // An open lead that's been closed off by phone reads "Closed", not "Needs call".
+                    const st = r.state === 'open' && !r.needsCall ? CLOSED : STATE[r.state];
                     return (
                       <tr key={r.key} className="border-b border-line/60 align-top">
                         <td className="py-2.5 pr-3 whitespace-nowrap">
@@ -126,10 +143,17 @@ export async function UnverifiedLeads({ range }: { range?: { from?: string; to?:
                         </td>
                         <td className="py-2.5 pr-3 whitespace-nowrap text-ink-soft">{r.requestedDate ?? '—'}</td>
                         <td className="py-2.5 pr-3 text-ink-soft">{r.status ?? '—'}</td>
-                        <td className="py-2.5 pl-3">
+                        <td className="py-2.5 pr-3">
                           <span className={`inline-block rounded px-1.5 py-0.5 text-[10.5px] font-medium ${st.cls}`} title={st.hint}>
                             {st.label}
                           </span>
+                        </td>
+                        <td className="py-2.5 pl-3">
+                          {data.callLogReady ? (
+                            <LeadCallControl leadRef={r.ref} call={r.call} />
+                          ) : (
+                            <span className="text-[10.5px] text-ink-faint">—</span>
+                          )}
                         </td>
                       </tr>
                     );
