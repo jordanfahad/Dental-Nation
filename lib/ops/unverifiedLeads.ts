@@ -1,6 +1,7 @@
 import 'server-only';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
 import { GA4_LANES } from '@/config/ga4';
+import { getLeadVerdictsByPhone, type SheetVerdict } from '@/lib/arabyads/leadStatus';
 
 /**
  * Unverified website enquiries — the booking sheet's "Leads" tab.
@@ -66,6 +67,10 @@ export interface UnverifiedLead {
   status: string | null; // the widget's own status, e.g. "OTP Requested"
   lane: string | null;
   state: LeadState;
+  /** The team's hand-set verdict from the feedback sheet: 'Invalid', 'Pending'… */
+  reviewStatus: string | null;
+  /** Why they marked it that way, e.g. "Wrong Contact". */
+  reviewReason: string | null;
   /** Latest logged call, or null if never worked. */
   call: LeadCall | null;
   /** Still on the worklist: no booking anywhere and no terminal disposition. */
@@ -82,6 +87,8 @@ export interface UnverifiedLeadsReport {
   open: number;
   /** Leads with at least one logged call attempt. */
   worked: number;
+  /** Rows dropped because the team marked them "Test Lead" in the feedback sheet. */
+  testExcluded: number;
   /** False when migration 0012 hasn't run — the UI hides the logging controls. */
   callLogReady: boolean;
   rows: UnverifiedLead[];
@@ -131,6 +138,7 @@ const empty = (
   converted: 0,
   open: 0,
   worked: 0,
+  testExcluded: 0,
   callLogReady,
   rows: [],
 });
@@ -242,7 +250,17 @@ export async function getUnverifiedLeads(range: { from?: string; to?: string } =
     }
   }
 
+  // The team hand-marks every enquiry in the ArabyAds feedback sheet ("Test
+  // Lead", "Invalid / Wrong Contact", …). That verdict is the authority on
+  // whether a person is real — the local isTest() rule below can only catch the
+  // owner by EMAIL, and a widget lead often has none. Best-effort: if the sheet
+  // can't be read we show everything rather than hide a real patient.
+  const verdicts: Map<string, SheetVerdict> = await getLeadVerdictsByPhone().catch(
+    () => new Map<string, SheetVerdict>(),
+  );
+
   const rows: UnverifiedLead[] = [];
+  let testExcluded = 0;
   let idx = 0;
   for (const r of rawLeads) {
     const d = r.data ?? {};
@@ -261,6 +279,14 @@ export async function getUnverifiedLeads(range: { from?: string; to?: string } =
     if (to && day && day > to) continue;
 
     const p9 = phone9(phone);
+
+    // Marked "Test Lead" by the team → never a person for reception to call.
+    const verdict = p9 ? verdicts.get(p9) : undefined;
+    if (verdict?.test) {
+      testExcluded += 1;
+      continue;
+    }
+
     const state: LeadState = p9 && verified.has(p9) ? 'converted' : p9 && inPracto.has(p9) ? 'inpracto' : 'open';
 
     const leadId = pick(d, 'Lead ID');
@@ -284,12 +310,14 @@ export async function getUnverifiedLeads(range: { from?: string; to?: string } =
       status: pick(d, 'Status') || null,
       lane: laneOf(pick(d, 'Source')),
       state,
+      reviewStatus: verdict && verdict.status !== 'Pending' ? verdict.status : null,
+      reviewReason: verdict?.reason || null,
       call,
       needsCall: state === 'open' && !isTerminal(call?.outcome),
     });
   }
 
-  if (rows.length === 0) return empty('empty', callLogReady);
+  if (rows.length === 0) return { ...empty('empty', callLogReady), testExcluded };
   rows.sort((a, b) => (b.submittedMs ?? 0) - (a.submittedMs ?? 0));
   const now = Date.now();
   return {
@@ -300,6 +328,7 @@ export async function getUnverifiedLeads(range: { from?: string; to?: string } =
     converted: rows.filter((r) => r.state === 'converted').length,
     open: rows.filter((r) => r.needsCall).length,
     worked: rows.filter((r) => r.call).length,
+    testExcluded,
     callLogReady,
     rows,
   };

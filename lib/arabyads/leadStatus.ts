@@ -1,4 +1,5 @@
 import 'server-only';
+import { unstable_cache } from 'next/cache';
 import { getSheetsClient } from '@/lib/sync/google-auth';
 import { ARABY_LEADS_SHEET, ARABY_LANES } from '@/config/arabyads-leads';
 
@@ -255,3 +256,89 @@ export async function getArabyLeadStatus(): Promise<LeadStatusReport> {
     return empty('Could not read the lead sheet.');
   }
 }
+
+/** The team's hand-set verdict for one enquiry, keyed by phone. */
+export interface SheetVerdict {
+  /** Marked "Test Lead" in the sheet (or a known test/owner identity). */
+  test: boolean;
+  status: LeadStatus;
+  /** "Wrong Contact", "Not Interested", … — blank when not filled in. */
+  reason: string;
+}
+
+/**
+ * The same feedback sheet as getArabyLeadStatus(), reduced to a phone → verdict
+ * lookup, keyed by the LAST 9 DIGITS (the phone is written inconsistently
+ * across systems: with/without 971, spaces, leading zero).
+ *
+ * Deliberately does NOT apply the ArabyAds lane filter that getArabyLeadStatus()
+ * uses. The team marks up every enquiry in this sheet, including ones with a
+ * blank Source that belong to no campaign lane — and their "Test Lead" verdict
+ * is still authoritative for those. That filter is exactly why a row marked
+ * Test Lead here could still surface as a real lead to reception.
+ *
+ * Never throws: an unreadable sheet returns an empty map, and callers simply
+ * fall back to showing everything rather than hiding a real patient.
+ */
+export async function getLeadVerdictsByPhone(): Promise<Map<string, SheetVerdict>> {
+  return new Map(await loadVerdictEntries());
+}
+
+/**
+ * Cached inner read. Returns ENTRIES, not a Map, on purpose: unstable_cache
+ * round-trips its value through the Next.js data cache as JSON, and a Map
+ * serialises to `{}` — caching the Map directly would quietly hand back an empty
+ * lookup and every test lead would reappear in the worklist.
+ *
+ * Reception's screen renders often and the team edits this sheet by hand, so a
+ * 5-minute window keeps the page quick without making their edits feel stuck.
+ */
+const loadVerdictEntries = unstable_cache(
+  async (): Promise<[string, SheetVerdict][]> => {
+    const out = new Map<string, SheetVerdict>();
+    if (!ARABY_LEADS_SHEET.spreadsheetId) return [];
+
+    let sheets: ReturnType<typeof getSheetsClient>;
+    try {
+      sheets = getSheetsClient();
+    } catch {
+      return [];
+    }
+
+    try {
+      const title = await resolveTabTitle(sheets, ARABY_LEADS_SHEET.spreadsheetId);
+      if (!title) return [];
+      const res = await sheets.spreadsheets.values.get({
+        spreadsheetId: ARABY_LEADS_SHEET.spreadsheetId,
+        range: `'${title.replace(/'/g, "''")}'!A1:Z5000`,
+      });
+      const grid = (res.data.values ?? []) as string[][];
+      if (grid.length < 2) return [];
+
+      let headerIdx = grid.findIndex((row) => row.some((c) => /lead\s*status/i.test(s(c))));
+      if (headerIdx < 0) headerIdx = 0;
+      const col = buildColumnMap(grid[headerIdx].map(s));
+      if (col.phone < 0) return []; // no phone column → nothing we can match on
+
+      const at = (row: string[], i: number) => (i >= 0 ? s(row[i]) : '');
+      for (let i = headerIdx + 1; i < grid.length; i++) {
+        const row = grid[i];
+        const digits = at(row, col.phone).replace(/\D/g, '');
+        if (digits.length < 9) continue;
+        const statusRaw = at(row, col.status);
+        // Later rows win: the sheet is append-ordered, so the newest review of a
+        // repeat caller is the one that counts.
+        out.set(digits.slice(-9), {
+          test: isTestLead(at(row, col.fullName), at(row, col.email), statusRaw),
+          status: normStatus(statusRaw),
+          reason: at(row, col.reason),
+        });
+      }
+      return [...out.entries()];
+    } catch {
+      return [];
+    }
+  },
+  ['araby-lead-verdicts-v1'],
+  { revalidate: 300 },
+);

@@ -71,6 +71,13 @@ export async function UnverifiedLeads({ range }: { range?: { from?: string; to?:
           keep it on with an attempt count.
         </p>
 
+        {data.source === 'live' && data.testExcluded > 0 ? (
+          <p className="mt-2 text-[11.5px] leading-snug text-ink-faint">
+            {data.testExcluded} row{data.testExcluded === 1 ? '' : 's'} hidden — marked &ldquo;Test Lead&rdquo; by the team in
+            the ArabyAds feedback sheet.
+          </p>
+        ) : null}
+
         {data.source === 'live' && !data.callLogReady ? (
           <p className="mt-2 text-[12px] leading-snug text-watch">
             Call logging is off until migration <span className="font-mono">0012_lead_call_log.sql</span> is run — the worklist
@@ -89,7 +96,16 @@ export async function UnverifiedLeads({ range }: { range?: { from?: string; to?:
               owner={ownerFor('clinic')}
             />
           ) : data.source === 'empty' ? (
-            <DataGapInline detail="No unverified enquiries in this period." owner={ownerFor('clinic')} />
+            <DataGapInline
+              detail={
+                data.testExcluded > 0
+                  ? `No real unverified enquiries in this period — ${data.testExcluded} row${
+                      data.testExcluded === 1 ? '' : 's'
+                    } skipped, marked "Test Lead" in the ArabyAds feedback sheet.`
+                  : 'No unverified enquiries in this period.'
+              }
+              owner={ownerFor('clinic')}
+            />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[1060px] text-[12.5px]">
@@ -142,7 +158,20 @@ export async function UnverifiedLeads({ range }: { range?: { from?: string; to?:
                           {r.doctor ? <span className="block text-[10.5px] text-ink-faint">{r.doctor}</span> : null}
                         </td>
                         <td className="py-2.5 pr-3 whitespace-nowrap text-ink-soft">{r.requestedDate ?? '—'}</td>
-                        <td className="py-2.5 pr-3 text-ink-soft">{r.status ?? '—'}</td>
+                        <td className="py-2.5 pr-3 text-ink-soft">
+                          <span className="block">{r.status ?? '—'}</span>
+                          {r.reviewStatus ? (
+                            <span
+                              className={`mt-0.5 inline-block rounded px-1.5 py-0.5 text-[10px] font-medium ${
+                                r.reviewStatus === 'Invalid' ? 'bg-stop/10 text-stop' : 'bg-good/10 text-good'
+                              }`}
+                              title="Set by the team in the ArabyAds feedback sheet"
+                            >
+                              {r.reviewStatus}
+                              {r.reviewReason ? ` · ${r.reviewReason}` : ''}
+                            </span>
+                          ) : null}
+                        </td>
                         <td className="py-2.5 pr-3">
                           <span className={`inline-block rounded px-1.5 py-0.5 text-[10.5px] font-medium ${st.cls}`} title={st.hint}>
                             {st.label}
