@@ -264,6 +264,25 @@ export const sheetMapping: Record<string, SourceMapping> = {
       'Bookings + Cancellations tabs. Test/seed rows (zavis/test/sagar) excluded. Real bookings + revenue + cancellations → dedicated Bookings section (not the paid funnel).',
   },
 
+  // 9b — Website booking widget, "Leads" tab → UNVERIFIED enquiries. The widget
+  // writes a row here as soon as it has contact + treatment details and an OTP is
+  // requested; only rows that complete WhatsApp/OTP verification move to the
+  // Bookings tab above. Low-intent but real demand — the call centre works them.
+  // Mirrored to bronze only (its own Clinical Operations panel reads it).
+  bookingLeads: {
+    key: 'bookingLeads',
+    label: 'Website Booking Widget — Leads (unverified)',
+    spreadsheetId: '1CtfSiGONthczH6YVOLfAZvOdmFfGP26uVBZJoYjxRQQ',
+    tabs: ['Leads'],
+    headerRow: 1,
+    target: 'none',
+    rawTable: 'raw_dn_leads',
+    priority: 'medium',
+    columns: {},
+    notes:
+      'Unverified widget enquiries (OTP requested, verification not completed). Separate population from the Bookings tab — never merged into the booking counts.',
+  },
+
   // Note: the widget ENQUIRY lens (Booked/Failed) reads the already-synced
   // raw_zavis mirror (Bookings-tab rows) — see lib/bookings/widgetEnquiries.ts —
   // so no separate source is needed here.
