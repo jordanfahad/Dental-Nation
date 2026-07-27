@@ -27,3 +27,19 @@ export const OPS_ALERT_FROM = process.env.OPS_ALERT_FROM?.trim() || 'Dental Nati
 
 /** Max alert emails per sync run — a backstop against a burst re-blasting the inbox. */
 export const OPS_ALERT_MAX_PER_RUN = 15;
+
+/**
+ * Extra sheet tabs watched for new rows (beyond the booking-widget Bookings tab,
+ * which alerts via the raw_zavis path). Identified by gid so a tab rename never
+ * breaks the watch — the sync resolves the current title at run time and emails
+ * every new row's filled-in fields to OPS_ALERT_EMAILS. If a watched gid turns
+ * out to be a tab the raw_zavis alerts already cover, it is skipped (no dupes).
+ */
+export interface WatchedTab {
+  spreadsheetId: string;
+  gid: number;
+}
+export const OPS_WATCHED_TABS: WatchedTab[] = [
+  { spreadsheetId: '1CtfSiGONthczH6YVOLfAZvOdmFfGP26uVBZJoYjxRQQ', gid: 119899925 },
+  { spreadsheetId: '1CtfSiGONthczH6YVOLfAZvOdmFfGP26uVBZJoYjxRQQ', gid: 1172371132 },
+];

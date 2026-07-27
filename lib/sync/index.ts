@@ -14,6 +14,7 @@ import { isGmbConfigured } from '@/config/gmb';
 import { syncMetaOrganic } from './adapters/meta-organic-adapter';
 import { resolveMetaOrganicConfig } from '@/config/meta-organic';
 import { sendNewLeadAlerts } from '@/lib/ops/alerts';
+import { sendWatchedTabAlerts } from '@/lib/ops/tabAlerts';
 import {
   normalizePerformance,
   normalizeBlockers,
@@ -329,6 +330,16 @@ export async function runSync(trigger: SyncTrigger): Promise<SyncSummary> {
     if (alerts.error) dataGaps.push({ area: 'clinic', detail: `Lead alert send failed: ${alerts.error}`, owner: ownerFor('clinic') });
   } catch (err) {
     dataGaps.push({ area: 'clinic', detail: `Lead alert send failed: ${(err as Error).message}`, owner: ownerFor('clinic') });
+  }
+
+  // ----- Watched-tab alerts: new rows in OPS_WATCHED_TABS (extra sheet tabs
+  // beyond the booking widget) email the same ops inbox. Best-effort.
+  try {
+    const tabAlerts = await sendWatchedTabAlerts(supabase, sheets);
+    if (tabAlerts.sent > 0) sheetsOk.push(`Tab alerts — ${tabAlerts.sent} sent`);
+    if (tabAlerts.error) dataGaps.push({ area: 'clinic', detail: `Watched-tab alert failed: ${tabAlerts.error}`, owner: ownerFor('clinic') });
+  } catch (err) {
+    dataGaps.push({ area: 'clinic', detail: `Watched-tab alert failed: ${(err as Error).message}`, owner: ownerFor('clinic') });
   }
 
   // ----- Silver upserts -----
