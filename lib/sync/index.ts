@@ -337,6 +337,9 @@ export async function runSync(trigger: SyncTrigger): Promise<SyncSummary> {
   try {
     const tabAlerts = await sendWatchedTabAlerts(supabase, sheets);
     if (tabAlerts.sent > 0) sheetsOk.push(`Tab alerts — ${tabAlerts.sent} sent`);
+    // One-off events only (first registration, cap hit) — not every run.
+    for (const n of tabAlerts.notes) sheetsOk.push(`Tab watch — ${n}`);
+    for (const p of tabAlerts.problems) dataGaps.push({ area: 'clinic', detail: `Tab watch: ${p}`, owner: ownerFor('clinic') });
     if (tabAlerts.error) dataGaps.push({ area: 'clinic', detail: `Watched-tab alert failed: ${tabAlerts.error}`, owner: ownerFor('clinic') });
   } catch (err) {
     dataGaps.push({ area: 'clinic', detail: `Watched-tab alert failed: ${(err as Error).message}`, owner: ownerFor('clinic') });

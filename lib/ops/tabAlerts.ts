@@ -70,19 +70,24 @@ function rowLabel(header: string[], row: string[]): string {
 export interface TabAlertResult {
   sent: number;
   skipped: boolean;
+  /** Informational, surfaced in the sync log (one-off events, not every run). */
   notes: string[];
+  /** Things needing attention (missing tab, failed send) → data gaps. */
+  problems: string[];
   error?: string;
 }
 
 export async function sendWatchedTabAlerts(supabase: AdminClient, sheets: sheets_v4.Sheets): Promise<TabAlertResult> {
-  if (OPS_WATCHED_TABS.length === 0) return { sent: 0, skipped: true, notes: ['no watched tabs configured'] };
-  if (!emailConfigured()) return { sent: 0, skipped: true, notes: ['alerts disabled (no MS_GRAPH_* / SMTP_* / RESEND_API_KEY)'] };
-  if (OPS_ALERT_EMAILS.length === 0) return { sent: 0, skipped: true, notes: ['no OPS_ALERT_EMAILS'] };
+  const off = (note: string): TabAlertResult => ({ sent: 0, skipped: true, notes: [note], problems: [] });
+  if (OPS_WATCHED_TABS.length === 0) return off('no watched tabs configured');
+  if (!emailConfigured()) return off('alerts disabled (no MS_GRAPH_* / SMTP_* / RESEND_API_KEY)');
+  if (OPS_ALERT_EMAILS.length === 0) return off('no OPS_ALERT_EMAILS');
 
   // Tabs the raw_zavis lead alerts already email about — never double-alert.
   const covered = new Set((sheetMapping.bookingWidget?.tabs ?? []).map((t) => t.toLowerCase()));
 
   const notes: string[] = [];
+  const problems: string[] = [];
   let sent = 0;
   try {
     // gid → current title, one metadata call per distinct spreadsheet.
@@ -104,7 +109,7 @@ export async function sendWatchedTabAlerts(supabase: AdminClient, sheets: sheets
     for (const w of OPS_WATCHED_TABS) {
       const title = bySpreadsheet.get(w.spreadsheetId)?.get(w.gid);
       if (!title) {
-        notes.push(`gid ${w.gid}: tab not found`);
+        problems.push(`watched tab gid ${w.gid} not found in the sheet`);
         continue;
       }
       if (covered.has(title.toLowerCase())) {
@@ -161,7 +166,7 @@ export async function sendWatchedTabAlerts(supabase: AdminClient, sheets: sheets
           advanced = i + 1;
         } else {
           // Send failed — stop; don't advance the mark past an undelivered row.
-          notes.push(`"${title}": send failed — ${res2.error ?? 'unknown error'}`);
+          problems.push(`"${title}": send failed — ${res2.error ?? 'unknown error'}`);
           failed = true;
           break;
         }
@@ -171,8 +176,8 @@ export async function sendWatchedTabAlerts(supabase: AdminClient, sheets: sheets
       }
       if (failed) break; // transport is down — later tabs would fail the same way
     }
-    return { sent, skipped: false, notes };
+    return { sent, skipped: false, notes, problems };
   } catch (err) {
-    return { sent, skipped: false, notes, error: (err as Error).message };
+    return { sent, skipped: false, notes, problems, error: (err as Error).message };
   }
 }
