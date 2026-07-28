@@ -74,9 +74,24 @@ export async function pickOption(page, frame, labelText, preferRe = /i don'?t kn
   const preferred = candidates.filter({ hasText: preferRe }).first();
   const target = (await preferred.count()) ? preferred : candidates.filter({ hasText: /\S/ }).first();
   if (!(await target.count())) return false;
+
+  // What the field showed BEFORE — the value element is the div right after the
+  // label, not the whole field (which also contains the open option list).
+  const valueEl = frame.locator('label', { hasText: labelText }).first().locator('xpath=following-sibling::div[1]');
+  const readValue = async () =>
+    ((await valueEl.innerText().catch(() => null)) ?? (await valueEl.textContent().catch(() => '')) ?? '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  const before = await readValue();
+
   await target.click({ timeout: 8000 }).catch(() => {});
   await page.waitForTimeout(1500);
-  return true;
+
+  // Only report success if the choice actually REGISTERED. Returning true just
+  // because a click landed made a later "the date/time step never appeared" look
+  // like a clinic outage, when the form had simply never been filled in.
+  const after = await readValue();
+  return Boolean(after) && after !== before;
 }
 
 /** Dismiss cookie/consent overlays that can sit over the widget. */
