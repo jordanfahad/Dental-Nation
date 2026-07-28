@@ -164,29 +164,73 @@ try {
   }
   await page.keyboard.press('Escape').catch(() => {});
 
+  // ── The decisive test: can a patient actually SELECT a time? ──
+  // Listing slots is not enough. The reported fault is that the time appears
+  // choosable, the selection silently fails to register, and "Continue Booking"
+  // then rejects the form with "please select all fields". A check that only
+  // asserts slots are LISTED would pass straight through that and report the
+  // widget healthy while nobody could book.
+  result.stage = 'slots';
+
+  const read = async (loc) =>
+    (await loc.innerText().catch(() => null)) ?? (await loc.textContent().catch(() => '')) ?? '';
+
   try {
     await timeField.click({ timeout: 8000 });
     await page.waitForTimeout(2500);
   } catch {
-    // Not clickable (often the disabled/empty state) — still read the text below.
+    // Not clickable — usually the empty/disabled state; the text read below says so.
   }
-  result.stage = 'slots';
 
-  // Read the widget region rather than the whole page: the site has other times
-  // on it (opening hours), which would otherwise count as slots.
   const region = frame.locator('label', { hasText: 'Select Time' }).first().locator('xpath=../../../..');
-  // innerText preserves rendered whitespace between nodes; textContent does not.
-  const read = async (loc) =>
-    (await loc.innerText().catch(() => null)) ?? (await loc.textContent().catch(() => '')) ?? '';
-  const text = `${await read(region)} ${await read(timeField)}`;
+  const openText = `${await read(region)} ${await read(timeField)}`;
 
-  if (NO_SLOTS_RE.test(text)) {
-    result = { ok: false, stage: 'slots', slotsFound: 0, detail: 'Widget reported "No slots available" — patients cannot book.' };
+  // Options that look like a time — the dropdown carries no semantic hooks.
+  const timeOption = frame
+    .locator('[role="option"], li, button, div[class*="cursor-pointer"], div[class*="hover:"]')
+    .filter({ hasText: /(?<!\d)\d{1,2}:\d{2}(?!\d)/ });
+  const offered = await timeOption.count().catch(() => 0);
+
+  if (NO_SLOTS_RE.test(openText) || offered === 0) {
+    result = {
+      ok: false,
+      conclusive: true,
+      stage: 'slots',
+      slotsFound: 0,
+      detail: NO_SLOTS_RE.test(openText)
+        ? 'Widget reported "No slots available" — patients cannot book.'
+        : 'Time dropdown offered no selectable slots — patients cannot book.',
+    };
   } else {
-    const slots = [...new Set((text.match(SLOT_RE) || []).map((s) => s.trim().toLowerCase()))];
-    result = slots.length
-      ? { ok: true, stage: 'slots', slotsFound: slots.length, detail: `${slots.length} time slot${slots.length === 1 ? '' : 's'} offered` }
-      : { ok: false, stage: 'slots', slotsFound: 0, detail: 'Time dropdown rendered no selectable slots.' };
+    // Pick one and verify it STICKS.
+    await timeOption.first().click({ timeout: 8000 }).catch(() => {});
+    await page.waitForTimeout(2000);
+    await page.keyboard.press('Escape').catch(() => {}); // close the list before reading back
+    await page.waitForTimeout(500);
+    // Read ONLY the field's value element — the div immediately after the label.
+    // Reading the whole field container let the still-rendered option list ("11:00
+    // AM …") satisfy the time test, so a dead dropdown passed as healthy.
+    const valueEl = frame
+      .locator('label', { hasText: 'Select Time' })
+      .first()
+      .locator('xpath=following-sibling::div[1]');
+    const chosen = (await valueEl.count()) ? await read(valueEl) : await read(timeField);
+    const stuck = /(?<!\d)\d{1,2}:\d{2}(?!\d)/.test(chosen.replace(/select\s*time/i, ''));
+    result = stuck
+      ? {
+          ok: true,
+          conclusive: true,
+          stage: 'selected',
+          slotsFound: offered,
+          detail: `${offered} slot${offered === 1 ? '' : 's'} offered; selection registered (${chosen.replace(/\s+/g, ' ').trim().slice(0, 40)})`,
+        }
+      : {
+          ok: false,
+          conclusive: true,
+          stage: 'selected',
+          slotsFound: offered,
+          detail: `${offered} slot${offered === 1 ? '' : 's'} were listed but the time would not select — "Continue Booking" would reject the form. Patients cannot book.`,
+        };
   }
 
   if (!result.ok) await page.screenshot({ path: 'widget-failure.png' }).catch(() => {});
