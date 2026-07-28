@@ -180,7 +180,19 @@ export async function recordLeadCall(input: {
   }
 }
 
-export async function getUnverifiedLeads(range: { from?: string; to?: string } = {}): Promise<UnverifiedLeadsReport> {
+/**
+ * @param opts.crossChecks Resolve each lead's booking state and call history.
+ *   Reception's worklist needs both. The ArabyAds drop-off aggregate needs
+ *   neither — it only counts leads per campaign lane — so it passes false and
+ *   skips three table reads it would throw away, on a page that is already
+ *   heavy. Filtering still runs either way, so the two views can't disagree
+ *   about which leads are real.
+ */
+export async function getUnverifiedLeads(
+  range: { from?: string; to?: string } = {},
+  opts: { crossChecks?: boolean } = {},
+): Promise<UnverifiedLeadsReport> {
+  const crossChecks = opts.crossChecks !== false;
   const db = getSupabaseAdmin();
   if (!db) return empty('missing');
   const { from, to } = range;
@@ -194,7 +206,7 @@ export async function getUnverifiedLeads(range: { from?: string; to?: string } =
   // Phones that later became a verified booking, and phones known to Practo.
   const verified = new Set<string>();
   const inPracto = new Set<string>();
-  try {
+  if (crossChecks) try {
     const [book, appts] = await Promise.all([
       db.from('raw_zavis').select('data'),
       db.from('practo_appointments_raw').select('patient_phone'),
@@ -215,7 +227,7 @@ export async function getUnverifiedLeads(range: { from?: string; to?: string } =
   // is not an error here: the worklist still works, it just can't be dispositioned.
   const latestCall = new Map<string, LeadCall>();
   let callLogReady = true;
-  {
+  if (crossChecks) {
     // id desc is the tiebreaker, not decoration: created_at defaults to now(),
     // which is TRANSACTION time, so two calls logged in one transaction share a
     // timestamp and would otherwise come back in arbitrary order — picking the

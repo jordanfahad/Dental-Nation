@@ -164,7 +164,19 @@ function summarise(rows: LeadRow[]): { lanes: LaneSummary[]; totals: LaneSummary
   return { lanes: [...known.values()].map(finalize), totals: finalize(totals) };
 }
 
+/**
+ * Cached for 5 minutes. This does two live Google Sheets round-trips and is
+ * rendered by the Board Report, the internal ArabyAds tab AND the external
+ * report — all of which are dynamic, so before caching every single page view
+ * paid for the sheet read again. The sheet is maintained by hand, so five
+ * minutes of staleness costs nothing.
+ */
 export async function getArabyLeadStatus(): Promise<LeadStatusReport> {
+  return loadLeadStatus();
+}
+
+const loadLeadStatus = unstable_cache(
+  async (): Promise<LeadStatusReport> => {
   const empty = (note: string): LeadStatusReport => ({
     available: false,
     note,
@@ -255,7 +267,10 @@ export async function getArabyLeadStatus(): Promise<LeadStatusReport> {
     }
     return empty('Could not read the lead sheet.');
   }
-}
+  },
+  ['araby-lead-status-v1'],
+  { revalidate: 300 },
+);
 
 /** The team's hand-set verdict for one enquiry, keyed by phone. */
 export interface SheetVerdict {

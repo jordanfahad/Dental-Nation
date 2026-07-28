@@ -42,7 +42,10 @@ export interface DropOffReport {
 export async function getArabyDropOff(range: { from?: string; to?: string } = {}): Promise<DropOffReport> {
   const base = ARABY_LANES.map((l) => ({ key: l.key, label: l.label, laneCode: l.laneCode, unverified: 0 }));
 
-  const report = await getUnverifiedLeads(range).catch(() => null);
+  // crossChecks:false — this aggregate only counts leads per lane, so the
+  // booking-state and call-history lookups would be three wasted table reads on
+  // an already-heavy report.
+  const report = await getUnverifiedLeads(range, { crossChecks: false }).catch(() => null);
   if (!report || report.source === 'missing') {
     return { source: 'missing', attributable: false, lanes: base, total: 0, untagged: 0 };
   }
