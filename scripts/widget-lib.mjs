@@ -66,35 +66,56 @@ export async function pickOption(page, frame, labelText, preferRe = /i don'?t kn
   await field.click({ timeout: 8000 });
   await page.waitForTimeout(1200);
 
-  // Candidate options: anything clickable with text. Broad, because the markup
-  // carries no semantic hooks — but it MUST exclude the field containers, which
-  // also carry `cursor-pointer`. Without that exclusion the "option" click lands
-  // back on the field and just toggles it shut, so nothing is ever selected.
-  // Fields own a <label>; options never do.
-  const candidates = frame
-    .locator('[role="option"], li, button, div[class*="cursor-pointer"], div[class*="hover:"]')
-    .filter({ hasNot: frame.locator('label') });
-  const preferred = candidates.filter({ hasText: preferRe }).first();
-  const target = (await preferred.count()) ? preferred : candidates.filter({ hasText: /\S/ }).first();
-  if (!(await target.count())) return false;
-
-  // What the field showed BEFORE — the value element is the div right after the
-  // label, not the whole field (which also contains the open option list).
+  // The field's value element — the div right after the label. Read this, never
+  // the whole field, which also contains the open option list.
   const valueEl = frame.locator('label', { hasText: labelText }).first().locator('xpath=following-sibling::div[1]');
   const readValue = async () =>
     ((await valueEl.innerText().catch(() => null)) ?? (await valueEl.textContent().catch(() => '')) ?? '')
       .replace(/\s+/g, ' ')
       .trim();
   const before = await readValue();
+  const registered = async () => {
+    const after = await readValue();
+    return Boolean(after) && after !== before;
+  };
 
-  await target.click({ timeout: 8000 }).catch(() => {});
-  await page.waitForTimeout(1500);
+  // Find the option by GEOMETRY, not markup. Four attempts at class-based
+  // selectors all failed: the fields themselves carry `cursor-pointer`, the
+  // options carry the same utility classes as the value divs, and nothing has a
+  // role, id or data-* to grab. What IS reliable is that an open dropdown
+  // renders BELOW its field. So: take every element whose text matches an
+  // option, keep those positioned under the field, and click the topmost.
+  const fieldBox = await field.boundingBox().catch(() => null);
+  const clickOptionBelow = async (re) => {
+    const matches = frame.locator('div, li, button, span, p').filter({ hasText: re });
+    const n = Math.min(await matches.count().catch(() => 0), 40);
+    let best = null;
+    for (let i = 0; i < n; i++) {
+      const el = matches.nth(i);
+      const box = await el.boundingBox().catch(() => null);
+      if (!box || box.height < 10 || box.height > 120) continue; // skip wrappers
+      if (fieldBox && box.y <= fieldBox.y + fieldBox.height - 4) continue; // must be below
+      if (!best || box.y < best.box.y) best = { el, box };
+    }
+    if (!best) return false;
+    await best.el.click({ timeout: 6000 }).catch(() => {});
+    await page.waitForTimeout(1500);
+    return registered();
+  };
 
-  // Only report success if the choice actually REGISTERED. Returning true just
-  // because a click landed made a later "the date/time step never appeared" look
-  // like a clinic outage, when the form had simply never been filled in.
-  const after = await readValue();
-  return Boolean(after) && after !== before;
+  if (await clickOptionBelow(preferRe)) return true;
+  // Any option will do — the check commits to no particular treatment.
+  if (await clickOptionBelow(/\S/)) return true;
+
+  // Last resort: keyboard. Some custom dropdowns are navigable even when their
+  // options are unclickable by selector.
+  await field.click({ timeout: 5000 }).catch(() => {});
+  await page.waitForTimeout(800);
+  for (const key of ['ArrowDown', 'Enter']) {
+    await page.keyboard.press(key).catch(() => {});
+    await page.waitForTimeout(600);
+  }
+  return registered();
 }
 
 /** Dismiss cookie/consent overlays that can sit over the widget. */

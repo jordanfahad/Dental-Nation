@@ -108,14 +108,27 @@ try {
         clickables: clip(
           JSON.stringify(
             await entry.frame.evaluate(() => {
+              // Scope to what is BELOW the condition field: the first attempt
+              // spent all 40 slots on the site header and never reached the
+              // dropdown, which was the entire point of the capture.
+              const label = [...document.querySelectorAll('label')].find((l) =>
+                /Select Condition/i.test(l.textContent || ''),
+              );
+              const anchor = label ? label.getBoundingClientRect().bottom : 0;
               const out = [];
-              for (const el of document.querySelectorAll('[role="option"], li, button, div')) {
+              for (const el of document.querySelectorAll('[role="option"], li, button, div, span, p')) {
                 const t = (el.textContent || '').trim();
                 if (!t || t.length > 60 || el.children.length > 2) continue;
                 const r = el.getBoundingClientRect();
-                if (r.width < 40 || r.height < 12) continue;
-                out.push({ tag: el.tagName, cls: (el.className || '').toString().slice(0, 120), text: t.slice(0, 60) });
-                if (out.length > 40) break;
+                if (r.width < 40 || r.height < 12 || r.height > 120) continue;
+                if (r.top < anchor - 4) continue; // above the field — page chrome
+                out.push({
+                  tag: el.tagName,
+                  cls: (el.className || '').toString().slice(0, 100),
+                  text: t.slice(0, 50),
+                  y: Math.round(r.top),
+                });
+                if (out.length > 30) break;
               }
               return out;
             }).catch(() => []),
