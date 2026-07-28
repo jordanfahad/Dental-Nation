@@ -1,0 +1,38 @@
+name: Booking widget discovery (one-off)
+
+# Manual only — this is a diagnostic run used to harden the scheduled check in
+# widget-health.yml, not something that should run on a timer.
+on:
+  workflow_dispatch: {}
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Playwright
+        run: npm install --no-save playwright@1.56.1 && npx playwright install --with-deps chromium
+
+      - name: Capture the live widget
+        env:
+          SITE_URL: ${{ vars.SITE_URL || 'https://www.dentalnation.com/en/' }}
+          # Optional: without these the run still produces the artifact below.
+          DASHBOARD_URL: ${{ secrets.DASHBOARD_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: node scripts/widget-discover.mjs
+
+      # Works even before the secrets exist — download and send it on.
+      - name: Upload capture
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: widget-probe-${{ github.run_id }}
+          path: probe/
+          if-no-files-found: warn
+          retention-days: 14

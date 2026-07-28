@@ -37,3 +37,6 @@ sheet-introspection.md
 
 # Artifact from the synthetic widget check (uploaded by CI, never committed)
 widget-failure.png
+
+# Discovery-run captures (uploaded as CI artifacts, never committed)
+probe/
