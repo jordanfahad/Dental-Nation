@@ -97,6 +97,39 @@ try {
   if (entry) {
     capture.notes.push(`entry found in frame ${entry.frame.url()}`);
     await snap('2-entry', entry.frame);
+    // Open the condition dropdown WITHOUT selecting, and dump the option markup.
+    // Every wrong guess so far has been about what an option looks like.
+    try {
+      await entry.frame.locator('label', { hasText: 'Select Condition' }).first().locator('xpath=..').click({ timeout: 8000 });
+      await page.waitForTimeout(2000);
+      capture.stages['2b-condition-open'] = {
+        bodyText: clip(await entry.frame.locator('body').innerText().catch(() => ''), 1500),
+        // Everything that looks clickable right now, with its tag + classes.
+        clickables: clip(
+          JSON.stringify(
+            await entry.frame.evaluate(() => {
+              const out = [];
+              for (const el of document.querySelectorAll('[role="option"], li, button, div')) {
+                const t = (el.textContent || '').trim();
+                if (!t || t.length > 60 || el.children.length > 2) continue;
+                const r = el.getBoundingClientRect();
+                if (r.width < 40 || r.height < 12) continue;
+                out.push({ tag: el.tagName, cls: (el.className || '').toString().slice(0, 120), text: t.slice(0, 60) });
+                if (out.length > 40) break;
+              }
+              return out;
+            }).catch(() => []),
+          ),
+          6000,
+        ),
+      };
+      await page.screenshot({ path: `${OUT}/2b-condition-open.png` }).catch(() => {});
+      await page.keyboard.press('Escape').catch(() => {});
+      await page.waitForTimeout(500);
+    } catch (e) {
+      capture.notes.push(`condition-open capture failed: ${e.message}`);
+    }
+
     const gotC = await pickOption(page, entry.frame, 'Select Condition');
     capture.notes.push(`pick condition: ${gotC}`);
     await snap('3-condition', entry.frame);

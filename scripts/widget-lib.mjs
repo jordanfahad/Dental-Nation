@@ -66,11 +66,14 @@ export async function pickOption(page, frame, labelText, preferRe = /i don'?t kn
   await field.click({ timeout: 8000 });
   await page.waitForTimeout(1200);
 
-  // Candidate options: anything clickable that appeared with text in it. Kept
-  // deliberately broad — the markup carries no semantic hooks to rely on.
-  const candidates = frame.locator(
-    '[role="option"], li, button, div[class*="cursor-pointer"], div[class*="hover:"]',
-  );
+  // Candidate options: anything clickable with text. Broad, because the markup
+  // carries no semantic hooks — but it MUST exclude the field containers, which
+  // also carry `cursor-pointer`. Without that exclusion the "option" click lands
+  // back on the field and just toggles it shut, so nothing is ever selected.
+  // Fields own a <label>; options never do.
+  const candidates = frame
+    .locator('[role="option"], li, button, div[class*="cursor-pointer"], div[class*="hover:"]')
+    .filter({ hasNot: frame.locator('label') });
   const preferred = candidates.filter({ hasText: preferRe }).first();
   const target = (await preferred.count()) ? preferred : candidates.filter({ hasText: /\S/ }).first();
   if (!(await target.count())) return false;
