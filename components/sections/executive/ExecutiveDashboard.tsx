@@ -12,6 +12,7 @@ import { ExecRevenueDeepDive } from './ExecRevenueDeepDive';
 import { ExecWebsite } from './ExecWebsite';
 import { ExecOperations } from './ExecOperations';
 import { ExecClosing } from './ExecClosing';
+import { WidgetHealth } from '@/components/sections/ops/WidgetHealth';
 
 /**
  * Executive Dashboard — the investor-grade hero tab. An async server component
@@ -52,6 +53,11 @@ export async function ExecutiveDashboard({ query }: { query?: ExecQuery }) {
       <ExecMixRow report={report} />
       <ExecRevenueDeepDive report={report} />
       <ExecWebsite report={report} />
+
+      {/* Can patients actually book online right now? Compact here — status and
+          uptime only; the incident log lives where someone acts on it. */}
+      <WidgetHealth compact />
+
       <ExecOperations report={report} />
       <ExecClosing report={report} />
     </div>

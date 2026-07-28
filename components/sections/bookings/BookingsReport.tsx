@@ -6,6 +6,7 @@ import { BookingsSubNav } from './BookingsSubNav';
 import { resolveBookingsSub } from './subtabs';
 import { BookingsPlatforms } from './BookingsPlatforms';
 import { ClinicJourneyStrip } from '@/components/sections/shared/ClinicJourneyStrip';
+import { WidgetHealth } from '@/components/sections/ops/WidgetHealth';
 import { Card, SectionHeader, Takeaway } from '@/components/ui/Card';
 import { DataGapInline } from '@/components/ui/DataGap';
 import { KpiBand, type KpiItem } from '@/components/charts/KpiBand';
@@ -318,6 +319,11 @@ async function BookingsWidgetView({ report }: { report: RangeReport }) {
           )}
         </div>
       </Card>
+
+      {/* Booking numbers mean little without knowing whether the widget was even
+          usable. Full view here, incident log included — a dip in bookings is
+          read on this page. */}
+      <WidgetHealth />
     </div>
   );
 }

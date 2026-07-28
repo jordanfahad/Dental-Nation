@@ -40,7 +40,12 @@ function dur(min: number): string {
  * outage (the site answers 200; only the slot list is empty), so this panel
  * deliberately measures the patient's experience instead.
  */
-export async function WidgetHealth() {
+/**
+ * @param compact Executive view — status and uptime only, no incident table.
+ *   The board-level reader needs "is it working and how often does it break";
+ *   the outage log belongs where someone acts on it (Clinical Ops, Bookings).
+ */
+export async function WidgetHealth({ compact = false }: { compact?: boolean } = {}) {
   const h = await getWidgetHealth(7);
 
   const down = h.latest && !h.latest.ok;
@@ -69,11 +74,20 @@ export async function WidgetHealth() {
       />
       <div className="px-5 pb-5 pt-4">
         <p className="text-[12.5px] leading-snug text-ink-soft">
-          Every 15 minutes an automated check opens the live booking widget, picks a treatment and a date, and confirms the
-          time dropdown actually offers slots. A failure means a real patient hit{' '}
-          <span className="font-medium text-ink-soft">&ldquo;No slots available&rdquo;</span> at that moment. This is measured
-          from the patient&rsquo;s side on purpose — the site keeps returning 200 during an outage, so a normal uptime ping
-          would show 100% throughout.
+          {compact ? (
+            <>
+              An automated check opens the live booking widget every 15 minutes and confirms real appointment times are
+              offered. A failure means a patient could not have booked at that moment.
+            </>
+          ) : (
+            <>
+              Every 15 minutes an automated check opens the live booking widget, picks a treatment and a date, and confirms
+              the time dropdown actually offers slots. A failure means a real patient hit{' '}
+              <span className="font-medium text-ink-soft">&ldquo;No slots available&rdquo;</span> at that moment. This is
+              measured from the patient&rsquo;s side on purpose — the site keeps returning 200 during an outage, so a normal
+              uptime ping would show 100% throughout.
+            </>
+          )}
         </p>
 
         {down ? (
@@ -88,6 +102,8 @@ export async function WidgetHealth() {
           <KpiBand items={kpis} />
         </div>
 
+        {/* Executive view stops here: status + uptime, no incident log. */}
+        {compact ? null : (
         <div className="mt-4">
           {h.source === 'missing' ? (
             <DataGapInline
@@ -138,6 +154,7 @@ export async function WidgetHealth() {
             </>
           )}
         </div>
+        )}
       </div>
     </Card>
   );
