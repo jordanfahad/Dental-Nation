@@ -20,6 +20,8 @@ export interface WidgetCheck {
   slotsFound: number | null;
   stage: string | null;
   detail: string | null;
+  /** False when the run couldn't determine the widget's state at all. */
+  conclusive: boolean;
 }
 
 export interface WidgetIncident {
@@ -38,9 +40,14 @@ export interface WidgetHealthReport {
   source: 'live' | 'empty' | 'missing';
   /** Newest check, or null when there are none. */
   latest: WidgetCheck | null;
+  /** Newest check that actually determined the widget's state. */
+  latestConclusive: WidgetCheck | null;
+  /** Checks that determined a state — the denominator for uptime. */
   totalChecks: number;
   failedChecks: number;
-  /** Passing checks ÷ total, 0–1. Null when there are no checks. */
+  /** Runs that couldn't determine anything (monitor/browser/network error). */
+  inconclusiveChecks: number;
+  /** Passing ÷ conclusive, 0–1. Null when nothing conclusive has run. */
   uptime: number | null;
   incidents: WidgetIncident[];
 }
@@ -48,8 +55,10 @@ export interface WidgetHealthReport {
 const empty = (source: WidgetHealthReport['source']): WidgetHealthReport => ({
   source,
   latest: null,
+  latestConclusive: null,
   totalChecks: 0,
   failedChecks: 0,
+  inconclusiveChecks: 0,
   uptime: null,
   incidents: [],
 });
@@ -60,6 +69,7 @@ export async function recordWidgetCheck(input: {
   stage: string | null;
   detail: string | null;
   durationMs: number | null;
+  conclusive?: boolean;
 }): Promise<{ ok: boolean; error?: string }> {
   const db = getSupabaseAdmin();
   if (!db) return { ok: false, error: 'Supabase not configured.' };
@@ -70,6 +80,7 @@ export async function recordWidgetCheck(input: {
       stage: input.stage,
       detail: input.detail,
       duration_ms: input.durationMs,
+      conclusive: input.conclusive !== false,
     });
     return error ? { ok: false, error: error.message } : { ok: true };
   } catch (e) {
@@ -85,23 +96,43 @@ export async function getWidgetHealth(days = 7): Promise<WidgetHealthReport> {
   const since = new Date(Date.now() - days * 86400_000).toISOString();
   const res = await db
     .from('widget_health')
-    .select('checked_at, ok, slots_found, stage, detail')
+    .select('checked_at, ok, slots_found, stage, detail, conclusive')
     .gte('checked_at', since)
     .order('checked_at', { ascending: false })
     .order('id', { ascending: false }); // stable tiebreak; checked_at defaults to now()
   if (res.error) return empty('missing');
 
-  type Row = { checked_at: string; ok: boolean; slots_found: number | null; stage: string | null; detail: string | null };
-  const rows = (res.data as Row[] | null) ?? [];
-  if (rows.length === 0) return empty('empty');
-
-  const latest: WidgetCheck = {
-    checkedAt: rows[0].checked_at,
-    ok: rows[0].ok,
-    slotsFound: rows[0].slots_found,
-    stage: rows[0].stage,
-    detail: rows[0].detail,
+  type Row = {
+    checked_at: string;
+    ok: boolean;
+    slots_found: number | null;
+    stage: string | null;
+    detail: string | null;
+    conclusive: boolean | null;
   };
+  const all = (res.data as Row[] | null) ?? [];
+  if (all.length === 0) return empty('empty');
+
+  const toCheck = (r: Row): WidgetCheck => ({
+    checkedAt: r.checked_at,
+    ok: r.ok,
+    slotsFound: r.slots_found,
+    stage: r.stage,
+    detail: r.detail,
+    conclusive: r.conclusive !== false,
+  });
+
+  // Uptime and outages are computed ONLY over checks that determined a state.
+  // A monitor that crashed says nothing about whether patients could book, and
+  // counting it as downtime would make the percentage a lie.
+  const rows = all.filter((r) => r.conclusive !== false);
+  const inconclusiveChecks = all.length - rows.length;
+  const latest = toCheck(all[0]);
+  const latestConclusive = rows.length ? toCheck(rows[0]) : null;
+
+  if (rows.length === 0) {
+    return { ...empty('live'), latest, inconclusiveChecks };
+  }
 
   const failedChecks = rows.filter((r) => !r.ok).length;
 
@@ -129,8 +160,10 @@ export async function getWidgetHealth(days = 7): Promise<WidgetHealthReport> {
   return {
     source: 'live',
     latest,
+    latestConclusive,
     totalChecks: rows.length,
     failedChecks,
+    inconclusiveChecks,
     uptime: (rows.length - failedChecks) / rows.length,
     incidents,
   };

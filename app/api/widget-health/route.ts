@@ -35,6 +35,9 @@ export async function POST(req: NextRequest) {
     stage: str(b.stage),
     detail: str(b.detail),
     durationMs: num(b.durationMs),
+    // Absent means "this run determined a state" — only an explicit false marks
+    // a monitor error, so older senders keep their existing meaning.
+    conclusive: b.conclusive !== false,
   });
 
   return res.ok

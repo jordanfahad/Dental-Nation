@@ -48,14 +48,23 @@ function dur(min: number): string {
 export async function WidgetHealth({ compact = false }: { compact?: boolean } = {}) {
   const h = await getWidgetHealth(7);
 
-  const down = h.latest && !h.latest.ok;
+  // Status comes from the last check that actually DETERMINED something. A
+  // crashed monitor tells us nothing about whether patients could book, so it
+  // must never render as DOWN.
+  const lc = h.latestConclusive;
+  const down = Boolean(lc && !lc.ok);
+  const stale = Boolean(h.latest && !h.latest.conclusive);
   const kpis: KpiItem[] = [
     {
       label: 'Right now',
-      value: h.latest ? (h.latest.ok ? 'Working' : 'DOWN') : '—',
-      hint: h.latest ? `checked ${ago(h.latest.checkedAt)}` : 'no checks yet',
+      value: lc ? (lc.ok ? 'Working' : 'DOWN') : '—',
+      hint: lc ? `checked ${ago(lc.checkedAt)}` : 'no verdict yet',
     },
-    { label: 'Uptime (7d)', value: h.uptime == null ? '—' : pct(h.uptime), hint: `${int(h.totalChecks)} checks` },
+    {
+      label: 'Uptime (7d)',
+      value: h.uptime == null ? '—' : pct(h.uptime),
+      hint: `${int(h.totalChecks)} verdict${h.totalChecks === 1 ? '' : 's'}`,
+    },
     { label: 'Failed checks', value: int(h.failedChecks), hint: 'patient could not book' },
     { label: 'Outages (7d)', value: int(h.incidents.length), hint: 'separate incidents' },
   ];
@@ -94,7 +103,17 @@ export async function WidgetHealth({ compact = false }: { compact?: boolean } = 
           <p className="mt-3 rounded-md bg-stop/10 px-3 py-2 text-[12.5px] font-medium leading-snug text-stop">
             The widget is failing right now — patients cannot complete an online booking. Take bookings by phone until it
             recovers.
-            {h.latest?.detail ? <span className="block font-normal">{h.latest.detail}</span> : null}
+            {lc?.detail ? <span className="block font-normal">{lc.detail}</span> : null}
+          </p>
+        ) : null}
+
+        {/* A broken monitor is reported as a broken MONITOR — never as an outage. */}
+        {stale || h.inconclusiveChecks > 0 ? (
+          <p className="mt-3 rounded-md bg-watch/10 px-3 py-2 text-[12.5px] leading-snug text-watch">
+            {stale
+              ? 'The most recent check could not reach a verdict, so the status above is from the last check that did.'
+              : `${int(h.inconclusiveChecks)} check${h.inconclusiveChecks === 1 ? '' : 's'} could not reach a verdict.`}{' '}
+            These are monitor errors, not widget outages — they are excluded from uptime rather than counted as downtime.
           </p>
         ) : null}
 

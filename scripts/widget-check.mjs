@@ -127,7 +127,16 @@ try {
   if (!result.ok) await page.screenshot({ path: 'widget-failure.png' }).catch(() => {});
 } catch (e) {
   if (e.message !== '__reported__') {
-    result = { ok: false, stage: result.stage, slotsFound: null, detail: `Check errored: ${e.message}`.slice(0, 400) };
+    // conclusive:false — the run crashed, so it learned NOTHING about whether a
+    // patient could book. Recording this as an outage would put a fabricated
+    // DOWN on three dashboards, which is exactly what happened the first time.
+    result = {
+      ok: false,
+      conclusive: false,
+      stage: result.stage,
+      slotsFound: null,
+      detail: `Monitor error (not a widget verdict): ${e.message}`.slice(0, 400),
+    };
   }
 } finally {
   await browser?.close().catch(() => {});
