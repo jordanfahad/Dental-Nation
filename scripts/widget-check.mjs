@@ -191,15 +191,27 @@ try {
   const timeOptions = await optionsBelow(frame, valueOf(frame, 'Select Time'), /(?<!\d)\d{1,2}:\d{2}(?!\d)/);
   const offered = timeOptions.length;
 
-  if (NO_SLOTS_RE.test(openText) || offered === 0) {
+  if (NO_SLOTS_RE.test(openText)) {
+    // The widget SAID so. Unambiguous, and the exact symptom reported by staff.
     result = {
       ok: false,
       conclusive: true,
       stage: 'slots',
       slotsFound: 0,
-      detail: NO_SLOTS_RE.test(openText)
-        ? 'Widget reported "No slots available" — patients cannot book.'
-        : 'Time dropdown offered no selectable slots — patients cannot book.',
+      detail: 'Widget reported "No slots available" — patients cannot book.',
+    };
+  } else if (offered === 0) {
+    // Finding no options is NOT evidence of an empty dropdown: it is equally
+    // consistent with the check having failed to open or see the list, which has
+    // now happened three times running on this widget. Without the widget's own
+    // "No slots available" message there is nothing to distinguish the two, so
+    // this reports a monitor error rather than inventing an outage.
+    result = {
+      ok: false,
+      conclusive: false,
+      stage: 'slots',
+      slotsFound: 0,
+      detail: 'Monitor error (not a widget verdict): no time options were found, and the widget did not say "No slots available" — cannot tell an empty dropdown from one the check failed to read.',
     };
   } else {
     // Pick one and verify it STICKS.
