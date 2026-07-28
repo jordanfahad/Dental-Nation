@@ -47,6 +47,38 @@ export async function findWidget(page, { timeoutMs = 45000, labelText = 'Select 
   return null;
 }
 
+/**
+ * Open the custom dropdown whose <label> reads `labelText` and choose an option.
+ *
+ * The widget reveals itself progressively: on a fresh visit ONLY "Select
+ * Condition" and "Select Treatment" exist. Visit Type, Select a Date and Select
+ * Time are not rendered until those two are answered — which is why waiting for
+ * "Select Time" on page load could never succeed.
+ *
+ * The options are custom divs with no role="option", so we match on TEXT and
+ * prefer the catch-all choice ("I don't know / Other"), which is always present
+ * and commits the check to no particular treatment.
+ */
+export async function pickOption(page, frame, labelText, preferRe = /i don'?t know|other/i) {
+  const field = frame.locator('label', { hasText: labelText }).first().locator('xpath=..');
+  if (!(await field.count())) return false;
+  await field.scrollIntoViewIfNeeded().catch(() => {});
+  await field.click({ timeout: 8000 });
+  await page.waitForTimeout(1200);
+
+  // Candidate options: anything clickable that appeared with text in it. Kept
+  // deliberately broad — the markup carries no semantic hooks to rely on.
+  const candidates = frame.locator(
+    '[role="option"], li, button, div[class*="cursor-pointer"], div[class*="hover:"]',
+  );
+  const preferred = candidates.filter({ hasText: preferRe }).first();
+  const target = (await preferred.count()) ? preferred : candidates.filter({ hasText: /\S/ }).first();
+  if (!(await target.count())) return false;
+  await target.click({ timeout: 8000 }).catch(() => {});
+  await page.waitForTimeout(1500);
+  return true;
+}
+
 /** Dismiss cookie/consent overlays that can sit over the widget. */
 export async function dismissOverlays(page) {
   const labels = [/accept/i, /agree/i, /got it/i, /allow all/i, /continue/i, /close/i];

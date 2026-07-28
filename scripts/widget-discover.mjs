@@ -17,7 +17,7 @@
  */
 import { chromium } from 'playwright';
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { findWidget, dismissOverlays } from './widget-lib.mjs';
+import { findWidget, dismissOverlays, pickOption } from './widget-lib.mjs';
 
 const SITE = process.env.SITE_URL || 'https://www.dentalnation.com/en/';
 const ENDPOINT = process.env.DASHBOARD_URL;
@@ -91,7 +91,23 @@ try {
 
   await dismissOverlays(page);
 
-  const found = await findWidget(page, { timeoutMs: 45000 });
+  // Entry field first — Select Time does not exist until condition + treatment
+  // are answered (see widget-lib.mjs).
+  const entry = await findWidget(page, { timeoutMs: 45000, labelText: 'Select Condition' });
+  if (entry) {
+    capture.notes.push(`entry found in frame ${entry.frame.url()}`);
+    await snap('2-entry', entry.frame);
+    const gotC = await pickOption(page, entry.frame, 'Select Condition');
+    capture.notes.push(`pick condition: ${gotC}`);
+    await snap('3-condition', entry.frame);
+    const gotT = gotC ? await pickOption(page, entry.frame, 'Select Treatment') : false;
+    capture.notes.push(`pick treatment: ${gotT}`);
+    await snap('4-treatment', entry.frame);
+  } else {
+    capture.notes.push('entry field "Select Condition" not found either.');
+  }
+
+  const found = await findWidget(page, { timeoutMs: 20000, labelText: 'Select Time' });
   if (!found) {
     capture.notes.push('findWidget: label "Select Time" not found in ANY frame after 45s of scrolling.');
     // Re-probe after scrolling — lazy content may have appeared meanwhile.

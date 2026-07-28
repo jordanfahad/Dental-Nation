@@ -10,17 +10,22 @@
  * IT NEVER BOOKS. It opens dropdowns and reads text; it never clicks
  * "Continue Booking", so it cannot create an appointment or pollute the feeds.
  *
- * The widget's dropdowns are custom divs with no id/name/data-* — only Tailwind
- * classes, which change whenever anyone restyles it. So we anchor on the <label>
- * TEXT ("Select Time") and assert on RENDERED TEXT (a slot always looks like
- * "10:30 AM"), never on class names or DOM shape. Frame-aware and scroll-aware:
- * see widget-lib.mjs for why the first live version couldn't find the widget.
+ * It walks the REAL patient journey, because the widget reveals itself
+ * progressively: on a fresh visit only "Select Condition" and "Select Treatment"
+ * exist — Visit Type, Select a Date and Select Time are not rendered until those
+ * two are answered. Earlier versions waited on page load for a field that could
+ * not yet exist, and reported the resulting timeout as a clinic outage.
+ *
+ * The dropdowns are custom divs with no id/name/data-* — only Tailwind classes,
+ * which change whenever anyone restyles it. So we anchor on <label> TEXT and
+ * assert on RENDERED TEXT (a slot always looks like "10:30 AM"), never on class
+ * names or DOM shape.
  *
  * Exit code is always 0: a failed check is a recorded data point, not a broken
  * workflow. Only an unreachable dashboard makes this exit non-zero.
  */
 import { chromium } from 'playwright';
-import { findWidget, dismissOverlays } from './widget-lib.mjs';
+import { findWidget, dismissOverlays, pickOption } from './widget-lib.mjs';
 
 const SITE = process.env.SITE_URL || 'https://www.dentalnation.com/en/';
 const ENDPOINT = process.env.DASHBOARD_URL; // e.g. https://dental-nation-one.vercel.app
@@ -77,18 +82,16 @@ try {
   await page.waitForTimeout(3000);
   await dismissOverlays(page);
 
-  const found = await findWidget(page, { timeoutMs: 45000 });
-  if (!found) {
-    // Distinguish "the widget isn't on the page" from "the check couldn't reach
-    // it". Evidence: is the widget's own text present in the DOM at all?
-    // Without this test a blind spot in the check reads as a clinic outage —
-    // which it did, while GA4 and the Zavis APIs showed the widget loading fine.
+  // The widget reveals itself progressively: on load ONLY "Select Condition" and
+  // "Select Treatment" exist. So we look for the ENTRY field, not the time field.
+  const entry = await findWidget(page, { timeoutMs: 45000, labelText: 'Select Condition' });
+  if (!entry) {
     const html = (await page.content().catch(() => '')) || '';
-    const widgetInDom = /Select\s*Time/i.test(html) || /Select\s*a\s*Date/i.test(html);
+    const widgetInDom = /Select\s*Condition/i.test(html) || /Select\s*Treatment/i.test(html);
     result = widgetInDom
       ? {
           ok: false,
-          conclusive: false, // the check's problem, not the widget's — must not count as downtime
+          conclusive: false, // the check's problem, not the widget's
           stage: 'loaded',
           slotsFound: null,
           detail: 'Monitor error (not a widget verdict): widget markup is present on the page but the check could not reach it.',
@@ -103,9 +106,42 @@ try {
     await page.screenshot({ path: 'widget-failure.png' }).catch(() => {});
     throw new Error('__reported__');
   }
-  const { frame, label } = found;
-  await label.scrollIntoViewIfNeeded().catch(() => {});
+  const frame = entry.frame;
   result.stage = 'widget';
+
+  // Walk the patient journey: condition → treatment. Only then do Visit Type,
+  // Select a Date and Select Time render.
+  const gotCondition = await pickOption(page, frame, 'Select Condition');
+  const gotTreatment = gotCondition ? await pickOption(page, frame, 'Select Treatment') : false;
+  if (!gotCondition || !gotTreatment) {
+    result = {
+      ok: false,
+      conclusive: false, // couldn't drive the form — says nothing about availability
+      stage: gotCondition ? 'treatment' : 'condition',
+      slotsFound: null,
+      detail: `Monitor error (not a widget verdict): could not select a ${gotCondition ? 'treatment' : 'condition'}.`,
+    };
+    await page.screenshot({ path: 'widget-failure.png' }).catch(() => {});
+    throw new Error('__reported__');
+  }
+  result.stage = 'treatment';
+
+  // Now the date/time fields should exist. If they never appear, the patient is
+  // genuinely stuck — that IS an outage.
+  const timeFound = await findWidget(page, { timeoutMs: 20000, labelText: 'Select Time' });
+  if (!timeFound) {
+    result = {
+      ok: false,
+      conclusive: true,
+      stage: 'treatment',
+      slotsFound: null,
+      detail: 'After choosing a condition and treatment the widget never offered a date/time step — a patient could not book.',
+    };
+    await page.screenshot({ path: 'widget-failure.png' }).catch(() => {});
+    throw new Error('__reported__');
+  }
+  const found = timeFound;
+  await found.label.scrollIntoViewIfNeeded().catch(() => {});
 
   const field = (text) => frame.locator('label', { hasText: text }).first().locator('xpath=..');
   const timeField = field('Select Time');
