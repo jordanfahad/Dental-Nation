@@ -1,31 +1,30 @@
 /**
  * One-off discovery run against the live booking widget.
  *
- * scripts/widget-check.mjs was written from a STATIC copy of the widget's HTML.
- * That was enough to anchor on the <label> text, but it cannot show:
- *   - what the date picker renders once opened (so the date nudge is a guess),
- *   - what the time dropdown looks like when populated (option markup),
- *   - which network call fetches availability from Practo Insta, and what it
- *     returns when the widget is broken.
+ * Rewritten after the first live run returned nothing useful: it died on
+ * "waiting for label 'Select Time'" BEFORE taking a single snapshot, so we got
+ * no screenshot and no markup — exactly when we needed them most.
  *
- * This captures all three from the real page so the check can be hardened, and
- * so a cheap API-level check becomes possible later.
+ * The rule now: capture evidence unconditionally, first, and only then try to
+ * interact. A run that fails to find the widget must still show what the page
+ * looked like, which frames existed, and whether the widget text is present
+ * anywhere in the DOM.
  *
- * READ-ONLY, like the check: it opens dropdowns and reads markup. It never
- * clicks "Continue Booking", so it cannot create an appointment.
+ * READ-ONLY: it opens dropdowns and reads markup. It never clicks
+ * "Continue Booking", so it cannot create an appointment.
  *
- * Output goes two ways — Supabase via /api/widget-probe (readable directly) and
- * ./probe/ as workflow artifacts (works even before the secrets are set).
+ * Output goes two ways — Supabase via /api/widget-probe and ./probe/ artifacts.
  */
 import { chromium } from 'playwright';
 import { mkdirSync, writeFileSync } from 'node:fs';
+import { findWidget, dismissOverlays } from './widget-lib.mjs';
 
 const SITE = process.env.SITE_URL || 'https://www.dentalnation.com/en/';
 const ENDPOINT = process.env.DASHBOARD_URL;
 const SECRET = process.env.WIDGET_HEALTH_SECRET || process.env.CRON_SECRET;
 const OUT = 'probe';
 
-const SLOTISH = /slot|avail|schedul|timing|calendar|appointment|practo|insta|booking/i;
+const SLOTISH = /slot|avail|schedul|timing|calendar|appointment|practo|insta|zavis/i;
 const clip = (s, n = 4000) => (typeof s === 'string' && s.length > n ? `${s.slice(0, n)}…[truncated]` : s);
 
 mkdirSync(OUT, { recursive: true });
@@ -33,9 +32,11 @@ mkdirSync(OUT, { recursive: true });
 const capture = {
   site: SITE,
   startedAt: new Date().toISOString(),
-  calls: [], // every XHR/fetch
-  slotResponses: [], // bodies of anything availability-shaped
-  stages: {}, // widget markup after each interaction
+  calls: [],
+  slotResponses: [],
+  frames: [],
+  pageProbe: {},
+  stages: {},
   notes: [],
 };
 
@@ -45,37 +46,28 @@ page.setDefaultTimeout(20000);
 
 page.on('request', (r) => {
   const t = r.resourceType();
-  if (t === 'xhr' || t === 'fetch') capture.calls.push({ method: r.method(), url: r.url(), at: Date.now() });
+  if (t === 'xhr' || t === 'fetch') capture.calls.push({ method: r.method(), url: r.url() });
 });
 page.on('response', async (res) => {
   const t = res.request().resourceType();
   if ((t !== 'xhr' && t !== 'fetch') || !SLOTISH.test(res.url())) return;
   let body = '<unreadable>';
-  try { body = clip(await res.text(), 3000); } catch { /* opaque or streamed */ }
+  try { body = clip(await res.text(), 2500); } catch { /* opaque or streamed */ }
   capture.slotResponses.push({ status: res.status(), method: res.request().method(), url: res.url(), body });
 });
 
-/** The widget field whose <label> reads `text`. */
-const field = (text) => page.locator('label', { hasText: text }).first().locator('xpath=..');
-const widget = () => page.locator('label', { hasText: 'Select Time' }).first().locator('xpath=../../../..');
-
-async function snap(stage) {
+async function snap(stage, frame) {
   try {
+    const scope = frame ?? page;
     capture.stages[stage] = {
-      widgetHtml: clip(await widget().innerHTML().catch(() => ''), 12000),
-      widgetText: clip(await widget().innerText().catch(() => ''), 2000),
-      timeFieldText: clip(await field('Select Time').innerText().catch(() => ''), 500),
-      // Anything that looks like an open dropdown/listbox at this moment.
-      overlays: clip(
-        await page
-          .locator('[role="listbox"], [role="dialog"], [role="grid"], ul[class*="absolute"], div[class*="absolute"][class*="z-"]')
-          .allInnerTexts()
-          .then((a) => a.filter(Boolean).slice(0, 6).join('\n---\n'))
-          .catch(() => ''),
-        3000,
+      bodyText: clip(await scope.locator('body').innerText().catch(() => ''), 2500),
+      widgetHtml: clip(
+        await scope.locator('label', { hasText: 'Select Time' }).first().locator('xpath=../../../..')
+          .innerHTML().catch(() => ''),
+        12000,
       ),
     };
-    await page.screenshot({ path: `${OUT}/${stage}.png` }).catch(() => {});
+    await page.screenshot({ path: `${OUT}/${stage}.png`, fullPage: stage === '1-loaded' }).catch(() => {});
   } catch (e) {
     capture.notes.push(`snap(${stage}) failed: ${e.message}`);
   }
@@ -83,56 +75,79 @@ async function snap(stage) {
 
 try {
   await page.goto(SITE, { waitUntil: 'domcontentloaded', timeout: 60000 });
-  await page.locator('label', { hasText: 'Select Time' }).first().waitFor({ state: 'attached', timeout: 30000 });
-  await widget().scrollIntoViewIfNeeded().catch(() => {});
-  await page.waitForTimeout(3000);
+  await page.waitForTimeout(4000);
+
+  // EVIDENCE FIRST — before any waiting that could throw.
+  capture.pageProbe.title = await page.title().catch(() => '');
+  capture.pageProbe.url = page.url();
+  const html = (await page.content().catch(() => '')) || '';
+  capture.pageProbe.htmlLength = html.length;
+  capture.pageProbe.hasSelectTimeText = /Select Time/i.test(html);
+  capture.pageProbe.hasSelectDateText = /Select a Date/i.test(html);
+  capture.pageProbe.hasLabelTag = /<label/i.test(html);
+  capture.pageProbe.iframeCount = (html.match(/<iframe/gi) || []).length;
+  capture.frames = page.frames().map((f) => ({ url: f.url(), name: f.name() }));
   await snap('1-loaded');
 
-  // Open the date picker and record its real structure — the check's date nudge
-  // is currently guesswork built on assumed markup.
-  const callsBeforeDate = capture.calls.length;
-  try {
-    await field('Select a Date').click({ timeout: 8000 });
-    await page.waitForTimeout(2000);
-    await snap('2-date-open');
+  await dismissOverlays(page);
 
-    // Click a plausible day cell and see which request that triggers.
-    const day = page
-      .locator('[role="gridcell"], button, td, li')
-      .filter({ hasText: /^\s*\d{1,2}\s*$/ });
-    const n = await day.count();
-    capture.notes.push(`date-open: ${n} day-like cells found`);
-    if (n) {
-      await day.nth(Math.min(5, n - 1)).click({ timeout: 5000 });
-      await page.waitForTimeout(3500);
-      await snap('3-date-picked');
+  const found = await findWidget(page, { timeoutMs: 45000 });
+  if (!found) {
+    capture.notes.push('findWidget: label "Select Time" not found in ANY frame after 45s of scrolling.');
+    // Re-probe after scrolling — lazy content may have appeared meanwhile.
+    const html2 = (await page.content().catch(() => '')) || '';
+    capture.pageProbe.afterScroll = {
+      htmlLength: html2.length,
+      hasSelectTimeText: /Select Time/i.test(html2),
+      frames: page.frames().map((f) => f.url()),
+    };
+    await snap('2-not-found');
+  } else {
+    const { frame, label } = found;
+    capture.notes.push(`findWidget: found in frame ${frame.url()}`);
+    await label.scrollIntoViewIfNeeded().catch(() => {});
+    await snap('2-widget', frame);
+
+    const field = (t) => frame.locator('label', { hasText: t }).first().locator('xpath=..');
+    const before = capture.calls.length;
+    try {
+      await field('Select a Date').click({ timeout: 8000 });
+      await page.waitForTimeout(2000);
+      await snap('3-date-open', frame);
+      const day = frame.locator('[role="gridcell"], button, td, li').filter({ hasText: /^\s*\d{1,2}\s*$/ });
+      const n = await day.count();
+      capture.notes.push(`date-open: ${n} day-like cells`);
+      if (n) {
+        await day.nth(Math.min(5, n - 1)).click({ timeout: 5000 });
+        await page.waitForTimeout(3500);
+        await snap('4-date-picked', frame);
+      }
+    } catch (e) {
+      capture.notes.push(`date step failed: ${e.message}`);
     }
-  } catch (e) {
-    capture.notes.push(`date step failed: ${e.message}`);
-  }
-  capture.notes.push(`network calls triggered by date step: ${capture.calls.length - callsBeforeDate}`);
+    capture.notes.push(`calls triggered by date step: ${capture.calls.length - before}`);
 
-  await page.keyboard.press('Escape').catch(() => {});
-
-  // Open the time dropdown — this is the one that renders empty during an outage.
-  try {
-    await field('Select Time').click({ timeout: 8000 });
-    await page.waitForTimeout(3000);
-    await snap('4-time-open');
-  } catch (e) {
-    capture.notes.push(`time step failed: ${e.message}`);
+    await page.keyboard.press('Escape').catch(() => {});
+    try {
+      await field('Select Time').click({ timeout: 8000 });
+      await page.waitForTimeout(3000);
+      await snap('5-time-open', frame);
+    } catch (e) {
+      capture.notes.push(`time step failed: ${e.message}`);
+    }
   }
 } catch (e) {
   capture.notes.push(`FATAL: ${e.message}`);
+  await snap('9-fatal').catch(() => {});
 } finally {
   capture.finishedAt = new Date().toISOString();
   await browser.close().catch(() => {});
 }
 
 writeFileSync(`${OUT}/capture.json`, JSON.stringify(capture, null, 2));
-console.log(`calls=${capture.calls.length} slotResponses=${capture.slotResponses.length}`);
+console.log(`calls=${capture.calls.length} slotResponses=${capture.slotResponses.length} frames=${capture.frames.length}`);
+console.log('pageProbe:', JSON.stringify(capture.pageProbe));
 console.log('notes:', capture.notes.join(' | '));
-console.log('slot-ish URLs:', capture.slotResponses.map((r) => `${r.status} ${r.url}`).join('\n') || '(none)');
 
 if (ENDPOINT && SECRET) {
   const res = await fetch(`${ENDPOINT.replace(/\/$/, '')}/api/widget-probe`, {
