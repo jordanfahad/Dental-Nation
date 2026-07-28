@@ -11,6 +11,7 @@ import { getCommentary } from '@/lib/report/commentary';
 import type { ClinicFilterKey } from '@/config/clinics';
 import { ReportControls } from './ReportControls';
 import { CommentaryBlock } from './CommentaryBlock';
+import { BoardVisualBlock } from './BoardVisualBlock';
 import { TrendChart, Donut, HBarChart, type TrendSeries, type BarDatum } from '@/components/charts/Charts';
 import { dubaiDateLabel } from '@/lib/dates';
 
@@ -85,7 +86,12 @@ export async function BoardReport({
     getArabyLeadStatus(),
     getArabyPractoOutcome({ from, to }),
   ]);
-  const [arabyCommentary, mgmtCommentary] = await Promise.all([getCommentary('araby'), getCommentary('management')]);
+  const [arabyCommentary, mgmtCommentary, timelineBody, workstreamsBody] = await Promise.all([
+    getCommentary('araby'),
+    getCommentary('management'),
+    getCommentary('timeline'),
+    getCommentary('workstreams'),
+  ]);
 
   const k = report.kpis;
   const a = report.acquisition;
@@ -444,8 +450,34 @@ export async function BoardReport({
           </Section>
         ) : null}
 
+        {/* At-a-glance layer above the written commentary: what happened when,
+            and where every workstream stands. For a reader who wants the shape
+            of the period before the words. */}
+        <Section eyebrow="At a glance" title="How the period ran" breakBefore>
+          <div className="grid gap-6 lg:grid-cols-2">
+            <div>
+              <p className="mb-3 text-[10.5px] font-semibold uppercase tracking-[0.16em] text-accent">Timeline</p>
+              <BoardVisualBlock
+                slug="timeline"
+                body={timelineBody}
+                variant="timeline"
+                placeholder={'17 Jul | milestone | Campaign kicked off\n18 Jul | issue | Lead surge, quality poor'}
+              />
+            </div>
+            <div>
+              <p className="mb-3 text-[10.5px] font-semibold uppercase tracking-[0.16em] text-accent">Where things stand</p>
+              <BoardVisualBlock
+                slug="workstreams"
+                body={workstreamsBody}
+                variant="status"
+                placeholder={'blocked | ArabyAds restart | Awaiting their confirmation\ndone | Dr Tosun lead capture | Resolved'}
+              />
+            </div>
+          </div>
+        </Section>
+
         {/* Management commentary — the manager's narrative for the boss */}
-        <Section eyebrow="Commentary" title="Management notes" breakBefore>
+        <Section eyebrow="Commentary" title="Management notes">
           <CommentaryBlock
             slug="management"
             body={mgmtCommentary}
