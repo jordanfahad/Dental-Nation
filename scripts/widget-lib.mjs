@@ -1,18 +1,22 @@
 /**
- * Shared widget-locating logic for the check and the discovery run.
+ * Shared widget-driving logic for the check and the discovery run.
  *
- * The first live run failed at "waiting for label 'Select Time'" even though the
- * widget demonstrably loaded — GA4 recorded booking_widget_viewed and the Zavis
- * APIs (appointment.zavis.ai) all returned 200. Two things the original lookup
- * got wrong:
+ * Hard-won from repeated failures against the live site:
  *
- *   1. It searched only the main frame. page.locator() does not descend into
- *      iframes, so an embedded widget is invisible to it.
- *   2. It waited without scrolling. The widget sits below the fold and the site
- *      renders it lazily, so a headless visitor that never scrolls may never
- *      trigger it.
+ *  1. page.locator() does not descend into iframes, and the widget renders
+ *     lazily below the fold — so finding it means polling EVERY frame while
+ *     scrolling.
+ *  2. The widget reveals itself progressively. On a fresh visit only "Select
+ *     Condition" and "Select Treatment" exist; Visit Type, Select a Date and
+ *     Select Time do not render until those are answered.
+ *  3. Its dropdown options cannot be identified by markup. The fields carry
+ *     `cursor-pointer` themselves, the options reuse the same utility classes as
+ *     the value divs, and nothing has a role, id or data-*. Four selector-based
+ *     attempts each failed differently.
  *
- * So: poll every frame, scrolling as we go, until the label appears.
+ * So options are located by GEOMETRY: an open dropdown renders BELOW its field.
+ * That is a property of how dropdowns work rather than of this site's CSS, so it
+ * survives a restyle.
  */
 
 /** Every frame on the page, main frame first. */
@@ -48,27 +52,59 @@ export async function findWidget(page, { timeoutMs = 45000, labelText = 'Select 
 }
 
 /**
- * Open the custom dropdown whose <label> reads `labelText` and choose an option.
+ * Options of an open dropdown, found by GEOMETRY: elements matching `re` that
+ * sit BELOW the field. Deduped by position, because a wrapper and its inner
+ * element both match the same row and would otherwise double the count.
  *
- * The widget reveals itself progressively: on a fresh visit ONLY "Select
- * Condition" and "Select Treatment" exist. Visit Type, Select a Date and Select
- * Time are not rendered until those two are answered — which is why waiting for
- * "Select Time" on page load could never succeed.
+ * Deliberately ONE shared function. The time step used to keep its own
+ * class-based copy, which matched nothing and reported "0 slots offered" as a
+ * real outage while the widget was plainly serving times.
+ */
+export async function optionsBelow(frame, anchor, re, max = 60) {
+  // Anchor on the VALUE row, not the field container: an open dropdown makes the
+  // container's box grow to enclose its own options, so "below the field" then
+  // excludes every option and reports zero.
+  const fieldBox = await anchor.boundingBox().catch(() => null);
+  const matches = frame.locator('div, li, button, span, p').filter({ hasText: re });
+  const n = Math.min(await matches.count().catch(() => 0), max);
+  const seen = new Set();
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const el = matches.nth(i);
+    const box = await el.boundingBox().catch(() => null);
+    if (!box || box.height < 10 || box.height > 120) continue; // skip wrappers
+    if (fieldBox && box.y < fieldBox.y + fieldBox.height - 2) continue; // must sit below the value row
+    const key = `${Math.round(box.y)}:${Math.round(box.x)}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ el, box });
+  }
+  out.sort((a, b) => a.box.y - b.box.y);
+  return out;
+}
+
+/** The value element of a field — the div immediately after its label. */
+export function valueOf(frame, labelText) {
+  return frame.locator('label', { hasText: labelText }).first().locator('xpath=following-sibling::div[1]');
+}
+
+/**
+ * Open the dropdown whose <label> reads `labelText` and choose an option,
+ * preferring the catch-all ("I don't know / Other") so the check commits to no
+ * particular treatment.
  *
- * The options are custom divs with no role="option", so we match on TEXT and
- * prefer the catch-all choice ("I don't know / Other"), which is always present
- * and commits the check to no particular treatment.
+ * Returns true ONLY if the field's value actually CHANGED. Returning true just
+ * because a click landed made a later "the date/time step never appeared" look
+ * like a clinic outage, when the form had simply never been filled in.
  */
 export async function pickOption(page, frame, labelText, preferRe = /i don'?t know|other/i) {
   const field = frame.locator('label', { hasText: labelText }).first().locator('xpath=..');
   if (!(await field.count())) return false;
   await field.scrollIntoViewIfNeeded().catch(() => {});
-  await field.click({ timeout: 8000 });
+  await field.click({ timeout: 8000 }).catch(() => {});
   await page.waitForTimeout(1200);
 
-  // The field's value element — the div right after the label. Read this, never
-  // the whole field, which also contains the open option list.
-  const valueEl = frame.locator('label', { hasText: labelText }).first().locator('xpath=following-sibling::div[1]');
+  const valueEl = valueOf(frame, labelText);
   const readValue = async () =>
     ((await valueEl.innerText().catch(() => null)) ?? (await valueEl.textContent().catch(() => '')) ?? '')
       .replace(/\s+/g, ' ')
@@ -79,36 +115,19 @@ export async function pickOption(page, frame, labelText, preferRe = /i don'?t kn
     return Boolean(after) && after !== before;
   };
 
-  // Find the option by GEOMETRY, not markup. Four attempts at class-based
-  // selectors all failed: the fields themselves carry `cursor-pointer`, the
-  // options carry the same utility classes as the value divs, and nothing has a
-  // role, id or data-* to grab. What IS reliable is that an open dropdown
-  // renders BELOW its field. So: take every element whose text matches an
-  // option, keep those positioned under the field, and click the topmost.
-  const fieldBox = await field.boundingBox().catch(() => null);
-  const clickOptionBelow = async (re) => {
-    const matches = frame.locator('div, li, button, span, p').filter({ hasText: re });
-    const n = Math.min(await matches.count().catch(() => 0), 40);
-    let best = null;
-    for (let i = 0; i < n; i++) {
-      const el = matches.nth(i);
-      const box = await el.boundingBox().catch(() => null);
-      if (!box || box.height < 10 || box.height > 120) continue; // skip wrappers
-      if (fieldBox && box.y <= fieldBox.y + fieldBox.height - 4) continue; // must be below
-      if (!best || box.y < best.box.y) best = { el, box };
-    }
-    if (!best) return false;
-    await best.el.click({ timeout: 6000 }).catch(() => {});
+  const clickBelow = async (re) => {
+    const opts = await optionsBelow(frame, valueEl, re);
+    if (!opts.length) return false;
+    await opts[0].el.click({ timeout: 6000 }).catch(() => {});
     await page.waitForTimeout(1500);
     return registered();
   };
 
-  if (await clickOptionBelow(preferRe)) return true;
-  // Any option will do — the check commits to no particular treatment.
-  if (await clickOptionBelow(/\S/)) return true;
+  if (await clickBelow(preferRe)) return true;
+  if (await clickBelow(/\S/)) return true; // any option will do
 
   // Last resort: keyboard. Some custom dropdowns are navigable even when their
-  // options are unclickable by selector.
+  // options resist clicking.
   await field.click({ timeout: 5000 }).catch(() => {});
   await page.waitForTimeout(800);
   for (const key of ['ArrowDown', 'Enter']) {

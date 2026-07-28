@@ -25,7 +25,7 @@
  * workflow. Only an unreachable dashboard makes this exit non-zero.
  */
 import { chromium } from 'playwright';
-import { findWidget, dismissOverlays, pickOption } from './widget-lib.mjs';
+import { findWidget, dismissOverlays, pickOption, optionsBelow, valueOf } from './widget-lib.mjs';
 
 const SITE = process.env.SITE_URL || 'https://www.dentalnation.com/en/';
 const ENDPOINT = process.env.DASHBOARD_URL; // e.g. https://dental-nation-one.vercel.app
@@ -185,11 +185,11 @@ try {
   const region = frame.locator('label', { hasText: 'Select Time' }).first().locator('xpath=../../../..');
   const openText = `${await read(region)} ${await read(timeField)}`;
 
-  // Options that look like a time — the dropdown carries no semantic hooks.
-  const timeOption = frame
-    .locator('[role="option"], li, button, div[class*="cursor-pointer"], div[class*="hover:"]')
-    .filter({ hasText: /(?<!\d)\d{1,2}:\d{2}(?!\d)/ });
-  const offered = await timeOption.count().catch(() => 0);
+  // Slots found the same way as every other option: by GEOMETRY. This step used
+  // to keep its own class-based selector, which matched nothing and reported
+  // "0 slots offered" as a real outage while the widget was serving times.
+  const timeOptions = await optionsBelow(frame, valueOf(frame, 'Select Time'), /(?<!\d)\d{1,2}:\d{2}(?!\d)/);
+  const offered = timeOptions.length;
 
   if (NO_SLOTS_RE.test(openText) || offered === 0) {
     result = {
@@ -203,7 +203,7 @@ try {
     };
   } else {
     // Pick one and verify it STICKS.
-    await timeOption.first().click({ timeout: 8000 }).catch(() => {});
+    await timeOptions[0].el.click({ timeout: 8000 }).catch(() => {});
     await page.waitForTimeout(2000);
     await page.keyboard.press('Escape').catch(() => {}); // close the list before reading back
     await page.waitForTimeout(500);
