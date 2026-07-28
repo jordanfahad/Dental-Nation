@@ -54,19 +54,28 @@ export async function WidgetHealth({ compact = false }: { compact?: boolean } = 
   const lc = h.latestConclusive;
   const down = Boolean(lc && !lc.ok);
   const stale = Boolean(h.latest && !h.latest.conclusive);
+  const s = h.site;
   const kpis: KpiItem[] = [
     {
-      label: 'Right now',
-      value: lc ? (lc.ok ? 'Working' : 'DOWN') : '—',
+      label: 'Website',
+      value: s.up == null ? '—' : s.up ? 'Up' : 'DOWN',
+      hint: s.checkedAtIso ? `checked ${ago(s.checkedAtIso)}` : 'not measured yet',
+    },
+    {
+      label: 'Website uptime (7d)',
+      value: s.uptime == null ? '—' : pct(s.uptime),
+      hint: `${int(s.totalChecks)} check${s.totalChecks === 1 ? '' : 's'}`,
+    },
+    {
+      label: 'Booking widget',
+      value: lc ? (lc.ok ? 'Up' : 'DOWN') : '—',
       hint: lc ? `checked ${ago(lc.checkedAt)}` : 'no verdict yet',
     },
     {
-      label: 'Uptime (7d)',
+      label: 'Widget uptime (7d)',
       value: h.uptime == null ? '—' : pct(h.uptime),
       hint: `${int(h.totalChecks)} verdict${h.totalChecks === 1 ? '' : 's'}`,
     },
-    { label: 'Failed checks', value: int(h.failedChecks), hint: 'patient could not book' },
-    { label: 'Outages (7d)', value: int(h.incidents.length), hint: 'separate incidents' },
   ];
 
   return (
@@ -74,7 +83,7 @@ export async function WidgetHealth({ compact = false }: { compact?: boolean } = 
       <SectionHeader
         tag="OPS4"
         eyebrow="Booking widget"
-        title="Can a patient actually book?"
+        title="Website & booking availability"
         right={
           <span className={`text-[11px] font-medium ${down ? 'text-stop' : 'text-ink-faint'}`}>
             {down ? 'widget down' : 'synthetic check · every 15 min'}
@@ -134,11 +143,49 @@ export async function WidgetHealth({ compact = false }: { compact?: boolean } = 
               detail="No checks recorded in the last 7 days — the widget-health workflow hasn't reported yet."
               owner={ownerFor('tracking')}
             />
-          ) : h.incidents.length === 0 ? (
-            <p className="text-[12.5px] text-ink-soft">No outages in the last 7 days.</p>
+          ) : h.incidents.length === 0 && s.incidents.length === 0 ? (
+            <p className="text-[12.5px] text-ink-soft">
+              No website or booking-widget outages in the last 7 days.
+            </p>
           ) : (
             <>
-              <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-ink-faint">Outages — last 7 days</p>
+              {s.incidents.length > 0 ? (
+                <div className="mb-5">
+                  <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-ink-faint">
+                    Website outages — last 7 days
+                  </p>
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[520px] text-[12.5px]">
+                      <thead>
+                        <tr className="border-b border-line text-left text-[10px] uppercase tracking-wide text-ink-faint">
+                          <th className="py-2 pr-3">Started</th>
+                          <th className="py-2 pr-3">Recovered</th>
+                          <th className="py-2 pl-3">Down for</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {s.incidents.map((i) => (
+                          <tr key={i.startIso} className="border-b border-line/60">
+                            <td className="py-2.5 pr-3 whitespace-nowrap font-medium text-ink">{dayTime(i.startIso)}</td>
+                            <td className="py-2.5 pr-3 whitespace-nowrap text-ink-soft">
+                              {i.ongoing ? <span className="font-medium text-stop">still down</span> : dayTime(i.endIso)}
+                            </td>
+                            <td className="py-2.5 pl-3 whitespace-nowrap text-ink-soft">{dur(i.minutes)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : null}
+
+              {h.incidents.length === 0 ? (
+                <p className="text-[12.5px] text-ink-soft">No booking-widget outages in the last 7 days.</p>
+              ) : (
+              <>
+              <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-ink-faint">
+                Booking-widget outages — last 7 days
+              </p>
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[560px] text-[12.5px]">
                   <thead>
@@ -170,6 +217,8 @@ export async function WidgetHealth({ compact = false }: { compact?: boolean } = 
                 Times are Dubai. An outage&rsquo;s start is the first failed check, so the real onset can be up to 15 minutes
                 earlier.
               </p>
+              </>
+              )}
             </>
           )}
         </div>

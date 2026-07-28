@@ -38,6 +38,10 @@ export async function POST(req: NextRequest) {
     // Absent means "this run determined a state" — only an explicit false marks
     // a monitor error, so older senders keep their existing meaning.
     conclusive: b.conclusive !== false,
+    // Website verdict — independent of the widget. Null when not measured.
+    siteOk: typeof b.siteOk === 'boolean' ? b.siteOk : null,
+    siteStatus: num(b.siteStatus),
+    siteMs: num(b.siteMs),
   });
 
   return res.ok

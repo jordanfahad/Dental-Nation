@@ -56,21 +56,50 @@ async function report(result) {
 const started = Date.now();
 let browser;
 let result = { ok: false, stage: 'loaded', slotsFound: null, detail: 'check did not complete' };
+// Kept OUTSIDE `result` because the branches below reassign result wholesale;
+// the website verdict must survive whatever the widget verdict turns out to be.
+const site = { ok: null, status: null, ms: null };
 
 try {
   browser = await chromium.launch({ args: ['--no-sandbox', '--disable-dev-shm-usage'] });
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   page.setDefaultTimeout(20000);
 
-  await page.goto(SITE, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  // ── Website verdict — measured before, and independently of, the widget ──
+  const t0 = Date.now();
+  const resp = await page.goto(SITE, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  site.ms = Date.now() - t0;
+  site.status = resp?.status() ?? null;
+  // Slow but serving is still UP. Only a non-2xx/3xx (or a throw, handled in
+  // catch) means the site itself failed the patient.
+  site.ok = Boolean(resp && resp.status() < 400);
+
   await page.waitForTimeout(3000);
   await dismissOverlays(page);
 
   const found = await findWidget(page, { timeoutMs: 45000 });
   if (!found) {
-    // Genuinely couldn't reach the widget — that IS a patient-facing failure,
-    // but flag it distinctly from "the widget offered no slots".
-    result = { ok: false, stage: 'loaded', slotsFound: null, detail: 'Booking widget never rendered — a patient could not start a booking.' };
+    // Distinguish "the widget isn't on the page" from "the check couldn't reach
+    // it". Evidence: is the widget's own text present in the DOM at all?
+    // Without this test a blind spot in the check reads as a clinic outage —
+    // which it did, while GA4 and the Zavis APIs showed the widget loading fine.
+    const html = (await page.content().catch(() => '')) || '';
+    const widgetInDom = /Select\s*Time/i.test(html) || /Select\s*a\s*Date/i.test(html);
+    result = widgetInDom
+      ? {
+          ok: false,
+          conclusive: false, // the check's problem, not the widget's — must not count as downtime
+          stage: 'loaded',
+          slotsFound: null,
+          detail: 'Monitor error (not a widget verdict): widget markup is present on the page but the check could not reach it.',
+        }
+      : {
+          ok: false,
+          conclusive: true, // genuinely absent — a patient could not start a booking
+          stage: 'loaded',
+          slotsFound: null,
+          detail: 'Booking widget did not render on the page — a patient could not start a booking.',
+        };
     await page.screenshot({ path: 'widget-failure.png' }).catch(() => {});
     throw new Error('__reported__');
   }
@@ -130,6 +159,9 @@ try {
     // conclusive:false — the run crashed, so it learned NOTHING about whether a
     // patient could book. Recording this as an outage would put a fabricated
     // DOWN on three dashboards, which is exactly what happened the first time.
+    // A navigation failure IS a website verdict: the page never served.
+    const navFailed = /goto|net::|ERR_|Timeout.*navigat/i.test(e.message);
+    if (navFailed) site.ok = false; // the page never served — that IS a site outage
     result = {
       ok: false,
       conclusive: false,
@@ -143,4 +175,4 @@ try {
 }
 
 result.durationMs = Date.now() - started;
-await report(result);
+await report({ ...result, siteOk: site.ok, siteStatus: site.status, siteMs: site.ms });
