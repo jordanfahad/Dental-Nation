@@ -22,7 +22,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 
 const SITE = process.env.SITE_URL || 'https://www.dentalnation.com/en/';
 const ENDPOINT = process.env.DASHBOARD_URL;
-const SECRET = process.env.CRON_SECRET;
+const SECRET = process.env.WIDGET_HEALTH_SECRET || process.env.CRON_SECRET;
 const OUT = 'probe';
 
 const SLOTISH = /slot|avail|schedul|timing|calendar|appointment|practo|insta|booking/i;
@@ -142,5 +142,5 @@ if (ENDPOINT && SECRET) {
   });
   console.log(res.ok ? 'Reported to dashboard.' : `Dashboard rejected: ${res.status} ${await res.text()}`);
 } else {
-  console.log('DASHBOARD_URL / CRON_SECRET not set — see the uploaded artifact instead.');
+  console.log('DASHBOARD_URL / WIDGET_HEALTH_SECRET not set — see the uploaded artifact instead.');
 }

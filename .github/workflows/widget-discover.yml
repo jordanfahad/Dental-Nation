@@ -24,7 +24,7 @@ jobs:
           SITE_URL: ${{ vars.SITE_URL || 'https://www.dentalnation.com/en/' }}
           # Optional: without these the run still produces the artifact below.
           DASHBOARD_URL: ${{ secrets.DASHBOARD_URL }}
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          WIDGET_HEALTH_SECRET: ${{ secrets.WIDGET_HEALTH_SECRET }}
         run: node scripts/widget-discover.mjs
 
       # Works even before the secrets exist — download and send it on.

@@ -1,24 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { recordWidgetCheck } from '@/lib/ops/widgetHealth';
+import { authorizeService } from '@/lib/auth/serviceToken';
 
 export const dynamic = 'force-dynamic';
 
 /**
  * Ingest for the synthetic booking-widget check (the "robot patient" GitHub
- * Action). POST-only, guarded by CRON_SECRET — the same shared secret the sync
- * cron uses, so there's no second credential to manage.
+ * Action). POST-only, guarded by WIDGET_HEALTH_SECRET or CRON_SECRET.
  *
  * The route self-authorizes; middleware excludes it from the password gate,
  * exactly like /api/notify.
  */
-function authorized(req: NextRequest): boolean {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return false; // never accept writes unprotected
-  return req.headers.get('authorization') === `Bearer ${secret}`;
-}
-
 export async function POST(req: NextRequest) {
-  if (!authorized(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!authorizeService(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   let body: unknown;
   try {

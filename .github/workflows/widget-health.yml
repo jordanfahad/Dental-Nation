@@ -31,7 +31,7 @@ jobs:
         env:
           SITE_URL: ${{ vars.SITE_URL || 'https://www.dentalnation.com/en/' }}
           DASHBOARD_URL: ${{ secrets.DASHBOARD_URL }}
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          WIDGET_HEALTH_SECRET: ${{ secrets.WIDGET_HEALTH_SECRET }}
         run: node scripts/widget-check.mjs
 
       # What the robot actually saw, when it saw a problem.

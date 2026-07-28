@@ -1,20 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
+import { authorizeService } from '@/lib/auth/serviceToken';
 
 export const dynamic = 'force-dynamic';
 
 /**
- * Ingest for the one-off booking-widget discovery run. Same CRON_SECRET guard as
+ * Ingest for the one-off booking-widget discovery run. Same guard as
  * /api/widget-health; middleware excludes it from the password gate.
  *
  * Stores the capture verbatim as jsonb — it's diagnostic output whose shape is
  * still being learned, so imposing a schema here would only lose detail.
  */
 export async function POST(req: NextRequest) {
-  const secret = process.env.CRON_SECRET;
-  if (!secret || req.headers.get('authorization') !== `Bearer ${secret}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  if (!authorizeService(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   let payload: unknown;
   try {

@@ -22,7 +22,7 @@ import { chromium } from 'playwright';
 
 const SITE = process.env.SITE_URL || 'https://www.dentalnation.com/en/';
 const ENDPOINT = process.env.DASHBOARD_URL; // e.g. https://dental-nation-one.vercel.app
-const SECRET = process.env.CRON_SECRET;
+const SECRET = process.env.WIDGET_HEALTH_SECRET || process.env.CRON_SECRET;
 
 /**
  * A rendered time slot, e.g. "9:00 AM" / "14:30".
@@ -39,7 +39,7 @@ const NO_SLOTS_RE = /no\s*slots?\s*available|no\s*(?:time|timing)s?\s*available/
 async function report(result) {
   console.log('RESULT', JSON.stringify(result));
   if (!ENDPOINT || !SECRET) {
-    console.log('DASHBOARD_URL / CRON_SECRET not set — not reporting.');
+    console.log('DASHBOARD_URL / WIDGET_HEALTH_SECRET not set — not reporting.');
     return;
   }
   const res = await fetch(`${ENDPOINT.replace(/\/$/, '')}/api/widget-health`, {
