@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { getChannelPerformance } from '@/lib/growth/channelPerformance';
+import { getChannelTrace } from '@/lib/growth/channelTrace';
 import { Card, SectionHeader, Takeaway } from '@/components/ui/Card';
 import { FunnelViz } from '@/components/charts/FunnelViz';
 
@@ -25,9 +26,14 @@ export async function ChannelOutcome({
   label: string;
   range: { from: string; to: string };
 }) {
-  const report = await getChannelPerformance(range);
+  const [report, trace] = await Promise.all([
+    getChannelPerformance(range),
+    getChannelTrace(channelKey, range),
+  ]);
   const p = report.channels.find((c) => c.key === channelKey);
   if (!p) return null;
+  const shown = trace.patients.slice(0, 50);
+  const tracedRevenue = trace.patients.reduce((a, x) => a + x.revenue, 0);
   const est = channelKey === 'paid-search' ? (p.estExtraBookings ?? 0) : 0;
   const traceQs = `&from=${range.from}&to=${range.to}`;
   const combinedRevenue = p.revenue + (p.estRevenue ?? 0);
@@ -103,6 +109,59 @@ export async function ChannelOutcome({
           . {int(p.booked)} measured booked{est > 0 ? ` + ${int(est)} modelled` : ''} in this window. The all-channel
           clinic journey is under the “All channels” scope above — the two must never be read as the same population.
         </Takeaway>
+
+        {/* The patients behind the numbers — same trace as the Growth Platform
+            drill-down, with each patient's in-window billed revenue. */}
+        <div className="mt-4">
+          <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-ink-faint">
+            The patients behind the numbers — {int(trace.total)} attributed booking{trace.total === 1 ? '' : 's'}
+            {tracedRevenue > 0 ? ` · ${aed(tracedRevenue)} billed in window` : ''}
+            {trace.total > shown.length ? ` (showing latest ${shown.length})` : ''}
+          </p>
+          {shown.length === 0 ? (
+            <p className="rounded-card border border-dashed border-line px-4 py-5 text-center text-[12px] text-ink-soft">
+              No booked patients attribute to {label} in this window
+              {channelKey === 'paid-search'
+                ? ' — measured Google tagging only went live 29 Jul, so older windows rely on reception tags and the ≈ model above.'
+                : '.'}
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[760px] text-left">
+                <thead>
+                  <tr className="text-[10px] uppercase tracking-wide text-ink-faint">
+                    <th className="py-1.5 pl-2 pr-2 font-medium">Date</th>
+                    <th className="px-2 py-1.5 font-medium">Patient</th>
+                    <th className="px-2 py-1.5 font-medium">Phone</th>
+                    <th className="px-2 py-1.5 font-medium">File</th>
+                    <th className="px-2 py-1.5 font-medium">Status</th>
+                    <th className="px-2 py-1.5 font-medium">Why {label}</th>
+                    <th className="py-1.5 pl-2 pr-2 text-right font-medium">Revenue</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {shown.map((x, i) => (
+                    <tr key={`${x.mrNo}|${x.date}|${i}`} className="border-t border-line/60 align-top">
+                      <td className="whitespace-nowrap py-1.5 pl-2 pr-2 text-[11.5px] tabular-nums text-ink">{x.date ?? '—'}</td>
+                      <td className="px-2 py-1.5 text-[12px] font-medium text-ink">{x.patientName}</td>
+                      <td className="whitespace-nowrap px-2 py-1.5 text-[11.5px] tabular-nums text-ink-soft">{x.phone || '—'}</td>
+                      <td className="whitespace-nowrap px-2 py-1.5 text-[11.5px] text-ink-soft">{x.mrNo || '—'}</td>
+                      <td className="px-2 py-1.5 text-[11.5px] text-ink-soft">{x.status || '—'}</td>
+                      <td className="px-2 py-1.5">
+                        <span className={`mr-1.5 inline-block rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${x.evidence === 'tagged' ? 'bg-good/10 text-good' : 'bg-watch/10 text-watch'}`}>
+                          {x.ruleId} · {x.evidence}
+                        </span>
+                      </td>
+                      <td className="whitespace-nowrap py-1.5 pl-2 pr-2 text-right text-[11.5px] font-medium tabular-nums text-ink">
+                        {x.revenue > 0 ? aed(x.revenue) : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
     </Card>
   );

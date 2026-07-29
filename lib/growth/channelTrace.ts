@@ -34,6 +34,8 @@ export interface TracedPatient {
   ruleId: string;
   ruleText: string;
   evidence: 'tagged' | 'inferred';
+  /** In-window billed revenue on this patient's file (0 when unbilled / no file). */
+  revenue: number;
 }
 
 export interface ChannelTraceResult {
@@ -59,14 +61,25 @@ export async function getChannelTrace(
   const to = range.to ?? null;
 
   try {
-    const [apptRes, zavisRes, leadRes, crmRes, existRes, practoPtRes] = await Promise.all([
+    const [apptRes, zavisRes, leadRes, crmRes, existRes, practoPtRes, billRes] = await Promise.all([
       db.from('practo_appointments_raw').select('appt_date, status, mr_no, doctor, patient_name, patient_phone, data'),
       db.from('raw_zavis').select('data'),
       db.from('leads').select('inquiry_date, raw_row'),
       db.from('crm_appointments').select('patient_phone, source, is_test'),
       db.from('existing_patients').select('phone9'),
       db.from('practo_patients').select('phone'),
+      db.from('practo_bills_raw').select('bill_date, amount, data'),
     ]);
+
+    // In-window billed revenue per patient file — so the trace can show what
+    // each attributed patient actually brought in (same window as the counts).
+    const revenueByMr = new Map<string, number>();
+    for (const b of (billRes.data as { bill_date: string | null; amount: number | null; data: Record<string, unknown> }[] | null) ?? []) {
+      if (!inRange(b.bill_date, from, to)) continue;
+      const mr = S(b.data?.['mr_no']);
+      if (!mr) continue;
+      revenueByMr.set(mr, (revenueByMr.get(mr) ?? 0) + (b.amount != null ? Number(b.amount) || 0 : 0));
+    }
 
     /* ── Lookups (mirror of channelPerformance.ts) ── */
 
@@ -164,6 +177,7 @@ export async function getChannelTrace(
         ruleId: v.ruleId,
         ruleText: ruleText.get(v.ruleId) ?? v.ruleId,
         evidence: v.evidence,
+        revenue: Math.round(revenueByMr.get(S(a.mr_no)) ?? 0),
       });
     }
     out.sort((a, b) => String(b.date).localeCompare(String(a.date)));

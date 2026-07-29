@@ -399,7 +399,8 @@ async function ChannelTraceView({ channelKey, range, clinic }: { channelKey: str
                   <th className="px-2 py-2 font-medium">File</th>
                   <th className="px-2 py-2 font-medium">Status</th>
                   <th className="px-2 py-2 font-medium">Doctor</th>
-                  <th className="py-2 pl-2 pr-3 font-medium">Why this channel</th>
+                  <th className="px-2 py-2 font-medium">Why this channel</th>
+                  <th className="py-2 pl-2 pr-3 text-right font-medium">Revenue</th>
                 </tr>
               </thead>
               <tbody>
@@ -411,7 +412,7 @@ async function ChannelTraceView({ channelKey, range, clinic }: { channelKey: str
                     <td className="whitespace-nowrap px-2 py-2 text-[12px] text-ink-soft">{p.mrNo || '—'}</td>
                     <td className="px-2 py-2 text-[12px] text-ink-soft">{p.status || '—'}</td>
                     <td className="px-2 py-2 text-[12px] text-ink-soft">{p.doctor || '—'}</td>
-                    <td className="py-2 pl-2 pr-3">
+                    <td className="px-2 py-2">
                       <span
                         className={`mr-1.5 inline-block rounded-full px-1.5 py-0.5 text-[9.5px] font-semibold ${
                           p.evidence === 'tagged' ? 'bg-good/10 text-good' : 'bg-watch/10 text-watch'
@@ -420,6 +421,9 @@ async function ChannelTraceView({ channelKey, range, clinic }: { channelKey: str
                         {p.ruleId} · {p.evidence}
                       </span>
                       <span className="text-[11px] leading-snug text-ink-soft">{p.ruleText}</span>
+                    </td>
+                    <td className="whitespace-nowrap py-2 pl-2 pr-3 text-right text-[12px] font-medium tabular-nums text-ink">
+                      {p.revenue > 0 ? aed(p.revenue) : '—'}
                     </td>
                   </tr>
                 ))}

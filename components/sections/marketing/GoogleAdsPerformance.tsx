@@ -1,4 +1,5 @@
 import { getGoogleAdsDetail } from '@/lib/sync/adapters/google-ads-adapter';
+import { getChannelPerformance } from '@/lib/growth/channelPerformance';
 import { Card, SectionHeader, Takeaway } from '@/components/ui/Card';
 import { DataGapInline } from '@/components/ui/DataGap';
 import { KpiBand, type KpiItem } from '@/components/charts/KpiBand';
@@ -30,7 +31,12 @@ const num = 'py-2 px-2 text-right text-[12px] tabular-nums text-ink-soft';
  * Honest: any API issue degrades to an owned data gap, never a fabricated zero.
  */
 export async function GoogleAdsPerformance({ range }: { range?: { from: string; to: string } } = {}) {
-  const r = await getGoogleAdsDetail(range ?? {});
+  // Fetched together: Google's own account view + the dashboard's attribution
+  // for the SAME window (request-deduped), so the conversions figure can align
+  // with the Markov model instead of parroting the platform's structural zero.
+  const [r, perf] = await Promise.all([getGoogleAdsDetail(range ?? {}), getChannelPerformance(range ?? {})]);
+  const ps = perf.channels.find((c) => c.key === 'paid-search');
+  const bookings = (ps?.booked ?? 0) + (ps?.estExtraBookings ?? 0);
 
   if (!r.available) {
     return (
@@ -53,8 +59,19 @@ export async function GoogleAdsPerformance({ range }: { range?: { from: string; 
     { label: 'Impressions', value: int(r.totals.impressions) },
     { label: 'Clicks', value: int(r.totals.clicks), hint: `${pct(ctr)} CTR` },
     { label: 'Avg CPC', value: aed(cpc), goodWhenUp: false },
-    { label: 'Conversions', value: int(r.totals.conversions), hint: 'Google-tracked · excludes phone calls (unmeasurable in UAE)' },
-    { label: 'Cost / conv.', value: r.totals.conversions > 0 ? aed(cpConv) : null, goodWhenUp: false, hint: 'platform figure — net funnel costs live on the Growth Platform', gapDetail: 'no conversions in window', gapOwner: ownerFor('attribution') },
+    {
+      label: 'Bookings ≈',
+      value: bookings > 0 ? `≈${int(bookings)}` : int(r.totals.conversions),
+      hint: `aligned with the Growth Platform — ${int(ps?.booked ?? 0)} measured + ${int(ps?.estExtraBookings ?? 0)} Markov phone model (Google itself records ${int(r.totals.conversions)})`,
+    },
+    {
+      label: 'Cost / booking',
+      value: bookings > 0 ? `≈${aed(r.totals.cost / bookings)}` : r.totals.conversions > 0 ? aed(cpConv) : null,
+      goodWhenUp: false,
+      hint: 'live spend ÷ ≈ bookings',
+      gapDetail: 'no bookings attribute to Google in this window',
+      gapOwner: ownerFor('attribution'),
+    },
   ];
 
   const ads = r.ads.slice(0, 30);
@@ -80,7 +97,15 @@ export async function GoogleAdsPerformance({ range }: { range?: { from: string; 
         <SectionHeader tag="G1" eyebrow="Scorecard" title="Account totals" />
         <div className="px-5 pb-5 pt-4">
           <KpiBand items={kpis} />
-          <p className="mt-3 text-[11px] leading-snug text-ink-faint">
+          <p className="mt-3 rounded-card border border-dashed border-watch/50 bg-watch/5 px-3 py-2 text-[11.5px] leading-snug text-ink-soft">
+            <span className="font-medium text-ink">Why the platform records {int(r.totals.conversions)} conversions:</span>{' '}
+            Google Ads only counts a conversion when the booking completes on the website. Dental Nation patients
+            typically click the ad, then <span className="font-medium text-ink">call and book with reception</span> — the
+            normal pattern for clinics (and stores) — and the UAE has no call-forwarding numbers for Google to measure
+            those calls. The Bookings ≈ figure above therefore uses our own attribution: measured Google-tagged bookings
+            plus the Markov-chain phone model, the same numbers as the Growth Platform row.
+          </p>
+          <p className="mt-2 text-[11px] leading-snug text-ink-faint">
             Pulled live from the API now, across currently-active campaigns — so this total can run a
             few % under the Marketing Overview&apos;s hourly-synced spend (which also retains
             closed/deleted campaigns). The Overview remains the authoritative all-in figure.
