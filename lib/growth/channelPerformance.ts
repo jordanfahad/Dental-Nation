@@ -145,19 +145,25 @@ export async function getChannelPerformance(range: { from?: string; to?: string 
 
     /* ─── Build the waterfall's evidence lookups (all-time, not range-scoped) ── */
 
-    const widgetByPhone = new Map<string, { hasLane: boolean }>();
-    const widgetRows: { p9: string; date: string | null; hasLane: boolean }[] = [];
+    const widgetByPhone = new Map<string, { hasLane: boolean; paidSearch: boolean }>();
+    const widgetRows: { p9: string; date: string | null; hasLane: boolean; paidSearch: boolean }[] = [];
     for (const r of (zavisRes.data as { data: Record<string, unknown> }[] | null) ?? []) {
       const d = r.data ?? {};
       if (!('Full Name' in d) || isTestWidgetRow(d)) continue;
       const p9 = phone9(S(d['Phone Number']));
-      const hasLane = Boolean(parseArabySource(S(d['Source']))?.lane);
+      const src = S(d['Source']);
+      const hasLane = Boolean(parseArabySource(src)?.lane);
+      // Google auto-tagging appends gclid to every ad click; utm_source=google
+      // covers a manually tagged tracking template. Either marks Paid Search.
+      const paidSearch = !hasLane && /gclid|utm_source\s*[=:]\s*google/i.test(src);
       const date = S(d['Timestamp']).slice(0, 10) || S(d['Date']).slice(0, 10) || null;
-      widgetRows.push({ p9, date, hasLane });
+      widgetRows.push({ p9, date, hasLane, paidSearch });
       if (!p9) continue;
       const prev = widgetByPhone.get(p9);
-      // A lane tag anywhere on the phone's history wins (paid trace beats none).
-      if (!prev || (hasLane && !prev.hasLane)) widgetByPhone.set(p9, { hasLane });
+      // A campaign tag anywhere on the phone's history wins (paid trace beats none).
+      if (!prev || ((hasLane || paidSearch) && !prev.hasLane && !prev.paidSearch)) {
+        widgetByPhone.set(p9, { hasLane, paidSearch });
+      }
     }
 
     const leadChannelByPhone = new Map<string, string>();
@@ -258,7 +264,7 @@ export async function getChannelPerformance(range: { from?: string; to?: string 
       }
       at(channel).enquiries += 1;
     };
-    for (const w of widgetRows) if (inRange(w.date, from, to)) countEnquiry(w.p9, w.hasLane ? 'paid-social' : 'website');
+    for (const w of widgetRows) if (inRange(w.date, from, to)) countEnquiry(w.p9, w.hasLane ? 'paid-social' : w.paidSearch ? 'paid-search' : 'website');
     for (const l of leadRows) if (inRange(l.date, from, to)) countEnquiry(l.p9, l.channel);
     for (const c of crmRows) if (c.source === 'aiAgent' && inRange(c.date, from, to)) countEnquiry(c.p9, 'ai-concierge');
 

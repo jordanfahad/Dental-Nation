@@ -44,8 +44,8 @@ export interface ApptFacts {
 
 /** Everything the waterfall may consult, prebuilt as lookups by the read layer. */
 export interface Lookups {
-  /** Widget (raw_zavis) phones → true when the submission carried an ArabyAds lane tag. */
-  widgetByPhone: ReadonlyMap<string, { hasLane: boolean }>;
+  /** Widget (raw_zavis) phones → which campaign marker the submission carried. */
+  widgetByPhone: ReadonlyMap<string, { hasLane: boolean; paidSearch: boolean }>;
   /** Lead-tracker phones → the channel its Source/Platform fields map to. */
   leadChannelByPhone: ReadonlyMap<string, string>;
   /** Phones that booked via the Zavis AI agent (crm_appointments.source = 'aiAgent'). */
@@ -103,7 +103,7 @@ export function leadTrackerChannel(sourceType: string, inquiryPlatform: string, 
  *
  *  R1  Returning patient (non-DN file, or phone on a pre-growth patient file) → retention
  *  R2  Partner / influencer / referral / walk-in KEYWORD on the booking or its lead → that channel
- *  R3  Phone matches a widget booking WITH an ArabyAds lane tag → paid-social
+ *  R3  Phone matches a widget booking WITH a campaign tag → paid-social (ArabyAds) / paid-search (gclid)
  *  R4  Phone matches a widget booking (no lane) → website
  *  R5  Phone booked via the AI agent → ai-concierge
  *  R6  Phone matches the reception lead tracker → that lead's channel
@@ -125,9 +125,13 @@ export function classifyAppointment(a: ApptFacts, L: Lookups): Verdict | null {
   const tagged = tagHit(text);
   if (tagged) return { channel: tagged, ruleId: 'R2', evidence: 'tagged' };
 
-  // R3/R4 — the booking widget trail.
+  // R3/R4 — the booking widget trail. A campaign marker in the widget's Source
+  // outranks the bare "came via the website": ArabyAds lane → paid-social,
+  // gclid / utm_source=google → paid-search (Google auto-tagging appends gclid
+  // to every ad click, so this lights up as soon as the site forwards it).
   const widget = a.p9 ? L.widgetByPhone.get(a.p9) : undefined;
   if (widget?.hasLane) return { channel: 'paid-social', ruleId: 'R3', evidence: 'tagged' };
+  if (widget?.paidSearch) return { channel: 'paid-search', ruleId: 'R3', evidence: 'tagged' };
   if (widget) return { channel: 'website', ruleId: 'R4', evidence: 'tagged' };
 
   // R5 — AI-agent bookings.
@@ -156,7 +160,7 @@ export function classifyAppointment(a: ApptFacts, L: Lookups): Verdict | null {
 export const WATERFALL_RULES: { id: string; evidence: Evidence; text: string }[] = [
   { id: 'R1', evidence: 'tagged', text: 'Returning patient (existing file series) → Retention — never counted as a new acquisition.' },
   { id: 'R2', evidence: 'tagged', text: 'A tag word on the booking or its lead — "smile club", "influencer", "referred by Dr …", "walk in" — routes it to that channel.' },
-  { id: 'R3', evidence: 'tagged', text: 'Phone matches a website-widget booking carrying an ArabyAds campaign tag → Paid Social / Campaigns.' },
+  { id: 'R3', evidence: 'tagged', text: 'Phone matches a website-widget booking carrying a campaign tag — ArabyAds lane → Paid Social; gclid / utm_source=google → Paid Search.' },
   { id: 'R4', evidence: 'tagged', text: 'Phone matches a website-widget booking with no campaign tag → Website (SEO + widget).' },
   { id: 'R5', evidence: 'tagged', text: 'Phone booked through the Zavis AI agent → AI Concierge.' },
   { id: 'R6', evidence: 'tagged', text: 'Phone appears in the reception lead tracker → that enquiry’s channel (WhatsApp, Instagram, lead form → Paid…).' },
