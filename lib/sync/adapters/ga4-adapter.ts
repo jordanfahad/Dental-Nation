@@ -19,7 +19,7 @@ import {
   GA4_WHATSAPP_EVENT,
   ONSITE_FUNNEL,
 } from '@/config/ga4';
-import type { Ga4Channel, Ga4FunnelStage, Ga4RangeReport, Ga4Summary, MetricDelta } from '@/lib/types';
+import type { Ga4Channel, Ga4FunnelStage, Ga4RangeReport, Ga4Source, Ga4Summary, MetricDelta } from '@/lib/types';
 
 /**
  * GA4 Data API adapter (§17 — same `fetch`-shaped contract as the Sheets
@@ -106,6 +106,25 @@ export async function fetchGa4Summary(): Promise<Ga4Summary> {
       conversions: metric(r, 1),
     }));
 
+    // 2b — Sources: sessionSource × sessionMedium. Feeds the Organic split
+    // (Organic SEO by engine / AI-chat referrals / Direct) on the Growth
+    // Platform — channel groups alone can't tell chatgpt.com from a blog link.
+    const sourcesRes = await analytics.properties.runReport({
+      property,
+      requestBody: {
+        dateRanges,
+        dimensions: [{ name: 'sessionSource' }, { name: 'sessionMedium' }],
+        metrics: [{ name: 'sessions' }],
+        orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+        limit: '100',
+      },
+    });
+    const sources: Ga4Source[] = (sourcesRes.data.rows ?? []).map((r) => ({
+      source: r.dimensionValues?.[0]?.value || '(direct)',
+      medium: r.dimensionValues?.[1]?.value || '(none)',
+      sessions: metric(r, 0),
+    }));
+
     // 3 — Funnel events: eventName × eventCount, restricted to our funnel events.
     const eventsRes = await analytics.properties.runReport({
       property,
@@ -152,6 +171,7 @@ export async function fetchGa4Summary(): Promise<Ga4Summary> {
       engaged_sessions,
       leads,
       channels,
+      sources,
       onsite_funnel,
     };
   } catch (err) {

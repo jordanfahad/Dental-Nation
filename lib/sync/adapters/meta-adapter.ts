@@ -33,11 +33,12 @@ export interface MetaSyncOpts {
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 
-function insightsUrl(cfg: MetaConfig, accountId: string, from: string, to: string): string {
+function insightsUrl(cfg: MetaConfig, accountId: string, from: string, to: string, breakdowns?: string): string {
   const tr = encodeURIComponent(JSON.stringify({ since: from, until: to }));
   return (
     `https://graph.facebook.com/${cfg.version}/act_${accountId}/insights` +
     `?level=campaign&time_increment=1&fields=${fields}&time_range=${tr}&limit=500` +
+    (breakdowns ? `&breakdowns=${encodeURIComponent(breakdowns)}` : '') +
     `&access_token=${encodeURIComponent(cfg.token)}`
   );
 }
@@ -51,6 +52,8 @@ interface MetaRow {
   actions?: { action_type: string; value: string }[];
   date_start?: string;
   date_stop?: string;
+  /** Present only on breakdowns=publisher_platform rows. */
+  publisher_platform?: string;
 }
 
 /** Sum lead-ish actions for a row (incl. click-to-WhatsApp messaging starts). */
@@ -63,9 +66,9 @@ function leadsFromActions(actions: { action_type: string; value: string }[] | un
   return n;
 }
 
-async function fetchAccount(cfg: MetaConfig, accountId: string, from: string, to: string): Promise<MetaRow[]> {
+async function fetchAccount(cfg: MetaConfig, accountId: string, from: string, to: string, breakdowns?: string): Promise<MetaRow[]> {
   const rows: MetaRow[] = [];
-  let url: string | null = insightsUrl(cfg, accountId, from, to);
+  let url: string | null = insightsUrl(cfg, accountId, from, to, breakdowns);
   for (let guard = 0; url && guard < 200; guard++) {
     const res: Response = await fetch(url, { cache: 'no-store' });
     const body: unknown = await res.json().catch(() => null);
@@ -115,7 +118,43 @@ export async function syncMeta(supabase: AdminClient, opts: MetaSyncOpts = {}): 
     for (let i = 0; i < deduped.length; i += 500) {
       await supabase.from('meta_insights_raw').upsert(deduped.slice(i, i + 500), { onConflict: 'key' });
     }
-    return { ok: true, fetched: all.length, stored: deduped.length, accounts: cfg.accountIds.length };
+
+    // Second pass — the SAME window broken down by publisher_platform
+    // (instagram / facebook / audience_network), feeding the Paid Social
+    // Instagram-vs-Facebook split. Best-effort: a breakdown failure must not
+    // cost the campaign sync above.
+    let note: string | undefined;
+    try {
+      const pAll: { row: MetaRow; account: string }[] = [];
+      for (const account of cfg.accountIds) {
+        const rows = await fetchAccount(cfg, account, from, to, 'publisher_platform');
+        for (const row of rows) pAll.push({ row, account });
+      }
+      const pRecords = pAll.map(({ row, account }) => ({
+        key: `${account}|${row.campaign_id ?? 'acct'}|${row.date_start ?? 'na'}|${row.publisher_platform ?? 'unknown'}`,
+        account_id: account,
+        campaign_id: row.campaign_id ?? null,
+        campaign_name: row.campaign_name ?? null,
+        date: row.date_start ?? null,
+        platform: row.publisher_platform ?? 'unknown',
+        spend: row.spend != null ? Number(row.spend) || 0 : null,
+        impressions: row.impressions != null ? Number(row.impressions) || 0 : null,
+        clicks: row.clicks != null ? Number(row.clicks) || 0 : null,
+        leads: leadsFromActions(row.actions),
+        data: row as unknown as Record<string, unknown>,
+        fetched_at: new Date().toISOString(),
+      }));
+      const pByKey = new Map(pRecords.map((r) => [r.key, r]));
+      const pDeduped = [...pByKey.values()];
+      for (let i = 0; i < pDeduped.length; i += 500) {
+        await supabase.from('meta_platform_insights_raw').upsert(pDeduped.slice(i, i + 500), { onConflict: 'key' });
+      }
+      note = `platforms: ${pDeduped.length}`;
+    } catch (err) {
+      note = `platform breakdown failed: ${(err as Error).message.slice(0, 200)}`;
+    }
+
+    return { ok: true, fetched: all.length, stored: deduped.length, accounts: cfg.accountIds.length, note };
   } catch (err) {
     return { ok: false, fetched: 0, stored: 0, accounts: 0, error: (err as Error).message };
   }

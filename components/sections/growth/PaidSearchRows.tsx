@@ -27,7 +27,14 @@ export function PaidSearchRows({ p, traceQs }: { p: ChannelPerf; traceQs: string
         <td className="py-2.5 pl-3 pr-2 align-top">
           <span className="block text-[12.5px] font-medium leading-tight text-ink">
             <span className="mr-1 inline-block w-3 text-[10px] text-ink-faint">{open ? '▾' : '▸'}</span>
-            {p.label}
+            <Link
+              href="/?tab=marketing&mtab=google"
+              className="underline-offset-2 hover:text-accent hover:underline"
+              title="Open Google Ads Performance — campaigns, budgets, ad groups, ads"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {p.label}
+            </Link>
           </span>
           <span className="mt-0.5 block max-w-[230px] pl-4 text-[10.5px] leading-snug text-ink-faint">
             {open ? 'Website bookings (measured) + phone-call bookings (estimated). ≈ = includes estimates.' : 'Click to expand the split.'}
@@ -50,6 +57,14 @@ export function PaidSearchRows({ p, traceQs }: { p: ChannelPerf; traceQs: string
           {p.spend != null ? (
             <>
               <span className="text-[12px] font-medium tabular-nums text-ink">{aedShort(p.spend)}</span>
+              <span className="block text-[10px] leading-snug text-ink-soft">
+                {p.estCostPerEnquiry != null ? `enquiry ≈${aed(p.estCostPerEnquiry)}` : ''}
+                {p.estCostPerBooked != null ? ` · booking ≈${aed(p.estCostPerBooked)}` : ''}
+              </span>
+              <span className="block text-[10px] leading-snug text-ink-soft">
+                {p.estCostPerShowed != null ? `show ≈${aed(p.estCostPerShowed)}` : ''}
+                {p.estCostPerTreated != null ? ` · treated ≈${aed(p.estCostPerTreated)}` : ''}
+              </span>
               <span className="block text-[10px] leading-snug text-ink-soft">
                 {p.estCostPerPatient != null ? `CPA ≈${aed(p.estCostPerPatient)}` : ''}
                 {p.estRoas != null ? ` · ROAS ≈${p.estRoas.toFixed(1)}×` : ''}

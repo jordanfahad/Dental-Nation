@@ -1,5 +1,7 @@
 import Link from 'next/link';
 import { PaidSearchRows } from './PaidSearchRows';
+import { PaidSocialRows } from './PaidSocialRows';
+import { AiChatRows } from './AiChatRows';
 import { getChannelPerformance, type ChannelPerf, type GrowthReport } from '@/lib/growth/channelPerformance';
 import { getChannelTrace } from '@/lib/growth/channelTrace';
 import { CHANNEL_GROUPS, CHANNEL_BY_KEY } from '@/config/growth-channels';
@@ -100,8 +102,12 @@ function ChannelRow({ p, traceQs }: { p: ChannelPerf; traceQs: string }) {
           <>
             <span className="text-[12px] font-medium tabular-nums text-ink">{aedShort(p.spend)}</span>
             <span className="block text-[10px] leading-snug text-ink-faint">
-              {p.costPerEnquiry != null ? `CPL ${aed(p.costPerEnquiry)}` : ''}
-              {p.costPerPatient != null ? ` · CAC ${aed(p.costPerPatient)}` : ''}
+              {p.costPerEnquiry != null ? `enquiry ${aed(p.costPerEnquiry)}` : ''}
+              {p.costPerBooked != null ? ` · booking ${aed(p.costPerBooked)}` : ''}
+            </span>
+            <span className="block text-[10px] leading-snug text-ink-faint">
+              {p.costPerShowed != null ? `show ${aed(p.costPerShowed)}` : ''}
+              {p.costPerPatient != null ? ` · treated ${aed(p.costPerPatient)}` : ''}
               {p.roas != null ? ` · ROAS ${p.roas.toFixed(1)}×` : ''}
             </span>
             {p.estCostPerPatient != null ? (
@@ -252,15 +258,16 @@ function PhonePathCard({ pp }: { pp: NonNullable<GrowthReport['phonePath']> }) {
 }
 
 /** Where "trace the leads" lives for each channel outside this view. */
-const CROSS_LINKS: Record<string, { label: string; tab: string }> = {
-  'paid-search': { label: 'Trace leads in Marketing', tab: 'marketing' },
-  'paid-social': { label: 'Trace leads in Marketing', tab: 'marketing' },
-  website: { label: 'Open Website Bookings', tab: 'bookings' },
-  gmb: { label: 'Open Social & Local', tab: 'social' },
-  'social-organic': { label: 'Open Social & Local', tab: 'social' },
-  whatsapp: { label: 'Open CRM — Zavis', tab: 'crm' },
-  'ai-concierge': { label: 'Open CRM — Zavis', tab: 'crm' },
-  retention: { label: 'Open Practo Insta', tab: 'practo' },
+const CROSS_LINKS: Record<string, { label: string; href: string }> = {
+  'paid-search': { label: 'Open Google Ads Performance', href: '/?tab=marketing&mtab=google' },
+  'paid-social': { label: 'Open Meta Ads Performance', href: '/?tab=marketing&mtab=meta' },
+  affiliate: { label: 'Open Marketing (ArabyAds)', href: '/?tab=marketing' },
+  website: { label: 'Open Website Bookings', href: '/?tab=bookings' },
+  gmb: { label: 'Open Social & Local', href: '/?tab=social' },
+  'social-organic': { label: 'Open Social & Local', href: '/?tab=social' },
+  whatsapp: { label: 'Open CRM — Zavis', href: '/?tab=crm' },
+  'ai-concierge': { label: 'Open CRM — Zavis', href: '/?tab=crm' },
+  retention: { label: 'Open Practo Insta', href: '/?tab=practo' },
 };
 
 /** Drill-down: the actual patients behind one channel's numbers. */
@@ -278,7 +285,7 @@ async function ChannelTraceView({ channelKey, range }: { channelKey: string; ran
         right={
           <span className="flex items-center gap-3">
             {cross ? (
-              <Link href={`/?tab=${cross.tab}`} className="text-[12px] font-medium text-accent hover:underline">
+              <Link href={cross.href} className="text-[12px] font-medium text-accent hover:underline">
                 {cross.label} →
               </Link>
             ) : null}
@@ -293,6 +300,14 @@ async function ChannelTraceView({ channelKey, range }: { channelKey: string; ran
           {trace.total} booked appointment{trace.total === 1 ? '' : 's'} attributed to this channel in the selected window
           {trace.truncated ? ` (showing latest 300)` : ''}. Each row states the exact rule that attributed it.
         </p>
+        {channelKey === 'ai-chat' ? (
+          <p className="mb-3 rounded-card border border-dashed border-watch/60 bg-watch/5 px-3 py-2 text-[11.5px] leading-snug text-ink-soft">
+            AI-assistant referral <span className="font-medium">sessions</span> are measured in GA4, but the booking
+            widget doesn&apos;t capture the referrer — so a booking that started in ChatGPT is indistinguishable from
+            Organic SEO today and appears under that row. Capturing the referrer in the widget is the fix; until then
+            this list stays empty by design rather than guessing.
+          </p>
+        ) : null}
         {channelKey === 'paid-search' ? (
           <p className="mb-3 rounded-card border border-dashed border-watch/60 bg-watch/5 px-3 py-2 text-[11.5px] leading-snug text-ink-soft">
             This list shows only <span className="font-medium">hard-traced</span> patients. The estimated call bookings on
@@ -468,7 +483,11 @@ export async function GrowthPlatform({ range, gchan }: { range?: { from?: string
                   {rows.map((p) =>
                     p.key === 'paid-search'
                       ? <PaidSearchRows key={p.key} p={p} traceQs={traceQs} />
-                      : <ChannelRow key={p.key} p={p} traceQs={traceQs} />,
+                      : p.key === 'paid-social'
+                        ? <PaidSocialRows key={p.key} p={p} split={report.metaSplit} traceQs={traceQs} />
+                        : p.key === 'ai-chat'
+                          ? <AiChatRows key={p.key} p={p} split={report.organicSplit} />
+                          : <ChannelRow key={p.key} p={p} traceQs={traceQs} />,
                   )}
                 </tbody>
               );

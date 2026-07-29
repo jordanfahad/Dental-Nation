@@ -166,6 +166,14 @@ export interface Ga4Channel {
   conversions: number;
 }
 
+/** One raw traffic source (sessionSource × sessionMedium) — feeds the Organic
+ *  SEO / AI-chat / Direct split on the Growth Platform. */
+export interface Ga4Source {
+  source: string;
+  medium: string;
+  sessions: number;
+}
+
 /** One stage of the GA4 on-site booking funnel (see config/ga4.ts). */
 export interface Ga4FunnelStage {
   key: string;
@@ -190,6 +198,8 @@ export interface Ga4Summary {
   /** On-site lead conversions (GA4 `generate_lead` event). */
   leads: number;
   channels: Ga4Channel[];
+  /** sessionSource × sessionMedium sessions (top 100). Empty on pre-0018 rows. */
+  sources: Ga4Source[];
   onsite_funnel: Ga4FunnelStage[];
 }
 

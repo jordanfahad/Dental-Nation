@@ -1,7 +1,15 @@
 import 'server-only';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
 import { parseArabySource } from '@/lib/arabyads/report';
-import { CHANNELS, PHONE_PATH_BENCHMARKS, type ChannelDef } from '@/config/growth-channels';
+import {
+  CHANNELS,
+  PHONE_PATH_BENCHMARKS,
+  aiEngineOf,
+  metaCampaignTypeOf,
+  metaPlatformHintOf,
+  searchEngineOf,
+  type ChannelDef,
+} from '@/config/growth-channels';
 import {
   classifyAppointment,
   isNewFile,
@@ -62,6 +70,11 @@ export interface ChannelPerf extends ChannelDef {
   estCostPerPatient?: number | null;
   /** (measured revenue + estimated revenue) ÷ spend. */
   estRoas?: number | null;
+  // Per-unit costs INCLUDING the estimated phone path (≈ figures in the UI).
+  estCostPerEnquiry?: number | null; // spend ÷ (enquiries + est enquiries)
+  estCostPerBooked?: number | null; // spend ÷ (booked + est bookings)
+  estCostPerShowed?: number | null; // spend ÷ (showed + est showed)
+  estCostPerTreated?: number | null; // spend ÷ (treated + est treated)
   enquiries: number;
   /** Appointments booked in-window attributed to this channel. */
   booked: number;
@@ -80,9 +93,11 @@ export interface ChannelPerf extends ChannelDef {
   spend: number | null;
   /** Latest date the spend feed actually covers, when it falls short of `to`. */
   spendThrough: string | null;
-  costPerEnquiry: number | null;
-  costPerPatient: number | null; // spend ÷ treated
-  roas: number | null;
+  costPerEnquiry: number | null; // spend ÷ net enquiries (CPL)
+  costPerBooked: number | null; // spend ÷ net bookings
+  costPerShowed: number | null; // spend ÷ net shows
+  costPerPatient: number | null; // spend ÷ treated patients
+  roas: number | null; // revenue ÷ spend
 }
 
 export interface GrowthFunnelTotals {
@@ -132,6 +147,31 @@ export interface GrowthReport {
     estBookingsReconciled: number;
     byCampaign: { campaign: string; callTaps: number }[];
   } | null;
+  /**
+   * The Organic split (latest GA4 sync, source-level): how many sessions each
+   * search engine, AI assistant and Direct brought. Reach-level ONLY — the
+   * booking widget doesn't capture the referrer, so bookings can't yet be
+   * split SEO-vs-AI (the UI says so). Null until the first post-0018 sync.
+   */
+  organicSplit: {
+    periodStart: string;
+    periodEnd: string;
+    seo: { engine: string; sessions: number }[];
+    ai: { key: string; label: string; sessions: number }[];
+    seoSessions: number;
+    aiSessions: number;
+    directSessions: number;
+  } | null;
+  /**
+   * Paid Social (Meta) in-window split by campaign TYPE (derived from campaign
+   * names) and by delivery PLATFORM (publisher_platform breakdown — empty until
+   * the Meta token is refreshed and the new sync pass runs). Spend/leads are
+   * Meta-reported; they contextualize the funnel row, they don't replace it.
+   */
+  metaSplit: {
+    types: { key: string; label: string; platformHint: string | null; spend: number; impressions: number; clicks: number; leads: number; cpl: number | null }[];
+    platforms: { platform: string; spend: number; impressions: number; leads: number }[];
+  } | null;
   notes: string[];
 }
 
@@ -149,10 +189,11 @@ function emptyReport(from: string | null, to: string | null): GrowthReport {
     channels: CHANNELS.map((c) => ({
       ...c, impressions: null, reachNote: null, enquiries: 0, booked: 0, bookedPatients: 0, showed: 0, cancelled: 0,
       noshow: 0, treated: 0, revenue: 0, taggedBooked: 0, inferredBooked: 0, spend: null,
-      spendThrough: null, costPerEnquiry: null, costPerPatient: null, roas: null,
+      spendThrough: null, costPerEnquiry: null, costPerBooked: null, costPerShowed: null, costPerPatient: null, roas: null,
     })),
     totals: emptyTotals, confidence: { tagged: 0, inferred: 0, defaulted: 0 },
-    ga4: null, unattributedRevenue: 0, unattributedPatients: 0, phonePath: null, notes: [],
+    ga4: null, unattributedRevenue: 0, unattributedPatients: 0, phonePath: null,
+    organicSplit: null, metaSplit: null, notes: [],
   };
 }
 
@@ -171,7 +212,7 @@ export async function getChannelPerformance(range: { from?: string; to?: string 
   if (!db) return emptyReport(from, to);
 
   try {
-    const [apptRes, billRes, zavisRes, leadRes, crmRes, existRes, practoPtRes, metaRes, gadsRes, ga4Res, gmbRes, ctRes] =
+    const [apptRes, billRes, zavisRes, leadRes, crmRes, existRes, practoPtRes, metaRes, gadsRes, ga4Res, gmbRes, ctRes, metaPlatRes] =
       await Promise.all([
         db.from('practo_appointments_raw').select('appt_date, status, mr_no, patient_phone, patient_name, data'),
         db.from('practo_bills_raw').select('bill_date, amount, data'),
@@ -180,11 +221,12 @@ export async function getChannelPerformance(range: { from?: string; to?: string 
         db.from('crm_appointments').select('patient_phone, source, is_test, timeslot'),
         db.from('existing_patients').select('phone9'),
         db.from('practo_patients').select('phone'),
-        db.from('meta_insights_raw').select('date, spend, impressions'),
+        db.from('meta_insights_raw').select('date, spend, impressions, clicks, leads, campaign_name'),
         db.from('google_ads_insights_raw').select('date, spend, impressions'),
-        db.from('ga4_summary').select('period_start, period_end, sessions, users, channels').order('period_end', { ascending: false }).limit(1),
+        db.from('ga4_summary').select('period_start, period_end, sessions, users, channels, sources').order('period_end', { ascending: false }).limit(1),
         db.from('social_insights').select('channel, metric, day, value').in('channel', ['gmb', 'instagram', 'facebook']),
         db.from('google_ads_click_types').select('date, click_type, clicks, campaign_name'),
+        db.from('meta_platform_insights_raw').select('date, platform, spend, impressions, leads'),
       ]);
 
     /* ─── Build the waterfall's evidence lookups (all-time, not range-scoped) ── */
@@ -295,7 +337,7 @@ export async function getChannelPerformance(range: { from?: string; to?: string 
       CHANNELS.map((c) => [c.key, {
         ...c, impressions: null, reachNote: null, enquiries: 0, booked: 0, bookedPatients: 0, showed: 0, cancelled: 0,
         noshow: 0, treated: 0, revenue: 0, taggedBooked: 0, inferredBooked: 0, spend: null,
-        spendThrough: null, costPerEnquiry: null, costPerPatient: null, roas: null,
+        spendThrough: null, costPerEnquiry: null, costPerBooked: null, costPerShowed: null, costPerPatient: null, roas: null,
       }]),
     );
     const at = (key: string): ChannelPerf => perf.get(key) ?? perf.get('direct-walkin')!;
@@ -310,7 +352,8 @@ export async function getChannelPerformance(range: { from?: string; to?: string 
       }
       at(channel).enquiries += 1;
     };
-    for (const w of widgetRows) if (inRange(w.date, from, to)) countEnquiry(w.p9, w.hasLane ? 'paid-social' : w.paidSearch ? 'paid-search' : 'website');
+    // A lane tag = ArabyAds = the Affiliates channel (commission partner, not our Meta spend).
+    for (const w of widgetRows) if (inRange(w.date, from, to)) countEnquiry(w.p9, w.hasLane ? 'affiliate' : w.paidSearch ? 'paid-search' : 'website');
     for (const l of leadRows) if (inRange(l.date, from, to)) countEnquiry(l.p9, l.channel);
     for (const c of crmRows) if (c.source === 'aiAgent' && inRange(c.date, from, to)) countEnquiry(c.p9, 'ai-concierge');
 
@@ -445,6 +488,8 @@ export async function getChannelPerformance(range: { from?: string; to?: string 
     for (const p of perf.values()) {
       if (p.spend != null && p.spend > 0) {
         p.costPerEnquiry = p.enquiries > 0 ? p.spend / p.enquiries : null;
+        p.costPerBooked = p.booked > 0 ? p.spend / p.booked : null;
+        p.costPerShowed = p.showed > 0 ? p.spend / p.showed : null;
         p.costPerPatient = p.treated > 0 ? p.spend / p.treated : null;
         p.roas = p.revenue > 0 ? p.revenue / p.spend : null;
       }
@@ -468,11 +513,61 @@ export async function getChannelPerformance(range: { from?: string; to?: string 
       treatRate: bookedPatients > 0 ? Math.min(1, treated / bookedPatients) : null,
     };
 
-    const ga4Row = (ga4Res.data as { period_start: string; period_end: string; sessions: number | null; users: number | null; channels: { channel: string; sessions: number }[] | null }[] | null)?.[0] ?? null;
+    const ga4Row = (ga4Res.data as { period_start: string; period_end: string; sessions: number | null; users: number | null; channels: { channel: string; sessions: number }[] | null; sources: { source: string; medium: string; sessions: number }[] | null }[] | null)?.[0] ?? null;
 
-    // Website reach from GA4's channel split (latest sync): the organic-ish
-    // slices a visitor reaches the site through without a campaign.
-    if (ga4Row?.channels?.length) {
+    // The Organic split — GA4 source-level (latest sync): search engines vs AI
+    // assistants vs Direct. Reach only: the widget doesn't capture the
+    // referrer, so a booking can't yet be split SEO-vs-AI (the UI says so).
+    let organicSplit: GrowthReport['organicSplit'] = null;
+    const ga4Sources = ga4Row?.sources ?? [];
+    if (ga4Row && ga4Sources.length > 0) {
+      const seoByEngine = new Map<string, number>();
+      const aiByEngine = new Map<string, { label: string; sessions: number }>();
+      let seoSessions = 0, aiSessions = 0, directSessions = 0;
+      for (const s of ga4Sources) {
+        const n = Number(s.sessions) || 0;
+        if (n <= 0) continue;
+        const medium = String(s.medium ?? '').toLowerCase();
+        const source = String(s.source ?? '');
+        const ai = aiEngineOf(source);
+        if (ai) {
+          aiSessions += n;
+          const prev = aiByEngine.get(ai.key);
+          aiByEngine.set(ai.key, { label: ai.label, sessions: (prev?.sessions ?? 0) + n });
+        } else if (medium === 'organic') {
+          seoSessions += n;
+          const eng = searchEngineOf(source);
+          seoByEngine.set(eng, (seoByEngine.get(eng) ?? 0) + n);
+        } else if (source === '(direct)' || medium === '(none)' || medium === 'none') {
+          directSessions += n;
+        }
+      }
+      organicSplit = {
+        periodStart: ga4Row.period_start,
+        periodEnd: ga4Row.period_end,
+        seo: [...seoByEngine.entries()].map(([engine, sessions]) => ({ engine, sessions })).sort((a, b) => b.sessions - a.sessions),
+        ai: [...aiByEngine.entries()].map(([key, v]) => ({ key, label: v.label, sessions: v.sessions })).sort((a, b) => b.sessions - a.sessions),
+        seoSessions, aiSessions, directSessions,
+      };
+      const web = at('website');
+      if (web.impressions == null && seoSessions > 0) {
+        web.impressions = seoSessions;
+        web.reachNote = `GA4 organic-search sessions ${ga4Row.period_start}–${ga4Row.period_end}: ${organicSplit.seo
+          .slice(0, 3).map((e) => `${e.engine} ${e.sessions}`).join(' · ')}`;
+      }
+      const aiRow = at('ai-chat');
+      if (aiSessions > 0) {
+        aiRow.impressions = aiSessions;
+        aiRow.reachNote = `AI-assistant referral sessions (GA4, ${ga4Row.period_start}–${ga4Row.period_end})`;
+      }
+      const dw = at('direct-walkin');
+      if (dw.impressions == null && directSessions > 0) {
+        dw.impressions = directSessions;
+        dw.reachNote = `GA4 direct sessions ${ga4Row.period_start}–${ga4Row.period_end} (typed the URL / untagged links)`;
+      }
+    } else if (ga4Row?.channels?.length) {
+      // Pre-0018 fallback: the sync hasn't stored source-level data yet — keep
+      // the old organic-ish reach and say the split is pending, not broken.
       const web = at('website');
       const organicish = (ga4Row.channels ?? []).filter((c) => /organic search|direct|referral/i.test(c.channel));
       const sess = organicish.reduce((a, c) => a + (Number(c.sessions) || 0), 0);
@@ -481,6 +576,60 @@ export async function getChannelPerformance(range: { from?: string; to?: string 
         web.reachNote = `GA4 sessions ${ga4Row.period_start}–${ga4Row.period_end}: ${organicish
           .map((c) => `${c.channel} ${Number(c.sessions) || 0}`)
           .join(' · ')}`;
+      }
+      notes.push('The Organic SEO / AI-chat / Direct source split appears after the next GA4 sync (source-level capture was just added).');
+    }
+
+    // Paid Social (Meta) split — campaign types from campaign names (works on
+    // the stored rows today) + delivery platforms from the publisher_platform
+    // breakdown (fills once the Meta token is refreshed and the sync runs).
+    let metaSplit: GrowthReport['metaSplit'] = null;
+    {
+      const metaRows = (metaRes.data as { date: string | null; spend: number | null; impressions: number | null; clicks: number | null; leads: number | null; campaign_name: string | null }[] | null) ?? [];
+      const inWin = metaRows.filter((r) => inRange(r.date, from, to));
+      if (inWin.length > 0) {
+        const byType = new Map<string, { label: string; hints: Set<string>; spend: number; impressions: number; clicks: number; leads: number }>();
+        for (const r of inWin) {
+          const name = r.campaign_name ?? '';
+          const t = metaCampaignTypeOf(name);
+          const hint = metaPlatformHintOf(name);
+          const agg = byType.get(t.key) ?? { label: t.label, hints: new Set<string>(), spend: 0, impressions: 0, clicks: 0, leads: 0 };
+          if (hint) agg.hints.add(hint);
+          agg.spend += r.spend != null ? Number(r.spend) || 0 : 0;
+          agg.impressions += r.impressions != null ? Number(r.impressions) || 0 : 0;
+          agg.clicks += r.clicks != null ? Number(r.clicks) || 0 : 0;
+          agg.leads += r.leads != null ? Number(r.leads) || 0 : 0;
+          byType.set(t.key, agg);
+        }
+        const types = [...byType.entries()]
+          .map(([key, v]) => ({
+            key,
+            label: v.label,
+            platformHint: v.hints.size === 1 ? [...v.hints][0] : null,
+            spend: Math.round(v.spend),
+            impressions: Math.round(v.impressions),
+            clicks: Math.round(v.clicks),
+            leads: Math.round(v.leads),
+            cpl: v.leads > 0 ? v.spend / v.leads : null,
+          }))
+          .sort((a, b) => b.spend - a.spend);
+
+        const platRows = (metaPlatRes.data as { date: string | null; platform: string | null; spend: number | null; impressions: number | null; leads: number | null }[] | null) ?? [];
+        const byPlat = new Map<string, { spend: number; impressions: number; leads: number }>();
+        for (const r of platRows) {
+          if (!inRange(r.date, from, to)) continue;
+          const p = String(r.platform ?? 'unknown');
+          const agg = byPlat.get(p) ?? { spend: 0, impressions: 0, leads: 0 };
+          agg.spend += r.spend != null ? Number(r.spend) || 0 : 0;
+          agg.impressions += r.impressions != null ? Number(r.impressions) || 0 : 0;
+          agg.leads += r.leads != null ? Number(r.leads) || 0 : 0;
+          byPlat.set(p, agg);
+        }
+        const platforms = [...byPlat.entries()]
+          .map(([platform, v]) => ({ platform, spend: Math.round(v.spend), impressions: Math.round(v.impressions), leads: Math.round(v.leads) }))
+          .sort((a, b) => b.spend - a.spend);
+
+        metaSplit = { types, platforms };
       }
     }
 
@@ -554,11 +703,24 @@ export async function getChannelPerformance(range: { from?: string; to?: string 
         ps.estCostPerPatient = ps.spend != null && ps.spend > 0 && denom > 0 ? ps.spend / denom : null;
         const totalRev = ps.revenue + (ps.estRevenue ?? 0);
         ps.estRoas = ps.spend != null && ps.spend > 0 && totalRev > 0 ? totalRev / ps.spend : null;
+        // Per-unit costs across the combined (measured + estimated) funnel —
+        // the CEO's cost-per-net-enquiry / booking / show / treatment set.
+        const per = (n: number) => (ps.spend != null && ps.spend > 0 && n > 0 ? ps.spend / n : null);
+        ps.estCostPerEnquiry = per(ps.enquiries + (ps.estEnquiries ?? 0));
+        ps.estCostPerBooked = per(ps.booked + est);
+        ps.estCostPerShowed = per(ps.showed + (ps.estShowed ?? 0));
+        ps.estCostPerTreated = per(ps.treated + (ps.estTreated ?? 0));
       }
     }
 
     if (unattributedRevenue > 0) {
       notes.push('Unattributed revenue = billed patient files that never appear in the synced appointment feed, so no channel can honestly claim them.');
+    }
+    {
+      const aff = at('affiliate');
+      if (aff.booked + aff.enquiries > 0) {
+        notes.push('Affiliates (ArabyAds) is commission-based — there is no spend feed, so the row shows the funnel without cost economics. Campaign quality lives in the ArabyAds panel on the Marketing tab.');
+      }
     }
 
     return {
@@ -571,6 +733,8 @@ export async function getChannelPerformance(range: { from?: string; to?: string 
       unattributedRevenue: Math.round(unattributedRevenue),
       unattributedPatients: unattributedFiles.size,
       phonePath,
+      organicSplit,
+      metaSplit,
       notes,
     };
   } catch {

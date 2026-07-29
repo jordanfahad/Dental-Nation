@@ -419,6 +419,13 @@ function buildGa4(latest: string): Ga4Summary {
       { channel: 'Organic Social', sessions: 52, conversions: 6 },
       { channel: 'Unassigned', sessions: 20, conversions: 3 },
     ],
+    sources: [
+      { source: '(direct)', medium: '(none)', sessions: 286 },
+      { source: 'google', medium: 'organic', sessions: 188 },
+      { source: 'chatgpt.com', medium: 'referral', sessions: 24 },
+      { source: 'bing', medium: 'organic', sessions: 16 },
+      { source: 'perplexity.ai', medium: 'referral', sessions: 6 },
+    ],
     onsite_funnel,
   };
 }

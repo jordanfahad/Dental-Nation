@@ -51,15 +51,21 @@ export const CHANNELS: ChannelDef[] = [
   {
     key: 'paid-social',
     group: 'paid',
-    label: 'Paid Social / Campaigns',
-    detail: 'Meta ads + ArabyAds campaign lanes (Glow Up, SOS, Scan) landing on the booking widget or lead forms.',
+    label: 'Paid Social — Meta',
+    detail: 'Meta (Instagram + Facebook) campaigns — WhatsApp leads, call ads, instant forms, awareness. Click to expand by campaign type.',
   },
   // ── Organic ───────────────────────────────────────────────────────────────
   {
     key: 'website',
     group: 'organic',
-    label: 'Website (SEO + widget)',
-    detail: 'Found the site organically and booked through the website widget.',
+    label: 'Organic SEO (search engines)',
+    detail: 'Found the site via a search engine — Google, Bing & co. — and booked through the website widget.',
+  },
+  {
+    key: 'ai-chat',
+    group: 'organic',
+    label: 'AI Chat (ChatGPT, Claude…)',
+    detail: 'Arrived from an AI assistant — ChatGPT, Claude, Perplexity and others. Click to expand by assistant.',
   },
   {
     key: 'gmb',
@@ -115,9 +121,8 @@ export const CHANNELS: ChannelDef[] = [
   {
     key: 'affiliate',
     group: 'collab',
-    label: 'Affiliates',
-    detail: 'Commission partners. Lights up once bookings carry an affiliate tag.',
-    untracked: true,
+    label: 'Affiliates — ArabyAds',
+    detail: 'Commission / CPL partners. ArabyAds campaign lanes (Glow Up, SOS, Scan) land here — every widget booking carrying a lane tag.',
   },
   {
     key: 'partnership',
@@ -184,3 +189,70 @@ export const PHONE_PATH_BENCHMARKS = {
   /** Share of patient conversations that become a booked appointment. */
   bookingRate: 0.35,
 } as const;
+
+/**
+ * GA4 session-source classification for the Organic split (Organic SEO /
+ * AI Chat / Direct). Matching is case-insensitive substring on the GA4
+ * sessionSource; first hit wins. Sources that match nothing stay out of the
+ * split (referrals, social, campaigns — they have their own rows).
+ */
+export const AI_CHAT_ENGINES: { key: string; label: string; patterns: string[] }[] = [
+  { key: 'chatgpt', label: 'ChatGPT', patterns: ['chatgpt', 'chat.openai', 'openai'] },
+  { key: 'claude', label: 'Claude', patterns: ['claude', 'anthropic'] },
+  { key: 'perplexity', label: 'Perplexity', patterns: ['perplexity'] },
+  // "Others" — every other assistant we can recognise, rolled into one row.
+  { key: 'other-ai', label: 'Others (Gemini, Copilot…)', patterns: ['gemini', 'bard.google', 'copilot', 'deepseek', 'you.com', 'poe.com', 'meta.ai', 'grok', 'x.ai', 'mistral', 'lechat'] },
+];
+
+export const SEARCH_ENGINES: { label: string; patterns: string[] }[] = [
+  { label: 'Google', patterns: ['google'] },
+  { label: 'Bing', patterns: ['bing'] },
+  { label: 'Yahoo', patterns: ['yahoo'] },
+  { label: 'DuckDuckGo', patterns: ['duckduckgo'] },
+  { label: 'Yandex', patterns: ['yandex'] },
+  { label: 'Ecosia', patterns: ['ecosia'] },
+  { label: 'Baidu', patterns: ['baidu'] },
+];
+
+/** Which AI assistant a GA4 sessionSource belongs to, or null. */
+export function aiEngineOf(source: string): { key: string; label: string } | null {
+  const s = source.toLowerCase();
+  for (const e of AI_CHAT_ENGINES) if (e.patterns.some((p) => s.includes(p))) return { key: e.key, label: e.label };
+  return null;
+}
+
+/** Which search engine an organic-medium sessionSource belongs to. */
+export function searchEngineOf(source: string): string {
+  const s = source.toLowerCase();
+  for (const e of SEARCH_ENGINES) if (e.patterns.some((p) => s.includes(p))) return e.label;
+  return 'Other engines';
+}
+
+/**
+ * Meta campaign TYPE, derived from the campaign name (the media team encodes
+ * it: "Leads | WhatsApp | Static…", "TOF_Call campaign…", "Awareness | Insta
+ * Videos…"). First hit wins; used to group the Paid Social sub-rows.
+ */
+export const META_CAMPAIGN_TYPES: { key: string; label: string; patterns: string[] }[] = [
+  { key: 'whatsapp-leads', label: 'WhatsApp lead campaigns', patterns: ['whatsapp'] },
+  { key: 'call', label: 'Call campaigns', patterns: ['call'] },
+  { key: 'instant-forms', label: 'Instant-form leads', patterns: ['instant form', 'instant_forms', 'instant forms'] },
+  { key: 'messages', label: 'Message campaigns', patterns: ['message'] },
+  { key: 'awareness', label: 'Awareness / video', patterns: ['awareness', 'tof_awareness'] },
+  { key: 'other-leads', label: 'Other lead campaigns', patterns: ['lead'] },
+];
+
+export function metaCampaignTypeOf(name: string): { key: string; label: string } {
+  const n = name.toLowerCase();
+  for (const t of META_CAMPAIGN_TYPES) if (t.patterns.some((p) => n.includes(p))) return { key: t.key, label: t.label };
+  return { key: 'other', label: 'Other campaigns' };
+}
+
+/** Instagram / Facebook hint from the campaign name (until the platform
+ *  breakdown sync fills meta_platform_insights_raw with delivery data). */
+export function metaPlatformHintOf(name: string): 'Instagram' | 'Facebook' | null {
+  const n = name.toLowerCase();
+  if (/insta|\big\b/.test(n)) return 'Instagram';
+  if (/facebook|\bfb\b/.test(n)) return 'Facebook';
+  return null;
+}

@@ -67,6 +67,7 @@ function ga4FromRow(row: Record<string, unknown> | null | undefined): Ga4Summary
     engaged_sessions: (row.engaged_sessions as number) ?? 0,
     leads: (row.leads as number) ?? 0,
     channels: (row.channels as Ga4Summary['channels']) ?? [],
+    sources: (row.sources as Ga4Summary['sources']) ?? [],
     onsite_funnel: (row.onsite_funnel as Ga4Summary['onsite_funnel']) ?? [],
   };
 }
