@@ -13,6 +13,7 @@ import { ExecWebsite } from './ExecWebsite';
 import { ExecOperations } from './ExecOperations';
 import { ExecClosing } from './ExecClosing';
 import { WidgetHealth } from '@/components/sections/ops/WidgetHealth';
+import { GrowthPlatform } from '@/components/sections/growth/GrowthPlatform';
 
 /**
  * Executive Dashboard — the investor-grade hero tab. An async server component
@@ -42,6 +43,12 @@ export async function ExecutiveDashboard({ query }: { query?: ExecQuery }) {
       ) : null}
       <ExecKpiBand report={report} />
       <ExecAcquisition report={report} />
+
+      {/* 🦷⭐ The Dental Nation star — the full Growth Platform mirrored onto
+          the CEO's first screen: channel P&L, attribution and phone path, on
+          the same date range. The Group tab stays its canonical home. */}
+      <GrowthPlatform range={{ from: report.range.from, to: report.range.to }} />
+
       <ExecClinicSplit report={report} />
       <ExecPipeline report={report} />
       <ClinicJourney

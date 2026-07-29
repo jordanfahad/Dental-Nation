@@ -2,13 +2,13 @@ import Link from 'next/link';
 import { PaidSearchRows } from './PaidSearchRows';
 import { PaidSocialRows } from './PaidSocialRows';
 import { AiChatRows } from './AiChatRows';
+import { FunnelGroupFilter, type GroupFunnel } from './FunnelGroupFilter';
 import { getChannelPerformance, type ChannelPerf, type GrowthReport } from '@/lib/growth/channelPerformance';
 import { getChannelTrace } from '@/lib/growth/channelTrace';
 import { CHANNEL_GROUPS, CHANNEL_BY_KEY } from '@/config/growth-channels';
 import { WATERFALL_RULES } from '@/lib/growth/attribution';
 import { Card, SectionHeader, Takeaway } from '@/components/ui/Card';
 import { KpiBand, type KpiItem } from '@/components/charts/KpiBand';
-import { FunnelViz } from '@/components/charts/FunnelViz';
 import { HBarChart, TOKENS, type BarDatum } from '@/components/charts/Charts';
 
 /**
@@ -382,12 +382,38 @@ export async function GrowthPlatform({ range, gchan }: { range?: { from?: string
     { label: 'Attributed revenue', value: t.revenue > 0 ? aedShort(t.revenue) : '—', hint: 'joined patient → channel' },
   ];
 
-  // Group subtotals for the at-a-glance bar (revenue by group).
-  const groupRevenue: BarDatum[] = CHANNEL_GROUPS.map((g) => ({
-    label: g.label,
-    value: Math.round(report.channels.filter((c) => c.group === g.key).reduce((a, c) => a + c.revenue, 0)),
-    color: GROUP_ACCENT[g.key] ?? TOKENS.accent,
-  })).filter((d) => d.value > 0);
+  // Group subtotals for the at-a-glance bar (revenue by group). EVERY group
+  // renders — a zero bar is information, not clutter (the CEO asked to see
+  // Paid alongside the rest). Paid folds in the estimated phone-path revenue
+  // and is marked ≈ when it does.
+  const groupRevenue: BarDatum[] = CHANNEL_GROUPS.map((g) => {
+    const rows = report.channels.filter((c) => c.group === g.key);
+    const measured = rows.reduce((a, c) => a + c.revenue, 0);
+    const est = rows.reduce((a, c) => a + (c.estRevenue ?? 0), 0);
+    return {
+      label: est > 0 ? `${g.label} ≈ (incl. est.)` : g.label,
+      value: Math.round(measured + est),
+      color: GROUP_ACCENT[g.key] ?? TOKENS.accent,
+    };
+  });
+
+  // Per-group funnel totals for the sub-filter pills (measured figures only).
+  const groupFunnels: GroupFunnel[] = [
+    {
+      key: 'all', label: 'All channels',
+      enquiries: t.enquiries, booked: t.booked, showed: t.showed, treated: t.treated, revenue: t.revenue,
+    },
+    ...CHANNEL_GROUPS.map((g) => {
+      const rows = report.channels.filter((c) => c.group === g.key);
+      const sum = (f: (c: ChannelPerf) => number) => rows.reduce((a, c) => a + f(c), 0);
+      return {
+        key: g.key, label: g.label,
+        enquiries: sum((c) => c.enquiries), booked: sum((c) => c.booked),
+        showed: sum((c) => c.showed), treated: sum((c) => c.treated),
+        revenue: Math.round(sum((c) => c.revenue)),
+      };
+    }),
+  ];
 
   return (
     <div className="space-y-4">
@@ -401,7 +427,7 @@ export async function GrowthPlatform({ range, gchan }: { range?: { from?: string
       <Card>
         <SectionHeader
           tag="G"
-          eyebrow="Growth Platform"
+          eyebrow="⭐ Growth Platform — the Dental Nation star"
           title="Channel performance — enquiry to revenue"
         />
         <div className="px-5 pb-5 pt-3">
@@ -409,14 +435,7 @@ export async function GrowthPlatform({ range, gchan }: { range?: { from?: string
           <div className="mt-5 grid gap-6 md:grid-cols-[1.2fr_1fr]">
             <div>
               <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-ink-faint">The one funnel every channel maps into</p>
-              <FunnelViz
-                stages={[
-                  { label: 'Enquiries', value: t.enquiries },
-                  { label: 'Booked (Practo)', value: t.booked },
-                  { label: 'Showed up', value: t.showed },
-                  { label: 'Treated (billed)', value: t.treated },
-                ]}
-              />
+              <FunnelGroupFilter groups={groupFunnels} />
               <Takeaway>
                 Revenue attributed to channels in this window: <span className="font-semibold text-ink">{aed(t.revenue)}</span>
                 {report.unattributedRevenue > 0 ? (
