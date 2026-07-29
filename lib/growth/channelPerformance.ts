@@ -49,8 +49,18 @@ export interface ChannelPerf extends ChannelDef {
    * measured stays measured; the row renders it with an explicit 'est.' mark.
    */
   estExtraBookings?: number;
+  /**
+   * The estimated bookings carried through the funnel at the untraced pool's
+   * MEASURED Practo rates (its real show/treat/revenue-per-patient) — the
+   * orphan patients are real; only their channel is estimated.
+   */
+  estShowed?: number;
+  estTreated?: number;
+  estRevenue?: number;
   /** Spend ÷ (measured patients + estimated bookings) — the realistic CPA. */
   estCostPerPatient?: number | null;
+  /** (measured revenue + estimated revenue) ÷ spend. */
+  estRoas?: number | null;
   enquiries: number;
   /** Appointments booked in-window attributed to this channel. */
   booked: number;
@@ -519,9 +529,27 @@ export async function getChannelPerformance(range: { from?: string; to?: string 
         // est. there) so its economics reflect the phone path instead of the
         // absurd spend ÷ tagged-only figure of the first tagged day.
         const ps = at('paid-search');
-        ps.estExtraBookings = phonePath.estBookingsReconciled;
-        const denom = ps.bookedPatients + phonePath.estBookingsReconciled;
+        const est = phonePath.estBookingsReconciled;
+        ps.estExtraBookings = est;
+        // Carry the estimate DOWN the funnel at the pool's own measured rates.
+        // The orphan patients are real people with real Practo outcomes; the
+        // estimate only decides how many of them Google Ads may claim. Pool =
+        // Direct/Walk-in (has appointment rows) + unattributed billed files
+        // (no appointment rows — but a bill means they showed and were treated).
+        const dw = at('direct-walkin');
+        const poolPatients = untracedPool;
+        if (est > 0 && poolPatients > 0) {
+          const poolShowed = dw.showed + unattributedFiles.size;
+          const poolTreated = dw.treated + unattributedFiles.size;
+          const poolRevenue = dw.revenue + unattributedRevenue;
+          ps.estShowed = Math.round((est * poolShowed) / poolPatients);
+          ps.estTreated = Math.round((est * poolTreated) / poolPatients);
+          ps.estRevenue = Math.round((est * poolRevenue) / poolPatients);
+        }
+        const denom = ps.bookedPatients + est;
         ps.estCostPerPatient = ps.spend != null && ps.spend > 0 && denom > 0 ? ps.spend / denom : null;
+        const totalRev = ps.revenue + (ps.estRevenue ?? 0);
+        ps.estRoas = ps.spend != null && ps.spend > 0 && totalRev > 0 ? totalRev / ps.spend : null;
       }
     }
 

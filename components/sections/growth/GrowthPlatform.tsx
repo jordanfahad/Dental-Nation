@@ -86,12 +86,13 @@ function ChannelRow({ p, traceQs }: { p: ChannelPerf; traceQs: string }) {
         ) : null}
         <span className="flex justify-end"><EvidenceBar tagged={p.taggedBooked} inferred={p.inferredBooked} /></span>
       </td>
-      <Num v={int(p.showed)} dim={p.showed === 0} />
-      <Num v={int(p.treated)} dim={p.treated === 0} />
+      <Num v={int(p.showed)} dim={p.showed === 0} est={p.estShowed ? `+${int(p.estShowed)} est.` : undefined} />
+      <Num v={int(p.treated)} dim={p.treated === 0} est={p.estTreated ? `+${int(p.estTreated)} est.` : undefined} />
       <td className="px-2 py-2.5 text-right align-top">
         <span className={`text-[12.5px] font-semibold tabular-nums ${p.revenue === 0 ? 'text-ink-faint' : 'text-ink'}`}>
           {p.revenue > 0 ? aedShort(p.revenue) : '—'}
         </span>
+        {p.estRevenue ? <span className="block text-[10px] font-medium text-watch">+{aedShort(p.estRevenue)} est.</span> : null}
       </td>
       <td className="py-2.5 pl-2 pr-3 text-right align-top">
         {p.spend != null ? (
@@ -104,7 +105,8 @@ function ChannelRow({ p, traceQs }: { p: ChannelPerf; traceQs: string }) {
             </span>
             {p.estCostPerPatient != null ? (
               <span className="block text-[10px] font-medium leading-snug text-watch">
-                CPA {aed(p.estCostPerPatient)} incl. est. call bookings
+                CPA {aed(p.estCostPerPatient)}
+                {p.estRoas != null ? ` · ROAS ${p.estRoas.toFixed(1)}×` : ''} incl. est. call bookings
               </span>
             ) : null}
             {p.spendThrough ? <span className="block text-[10px] text-watch">spend synced to {p.spendThrough}</span> : null}
@@ -117,10 +119,11 @@ function ChannelRow({ p, traceQs }: { p: ChannelPerf; traceQs: string }) {
   );
 }
 
-function Num({ v, dim = false }: { v: string | null; dim?: boolean }) {
+function Num({ v, dim = false, est }: { v: string | null; dim?: boolean; est?: string }) {
   return (
     <td className="px-2 py-2.5 text-right align-top">
       <span className={`text-[12.5px] tabular-nums ${v == null || dim ? 'text-ink-faint' : 'font-medium text-ink'}`}>{v ?? '—'}</span>
+      {est ? <span className="block text-[10px] font-medium text-watch">{est}</span> : null}
     </td>
   );
 }
@@ -289,6 +292,16 @@ async function ChannelTraceView({ channelKey, range }: { channelKey: string; ran
           {trace.total} booked appointment{trace.total === 1 ? '' : 's'} attributed to this channel in the selected window
           {trace.truncated ? ` (showing latest 300)` : ''}. Each row states the exact rule that attributed it.
         </p>
+        {channelKey === 'paid-search' ? (
+          <p className="mb-3 rounded-card border border-dashed border-watch/60 bg-watch/5 px-3 py-2 text-[11.5px] leading-snug text-ink-soft">
+            This list shows only <span className="font-medium">hard-traced</span> patients. The estimated call bookings on
+            the P&L row are claimed from the orphan pool — real patients with no channel trace, listed under{' '}
+            <Link href={`/?tab=group&gtab=growth&gchan=direct-walkin${range?.from ? `&from=${range.from}` : ''}${range?.to ? `&to=${range.to}` : ''}`} className="font-medium text-accent hover:underline">
+              Direct / Walk-in
+            </Link>
+            . Their Practo outcomes are real; only which channel each came from is estimated.
+          </p>
+        ) : null}
         {trace.patients.length === 0 ? (
           <p className="rounded-card border border-dashed border-line px-4 py-6 text-center text-[12.5px] text-ink-soft">
             No booked appointments attribute to this channel in this window.
