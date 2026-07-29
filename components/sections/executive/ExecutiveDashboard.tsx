@@ -32,12 +32,12 @@ export async function ExecutiveDashboard({ query, gclinic }: { query?: ExecQuery
     <div className="space-y-5">
       <ExecHero report={report} />
       {meta.metaStale ? (
-        <div className="rounded-card border border-watch/40 bg-watch/5 px-4 py-3 text-[12.5px] leading-snug text-ink-soft">
-          <span className="font-medium text-watch">Meta spend feed is stale.</span>{' '}
-          Meta insights last synced {meta.metaLatest ? dubaiDateLabel(meta.metaLatest) : '—'}
-          {meta.googleLatest ? ` (Google is current to ${dubaiDateLabel(meta.googleLatest)})` : ''} — so recent
-          windows show Google spend only. Regenerate the Meta access token (system-user, ads_read) and update
-          <span className="font-mono text-[11.5px]"> META_ACCESS_TOKEN</span> in Vercel; the next sync backfills.
+        <div className="rounded-card border border-line bg-panel/40 px-4 py-3 text-[12.5px] leading-snug text-ink-soft">
+          <span className="font-medium text-ink">Meta campaigns are paused.</span>{' '}
+          No Meta ads have run since {meta.metaLatest ? dubaiDateLabel(meta.metaLatest) : 'late April'} — the Meta
+          spend shown is complete, not a stale feed
+          {meta.googleLatest ? ` (Google Ads is live and current to ${dubaiDateLabel(meta.googleLatest)})` : ''}.
+          If Meta campaigns resume, the access token will likely need renewing before spend syncs again.
           <span className="text-ink-faint"> ArabyAds spend is billed separately and isn’t in this figure.</span>
         </div>
       ) : null}

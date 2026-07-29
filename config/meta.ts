@@ -36,6 +36,14 @@ export function isMetaConfigured(): boolean {
 /** Action types that count as a "lead" for Dental Nation — includes click-to-
  *  WhatsApp / messaging conversations + standard lead events. Best-effort until
  *  the live actions[] shape is confirmed via the probe. */
+/**
+ * Meta campaigns are PAUSED (Jordan, 29 Jul): no ads have run since late
+ * April, so the spend feed ending 2026-04-27 is COMPLETE, not stale. Surfaces
+ * must read "paused", never "broken feed". Flip to null if/when ads resume
+ * (at which point the access token will likely need renewing too).
+ */
+export const META_ADS_PAUSED_SINCE: string | null = '2026-04-27';
+
 export const META_LEAD_ACTION_TYPES = [
   'lead',
   'leadgen_grouped',

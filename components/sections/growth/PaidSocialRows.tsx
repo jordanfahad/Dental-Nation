@@ -66,6 +66,7 @@ export function PaidSocialRows({ p, split, traceQs }: { p: ChannelPerf; split: G
           {p.spend != null ? (
             <>
               <span className="text-[12px] font-medium tabular-nums text-ink">{aedShort(p.spend)}</span>
+              <span className="block text-[10px] leading-snug text-ink-faint">campaigns paused since late Apr</span>
               <span className="block text-[10px] leading-snug text-ink-soft">
                 {p.costPerEnquiry != null ? `enquiry ${aed(p.costPerEnquiry)}` : ''}
                 {p.costPerBooked != null ? ` · booking ${aed(p.costPerBooked)}` : ''}
@@ -75,7 +76,6 @@ export function PaidSocialRows({ p, split, traceQs }: { p: ChannelPerf; split: G
                 {p.costPerPatient != null ? ` · treated ${aed(p.costPerPatient)}` : ''}
                 {p.roas != null ? ` · ROAS ${p.roas.toFixed(1)}×` : ''}
               </span>
-              {p.spendThrough ? <span className="block text-[10px] text-watch">spend synced to {p.spendThrough}</span> : null}
             </>
           ) : (
             <span className="text-[11px] text-ink-faint">—</span>
@@ -102,8 +102,9 @@ export function PaidSocialRows({ p, split, traceQs }: { p: ChannelPerf; split: G
           ) : (
             <tr className="bg-panel/30">
               <td colSpan={8} className="py-1.5 pl-7 pr-3 text-[10.5px] leading-snug text-watch">
-                Instagram vs Facebook delivery split arrives with the next Meta sync — the platform breakdown was just
-                added and the Meta token needs a refresh. Campaign types below are read from the campaign names.
+                No Instagram-vs-Facebook delivery split: Meta campaigns have been paused since late April, so there is
+                no recent delivery to break down (historical split would need a fresh API token — not worth chasing
+                while ads are off). Campaign types below are read from the historical campaign names.
               </td>
             </tr>
           )}

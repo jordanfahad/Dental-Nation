@@ -2,6 +2,7 @@ import 'server-only';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
 import { parseArabySource } from '@/lib/arabyads/report';
 import { clinicOfCenter, clinicOfDoctor } from '@/config/clinics';
+import { META_ADS_PAUSED_SINCE } from '@/config/meta';
 import {
   CHANNELS,
   PHONE_PATH_BENCHMARKS,
@@ -484,6 +485,13 @@ export async function getChannelPerformance(
     if (dnAssets) {
       sumSpend((gadsRes.data as never[]) ?? null, 'paid-search', 'Google Ads');
       sumSpend((metaRes.data as never[]) ?? null, 'paid-social', 'Meta');
+      // Meta campaigns are paused (business decision) — the feed ending in
+      // April is complete, so replace the generic "understated" warning with
+      // the true story.
+      if (META_ADS_PAUSED_SINCE) {
+        const ix = notes.findIndex((n) => n.startsWith('Meta spend/impressions are synced only through'));
+        if (ix >= 0) notes[ix] = `Meta campaigns have been paused since ${META_ADS_PAUSED_SINCE} — the Meta spend shown is complete (not a stale feed). Lead-form enquiries after that date are organic residue, not paid delivery.`;
+      }
     } else {
       notes.push(
         'Paid ads ran only for Dental Nation Al Wasl — spend, ad reach, GA4 visibility and the phone-path estimates are not attributed to this clinic. Enquiry surfaces (website, desk, WhatsApp) are shared and can’t be clinic-split, so this view shows the Practo funnel only.',
