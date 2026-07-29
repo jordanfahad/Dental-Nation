@@ -39,8 +39,10 @@ import {
  */
 
 export interface ChannelPerf extends ChannelDef {
-  /** Paid reach in-window (ad impressions) — null where no visibility source exists. */
+  /** Reach in-window (ad impressions / GMB profile views) — null where no visibility source exists. */
   impressions: number | null;
+  /** One-line breakdown under the reach figure (e.g. GMB calls · directions · clicks). */
+  reachNote: string | null;
   enquiries: number;
   /** Appointments booked in-window attributed to this channel. */
   booked: number;
@@ -102,7 +104,7 @@ function emptyReport(from: string | null, to: string | null): GrowthReport {
   return {
     source: 'empty', from, to,
     channels: CHANNELS.map((c) => ({
-      ...c, impressions: null, enquiries: 0, booked: 0, bookedPatients: 0, showed: 0, cancelled: 0,
+      ...c, impressions: null, reachNote: null, enquiries: 0, booked: 0, bookedPatients: 0, showed: 0, cancelled: 0,
       noshow: 0, treated: 0, revenue: 0, taggedBooked: 0, inferredBooked: 0, spend: null,
       spendThrough: null, costPerEnquiry: null, costPerPatient: null, roas: null,
     })),
@@ -126,7 +128,7 @@ export async function getChannelPerformance(range: { from?: string; to?: string 
   if (!db) return emptyReport(from, to);
 
   try {
-    const [apptRes, billRes, zavisRes, leadRes, crmRes, existRes, practoPtRes, metaRes, gadsRes, ga4Res] =
+    const [apptRes, billRes, zavisRes, leadRes, crmRes, existRes, practoPtRes, metaRes, gadsRes, ga4Res, gmbRes] =
       await Promise.all([
         db.from('practo_appointments_raw').select('appt_date, status, mr_no, patient_phone, patient_name, data'),
         db.from('practo_bills_raw').select('bill_date, amount, data'),
@@ -138,6 +140,7 @@ export async function getChannelPerformance(range: { from?: string; to?: string 
         db.from('meta_insights_raw').select('date, spend, impressions'),
         db.from('google_ads_insights_raw').select('date, spend, impressions'),
         db.from('ga4_summary').select('period_start, period_end, sessions, channels').order('period_end', { ascending: false }).limit(1),
+        db.from('social_insights').select('metric, day, value').eq('channel', 'gmb'),
       ]);
 
     /* ─── Build the waterfall's evidence lookups (all-time, not range-scoped) ── */
@@ -238,7 +241,7 @@ export async function getChannelPerformance(range: { from?: string; to?: string 
 
     const perf = new Map<string, ChannelPerf>(
       CHANNELS.map((c) => [c.key, {
-        ...c, impressions: null, enquiries: 0, booked: 0, bookedPatients: 0, showed: 0, cancelled: 0,
+        ...c, impressions: null, reachNote: null, enquiries: 0, booked: 0, bookedPatients: 0, showed: 0, cancelled: 0,
         noshow: 0, treated: 0, revenue: 0, taggedBooked: 0, inferredBooked: 0, spend: null,
         spendThrough: null, costPerEnquiry: null, costPerPatient: null, roas: null,
       }]),
@@ -330,6 +333,37 @@ export async function getChannelPerformance(range: { from?: string; to?: string 
     };
     sumSpend((gadsRes.data as never[]) ?? null, 'paid-search', 'Google Ads');
     sumSpend((metaRes.data as never[]) ?? null, 'paid-social', 'Meta');
+
+    // Google Business Profile — reach from Google's own counters. These are
+    // profile-level tallies with no patient identity, so they inform the REACH
+    // column only; the patients they produce surface under Direct / Walk-in
+    // until reception tags them (the coverage note says exactly that).
+    {
+      const gmbRows = (gmbRes.data as { metric: string; day: string | null; value: number | null }[] | null) ?? [];
+      const gmb = at('gmb');
+      if (gmbRows.length === 0) {
+        notes.push(
+          'Google Business Profile feed is not connected yet — the sync code exists but GMB_CLIENT_ID / GMB_CLIENT_SECRET / GMB_REFRESH_TOKEN / GMB_LOCATION_IDS are not set in Vercel. Until then its reach column stays empty and its patients appear under Direct / Walk-in.',
+        );
+      } else {
+        const sums = new Map<string, number>();
+        for (const r of gmbRows) {
+          if (!inRange(r.day, from, to)) continue;
+          sums.set(r.metric, (sums.get(r.metric) ?? 0) + (r.value != null ? Number(r.value) || 0 : 0));
+        }
+        const views = (sums.get('map_views_desktop') ?? 0) + (sums.get('map_views_mobile') ?? 0);
+        const calls = sums.get('calls') ?? 0;
+        const directions = sums.get('directions') ?? 0;
+        const clicks = sums.get('website_clicks') ?? 0;
+        gmb.impressions = views > 0 ? Math.round(views) : null;
+        if (calls + directions + clicks > 0) {
+          gmb.reachNote = `${Math.round(calls)} calls · ${Math.round(directions)} directions · ${Math.round(clicks)} site clicks (Google's counters)`;
+          notes.push(
+            'GMB calls/directions are Google-side counters without patient identity — those patients sit under Direct / Walk-in until reception tags bookings ("found on google"), so do not add the two rows together.',
+          );
+        }
+      }
+    }
 
     for (const p of perf.values()) {
       if (p.spend != null && p.spend > 0) {

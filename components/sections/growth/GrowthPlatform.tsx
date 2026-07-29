@@ -61,7 +61,14 @@ function ChannelRow({ p }: { p: ChannelPerf }) {
           </span>
         ) : null}
       </td>
-      <Num v={p.impressions == null ? null : int(p.impressions)} />
+      <td className="px-2 py-2.5 text-right align-top">
+        <span className={`text-[12.5px] tabular-nums ${p.impressions == null ? 'text-ink-faint' : 'font-medium text-ink'}`}>
+          {p.impressions == null ? '—' : int(p.impressions)}
+        </span>
+        {p.reachNote ? (
+          <span className="block max-w-[150px] text-[10px] leading-snug text-ink-faint">{p.reachNote}</span>
+        ) : null}
+      </td>
       <Num v={int(p.enquiries)} dim={p.enquiries === 0} />
       <td className="px-2 py-2.5 text-right align-top">
         <span className={`text-[12.5px] font-semibold tabular-nums ${p.booked === 0 ? 'text-ink-faint' : 'text-ink'}`}>{int(p.booked)}</span>
@@ -232,7 +239,7 @@ export async function GrowthPlatform({ range }: { range?: { from?: string; to?: 
             <thead>
               <tr className="text-[10.5px] uppercase tracking-wide text-ink-faint">
                 <th className="py-2 pl-3 pr-2 text-left font-medium">Channel</th>
-                <th className="px-2 py-2 text-right font-medium">Ad views</th>
+                <th className="px-2 py-2 text-right font-medium">Reach</th>
                 <th className="px-2 py-2 text-right font-medium">Enquiries</th>
                 <th className="px-2 py-2 text-right font-medium">Booked</th>
                 <th className="px-2 py-2 text-right font-medium">Showed</th>
