@@ -137,6 +137,63 @@ function Num({ v, dim = false, est }: { v: string | null; dim?: boolean; est?: s
   );
 }
 
+/**
+ * One number, three lenses — the live reconciliation between the figures a
+ * reader meets across the dashboard (scorecard enquiries, P&L column sum,
+ * Executive "Leads generated"). Computed from the same report so the numbers
+ * can never drift from the surfaces they explain.
+ */
+function ReconciliationCard({ report }: { report: GrowthReport }) {
+  const measured = report.totals.enquiries;
+  const modelled = report.channels.find((c) => c.key === 'paid-search')?.estEnquiries ?? 0;
+  const tracker = report.trackerLeadRows;
+  const row = (label: string, value: string, desc: string, tone: 'ink' | 'watch' = 'ink') => (
+    <div className="flex items-baseline gap-3 border-t border-line/60 py-2 first:border-t-0">
+      <span className={`w-16 shrink-0 text-right text-[16px] font-semibold tabular-nums ${tone === 'watch' ? 'text-watch' : 'text-ink'}`}>{value}</span>
+      <span className="text-[12px] leading-snug text-ink-soft">
+        <span className="font-medium text-ink">{label}</span> — {desc}
+      </span>
+    </div>
+  );
+  return (
+    <Card>
+      <SectionHeader
+        tag="G5"
+        eyebrow="Why the numbers differ"
+        title="One enquiry count, three lenses — the reconciliation"
+      />
+      <div className="px-5 pb-5 pt-3">
+        {row(
+          'Measured enquiries',
+          int(measured),
+          'every enquiry from widget + lead tracker + AI agent, deduped by phone so one person asking twice counts once. The scorecard and funnel above use THIS number — the house figure.',
+        )}
+        {modelled > 0
+          ? row(
+              'Markov-modelled phone enquiries',
+              `+≈${int(modelled)}`,
+              'patients the model says called from the Google ad’s call button (measured taps × transition probabilities). Shown only on the Paid Search row, ≈-marked — never mixed into the measured count. Adding the P&L enquiry column therefore reads ' +
+                `≈${int(measured + modelled)}, and the difference vs the scorecard is exactly this model.`,
+              'watch',
+            )
+          : null}
+        {tracker > 0
+          ? row(
+              'Lead-tracker rows (raw)',
+              int(tracker),
+              'reception’s manual tracker only, before cross-source dedup — the Executive tab’s "Leads generated" basis. It lands near the measured figure but differs by design: dedup collapses people also on the widget, while the widget adds people the tracker never saw.',
+            )
+          : null}
+        <Takeaway>
+          One line for the board: measured-and-deduped is the house number; the ≈ addition is the Markov phone model,
+          kept visibly separate; the tracker count is one raw source before dedup. Three lenses, one reality — none of
+          them contradicts another.
+        </Takeaway>
+      </div>
+    </Card>
+  );
+}
+
 function ConfidenceCard({ report }: { report: GrowthReport }) {
   const { tagged, inferred, defaulted } = report.confidence;
   const total = tagged + inferred + defaulted;
@@ -578,6 +635,8 @@ export async function GrowthPlatform({ range, gchan, gclinic }: { range?: { from
       </Card>
 
       <ConfidenceCard report={report} />
+
+      <ReconciliationCard report={report} />
 
       {report.phonePath ? <PhonePathCard pp={report.phonePath} /> : null}
 

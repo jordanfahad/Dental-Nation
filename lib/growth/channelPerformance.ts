@@ -173,6 +173,10 @@ export interface GrowthReport {
     types: { key: string; label: string; platformHint: string | null; spend: number; impressions: number; clicks: number; leads: number; cpl: number | null }[];
     platforms: { platform: string; spend: number; impressions: number; leads: number }[];
   } | null;
+  /** Raw in-window lead-tracker rows BEFORE cross-source dedup — the Executive
+   *  "Leads generated" basis, exposed so the reconciliation card can show all
+   *  three enquiry lenses side by side with live numbers. */
+  trackerLeadRows: number;
   notes: string[];
 }
 
@@ -194,7 +198,7 @@ function emptyReport(from: string | null, to: string | null): GrowthReport {
     })),
     totals: emptyTotals, confidence: { tagged: 0, inferred: 0, defaulted: 0 },
     ga4: null, unattributedRevenue: 0, unattributedPatients: 0, phonePath: null,
-    organicSplit: null, metaSplit: null, notes: [],
+    organicSplit: null, metaSplit: null, trackerLeadRows: 0, notes: [],
   };
 }
 
@@ -368,10 +372,11 @@ export async function getChannelPerformance(
     // Enquiries are shared acquisition surfaces (the website, the desk, the
     // WhatsApp line — all Dental Nation Al Wasl's). They can't be split per
     // clinic, so they render on All and DN views and stay empty on Dr Tosun's.
+    let trackerLeadRows = 0;
     if (dnAssets) {
       // A lane tag = ArabyAds = the Affiliates channel (commission partner, not our Meta spend).
       for (const w of widgetRows) if (inRange(w.date, from, to)) countEnquiry(w.p9, w.hasLane ? 'affiliate' : w.paidSearch ? 'paid-search' : 'website');
-      for (const l of leadRows) if (inRange(l.date, from, to)) countEnquiry(l.p9, l.channel);
+      for (const l of leadRows) if (inRange(l.date, from, to)) { trackerLeadRows += 1; countEnquiry(l.p9, l.channel); }
       for (const c of crmRows) if (c.source === 'aiAgent' && inRange(c.date, from, to)) countEnquiry(c.p9, 'ai-concierge');
     }
 
@@ -793,6 +798,7 @@ export async function getChannelPerformance(
       phonePath,
       organicSplit,
       metaSplit,
+      trackerLeadRows,
       notes,
     };
   } catch {
