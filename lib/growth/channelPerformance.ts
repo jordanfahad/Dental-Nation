@@ -54,6 +54,7 @@ export interface ChannelPerf extends ChannelDef {
    * MEASURED Practo rates (its real show/treat/revenue-per-patient) — the
    * orphan patients are real; only their channel is estimated.
    */
+  estEnquiries?: number;
   estShowed?: number;
   estTreated?: number;
   estRevenue?: number;
@@ -531,6 +532,9 @@ export async function getChannelPerformance(range: { from?: string; to?: string 
         const ps = at('paid-search');
         const est = phonePath.estBookingsReconciled;
         ps.estExtraBookings = est;
+        // Estimated enquiries = patient-intent calls (the enquiry-equivalent of
+        // a widget submission). Not pool-capped: an enquiry needn't book.
+        ps.estEnquiries = phonePath.estPatientCalls;
         // Carry the estimate DOWN the funnel at the pool's own measured rates.
         // The orphan patients are real people with real Practo outcomes; the
         // estimate only decides how many of them Google Ads may claim. Pool =
