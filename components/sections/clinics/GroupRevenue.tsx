@@ -4,6 +4,7 @@ import { KpiBand, type KpiItem } from '@/components/charts/KpiBand';
 import { HBarChart, Donut, TrendChart, CATEGORICAL, TOKENS, type BarDatum, type TrendSeries } from '@/components/charts/Charts';
 import { GroupSubNav } from './GroupSubNav';
 import { resolveGroupSub } from './subtabs';
+import { GrowthPlatform } from '@/components/sections/growth/GrowthPlatform';
 
 /**
  * Group Revenue tab — the portfolio view across the three commonly-owned
@@ -249,6 +250,19 @@ function ClinicDetail({ c }: { c: ClinicRevenue }) {
 
 export async function GroupRevenue({ range, sub }: { range?: { from?: string; to?: string; preset?: string }; sub?: string } = {}) {
   const active = resolveGroupSub(sub);
+
+  // Growth Platform sits under this tab for access control only — it has its
+  // own data layer and doesn't depend on the clinic-revenue import at all, so
+  // branch before the getGroupRevenue fetch.
+  if (active === 'growth') {
+    return (
+      <div className="space-y-4">
+        <GroupSubNav active={active} />
+        <GrowthPlatform range={{ from: range?.from, to: range?.to }} />
+      </div>
+    );
+  }
+
   const data = await getGroupRevenue(range);
 
   if (!data.available) {
