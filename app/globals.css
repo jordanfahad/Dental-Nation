@@ -53,6 +53,13 @@ body {
   border: 1.5px dashed theme('colors.hairline.strong');
 }
 
+/* The print-edition report keeps its bar/accent colours in the PDF. */
+.print-exact,
+.print-exact * {
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
 /* ---- Print / PDF (§14): clean A4, page-break between sections ---- */
 @media print {
   @page {

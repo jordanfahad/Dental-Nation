@@ -514,7 +514,7 @@ export async function GrowthPlatform({ range, gchan, gclinic }: { range?: { from
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <GrowthClinicFilter active={clinic} />
-        <PdfButton />
+        <PdfButton from={range?.from} to={range?.to} gclinic={clinic} />
       </div>
       <p className="rounded-card border border-line bg-panel/40 px-3 py-2 text-[11.5px] leading-snug text-ink-soft">
         <span className="font-medium text-ink">Data coverage:</span> the Practo feed this view is built on starts in{' '}
