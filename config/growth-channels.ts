@@ -159,3 +159,22 @@ export const TAG_RULES: { channel: string; keywords: string[] }[] = [
   { channel: 'gmb', keywords: ['google maps', 'google map', 'found on google', 'found us on google', 'google search', 'google business', 'gmb'] },
   { channel: 'direct-walkin', keywords: ['walk in', 'walk-in', 'walkin'] },
 ];
+
+/**
+ * Benchmark multipliers for the Google Ads PHONE path. The UAE has no Google
+ * forwarding numbers, so call CONVERSIONS can never be measured — a tap on the
+ * ad's call button is the last measurable event. Everything derived from it is
+ * an ESTIMATE and every surface that shows one must say so.
+ *
+ * Sources: healthcare/dental call-tracking industry studies (answer rates for
+ * SMB medical ~70-80%; call-to-appointment for dental ~30-40%). Deliberately
+ * mid-range. These are knobs, not truths — tune when a tracking number gives
+ * us Dental Nation's own measured rates, at which point measured replaces
+ * estimated on the dashboard automatically.
+ */
+export const PHONE_PATH_BENCHMARKS = {
+  /** Share of call-button taps that become an answered conversation. */
+  answerRate: 0.75,
+  /** Share of answered calls that become a booked appointment. */
+  bookingRate: 0.35,
+} as const;

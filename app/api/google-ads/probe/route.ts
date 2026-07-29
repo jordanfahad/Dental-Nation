@@ -6,17 +6,24 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
 /**
- * Google Ads probe + manual/backfill sync. CRON_SECRET-gated.
+ * Google Ads probe + manual/backfill sync. Secret-gated.
  *   GET /api/google-ads/probe?secret=…                                  → credential/shape probe
  *   GET /api/google-ads/probe?secret=…&sync=1                           → trailing 30 days
  *   GET /api/google-ads/probe?secret=…&sync=1&from=2026-01-01&to=2026-06-18  → backfill
+ *
+ * Accepts WIDGET_HEALTH_SECRET as well as CRON_SECRET (same policy as
+ * lib/auth/serviceToken.ts): CRON_SECRET is stored write-only in Vercel, so
+ * the operator may not KNOW its value — the backfill URL must be usable with
+ * the secret they hold.
  */
 function authorized(req: NextRequest): boolean {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return false;
+  const accepted = [process.env.WIDGET_HEALTH_SECRET, process.env.CRON_SECRET].filter(
+    (s): s is string => Boolean(s),
+  );
+  if (accepted.length === 0) return false;
   const auth = req.headers.get('authorization');
-  if (auth === `Bearer ${secret}`) return true;
-  return req.nextUrl.searchParams.get('secret') === secret;
+  const qs = req.nextUrl.searchParams.get('secret');
+  return accepted.some((s) => auth === `Bearer ${s}` || qs === s);
 }
 
 export async function GET(req: NextRequest) {

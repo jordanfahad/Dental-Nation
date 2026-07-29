@@ -52,7 +52,7 @@ async function getAccessToken(cfg: GoogleAdsConfig): Promise<string> {
 
 interface GAdsRow {
   campaign?: { id?: string; name?: string };
-  segments?: { date?: string };
+  segments?: { date?: string; clickType?: string };
   metrics?: { costMicros?: string; impressions?: string; clicks?: string; conversions?: number };
 }
 
@@ -75,8 +75,10 @@ async function fetchCustomer(
   to: string,
   version: string,
   loginCustomerId: string | null,
+  queryOverride?: string,
 ): Promise<GAdsRow[]> {
   const query =
+    queryOverride ??
     `SELECT campaign.id, campaign.name, segments.date, metrics.cost_micros, ` +
     `metrics.impressions, metrics.clicks, metrics.conversions ` +
     `FROM campaign WHERE segments.date BETWEEN '${from}' AND '${to}'`;
@@ -162,7 +164,45 @@ export async function syncGoogleAds(supabase: AdminClient, opts: GAdsSyncOpts = 
     for (let i = 0; i < deduped.length; i += 500) {
       await supabase.from('google_ads_insights_raw').upsert(deduped.slice(i, i + 500), { onConflict: 'key' });
     }
-    return { ok: true, fetched: all.length, stored: deduped.length, customers: cfg.customerIds.length };
+
+    // Second pass — clicks segmented by CLICK TYPE (phone taps, get-directions
+    // taps…). In the UAE, Google forwarding numbers don't exist, so call
+    // CONVERSIONS can never record; a tap on the call button counted as a
+    // click IS the only phone signal the API offers. Best-effort: a failure
+    // here must not cost the spend sync above.
+    let clickTypeNote: string | undefined;
+    try {
+      const ctQuery =
+        `SELECT campaign.id, campaign.name, segments.date, segments.click_type, metrics.clicks ` +
+        `FROM campaign WHERE segments.date BETWEEN '${from}' AND '${to}' AND metrics.clicks > 0`;
+      const ctAll: { row: GAdsRow; customer: string }[] = [];
+      for (const customer of cfg.customerIds) {
+        const rows = await fetchCustomer(cfg, accessToken, customer, from, to, version, cfg.loginCustomerId, ctQuery);
+        for (const row of rows) ctAll.push({ row, customer });
+      }
+      const ctRecords = ctAll
+        .filter(({ row }) => row.segments?.clickType)
+        .map(({ row, customer }) => ({
+          key: `${customer}|${row.campaign?.id ?? 'acct'}|${row.segments?.date ?? 'na'}|${row.segments?.clickType}`,
+          customer_id: customer,
+          campaign_id: row.campaign?.id ?? null,
+          campaign_name: row.campaign?.name ?? null,
+          date: row.segments?.date ?? null,
+          click_type: row.segments?.clickType ?? null,
+          clicks: Number(row.metrics?.clicks ?? 0),
+          fetched_at: new Date().toISOString(),
+        }));
+      const ctByKey = new Map(ctRecords.map((r) => [r.key, r]));
+      const ctDeduped = [...ctByKey.values()];
+      for (let i = 0; i < ctDeduped.length; i += 500) {
+        await supabase.from('google_ads_click_types').upsert(ctDeduped.slice(i, i + 500), { onConflict: 'key' });
+      }
+      clickTypeNote = `clickTypes: ${ctDeduped.length}`;
+    } catch (err) {
+      clickTypeNote = `clickTypes failed: ${(err as Error).message.slice(0, 200)}`;
+    }
+
+    return { ok: true, fetched: all.length, stored: deduped.length, customers: cfg.customerIds.length, note: clickTypeNote };
   } catch (err) {
     return { ok: false, fetched: 0, stored: 0, customers: 0, error: (err as Error).message };
   }

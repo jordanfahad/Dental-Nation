@@ -160,6 +160,60 @@ function ConfidenceCard({ report }: { report: GrowthReport }) {
   );
 }
 
+/**
+ * Google Ads phone path. MEASURED numbers (taps, from the Ads API click-type
+ * segmentation) are visually separated from benchmark ESTIMATES, because in
+ * the UAE Google cannot count call conversions at all — estimates are the
+ * honest maximum until a tracking number measures the clinic's own rates.
+ */
+function PhonePathCard({ pp }: { pp: NonNullable<GrowthReport['phonePath']> }) {
+  const stat = (label: string, value: string, est = false) => (
+    <div className={`rounded-card border px-4 py-3 ${est ? 'border-dashed border-watch/60 bg-watch/5' : 'border-line bg-card'}`}>
+      <p className="text-[11px] uppercase tracking-wide text-ink-faint">
+        {label}
+        {est ? <span className="ml-1 font-semibold text-watch">est.</span> : null}
+      </p>
+      <p className="mt-0.5 text-[20px] font-semibold tabular-nums text-ink">{value}</p>
+    </div>
+  );
+  return (
+    <Card>
+      <SectionHeader
+        tag="G4"
+        eyebrow="Google Ads — phone path"
+        title="Call-button taps, and what they're probably worth"
+      />
+      <div className="px-5 pb-5 pt-3">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          {stat('Call-button taps', int(pp.callTaps))}
+          {stat('Direction taps', int(pp.directionTaps))}
+          {stat('Calls answered', int(pp.estAnswered), true)}
+          {stat('Bookings from calls', int(pp.estBookings), true)}
+        </div>
+        {pp.byCampaign.length > 0 ? (
+          <div className="mt-4">
+            <p className="mb-1.5 text-[11px] uppercase tracking-wide text-ink-faint">Call taps by campaign (measured)</p>
+            <ul className="space-y-1">
+              {pp.byCampaign.map((c) => (
+                <li key={c.campaign} className="flex items-baseline justify-between gap-3 text-[12.5px]">
+                  <span className="truncate text-ink-soft">{c.campaign}</span>
+                  <span className="font-medium tabular-nums text-ink">{int(c.callTaps)}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+        <Takeaway>
+          Taps are measured by Google per campaign per day. The two dashed figures are <span className="font-medium">estimates</span> from
+          industry benchmarks (75% of taps answered, 35% of answered calls book) — Google cannot count real call
+          conversions in the UAE (no forwarding numbers; both call conversion actions read zero all-time). A
+          dedicated tracking number replaces these estimates with the clinic&apos;s own measured rates.
+        </Takeaway>
+      </div>
+    </Card>
+  );
+}
+
 export async function GrowthPlatform({ range }: { range?: { from?: string; to?: string } } = {}) {
   const report = await getChannelPerformance(range ?? {});
   const t = report.totals;
@@ -275,6 +329,8 @@ export async function GrowthPlatform({ range }: { range?: { from?: string; to?: 
       </Card>
 
       <ConfidenceCard report={report} />
+
+      {report.phonePath ? <PhonePathCard pp={report.phonePath} /> : null}
 
       {report.notes.length > 0 ? (
         <Card>

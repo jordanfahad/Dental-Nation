@@ -1,7 +1,7 @@
 import 'server-only';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
 import { parseArabySource } from '@/lib/arabyads/report';
-import { CHANNELS, type ChannelDef } from '@/config/growth-channels';
+import { CHANNELS, PHONE_PATH_BENCHMARKS, type ChannelDef } from '@/config/growth-channels';
 import {
   classifyAppointment,
   isNewFile,
@@ -89,6 +89,19 @@ export interface GrowthReport {
   /** Revenue in-window that no channel can claim (billed file never seen in the appointment feed). */
   unattributedRevenue: number;
   unattributedPatients: number;
+  /**
+   * Google Ads phone path — MEASURED taps by click type, plus benchmark
+   * ESTIMATES (labelled as such in the UI; the UAE has no Google forwarding
+   * numbers, so taps are the only phone signal the API can ever report).
+   */
+  phonePath: {
+    callTaps: number;
+    directionTaps: number;
+    otherClicks: number;
+    estAnswered: number;
+    estBookings: number;
+    byCampaign: { campaign: string; callTaps: number }[];
+  } | null;
   notes: string[];
 }
 
@@ -109,7 +122,7 @@ function emptyReport(from: string | null, to: string | null): GrowthReport {
       spendThrough: null, costPerEnquiry: null, costPerPatient: null, roas: null,
     })),
     totals: emptyTotals, confidence: { tagged: 0, inferred: 0, defaulted: 0 },
-    ga4: null, unattributedRevenue: 0, unattributedPatients: 0, notes: [],
+    ga4: null, unattributedRevenue: 0, unattributedPatients: 0, phonePath: null, notes: [],
   };
 }
 
@@ -128,7 +141,7 @@ export async function getChannelPerformance(range: { from?: string; to?: string 
   if (!db) return emptyReport(from, to);
 
   try {
-    const [apptRes, billRes, zavisRes, leadRes, crmRes, existRes, practoPtRes, metaRes, gadsRes, ga4Res, gmbRes] =
+    const [apptRes, billRes, zavisRes, leadRes, crmRes, existRes, practoPtRes, metaRes, gadsRes, ga4Res, gmbRes, ctRes] =
       await Promise.all([
         db.from('practo_appointments_raw').select('appt_date, status, mr_no, patient_phone, patient_name, data'),
         db.from('practo_bills_raw').select('bill_date, amount, data'),
@@ -141,6 +154,7 @@ export async function getChannelPerformance(range: { from?: string; to?: string 
         db.from('google_ads_insights_raw').select('date, spend, impressions'),
         db.from('ga4_summary').select('period_start, period_end, sessions, channels').order('period_end', { ascending: false }).limit(1),
         db.from('social_insights').select('metric, day, value').eq('channel', 'gmb'),
+        db.from('google_ads_click_types').select('date, click_type, clicks, campaign_name'),
       ]);
 
     /* ─── Build the waterfall's evidence lookups (all-time, not range-scoped) ── */
@@ -401,6 +415,37 @@ export async function getChannelPerformance(range: { from?: string; to?: string 
 
     const ga4Row = (ga4Res.data as { period_start: string; period_end: string; sessions: number | null; channels: { channel: string; sessions: number }[] | null }[] | null)?.[0] ?? null;
 
+    // Google Ads phone path — measured taps by click type; estimates are
+    // benchmark-derived and labelled so downstream. CALL_TRACKING/CALLS =
+    // call-button taps; GET_DIRECTIONS = direction taps (enum names verbatim
+    // from the API, matched loosely so enum renames degrade to 'other').
+    let phonePath: GrowthReport['phonePath'] = null;
+    {
+      const ctRows = (ctRes.data as { date: string | null; click_type: string | null; clicks: number | null; campaign_name: string | null }[] | null) ?? [];
+      const inWin = ctRows.filter((r) => inRange(r.date, from, to));
+      if (inWin.length > 0) {
+        let callTaps = 0, directionTaps = 0, otherClicks = 0;
+        const perCampaign = new Map<string, number>();
+        for (const r of inWin) {
+          const n = r.clicks != null ? Number(r.clicks) || 0 : 0;
+          const t = String(r.click_type ?? '');
+          if (/CALL/i.test(t)) {
+            callTaps += n;
+            const c = r.campaign_name ?? '(unknown campaign)';
+            perCampaign.set(c, (perCampaign.get(c) ?? 0) + n);
+          } else if (/DIRECTION/i.test(t)) directionTaps += n;
+          else otherClicks += n;
+        }
+        phonePath = {
+          callTaps, directionTaps, otherClicks,
+          estAnswered: Math.round(callTaps * PHONE_PATH_BENCHMARKS.answerRate),
+          estBookings: Math.round(callTaps * PHONE_PATH_BENCHMARKS.answerRate * PHONE_PATH_BENCHMARKS.bookingRate),
+          byCampaign: [...perCampaign.entries()].map(([campaign, taps]) => ({ campaign, callTaps: taps }))
+            .sort((a, b) => b.callTaps - a.callTaps).slice(0, 6),
+        };
+      }
+    }
+
     if (unattributedRevenue > 0) {
       notes.push('Unattributed revenue = billed patient files that never appear in the synced appointment feed, so no channel can honestly claim them.');
     }
@@ -414,6 +459,7 @@ export async function getChannelPerformance(range: { from?: string; to?: string 
         : null,
       unattributedRevenue: Math.round(unattributedRevenue),
       unattributedPatients: unattributedFiles.size,
+      phonePath,
       notes,
     };
   } catch {
