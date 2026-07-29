@@ -23,7 +23,7 @@ import { GrowthPlatform } from '@/components/sections/growth/GrowthPlatform';
  * explicit owned data gap (never a fabricated 0), so the page renders fully in
  * both the live and mock/empty states.
  */
-export async function ExecutiveDashboard({ query }: { query?: ExecQuery }) {
+export async function ExecutiveDashboard({ query, gclinic }: { query?: ExecQuery; gclinic?: string }) {
   const report = await getExecutiveReport(query);
 
   const meta = report.adFreshness;
@@ -47,7 +47,7 @@ export async function ExecutiveDashboard({ query }: { query?: ExecQuery }) {
       {/* 🦷⭐ The Dental Nation star — the full Growth Platform mirrored onto
           the CEO's first screen: channel P&L, attribution and phone path, on
           the same date range. The Group tab stays its canonical home. */}
-      <GrowthPlatform range={{ from: report.range.from, to: report.range.to }} />
+      <GrowthPlatform range={{ from: report.range.from, to: report.range.to }} gclinic={gclinic} />
 
       <ExecClinicSplit report={report} />
       <ExecPipeline report={report} />

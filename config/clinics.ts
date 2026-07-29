@@ -19,9 +19,29 @@ export interface ClinicDef {
 }
 
 export const CLINICS: ClinicDef[] = [
-  { key: 'dental-nation', label: 'Dental Nation' },
+  { key: 'dental-nation', label: 'Dental Nation Al Wasl' },
   { key: 'dr-tosun', label: 'Dr Tosun Dental Clinic' },
 ];
+
+/**
+ * Growth Platform clinic filter. Channel data exists only where a PMS feed
+ * does: Dental Nation Al Wasl and Dr Tosun split out of the shared Practo
+ * feed (bills by center, appointments by doctor); AMC has no channel feed and
+ * renders an honest empty state. Paid ads ran ONLY for Dental Nation Al Wasl,
+ * so spend / reach / phone-path estimates never attach to the other clinics.
+ */
+export type GrowthClinicKey = 'all' | 'dn-alwasl' | 'dr-tosun' | 'amc';
+
+export const GROWTH_CLINIC_OPTS: { key: GrowthClinicKey; label: string }[] = [
+  { key: 'all', label: 'All clinics' },
+  { key: 'dn-alwasl', label: 'Dental Nation Al Wasl' },
+  { key: 'dr-tosun', label: 'Dr Tosun Dental' },
+  { key: 'amc', label: 'AMC' },
+];
+
+export function resolveGrowthClinic(v?: string | null): GrowthClinicKey {
+  return v === 'dn-alwasl' || v === 'dr-tosun' || v === 'amc' ? v : 'all';
+}
 
 /** Normalize a name for tolerant matching (case / spacing / punctuation vary). */
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z]/g, '');

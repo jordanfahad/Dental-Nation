@@ -248,7 +248,7 @@ function ClinicDetail({ c }: { c: ClinicRevenue }) {
 
 /* ---------------------------------------------------------------- entry --- */
 
-export async function GroupRevenue({ range, sub, gchan }: { range?: { from?: string; to?: string; preset?: string }; sub?: string; gchan?: string } = {}) {
+export async function GroupRevenue({ range, sub, gchan, gclinic }: { range?: { from?: string; to?: string; preset?: string }; sub?: string; gchan?: string; gclinic?: string } = {}) {
   const active = resolveGroupSub(sub);
 
   // Growth Platform sits under this tab for access control only — it has its
@@ -258,7 +258,7 @@ export async function GroupRevenue({ range, sub, gchan }: { range?: { from?: str
     return (
       <div className="space-y-4">
         <GroupSubNav active={active} />
-        <GrowthPlatform range={{ from: range?.from, to: range?.to }} gchan={gchan} />
+        <GrowthPlatform range={{ from: range?.from, to: range?.to }} gchan={gchan} gclinic={gclinic} />
       </div>
     );
   }

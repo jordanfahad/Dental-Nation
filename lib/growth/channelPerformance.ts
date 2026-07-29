@@ -1,6 +1,7 @@
 import 'server-only';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
 import { parseArabySource } from '@/lib/arabyads/report';
+import { clinicOfCenter, clinicOfDoctor } from '@/config/clinics';
 import {
   CHANNELS,
   PHONE_PATH_BENCHMARKS,
@@ -205,16 +206,28 @@ function isTestWidgetRow(d: Record<string, unknown>): boolean {
   return /zavis|test/i.test(email) || /test|sagar/i.test(name) || ref.startsWith('BK');
 }
 
-export async function getChannelPerformance(range: { from?: string; to?: string } = {}): Promise<GrowthReport> {
+/** Clinics the channel report can scope to (AMC has no feed — handled in UI). */
+export type GrowthPerfClinic = 'all' | 'dn-alwasl' | 'dr-tosun';
+
+export async function getChannelPerformance(
+  range: { from?: string; to?: string } = {},
+  clinic: GrowthPerfClinic = 'all',
+): Promise<GrowthReport> {
   const from = range.from ?? null;
   const to = range.to ?? null;
   const db = getSupabaseAdmin();
   if (!db) return emptyReport(from, to);
+  // Spend, reach, GA4 and the phone path are Dental Nation Al Wasl properties
+  // (the ads, the site, the GMB profile). They render on All and DN views;
+  // never on Dr Tosun's.
+  const dnAssets = clinic !== 'dr-tosun';
+  const apptInClinic = (doctor: string): boolean =>
+    clinic === 'all' || (clinicOfDoctor(doctor) === 'dr-tosun' ? clinic === 'dr-tosun' : clinic === 'dn-alwasl');
 
   try {
     const [apptRes, billRes, zavisRes, leadRes, crmRes, existRes, practoPtRes, metaRes, gadsRes, ga4Res, gmbRes, ctRes, metaPlatRes] =
       await Promise.all([
-        db.from('practo_appointments_raw').select('appt_date, status, mr_no, patient_phone, patient_name, data'),
+        db.from('practo_appointments_raw').select('appt_date, status, mr_no, patient_phone, patient_name, doctor, data'),
         db.from('practo_bills_raw').select('bill_date, amount, data'),
         db.from('raw_zavis').select('data'),
         db.from('leads').select('inquiry_date, raw_row'),
@@ -296,10 +309,10 @@ export async function getChannelPerformance(range: { from?: string; to?: string 
 
     /* ─── Prepare appointments + the family-link map ─────────────────────── */
 
-    interface ApptRow { date: string | null; status: string; facts: ApptFacts }
+    interface ApptRow { date: string | null; status: string; doctor: string; facts: ApptFacts }
     const appts: ApptRow[] = [];
     const filesByPhone = new Map<string, Set<string>>();
-    for (const r of (apptRes.data as { appt_date: string | null; status: string | null; mr_no: string | null; patient_phone: string | null; patient_name: string | null; data: Record<string, unknown> }[] | null) ?? []) {
+    for (const r of (apptRes.data as { appt_date: string | null; status: string | null; mr_no: string | null; patient_phone: string | null; patient_name: string | null; doctor: string | null; data: Record<string, unknown> }[] | null) ?? []) {
       const d = r.data ?? {};
       const freeText = `${S(d['remarks'])} ${S(d['complaint'])}`.toLowerCase();
       const facts: ApptFacts = {
@@ -309,7 +322,7 @@ export async function getChannelPerformance(range: { from?: string; to?: string 
         freeText,
         isTest: isTestAppt(`${freeText} ${S(r.patient_name)}`),
       };
-      appts.push({ date: r.appt_date, status: S(r.status).toLowerCase(), facts });
+      appts.push({ date: r.appt_date, status: S(r.status).toLowerCase(), doctor: S(r.doctor), facts });
       if (facts.p9 && facts.mrNo && !facts.isTest) {
         (filesByPhone.get(facts.p9) ?? filesByPhone.set(facts.p9, new Set()).get(facts.p9)!).add(facts.mrNo);
       }
@@ -352,16 +365,22 @@ export async function getChannelPerformance(range: { from?: string; to?: string 
       }
       at(channel).enquiries += 1;
     };
-    // A lane tag = ArabyAds = the Affiliates channel (commission partner, not our Meta spend).
-    for (const w of widgetRows) if (inRange(w.date, from, to)) countEnquiry(w.p9, w.hasLane ? 'affiliate' : w.paidSearch ? 'paid-search' : 'website');
-    for (const l of leadRows) if (inRange(l.date, from, to)) countEnquiry(l.p9, l.channel);
-    for (const c of crmRows) if (c.source === 'aiAgent' && inRange(c.date, from, to)) countEnquiry(c.p9, 'ai-concierge');
+    // Enquiries are shared acquisition surfaces (the website, the desk, the
+    // WhatsApp line — all Dental Nation Al Wasl's). They can't be split per
+    // clinic, so they render on All and DN views and stay empty on Dr Tosun's.
+    if (dnAssets) {
+      // A lane tag = ArabyAds = the Affiliates channel (commission partner, not our Meta spend).
+      for (const w of widgetRows) if (inRange(w.date, from, to)) countEnquiry(w.p9, w.hasLane ? 'affiliate' : w.paidSearch ? 'paid-search' : 'website');
+      for (const l of leadRows) if (inRange(l.date, from, to)) countEnquiry(l.p9, l.channel);
+      for (const c of crmRows) if (c.source === 'aiAgent' && inRange(c.date, from, to)) countEnquiry(c.p9, 'ai-concierge');
+    }
 
     // Appointments booked / showed / cancelled / no-show.
     const bookedPatientsByChannel = new Map<string, Set<string>>();
     let taggedAll = 0, inferredAll = 0, defaultedAll = 0;
     for (const a of appts) {
       if (!inRange(a.date, from, to)) continue;
+      if (!apptInClinic(a.doctor)) continue;
       const v = apptVerdicts.get(a);
       if (!v) continue;
       const p = at(v.channel);
@@ -389,6 +408,10 @@ export async function getChannelPerformance(range: { from?: string; to?: string 
     const unattributedFiles = new Set<string>();
     for (const b of (billRes.data as { bill_date: string | null; amount: number | null; data: Record<string, unknown> }[] | null) ?? []) {
       if (!inRange(b.bill_date, from, to)) continue;
+      if (clinic !== 'all') {
+        const bc = clinicOfCenter(S(b.data?.['center_name']));
+        if ((bc === 'dr-tosun') !== (clinic === 'dr-tosun')) continue;
+      }
       const mr = S(b.data?.['mr_no']);
       const amount = b.amount != null ? Number(b.amount) || 0 : 0;
       const v = mr ? patientChannel.get(mr) : undefined;
@@ -426,14 +449,20 @@ export async function getChannelPerformance(range: { from?: string; to?: string 
       }
       if (!any && (from || to)) notes.push(`No ${label} spend rows fall in this window.`);
     };
-    sumSpend((gadsRes.data as never[]) ?? null, 'paid-search', 'Google Ads');
-    sumSpend((metaRes.data as never[]) ?? null, 'paid-social', 'Meta');
+    if (dnAssets) {
+      sumSpend((gadsRes.data as never[]) ?? null, 'paid-search', 'Google Ads');
+      sumSpend((metaRes.data as never[]) ?? null, 'paid-social', 'Meta');
+    } else {
+      notes.push(
+        'Paid ads ran only for Dental Nation Al Wasl — spend, ad reach, GA4 visibility and the phone-path estimates are not attributed to this clinic. Enquiry surfaces (website, desk, WhatsApp) are shared and can’t be clinic-split, so this view shows the Practo funnel only.',
+      );
+    }
 
     // Google Business Profile — reach from Google's own counters. These are
     // profile-level tallies with no patient identity, so they inform the REACH
     // column only; the patients they produce surface under Direct / Walk-in
     // until reception tags them (the coverage note says exactly that).
-    {
+    if (dnAssets) {
       const allSocial = (gmbRes.data as { channel: string; metric: string; day: string | null; value: number | null }[] | null) ?? [];
       const gmbRows = allSocial.filter((r) => r.channel === 'gmb');
 
@@ -519,7 +548,7 @@ export async function getChannelPerformance(range: { from?: string; to?: string 
     // assistants vs Direct. Reach only: the widget doesn't capture the
     // referrer, so a booking can't yet be split SEO-vs-AI (the UI says so).
     let organicSplit: GrowthReport['organicSplit'] = null;
-    const ga4Sources = ga4Row?.sources ?? [];
+    const ga4Sources = (dnAssets ? ga4Row?.sources : null) ?? [];
     if (ga4Row && ga4Sources.length > 0) {
       const seoByEngine = new Map<string, number>();
       const aiByEngine = new Map<string, { label: string; sessions: number }>();
@@ -565,7 +594,7 @@ export async function getChannelPerformance(range: { from?: string; to?: string 
         dw.impressions = directSessions;
         dw.reachNote = `GA4 direct sessions ${ga4Row.period_start}–${ga4Row.period_end} (typed the URL / untagged links)`;
       }
-    } else if (ga4Row?.channels?.length) {
+    } else if (dnAssets && ga4Row?.channels?.length) {
       // Pre-0018 fallback: the sync hasn't stored source-level data yet — keep
       // the old organic-ish reach and say the split is pending, not broken.
       const web = at('website');
@@ -586,7 +615,7 @@ export async function getChannelPerformance(range: { from?: string; to?: string 
     let metaSplit: GrowthReport['metaSplit'] = null;
     {
       const metaRows = (metaRes.data as { date: string | null; spend: number | null; impressions: number | null; clicks: number | null; leads: number | null; campaign_name: string | null }[] | null) ?? [];
-      const inWin = metaRows.filter((r) => inRange(r.date, from, to));
+      const inWin = dnAssets ? metaRows.filter((r) => inRange(r.date, from, to)) : [];
       if (inWin.length > 0) {
         const byType = new Map<string, { label: string; hints: Set<string>; spend: number; impressions: number; clicks: number; leads: number }>();
         for (const r of inWin) {
@@ -640,7 +669,7 @@ export async function getChannelPerformance(range: { from?: string; to?: string 
     let phonePath: GrowthReport['phonePath'] = null;
     {
       const ctRows = (ctRes.data as { date: string | null; click_type: string | null; clicks: number | null; campaign_name: string | null }[] | null) ?? [];
-      const inWin = ctRows.filter((r) => inRange(r.date, from, to));
+      const inWin = dnAssets ? ctRows.filter((r) => inRange(r.date, from, to)) : [];
       if (inWin.length > 0) {
         let callTaps = 0, directionTaps = 0, otherClicks = 0;
         const perCampaign = new Map<string, number>();
@@ -727,7 +756,7 @@ export async function getChannelPerformance(range: { from?: string; to?: string 
       source: booked + totals.enquiries > 0 ? 'live' : 'empty',
       from, to, channels, totals,
       confidence: { tagged: taggedAll, inferred: inferredAll, defaulted: defaultedAll },
-      ga4: ga4Row
+      ga4: dnAssets && ga4Row
         ? { periodStart: ga4Row.period_start, periodEnd: ga4Row.period_end, sessions: ga4Row.sessions ?? 0, users: ga4Row.users ?? 0, channels: (ga4Row.channels ?? []).map((c) => ({ channel: c.channel, sessions: c.sessions })) }
         : null,
       unattributedRevenue: Math.round(unattributedRevenue),

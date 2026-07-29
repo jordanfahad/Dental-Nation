@@ -3,6 +3,8 @@ import { PaidSearchRows } from './PaidSearchRows';
 import { PaidSocialRows } from './PaidSocialRows';
 import { AiChatRows } from './AiChatRows';
 import { FunnelGroupFilter, type GroupFunnel } from './FunnelGroupFilter';
+import { GrowthClinicFilter } from './GrowthClinicFilter';
+import { resolveGrowthClinic, type GrowthClinicKey } from '@/config/clinics';
 import { getChannelPerformance, type ChannelPerf, type GrowthReport } from '@/lib/growth/channelPerformance';
 import { getChannelTrace } from '@/lib/growth/channelTrace';
 import { CHANNEL_GROUPS, CHANNEL_BY_KEY } from '@/config/growth-channels';
@@ -271,10 +273,10 @@ const CROSS_LINKS: Record<string, { label: string; href: string }> = {
 };
 
 /** Drill-down: the actual patients behind one channel's numbers. */
-async function ChannelTraceView({ channelKey, range }: { channelKey: string; range?: { from?: string; to?: string } }) {
+async function ChannelTraceView({ channelKey, range, clinic }: { channelKey: string; range?: { from?: string; to?: string }; clinic: GrowthClinicKey }) {
   const def = CHANNEL_BY_KEY.get(channelKey);
-  const trace = await getChannelTrace(channelKey, range ?? {});
-  const back = `/?tab=group&gtab=growth${range?.from ? `&from=${range.from}` : ''}${range?.to ? `&to=${range.to}` : ''}`;
+  const trace = await getChannelTrace(channelKey, range ?? {}, clinic === 'amc' ? 'all' : clinic);
+  const back = `/?tab=group&gtab=growth${range?.from ? `&from=${range.from}` : ''}${range?.to ? `&to=${range.to}` : ''}${clinic !== 'all' ? `&gclinic=${clinic}` : ''}`;
   const cross = CROSS_LINKS[channelKey];
   return (
     <Card>
@@ -366,12 +368,39 @@ async function ChannelTraceView({ channelKey, range }: { channelKey: string; ran
   );
 }
 
-export async function GrowthPlatform({ range, gchan }: { range?: { from?: string; to?: string }; gchan?: string } = {}) {
+export async function GrowthPlatform({ range, gchan, gclinic }: { range?: { from?: string; to?: string }; gchan?: string; gclinic?: string } = {}) {
+  const clinic = resolveGrowthClinic(gclinic);
   if (gchan && CHANNEL_BY_KEY.has(gchan)) {
-    return <ChannelTraceView channelKey={gchan} range={range} />;
+    return <ChannelTraceView channelKey={gchan} range={range} clinic={clinic} />;
   }
-  const traceQs = `${range?.from ? `&from=${range.from}` : ''}${range?.to ? `&to=${range.to}` : ''}`;
-  const report = await getChannelPerformance(range ?? {});
+
+  // AMC has no channel feed at all — no PMS sync, no site, and no paid ads
+  // (campaigns ran only for Dental Nation Al Wasl). Say that instead of
+  // rendering a page of hollow zeros.
+  if (clinic === 'amc') {
+    return (
+      <div className="space-y-4">
+        <GrowthClinicFilter active={clinic} />
+        <Card>
+          <SectionHeader tag="G" eyebrow="⭐ Growth Platform — the Dental Nation star" title="AMC — channel tracking not connected" />
+          <div className="px-5 pb-5 pt-3">
+            <p className="max-w-[640px] text-[12.5px] leading-relaxed text-ink-soft">
+              AMC (Al Maher Medical Centre) has no channel data source yet — its PMS isn&apos;t synced, it doesn&apos;t
+              share the Dental Nation website, and <span className="font-medium text-ink">no paid campaigns ran for
+              AMC</span> (Google Ads and Meta ran only for Dental Nation Al Wasl). Its revenue lives in the{' '}
+              <Link href="/?tab=group&gtab=al-maher" className="font-medium text-accent hover:underline">
+                Group Revenue → AMC
+              </Link>{' '}
+              view (gross billed, ≈99.8% insurance). Connecting its PMS feed is what lights this view up.
+            </p>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  const traceQs = `${range?.from ? `&from=${range.from}` : ''}${range?.to ? `&to=${range.to}` : ''}${clinic !== 'all' ? `&gclinic=${clinic}` : ''}`;
+  const report = await getChannelPerformance(range ?? {}, clinic);
   const t = report.totals;
 
   const kpis: KpiItem[] = [
@@ -417,6 +446,7 @@ export async function GrowthPlatform({ range, gchan }: { range?: { from?: string
 
   return (
     <div className="space-y-4">
+      <GrowthClinicFilter active={clinic} />
       <p className="rounded-card border border-line bg-panel/40 px-3 py-2 text-[11.5px] leading-snug text-ink-soft">
         <span className="font-medium text-ink">Data coverage:</span> the Practo feed this view is built on starts in{' '}
         <span className="font-medium text-ink">2026</span> — appointments from January (substantive from March) and

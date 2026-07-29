@@ -1,6 +1,7 @@
 import 'server-only';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
 import { parseArabySource } from '@/lib/arabyads/report';
+import { clinicOfDoctor } from '@/config/clinics';
 import {
   classifyAppointment,
   isTestAppt,
@@ -49,6 +50,7 @@ const inRange = (day: string | null | undefined, from: string | null, to: string
 export async function getChannelTrace(
   channelKey: string,
   range: { from?: string; to?: string } = {},
+  clinic: 'all' | 'dn-alwasl' | 'dr-tosun' = 'all',
 ): Promise<ChannelTraceResult> {
   const empty: ChannelTraceResult = { channelKey, total: 0, truncated: false, patients: [] };
   const db = getSupabaseAdmin();
@@ -140,6 +142,8 @@ export async function getChannelTrace(
     const out: TracedPatient[] = [];
     for (const a of apptRows) {
       if (!inRange(a.appt_date, from, to)) continue;
+      // Clinic scope mirrors channelPerformance: appointments split by doctor.
+      if (clinic !== 'all' && (clinicOfDoctor(S(a.doctor)) === 'dr-tosun') !== (clinic === 'dr-tosun')) continue;
       const freeText = `${S(a.data?.['remarks'])} ${S(a.data?.['complaint'])}`.toLowerCase();
       const facts: ApptFacts = {
         mrNo: S(a.mr_no),
