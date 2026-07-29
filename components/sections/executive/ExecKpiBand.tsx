@@ -35,7 +35,7 @@ export function ExecKpiBand({ report }: { report: ExecutiveReport }) {
       value: kpis.leadsGenerated == null ? null : fmtInt(kpis.leadsGenerated),
       spark: leadsSpark,
       sparkColor: TOKENS.accent,
-      hint: kpis.costPerLead != null ? `AED ${Math.round(kpis.costPerLead)} blended CPL — all spend ÷ tracked leads (every channel); per-channel net CPL in Growth Platform below` : 'manual tracker',
+      hint: kpis.costPerLead != null ? `manual-tracker rows only · AED ${Math.round(kpis.costPerLead)} blended CPL (all spend ÷ these leads) · Growth Platform enquiries dedupe tracker + widget + AI agent by phone, so the two differ by design` : 'manual tracker',
       gapDetail: 'lead tracker not sourced',
       gapOwner: ownerFor('attribution'),
     },

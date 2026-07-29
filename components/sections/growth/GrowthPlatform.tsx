@@ -406,8 +406,13 @@ export async function GrowthPlatform({ range, gchan, gclinic }: { range?: { from
   const report = await getChannelPerformance(range ?? {}, clinic);
   const t = report.totals;
 
+  const psEstEnq = report.channels.find((c) => c.key === 'paid-search')?.estEnquiries ?? 0;
   const kpis: KpiItem[] = [
-    { label: 'Enquiries', value: int(t.enquiries), hint: 'all channels, deduped by phone' },
+    {
+      label: 'Enquiries',
+      value: int(t.enquiries),
+      hint: `measured only, deduped by phone across widget + tracker + AI agent${psEstEnq > 0 ? ` · the Paid Search row adds ≈${int(psEstEnq)} Markov-modelled phone enquiries not counted here` : ''}`,
+    },
     { label: 'Booked (Practo)', value: int(t.booked), hint: 'appointments in window' },
     { label: 'Show-up rate', value: pct(t.showRate), hint: 'arrived ÷ decided appointments' },
     { label: 'Treated (billed)', value: int(t.treated), hint: 'distinct billed patients' },
@@ -548,6 +553,8 @@ export async function GrowthPlatform({ range, gchan, gclinic }: { range?: { from
           <p className="mt-2 px-3 text-[10.5px] leading-snug text-ink-faint">
             The small green/amber bar under “Booked” shows how much of that channel’s attribution rests on hard
             evidence (green) vs inference (amber). “Treated” = distinct patients with a finalized bill in the window.
+            Summing a column here can exceed the scorecard above by design: the Paid Search row folds in the
+            ≈ Markov-chain phone figures (marked), while the scorecard and funnel count measured events only.
           </p>
           <div className="mx-3 mt-3 rounded-card border border-line bg-panel/40 px-3 py-2.5 text-[10.5px] leading-relaxed text-ink-soft">
             <p className="font-semibold uppercase tracking-wide text-ink">How every cost figure here is computed (net = deduped &amp; attributed)</p>
