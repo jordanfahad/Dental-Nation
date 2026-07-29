@@ -73,6 +73,9 @@ function ChannelRow({ p }: { p: ChannelPerf }) {
       <td className="px-2 py-2.5 text-right align-top">
         <span className={`text-[12.5px] font-semibold tabular-nums ${p.booked === 0 ? 'text-ink-faint' : 'text-ink'}`}>{int(p.booked)}</span>
         <span className="block text-[10px] text-ink-faint">{p.bookedPatients > 0 ? `${int(p.bookedPatients)} patients` : ''}</span>
+        {p.estExtraBookings ? (
+          <span className="block text-[10px] font-medium text-watch">+{int(p.estExtraBookings)} est. from calls</span>
+        ) : null}
         <span className="flex justify-end"><EvidenceBar tagged={p.taggedBooked} inferred={p.inferredBooked} /></span>
       </td>
       <Num v={int(p.showed)} dim={p.showed === 0} />
@@ -91,6 +94,11 @@ function ChannelRow({ p }: { p: ChannelPerf }) {
               {p.costPerPatient != null ? ` · CAC ${aed(p.costPerPatient)}` : ''}
               {p.roas != null ? ` · ROAS ${p.roas.toFixed(1)}×` : ''}
             </span>
+            {p.estCostPerPatient != null ? (
+              <span className="block text-[10px] font-medium leading-snug text-watch">
+                CPA {aed(p.estCostPerPatient)} incl. est. call bookings
+              </span>
+            ) : null}
             {p.spendThrough ? <span className="block text-[10px] text-watch">spend synced to {p.spendThrough}</span> : null}
           </>
         ) : (

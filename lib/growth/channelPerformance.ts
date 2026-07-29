@@ -43,6 +43,14 @@ export interface ChannelPerf extends ChannelDef {
   impressions: number | null;
   /** One-line breakdown under the reach figure (e.g. GMB calls · directions · clicks). */
   reachNote: string | null;
+  /**
+   * Benchmark-estimated bookings folded into this channel's row (currently only
+   * paid-search phone-path). Kept SEPARATE from `booked`/`bookedPatients` so
+   * measured stays measured; the row renders it with an explicit 'est.' mark.
+   */
+  estExtraBookings?: number;
+  /** Spend ÷ (measured patients + estimated bookings) — the realistic CPA. */
+  estCostPerPatient?: number | null;
   enquiries: number;
   /** Appointments booked in-window attributed to this channel. */
   booked: number;
@@ -468,6 +476,13 @@ export async function getChannelPerformance(range: { from?: string; to?: string 
           byCampaign: [...perCampaign.entries()].map(([campaign, taps]) => ({ campaign, callTaps: taps }))
             .sort((a, b) => b.callTaps - a.callTaps).slice(0, 6),
         };
+        // Fold the reconciled estimate into the paid-search P&L row (marked
+        // est. there) so its economics reflect the phone path instead of the
+        // absurd spend ÷ tagged-only figure of the first tagged day.
+        const ps = at('paid-search');
+        ps.estExtraBookings = phonePath.estBookingsReconciled;
+        const denom = ps.bookedPatients + phonePath.estBookingsReconciled;
+        ps.estCostPerPatient = ps.spend != null && ps.spend > 0 && denom > 0 ? ps.spend / denom : null;
       }
     }
 
