@@ -208,8 +208,8 @@ function PhonePathCard({ pp }: { pp: NonNullable<GrowthReport['phonePath']> }) {
     <Card>
       <SectionHeader
         tag="G4"
-        eyebrow="Google Ads — phone path"
-        title="Call-button taps, and what they're probably worth"
+        eyebrow="Google Ads — phone path · Markov-chain model"
+        title="Call-button taps, and what the model says they're worth"
       />
       <div className="px-5 pb-5 pt-3">
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -221,7 +221,7 @@ function PhonePathCard({ pp }: { pp: NonNullable<GrowthReport['phonePath']> }) {
 
         {/* The discount chain, stated so nobody mistakes the estimate for a count. */}
         <p className="mt-3 rounded-card border border-dashed border-line px-3 py-2 text-[11.5px] leading-relaxed text-ink-soft">
-          <span className="font-medium text-ink">How the estimate is built:</span> {int(pp.callTaps)} taps
+          <span className="font-medium text-ink">How the Markov-chain model works</span> — each measured tap walks a chain of transition probabilities: {int(pp.callTaps)} taps
           → net of dead/accidental taps ≈ {int(pp.estValidTaps)} real attempts
           → answered ≈ {int(pp.estAnswered)}
           → net of suppliers/job seekers/sales calls ≈ {int(pp.estPatientCalls)} patient enquiries
@@ -253,7 +253,7 @@ function PhonePathCard({ pp }: { pp: NonNullable<GrowthReport['phonePath']> }) {
         ) : null}
         <Takeaway>
           Taps are measured by Google per campaign per day; direction taps likely convert to walk-ins the same way.
-          Dashed figures are <span className="font-medium">benchmark estimates</span> — Google cannot count real call
+          Dashed figures come from the <span className="font-medium">Markov-chain model</span> (benchmark transition probabilities from healthcare call-tracking studies) — Google cannot count real call
           conversions in the UAE (no forwarding numbers; both call conversion actions read zero all-time). A
           dedicated tracking number replaces these estimates with the clinic&apos;s own measured rates.
         </Takeaway>
@@ -455,7 +455,7 @@ export async function GrowthPlatform({ range, gchan, gclinic }: { range?: { from
         <span className="font-medium text-ink">2026</span> — appointments from January (substantive from March) and
         billing/revenue from <span className="font-medium text-ink">21 April 2026</span>. Showed / Treated / Revenue
         before those dates cannot appear here, whatever the window. Figures marked ≈ or “est.” include the estimated
-        phone-call path; solid figures are measured.
+        Markov-chain phone-path model; solid figures are measured.
       </p>
       <Card>
         <SectionHeader

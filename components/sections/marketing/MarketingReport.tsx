@@ -2,6 +2,7 @@ import { getMarketingReport } from '@/lib/marketing/report';
 import { MarketingSubNav } from './MarketingSubNav';
 import { resolveMarketingSub } from './subtabs';
 import { MarketingJourneySection } from '@/components/sections/shared/MarketingJourneySection';
+import { ChannelOutcome } from './ChannelOutcome';
 import { GoogleAdsPerformance } from './GoogleAdsPerformance';
 import { MetaAdsPerformance } from './MetaAdsPerformance';
 import { Card, SectionHeader, Takeaway } from '@/components/ui/Card';
@@ -44,12 +45,37 @@ const periodLabel = (p: { from: string | null; to: string | null }): string => {
  * 1:1. Empty source → calm owned data gap; null derived metrics → honest gap
  * cards, never a fabricated zero.
  */
+/** Scope pills for the Google / Meta pages: channel-attributed (default) vs
+ *  all-channels. Plain links — the server re-renders with the chosen scope. */
+function ScopePills({ active, sub, channelLabel }: { active: 'channel' | 'all'; sub: string; channelLabel: string }) {
+  const pill = (isActive: boolean) =>
+    `inline-block rounded-full border px-3 py-1 text-[11.5px] font-medium transition ${
+      isActive ? 'border-accent bg-accent text-white' : 'border-line bg-card text-ink-soft hover:border-accent/40 hover:text-ink'
+    }`;
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      <span className="mr-1 text-[11px] font-medium uppercase tracking-wide text-ink-faint">Clinic outcome scope</span>
+      <a href={`/?tab=marketing&mtab=${sub}`} className={pill(active === 'channel')}>{channelLabel} only</a>
+      <a href={`/?tab=marketing&mtab=${sub}&mscope=all`} className={pill(active === 'all')}>All channels</a>
+    </div>
+  );
+}
+
 /**
  * Marketing tab dispatcher — renders the sub-nav (Overview · Google Ads · Meta
  * Ads) and the active sub-section. Only the chosen section's data is fetched.
+ *
+ * The Google / Meta pages are STRICTLY channel-scoped by default (the CEO's
+ * rule: a Google page must show Google's numbers) — their clinic-outcome block
+ * shows only channel-attributed patients, with an explicit "All channels"
+ * scope pill for the whole-clinic journey. The Overview keeps the all-channel
+ * journey, where it belongs.
  */
-export async function MarketingReport({ sub, range }: { sub?: string; range?: { from: string; to: string } }) {
+export async function MarketingReport({ sub, range, mscope }: { sub?: string; range?: { from: string; to: string }; mscope?: string }) {
   const active = resolveMarketingSub(sub);
+  const scope: 'channel' | 'all' = mscope === 'all' ? 'all' : 'channel';
+  const channelKey = active === 'google' ? ('paid-search' as const) : active === 'meta' ? ('paid-social' as const) : null;
+  const channelLabel = active === 'google' ? 'Google' : 'Meta';
   return (
     <div className="space-y-5">
       <MarketingSubNav active={active} />
@@ -60,10 +86,19 @@ export async function MarketingReport({ sub, range }: { sub?: string; range?: { 
       ) : (
         <MarketingOverview />
       )}
-      {/* Where the marketing effort actually lands at the clinic: the outcome
-          strip + the full journey ranked by booking channel with a filterable
-          patient table (booked / showed / paid / re-booked). */}
-      {range ? <MarketingJourneySection range={range} /> : null}
+      {channelKey && range ? (
+        <>
+          <ScopePills active={scope} sub={active} channelLabel={channelLabel} />
+          {scope === 'channel' ? (
+            <ChannelOutcome channelKey={channelKey} label={channelLabel} range={range} />
+          ) : (
+            <MarketingJourneySection range={range} />
+          )}
+        </>
+      ) : range ? (
+        /* Overview: the all-channel clinic outcome + full journey, as before. */
+        <MarketingJourneySection range={range} />
+      ) : null}
     </div>
   );
 }

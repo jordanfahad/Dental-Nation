@@ -57,6 +57,7 @@ export default async function DashboardPage({
     gtab?: string;
     gchan?: string;
     gclinic?: string;
+    mscope?: string;
     rdate?: string;
     rcad?: string;
     rcmp?: string;
@@ -99,7 +100,7 @@ export default async function DashboardPage({
           navigation so the skeleton shows immediately instead of the shell
           hanging on the tab's data. */}
       <Suspense
-        key={`${tab}|${sp.tab ?? ''}|${sp.from ?? ''}|${sp.to ?? ''}|${sp.preset ?? ''}|${sp.compare ?? ''}|${sp.mtab ?? ''}|${sp.btab ?? ''}|${sp.ptab ?? ''}|${sp.gtab ?? ''}|${sp.gchan ?? ''}|${sp.gclinic ?? ''}|${sp.rdate ?? ''}|${sp.rcad ?? ''}|${sp.rcmp ?? ''}|${clinic}`}
+        key={`${tab}|${sp.tab ?? ''}|${sp.from ?? ''}|${sp.to ?? ''}|${sp.preset ?? ''}|${sp.compare ?? ''}|${sp.mtab ?? ''}|${sp.mscope ?? ''}|${sp.btab ?? ''}|${sp.ptab ?? ''}|${sp.gtab ?? ''}|${sp.gchan ?? ''}|${sp.gclinic ?? ''}|${sp.rdate ?? ''}|${sp.rcad ?? ''}|${sp.rcmp ?? ''}|${clinic}`}
         fallback={<TabSkeleton />}
       >
         {tab === 'executive' ? <ExecutiveDashboard query={query} gclinic={sp.gclinic} /> : null}
@@ -110,7 +111,7 @@ export default async function DashboardPage({
         {tab === 'practo' ? <PractoReport range={{ ...range, clinic }} sub={sp.ptab} /> : null}
         {tab === 'bookings' ? <BookingsReport report={shell} sub={sp.btab} /> : null}
         {tab === 'arabyads' ? <ArabyAdsReport range={range} /> : null}
-        {tab === 'marketing' ? <MarketingReport sub={sp.mtab} range={range} /> : null}
+        {tab === 'marketing' ? <MarketingReport sub={sp.mtab} range={range} mscope={sp.mscope} /> : null}
         {tab === 'social' ? <SocialReport range={range} /> : null}
         {tab === 'analytics' ? <GoogleAnalyticsReport range={range} /> : null}
         {tab === 'digital' ? <DigitalSeo range={range} /> : null}
