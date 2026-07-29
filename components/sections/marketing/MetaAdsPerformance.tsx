@@ -54,8 +54,8 @@ export async function MetaAdsPerformance() {
     { label: 'Spend', value: aed(r.totals.spend), hint: `${r.campaigns.length} campaigns` },
     { label: 'Impressions', value: int(r.totals.impressions) },
     { label: 'Clicks', value: int(r.totals.clicks), hint: `${pct(ctr)} CTR` },
-    { label: 'Leads', value: int(r.totals.leads), hint: 'incl. click-to-WhatsApp' },
-    { label: 'Cost / lead', value: r.totals.leads > 0 ? aed(cpl) : null, goodWhenUp: false, gapDetail: 'no leads in window', gapOwner: ownerFor('attribution') },
+    { label: 'Leads', value: int(r.totals.leads), hint: 'Meta-reported · incl. click-to-WhatsApp · not deduped' },
+    { label: 'Cost / lead', value: r.totals.leads > 0 ? aed(cpl) : null, goodWhenUp: false, hint: 'platform CPL — net funnel costs live on the Growth Platform', gapDetail: 'no leads in window', gapOwner: ownerFor('attribution') },
     { label: 'Ad sets', value: int(r.adSets.length), hint: `${r.ads.length} ads` },
   ];
 

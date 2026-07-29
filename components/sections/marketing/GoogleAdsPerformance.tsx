@@ -53,8 +53,8 @@ export async function GoogleAdsPerformance() {
     { label: 'Impressions', value: int(r.totals.impressions) },
     { label: 'Clicks', value: int(r.totals.clicks), hint: `${pct(ctr)} CTR` },
     { label: 'Avg CPC', value: aed(cpc), goodWhenUp: false },
-    { label: 'Conversions', value: int(r.totals.conversions), hint: 'Google-tracked' },
-    { label: 'Cost / conv.', value: r.totals.conversions > 0 ? aed(cpConv) : null, goodWhenUp: false, gapDetail: 'no conversions in window', gapOwner: ownerFor('attribution') },
+    { label: 'Conversions', value: int(r.totals.conversions), hint: 'Google-tracked · excludes phone calls (unmeasurable in UAE)' },
+    { label: 'Cost / conv.', value: r.totals.conversions > 0 ? aed(cpConv) : null, goodWhenUp: false, hint: 'platform figure — net funnel costs live on the Growth Platform', gapDetail: 'no conversions in window', gapOwner: ownerFor('attribution') },
   ];
 
   const ads = r.ads.slice(0, 30);

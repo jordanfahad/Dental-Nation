@@ -549,6 +549,24 @@ export async function GrowthPlatform({ range, gchan, gclinic }: { range?: { from
             The small green/amber bar under “Booked” shows how much of that channel’s attribution rests on hard
             evidence (green) vs inference (amber). “Treated” = distinct patients with a finalized bill in the window.
           </p>
+          <div className="mx-3 mt-3 rounded-card border border-line bg-panel/40 px-3 py-2.5 text-[10.5px] leading-relaxed text-ink-soft">
+            <p className="font-semibold uppercase tracking-wide text-ink">How every cost figure here is computed (net = deduped &amp; attributed)</p>
+            <p className="mt-1">
+              <span className="font-medium text-ink">Cost per net enquiry (CPL)</span> = spend ÷ enquiries deduped by phone
+              across all sources and attributed to the channel · <span className="font-medium text-ink">cost per net booking</span> = spend ÷
+              booked Practo appointments · <span className="font-medium text-ink">cost per net show</span> = spend ÷ arrived + completed ·{' '}
+              <span className="font-medium text-ink">cost per treated patient</span> = spend ÷ distinct billed patients ·{' '}
+              <span className="font-medium text-ink">ROAS</span> = attributed billed revenue ÷ spend. Figures marked ≈ additionally include the
+              estimated Google Ads phone path (labelled est., reconciled against untraced Dental Nation Al Wasl patients only).
+            </p>
+            <p className="mt-1">
+              These net figures are the house numbers. The Meta / Google performance pages show the platforms’{' '}
+              <span className="font-medium text-ink">own reported leads and conversions</span> — useful for optimising campaigns,
+              but not deduped against the tracker and never added to this funnel; they are labelled “platform-reported” wherever
+              they appear. The Executive KPI “cost per lead” is the <span className="font-medium text-ink">blended</span> figure
+              (all spend ÷ all tracked leads, every channel) — by construction it sits between the per-channel net CPLs here.
+            </p>
+          </div>
         </div>
       </Card>
 

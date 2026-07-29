@@ -143,6 +143,7 @@ async function MarketingOverview() {
       label: 'Cost per tracked lead',
       value: totals.costPerTracked != null ? aed(totals.costPerTracked) : null,
       goodWhenUp: false,
+      hint: 'blended: all spend ÷ tracker leads · net per-channel CPL lives on the Growth Platform',
       gapDetail: 'no tracked leads to divide spend by',
       gapOwner: ownerFor('attribution'),
     },

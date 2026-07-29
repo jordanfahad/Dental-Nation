@@ -43,6 +43,11 @@ export function PaidTab({ report }: { report: RangeReport }) {
           />
           <Scorecard label="Clicks" metric={paid.clicks} />
         </div>
+        <p className="px-5 pb-4 text-[11px] leading-snug text-ink-faint">
+          Cost / lead here = sheet-reported paid spend ÷ paid leads (the manual RAW_Performance feed) — a
+          platform-side figure. The net funnel costs (cost per net enquiry / booking / show / treated patient,
+          deduped and attributed) live on the Growth Platform.
+        </p>
       </Card>
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
