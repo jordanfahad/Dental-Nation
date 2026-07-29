@@ -376,13 +376,28 @@ export async function getChannelPerformance(
     }
 
     // Appointments booked / showed / cancelled / no-show.
+    //
+    // Alongside the view's counters we track the untraced pool DN-SCOPED and
+    // independently of the clinic filter: the phone-path estimate may only
+    // ever claim Dental Nation Al Wasl patients (the ads ran only there). If
+    // the pool followed the view instead, narrowing to DN would change its
+    // per-patient economics and the DN Paid ≈ figures could exceed the
+    // All-clinics ones — an incoherence, since DN is a subset of All.
+    const isDnAppt = (doctor: string) => clinicOfDoctor(doctor) !== 'dr-tosun';
+    const dnDwBooked = new Set<string>();
+    let dnDwShowed = 0;
     const bookedPatientsByChannel = new Map<string, Set<string>>();
     let taggedAll = 0, inferredAll = 0, defaultedAll = 0;
     for (const a of appts) {
       if (!inRange(a.date, from, to)) continue;
-      if (!apptInClinic(a.doctor)) continue;
       const v = apptVerdicts.get(a);
       if (!v) continue;
+      const pid = a.facts.mrNo || (a.facts.p9 ? `p:${a.facts.p9}` : '');
+      if (v.channel === 'direct-walkin' && isDnAppt(a.doctor)) {
+        if (pid) dnDwBooked.add(pid);
+        if (a.status === 'arrived' || a.status === 'completed') dnDwShowed += 1;
+      }
+      if (!apptInClinic(a.doctor)) continue;
       const p = at(v.channel);
       p.booked += 1;
       if (v.evidence === 'tagged') {
@@ -393,7 +408,6 @@ export async function getChannelPerformance(
         if (v.ruleId === 'R10') defaultedAll += 1;
         else inferredAll += 1;
       }
-      const pid = a.facts.mrNo || (a.facts.p9 ? `p:${a.facts.p9}` : '');
       if (pid) (bookedPatientsByChannel.get(v.channel) ?? bookedPatientsByChannel.set(v.channel, new Set()).get(v.channel)!).add(pid);
       if (a.status === 'arrived' || a.status === 'completed') p.showed += 1;
       else if (a.status === 'noshow') p.noshow += 1;
@@ -406,16 +420,29 @@ export async function getChannelPerformance(
     const treatedByChannel = new Map<string, Set<string>>();
     let unattributedRevenue = 0;
     const unattributedFiles = new Set<string>();
+    // DN-scoped pool economics (see the appointment loop note): the estimate's
+    // revenue-per-pool-patient must come from DN bills only, on every view.
+    let dnUnattrRevenue = 0;
+    const dnUnattrFiles = new Set<string>();
+    let dnDwRevenue = 0;
+    const dnDwTreated = new Set<string>();
     for (const b of (billRes.data as { bill_date: string | null; amount: number | null; data: Record<string, unknown> }[] | null) ?? []) {
       if (!inRange(b.bill_date, from, to)) continue;
-      if (clinic !== 'all') {
-        const bc = clinicOfCenter(S(b.data?.['center_name']));
-        if ((bc === 'dr-tosun') !== (clinic === 'dr-tosun')) continue;
-      }
+      const isDnBill = clinicOfCenter(S(b.data?.['center_name'])) !== 'dr-tosun';
       const mr = S(b.data?.['mr_no']);
       const amount = b.amount != null ? Number(b.amount) || 0 : 0;
       const v = mr ? patientChannel.get(mr) : undefined;
       const channel = v?.channel ?? (mr && !isNewFile(mr) ? 'retention' : null);
+      if (isDnBill) {
+        if (!channel) {
+          dnUnattrRevenue += amount;
+          if (mr) dnUnattrFiles.add(mr);
+        } else if (channel === 'direct-walkin') {
+          dnDwRevenue += amount;
+          if (mr) dnDwTreated.add(mr);
+        }
+      }
+      if (clinic !== 'all' && isDnBill !== (clinic === 'dn-alwasl')) continue;
       if (!channel) {
         unattributedRevenue += amount;
         if (mr) unattributedFiles.add(mr);
@@ -688,11 +715,13 @@ export async function getChannelPerformance(
         const estAnswered = estValidTaps * B.answerRate;
         const estPatientCalls = estAnswered * B.patientRate;
         const estBookings = Math.round(estPatientCalls * B.bookingRate);
-        // The pool the estimate is allowed to claim from: in-window patients
-        // with no channel trace. Anything above it would double-count patients
-        // already credited elsewhere — the exact inflation this view exists to
-        // avoid.
-        const untracedPool = (perf.get('direct-walkin')?.bookedPatients ?? 0) + unattributedFiles.size;
+        // The pool the estimate is allowed to claim from: in-window DENTAL
+        // NATION AL WASL patients with no channel trace (the ads ran only
+        // there — a Dr Tosun walk-in can never be an ad caller). DN-scoped on
+        // EVERY view so All-clinics and DN-only report the same estimate.
+        // Anything above it would double-count patients already credited
+        // elsewhere — the exact inflation this view exists to avoid.
+        const untracedPool = dnDwBooked.size + dnUnattrFiles.size;
         phonePath = {
           callTaps, directionTaps, otherClicks,
           estValidTaps: Math.round(estValidTaps),
@@ -716,14 +745,14 @@ export async function getChannelPerformance(
         // Carry the estimate DOWN the funnel at the pool's own measured rates.
         // The orphan patients are real people with real Practo outcomes; the
         // estimate only decides how many of them Google Ads may claim. Pool =
-        // Direct/Walk-in (has appointment rows) + unattributed billed files
-        // (no appointment rows — but a bill means they showed and were treated).
-        const dw = at('direct-walkin');
+        // DN Direct/Walk-in (has appointment rows) + DN unattributed billed
+        // files (no appointment rows — but a bill means they showed and were
+        // treated). Same DN scope as untracedPool above.
         const poolPatients = untracedPool;
         if (est > 0 && poolPatients > 0) {
-          const poolShowed = dw.showed + unattributedFiles.size;
-          const poolTreated = dw.treated + unattributedFiles.size;
-          const poolRevenue = dw.revenue + unattributedRevenue;
+          const poolShowed = dnDwShowed + dnUnattrFiles.size;
+          const poolTreated = dnDwTreated.size + dnUnattrFiles.size;
+          const poolRevenue = dnDwRevenue + dnUnattrRevenue;
           ps.estShowed = Math.round((est * poolShowed) / poolPatients);
           ps.estTreated = Math.round((est * poolTreated) / poolPatients);
           ps.estRevenue = Math.round((est * poolRevenue) / poolPatients);

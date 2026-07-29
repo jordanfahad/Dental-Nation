@@ -228,10 +228,13 @@ function PhonePathCard({ pp }: { pp: NonNullable<GrowthReport['phonePath']> }) {
           → booked ≈ {int(pp.estBookings)}.{' '}
           {pp.estBookings > pp.untracedPool ? (
             <>Capped at <span className="font-medium text-ink">{int(pp.untracedPool)}</span> — the estimate may only claim
-            patients who arrived with no channel trace, and that pool is {int(pp.untracedPool)} in this window.</>
+            Dental Nation Al Wasl patients who arrived with no channel trace (the ads ran only there), and that pool
+            is {int(pp.untracedPool)} in this window.</>
           ) : (
-            <>These {int(pp.estBookingsReconciled)} are claimed from the {int(pp.untracedPool)} untraced patients
-            (Direct / Walk-in + unattributed) — never from patients already credited to another channel.</>
+            <>These {int(pp.estBookingsReconciled)} are claimed from the {int(pp.untracedPool)} untraced Dental Nation
+            Al Wasl patients (Direct / Walk-in + unattributed; the ads ran only there) — never from patients already
+            credited to another channel, and never from another clinic. The same pool feeds every view, so All-clinics
+            and DN-only always show the same ≈ figures.</>
           )}
         </p>
 
