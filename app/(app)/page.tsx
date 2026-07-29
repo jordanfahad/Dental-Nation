@@ -55,6 +55,7 @@ export default async function DashboardPage({
     btab?: string;
     ptab?: string;
     gtab?: string;
+    gchan?: string;
     rdate?: string;
     rcad?: string;
     rcmp?: string;
@@ -97,7 +98,7 @@ export default async function DashboardPage({
           navigation so the skeleton shows immediately instead of the shell
           hanging on the tab's data. */}
       <Suspense
-        key={`${tab}|${sp.tab ?? ''}|${sp.from ?? ''}|${sp.to ?? ''}|${sp.preset ?? ''}|${sp.compare ?? ''}|${sp.mtab ?? ''}|${sp.btab ?? ''}|${sp.ptab ?? ''}|${sp.gtab ?? ''}|${sp.rdate ?? ''}|${sp.rcad ?? ''}|${sp.rcmp ?? ''}|${clinic}`}
+        key={`${tab}|${sp.tab ?? ''}|${sp.from ?? ''}|${sp.to ?? ''}|${sp.preset ?? ''}|${sp.compare ?? ''}|${sp.mtab ?? ''}|${sp.btab ?? ''}|${sp.ptab ?? ''}|${sp.gtab ?? ''}|${sp.gchan ?? ''}|${sp.rdate ?? ''}|${sp.rcad ?? ''}|${sp.rcmp ?? ''}|${clinic}`}
         fallback={<TabSkeleton />}
       >
         {tab === 'executive' ? <ExecutiveDashboard query={query} /> : null}
@@ -118,7 +119,7 @@ export default async function DashboardPage({
             alone gates them (no extra isAdmin check). Status + Users stay hard
             admin-only (ungrantable — see UNGRANTABLE_TABS). */}
         {tab === 'group' ? (
-          <GroupRevenue range={{ from: shell.range.from, to: shell.range.to, preset: shell.range.preset }} sub={sp.gtab} />
+          <GroupRevenue range={{ from: shell.range.from, to: shell.range.to, preset: shell.range.preset }} sub={sp.gtab} gchan={sp.gchan} />
         ) : null}
         {tab === 'report' ? <BoardReport date={sp.rdate} cadence={sp.rcad} compare={sp.rcmp === '1'} clinic={clinic} /> : null}
         {tab === 'status' && isAdmin ? <StatusReport /> : null}

@@ -1,5 +1,7 @@
+import Link from 'next/link';
 import { getChannelPerformance, type ChannelPerf, type GrowthReport } from '@/lib/growth/channelPerformance';
-import { CHANNEL_GROUPS } from '@/config/growth-channels';
+import { getChannelTrace } from '@/lib/growth/channelTrace';
+import { CHANNEL_GROUPS, CHANNEL_BY_KEY } from '@/config/growth-channels';
 import { WATERFALL_RULES } from '@/lib/growth/attribution';
 import { Card, SectionHeader, Takeaway } from '@/components/ui/Card';
 import { KpiBand, type KpiItem } from '@/components/charts/KpiBand';
@@ -48,12 +50,18 @@ function EvidenceBar({ tagged, inferred }: { tagged: number; inferred: number })
 }
 
 /* One channel row of the P&L table. */
-function ChannelRow({ p }: { p: ChannelPerf }) {
+function ChannelRow({ p, traceQs }: { p: ChannelPerf; traceQs: string }) {
   const muted = p.untracked || (p.booked === 0 && p.enquiries === 0 && p.revenue === 0);
   return (
     <tr className={`border-t border-line/70 ${muted ? 'opacity-60' : ''}`}>
       <td className="py-2.5 pl-3 pr-2 align-top">
-        <span className="block text-[12.5px] font-medium leading-tight text-ink">{p.label}</span>
+        <Link
+          href={`/?tab=group&gtab=growth&gchan=${p.key}${traceQs}`}
+          className="block text-[12.5px] font-medium leading-tight text-ink underline-offset-2 hover:text-accent hover:underline"
+          title="See the patients behind this number"
+        >
+          {p.label}
+        </Link>
         <span className="mt-0.5 block max-w-[230px] text-[10.5px] leading-snug text-ink-faint">{p.detail}</span>
         {p.untracked ? (
           <span className="mt-1 inline-block rounded-full border border-dashed border-watch/50 px-2 py-0.5 text-[10px] font-medium text-watch">
@@ -239,7 +247,101 @@ function PhonePathCard({ pp }: { pp: NonNullable<GrowthReport['phonePath']> }) {
   );
 }
 
-export async function GrowthPlatform({ range }: { range?: { from?: string; to?: string } } = {}) {
+/** Where "trace the leads" lives for each channel outside this view. */
+const CROSS_LINKS: Record<string, { label: string; tab: string }> = {
+  'paid-search': { label: 'Trace leads in Marketing', tab: 'marketing' },
+  'paid-social': { label: 'Trace leads in Marketing', tab: 'marketing' },
+  website: { label: 'Open Website Bookings', tab: 'bookings' },
+  gmb: { label: 'Open Social & Local', tab: 'social' },
+  'social-organic': { label: 'Open Social & Local', tab: 'social' },
+  whatsapp: { label: 'Open CRM — Zavis', tab: 'crm' },
+  'ai-concierge': { label: 'Open CRM — Zavis', tab: 'crm' },
+  retention: { label: 'Open Practo Insta', tab: 'practo' },
+};
+
+/** Drill-down: the actual patients behind one channel's numbers. */
+async function ChannelTraceView({ channelKey, range }: { channelKey: string; range?: { from?: string; to?: string } }) {
+  const def = CHANNEL_BY_KEY.get(channelKey);
+  const trace = await getChannelTrace(channelKey, range ?? {});
+  const back = `/?tab=group&gtab=growth${range?.from ? `&from=${range.from}` : ''}${range?.to ? `&to=${range.to}` : ''}`;
+  const cross = CROSS_LINKS[channelKey];
+  return (
+    <Card>
+      <SectionHeader
+        tag="G•"
+        eyebrow="Channel drill-down"
+        title={`${def?.label ?? channelKey} — the patients behind the number`}
+        right={
+          <span className="flex items-center gap-3">
+            {cross ? (
+              <Link href={`/?tab=${cross.tab}`} className="text-[12px] font-medium text-accent hover:underline">
+                {cross.label} →
+              </Link>
+            ) : null}
+            <Link href={back} className="text-[12px] font-medium text-ink-soft hover:underline">
+              ← All channels
+            </Link>
+          </span>
+        }
+      />
+      <div className="px-5 pb-5 pt-3">
+        <p className="mb-3 text-[12px] text-ink-soft">
+          {trace.total} booked appointment{trace.total === 1 ? '' : 's'} attributed to this channel in the selected window
+          {trace.truncated ? ` (showing latest 300)` : ''}. Each row states the exact rule that attributed it.
+        </p>
+        {trace.patients.length === 0 ? (
+          <p className="rounded-card border border-dashed border-line px-4 py-6 text-center text-[12.5px] text-ink-soft">
+            No booked appointments attribute to this channel in this window.
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[760px] text-left">
+              <thead>
+                <tr className="text-[10.5px] uppercase tracking-wide text-ink-faint">
+                  <th className="py-2 pl-3 pr-2 font-medium">Date</th>
+                  <th className="px-2 py-2 font-medium">Patient</th>
+                  <th className="px-2 py-2 font-medium">Phone</th>
+                  <th className="px-2 py-2 font-medium">File</th>
+                  <th className="px-2 py-2 font-medium">Status</th>
+                  <th className="px-2 py-2 font-medium">Doctor</th>
+                  <th className="py-2 pl-2 pr-3 font-medium">Why this channel</th>
+                </tr>
+              </thead>
+              <tbody>
+                {trace.patients.map((p, i) => (
+                  <tr key={`${p.mrNo}|${p.date}|${i}`} className="border-t border-line/70 align-top">
+                    <td className="whitespace-nowrap py-2 pl-3 pr-2 text-[12px] tabular-nums text-ink">{p.date ?? '—'}</td>
+                    <td className="px-2 py-2 text-[12.5px] font-medium text-ink">{p.patientName}</td>
+                    <td className="whitespace-nowrap px-2 py-2 text-[12px] tabular-nums text-ink-soft">{p.phone || '—'}</td>
+                    <td className="whitespace-nowrap px-2 py-2 text-[12px] text-ink-soft">{p.mrNo || '—'}</td>
+                    <td className="px-2 py-2 text-[12px] text-ink-soft">{p.status || '—'}</td>
+                    <td className="px-2 py-2 text-[12px] text-ink-soft">{p.doctor || '—'}</td>
+                    <td className="py-2 pl-2 pr-3">
+                      <span
+                        className={`mr-1.5 inline-block rounded-full px-1.5 py-0.5 text-[9.5px] font-semibold ${
+                          p.evidence === 'tagged' ? 'bg-good/10 text-good' : 'bg-watch/10 text-watch'
+                        }`}
+                      >
+                        {p.ruleId} · {p.evidence}
+                      </span>
+                      <span className="text-[11px] leading-snug text-ink-soft">{p.ruleText}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </Card>
+  );
+}
+
+export async function GrowthPlatform({ range, gchan }: { range?: { from?: string; to?: string }; gchan?: string } = {}) {
+  if (gchan && CHANNEL_BY_KEY.has(gchan)) {
+    return <ChannelTraceView channelKey={gchan} range={range} />;
+  }
+  const traceQs = `${range?.from ? `&from=${range.from}` : ''}${range?.to ? `&to=${range.to}` : ''}`;
   const report = await getChannelPerformance(range ?? {});
   const t = report.totals;
 
@@ -297,7 +399,8 @@ export async function GrowthPlatform({ range }: { range?: { from?: string; to?: 
               )}
               {report.ga4 ? (
                 <p className="mt-3 rounded-card border border-line bg-panel/40 px-3 py-2 text-[11px] leading-snug text-ink-soft">
-                  <span className="font-medium">Visibility context:</span> {int(report.ga4.sessions)} website sessions{' '}
+                  <span className="font-medium">Visibility context:</span> {int(report.ga4.sessions)} website sessions from{' '}
+                  <span className="font-medium">{int(report.ga4.users)} unique visitors</span>{' '}
                   {report.ga4.periodStart}–{report.ga4.periodEnd} (GA4, latest sync) — top sources{' '}
                   {report.ga4.channels.slice(0, 3).map((c) => `${c.channel} ${int(c.sessions)}`).join(' · ')}.
                 </p>
@@ -341,7 +444,7 @@ export async function GrowthPlatform({ range }: { range?: { from?: string; to?: 
                       </span>
                     </td>
                   </tr>
-                  {rows.map((p) => <ChannelRow key={p.key} p={p} />)}
+                  {rows.map((p) => <ChannelRow key={p.key} p={p} traceQs={traceQs} />)}
                 </tbody>
               );
             })}

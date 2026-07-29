@@ -93,7 +93,7 @@ export interface GrowthReport {
   /** Confidence over booked appointments: how much is hard-traced vs logic vs default. */
   confidence: { tagged: number; inferred: number; defaulted: number };
   /** Site-wide visibility context (latest GA4 sync — not range-scoped). */
-  ga4: { periodStart: string; periodEnd: string; sessions: number; channels: { channel: string; sessions: number }[] } | null;
+  ga4: { periodStart: string; periodEnd: string; sessions: number; users: number; channels: { channel: string; sessions: number }[] } | null;
   /** Revenue in-window that no channel can claim (billed file never seen in the appointment feed). */
   unattributedRevenue: number;
   unattributedPatients: number;
@@ -171,8 +171,8 @@ export async function getChannelPerformance(range: { from?: string; to?: string 
         db.from('practo_patients').select('phone'),
         db.from('meta_insights_raw').select('date, spend, impressions'),
         db.from('google_ads_insights_raw').select('date, spend, impressions'),
-        db.from('ga4_summary').select('period_start, period_end, sessions, channels').order('period_end', { ascending: false }).limit(1),
-        db.from('social_insights').select('metric, day, value').eq('channel', 'gmb'),
+        db.from('ga4_summary').select('period_start, period_end, sessions, users, channels').order('period_end', { ascending: false }).limit(1),
+        db.from('social_insights').select('channel, metric, day, value').in('channel', ['gmb', 'instagram', 'facebook']),
         db.from('google_ads_click_types').select('date, click_type, clicks, campaign_name'),
       ]);
 
@@ -380,7 +380,32 @@ export async function getChannelPerformance(range: { from?: string; to?: string 
     // column only; the patients they produce surface under Direct / Walk-in
     // until reception tags them (the coverage note says exactly that).
     {
-      const gmbRows = (gmbRes.data as { metric: string; day: string | null; value: number | null }[] | null) ?? [];
+      const allSocial = (gmbRes.data as { channel: string; metric: string; day: string | null; value: number | null }[] | null) ?? [];
+      const gmbRows = allSocial.filter((r) => r.channel === 'gmb');
+
+      // Social Organic reach — Instagram/Facebook daily reach from the social
+      // sync, plus profile views and the latest follower count as context.
+      {
+        const soc = allSocial.filter((r) => r.channel === 'instagram' || r.channel === 'facebook');
+        let reach = 0, profileViews = 0, latestFollowers = 0, latestDay = '';
+        for (const r of soc) {
+          const n = r.value != null ? Number(r.value) || 0 : 0;
+          if (r.metric === 'reach' && inRange(r.day, from, to)) reach += n;
+          if (r.metric === 'profile_views' && inRange(r.day, from, to)) profileViews += n;
+          if (r.metric === 'followers' && r.day && r.day > latestDay) { latestDay = r.day; latestFollowers = n; }
+        }
+        const so = at('social-organic');
+        if (reach > 0) so.impressions = Math.round(reach);
+        const bits = [
+          profileViews > 0 ? `${Math.round(profileViews)} profile views` : '',
+          latestFollowers > 0 ? `${Math.round(latestFollowers).toLocaleString('en-US')} followers` : '',
+        ].filter(Boolean);
+        if (bits.length) so.reachNote = bits.join(' · ');
+        if (reach === 0 && soc.length === 0) {
+          notes.push('Social Organic reach is empty because the Instagram/Facebook insights sync has no rows yet — not because reach is zero.');
+        }
+      }
+
       const gmb = at('gmb');
       if (gmbRows.length === 0) {
         notes.push(
@@ -432,7 +457,21 @@ export async function getChannelPerformance(range: { from?: string; to?: string 
       treatRate: bookedPatients > 0 ? Math.min(1, treated / bookedPatients) : null,
     };
 
-    const ga4Row = (ga4Res.data as { period_start: string; period_end: string; sessions: number | null; channels: { channel: string; sessions: number }[] | null }[] | null)?.[0] ?? null;
+    const ga4Row = (ga4Res.data as { period_start: string; period_end: string; sessions: number | null; users: number | null; channels: { channel: string; sessions: number }[] | null }[] | null)?.[0] ?? null;
+
+    // Website reach from GA4's channel split (latest sync): the organic-ish
+    // slices a visitor reaches the site through without a campaign.
+    if (ga4Row?.channels?.length) {
+      const web = at('website');
+      const organicish = (ga4Row.channels ?? []).filter((c) => /organic search|direct|referral/i.test(c.channel));
+      const sess = organicish.reduce((a, c) => a + (Number(c.sessions) || 0), 0);
+      if (web.impressions == null && sess > 0) {
+        web.impressions = sess;
+        web.reachNote = `GA4 sessions ${ga4Row.period_start}–${ga4Row.period_end}: ${organicish
+          .map((c) => `${c.channel} ${Number(c.sessions) || 0}`)
+          .join(' · ')}`;
+      }
+    }
 
     // Google Ads phone path — measured taps by click type; estimates are
     // benchmark-derived and labelled so downstream. CALL_TRACKING/CALLS =
@@ -495,7 +534,7 @@ export async function getChannelPerformance(range: { from?: string; to?: string 
       from, to, channels, totals,
       confidence: { tagged: taggedAll, inferred: inferredAll, defaulted: defaultedAll },
       ga4: ga4Row
-        ? { periodStart: ga4Row.period_start, periodEnd: ga4Row.period_end, sessions: ga4Row.sessions ?? 0, channels: (ga4Row.channels ?? []).map((c) => ({ channel: c.channel, sessions: c.sessions })) }
+        ? { periodStart: ga4Row.period_start, periodEnd: ga4Row.period_end, sessions: ga4Row.sessions ?? 0, users: ga4Row.users ?? 0, channels: (ga4Row.channels ?? []).map((c) => ({ channel: c.channel, sessions: c.sessions })) }
         : null,
       unattributedRevenue: Math.round(unattributedRevenue),
       unattributedPatients: unattributedFiles.size,
