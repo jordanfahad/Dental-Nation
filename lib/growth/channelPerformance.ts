@@ -1,4 +1,5 @@
 import 'server-only';
+import { cache } from 'react';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
 import { parseArabySource } from '@/lib/arabyads/report';
 import { clinicOfCenter, clinicOfDoctor } from '@/config/clinics';
@@ -218,8 +219,17 @@ export async function getChannelPerformance(
   range: { from?: string; to?: string } = {},
   clinic: GrowthPerfClinic = 'all',
 ): Promise<GrowthReport> {
-  const from = range.from ?? null;
-  const to = range.to ?? null;
+  return computeChannelPerformance(range.from ?? null, range.to ?? null, clinic);
+}
+
+/** Request-deduped core (React cache keys on the primitive args): the board
+ *  digest, the Executive mirror and the reconciliation card can all render in
+ *  one request without re-running the 13-table read. */
+const computeChannelPerformance = cache(async (
+  from: string | null,
+  to: string | null,
+  clinic: GrowthPerfClinic,
+): Promise<GrowthReport> => {
   const db = getSupabaseAdmin();
   if (!db) return emptyReport(from, to);
   // Spend, reach, GA4 and the phone path are Dental Nation Al Wasl properties
@@ -812,4 +822,4 @@ export async function getChannelPerformance(
   } catch {
     return emptyReport(from, to);
   }
-}
+});

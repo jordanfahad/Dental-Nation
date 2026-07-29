@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import type { ReactNode } from 'react';
 import { startOfMonth, endOfMonth, subMonths, subDays, parseISO, format, differenceInCalendarDays } from 'date-fns';
 import { getExecutiveReport } from '@/lib/executive/report';
@@ -77,7 +78,9 @@ export async function BoardReport({
   const doCompare = compare && !isAll;
   const prev = doCompare ? priorWindow(from, to) : null;
 
-  const [report, araby, doctors, digital, priorReport, group, leadStatus, arabyOutcome] = await Promise.all([
+  // ONE parallel wave — commentaries used to wait behind the heavy reads,
+  // adding their latency serially for no reason.
+  const [report, araby, doctors, digital, priorReport, group, leadStatus, arabyOutcome, arabyCommentary, mgmtCommentary, timelineBody, workstreamsBody] = await Promise.all([
     getExecutiveReport({ from: isAll ? undefined : from, to: isAll ? undefined : to, preset: isAll ? 'all' : 'custom', clinic }),
     getArabyAdsReport({ from, to }),
     getDoctorPerformance({ from, to }),
@@ -86,8 +89,6 @@ export async function BoardReport({
     getGroupRevenue({ from, to, preset: isAll ? 'all' : 'custom', isAll }),
     getArabyLeadStatus(),
     getArabyPractoOutcome({ from, to }),
-  ]);
-  const [arabyCommentary, mgmtCommentary, timelineBody, workstreamsBody] = await Promise.all([
     getCommentary('araby'),
     getCommentary('management'),
     getCommentary('timeline'),
@@ -193,7 +194,11 @@ export async function BoardReport({
 
         {/* ⭐ Growth Platform digest — the channel P&L at board altitude. */}
         <Section eyebrow="⭐ Growth Platform" title="Every channel, one funnel — enquiry to revenue" breakBefore>
-          <BoardGrowthSection from={from} to={to} isAll={isAll} />
+          {/* Streams in behind the rest of the report — its read layer must
+              never gate the whole board pack. */}
+          <Suspense fallback={<div className="h-48 animate-pulse rounded-card border border-line bg-panel/40" />}>
+            <BoardGrowthSection from={from} to={to} isAll={isAll} />
+          </Suspense>
         </Section>
 
         {/* ArabyAds — effort vs. lead quality vs. clinic outcome */}

@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { getExecutiveReport, type ExecQuery } from '@/lib/executive/report';
 import { dubaiDateLabel } from '@/lib/dates';
 import { ExecHero } from './ExecHero';
@@ -47,7 +48,9 @@ export async function ExecutiveDashboard({ query, gclinic }: { query?: ExecQuery
       {/* 🦷⭐ The Dental Nation star — the full Growth Platform mirrored onto
           the CEO's first screen: channel P&L, attribution and phone path, on
           the same date range. The Group tab stays its canonical home. */}
-      <GrowthPlatform range={{ from: report.range.from, to: report.range.to }} gclinic={gclinic} />
+      <Suspense fallback={<div className="h-64 animate-pulse rounded-card border border-line bg-panel/40" />}>
+        <GrowthPlatform range={{ from: report.range.from, to: report.range.to }} gclinic={gclinic} />
+      </Suspense>
 
       <ExecClinicSplit report={report} />
       <ExecPipeline report={report} />
