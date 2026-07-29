@@ -4,6 +4,7 @@ import { parseArabySource } from '@/lib/arabyads/report';
 import { clinicOfDoctor } from '@/config/clinics';
 import {
   classifyAppointment,
+  isBlockAppt,
   isTestAppt,
   leadTrackerChannel,
   phone9,
@@ -143,7 +144,7 @@ export async function getChannelTrace(
       const mr = S(a.mr_no);
       if (!p9 || !mr) continue;
       const freeText = `${S(a.data?.['remarks'])} ${S(a.data?.['complaint'])}`.toLowerCase();
-      if (isTestAppt(`${freeText} ${S(a.patient_name)}`)) continue; // mirror: test rows never feed family links
+      if (isTestAppt(`${freeText} ${S(a.patient_name)}`) || isBlockAppt(S(a.patient_name))) continue; // mirror: test/block rows never feed family links
       (filesByPhone.get(p9) ?? filesByPhone.set(p9, new Set()).get(p9)!).add(mr);
     }
 
@@ -163,7 +164,7 @@ export async function getChannelTrace(
         p9: phone9(a.patient_phone),
         bookedBy: S(a.data?.['booked_by']),
         freeText,
-        isTest: isTestAppt(`${freeText} ${S(a.patient_name)}`),
+        isTest: isTestAppt(`${freeText} ${S(a.patient_name)}`) || isBlockAppt(S(a.patient_name)),
       };
       const v = classifyAppointment(facts, L);
       if (!v || v.channel !== channelKey) continue;

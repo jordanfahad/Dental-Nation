@@ -15,6 +15,7 @@ import {
 } from '@/config/growth-channels';
 import {
   classifyAppointment,
+  isBlockAppt,
   isNewFile,
   isTestAppt,
   leadTrackerChannel,
@@ -335,7 +336,7 @@ const computeChannelPerformance = cache(async (
         mrNo: S(r.mr_no),
         bookedBy: S(d['booked_by']),
         freeText,
-        isTest: isTestAppt(`${freeText} ${S(r.patient_name)}`),
+        isTest: isTestAppt(`${freeText} ${S(r.patient_name)}`) || isBlockAppt(S(r.patient_name)),
       };
       appts.push({ date: r.appt_date, status: S(r.status).toLowerCase(), doctor: S(r.doctor), facts });
       if (facts.p9 && facts.mrNo && !facts.isTest) {

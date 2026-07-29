@@ -64,6 +64,10 @@ export const isNewFile = (mrNo: string): boolean => /^DN/i.test(mrNo.trim());
 /** Test detector for Practo rows — mirrors the isTestName rule used elsewhere. */
 export const isTestAppt = (text: string): boolean => /zavis|test|sagar/i.test(text);
 
+/** Reception calendar blocks ("Block", "BIOCK", dummy phones) — slot
+ *  placeholders, not patients. Excluded from every count, pool and trace. */
+export const isBlockAppt = (name: string): boolean => /^\s*b[il1]?[o0]ck/i.test(name.trim());
+
 /** Last-9-digit phone key, '' when too short to be a real number. */
 export const phone9 = (s: string | null | undefined): string => {
   const d = String(s ?? '').replace(/\D/g, '');
