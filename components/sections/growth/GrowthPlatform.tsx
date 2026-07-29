@@ -349,7 +349,7 @@ async function ChannelTraceView({ channelKey, range, clinic }: { channelKey: str
           <span className="flex items-center gap-3">
             {cross ? (
               <Link
-                href={`${cross.href}${range?.from ? `&from=${range.from}` : ''}${range?.to ? `&to=${range.to}` : ''}`}
+                href={`${cross.href}${range?.from && range?.to ? `&from=${range.from}&to=${range.to}&preset=custom` : ''}`}
                 className="text-[12px] font-medium text-accent hover:underline"
               >
                 {cross.label} →
@@ -464,9 +464,11 @@ export async function GrowthPlatform({ range, gchan, gclinic }: { range?: { from
   }
 
   const traceQs = `${range?.from ? `&from=${range.from}` : ''}${range?.to ? `&to=${range.to}` : ''}${clinic !== 'all' ? `&gclinic=${clinic}` : ''}`;
-  // Marketing links carry ONLY the window — dropping it reset the marketing
-  // tab to all-time, which is exactly the misalignment the CEO caught.
-  const mktQs = `${range?.from ? `&from=${range.from}` : ''}${range?.to ? `&to=${range.to}` : ''}`;
+  // Marketing links carry the window EXPLICITLY (from/to + preset=custom) —
+  // dropping it reset the marketing tab to all-time, and without the preset
+  // the date control couldn't show which pill the window belongs to. This is
+  // exactly the misalignment the CEO caught.
+  const mktQs = range?.from && range?.to ? `&from=${range.from}&to=${range.to}&preset=custom` : '';
   const report = await getChannelPerformance(range ?? {}, clinic);
   const t = report.totals;
 

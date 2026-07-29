@@ -88,7 +88,7 @@ export async function MarketingReport({ sub, range, mscope }: { sub?: string; ra
       )}
       {channelKey && range ? (
         <>
-          <ScopePills active={scope} sub={active} channelLabel={channelLabel} rangeQs={`&from=${range.from}&to=${range.to}`} />
+          <ScopePills active={scope} sub={active} channelLabel={channelLabel} rangeQs={`&from=${range.from}&to=${range.to}&preset=custom`} />
           {scope === 'channel' ? (
             <ChannelOutcome channelKey={channelKey} label={channelLabel} range={range} />
           ) : (
