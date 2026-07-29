@@ -98,8 +98,19 @@ export interface GrowthReport {
     callTaps: number;
     directionTaps: number;
     otherClicks: number;
+    /** Estimate chain, each step netting out a benchmark loss. */
+    estValidTaps: number;
     estAnswered: number;
+    estPatientCalls: number;
     estBookings: number;
+    /**
+     * The reconciliation the estimate must live inside: patients in-window with
+     * NO channel trace (Direct/Walk-in + unattributed). Estimated ad-call
+     * patients may only claim from this pool — never someone already traced —
+     * so `estBookingsReconciled = min(estBookings, untracedPool)`.
+     */
+    untracedPool: number;
+    estBookingsReconciled: number;
     byCampaign: { campaign: string; callTaps: number }[];
   } | null;
   notes: string[];
@@ -436,10 +447,24 @@ export async function getChannelPerformance(range: { from?: string; to?: string 
           } else if (/DIRECTION/i.test(t)) directionTaps += n;
           else otherClicks += n;
         }
+        const B = PHONE_PATH_BENCHMARKS;
+        const estValidTaps = callTaps * B.validTapRate;
+        const estAnswered = estValidTaps * B.answerRate;
+        const estPatientCalls = estAnswered * B.patientRate;
+        const estBookings = Math.round(estPatientCalls * B.bookingRate);
+        // The pool the estimate is allowed to claim from: in-window patients
+        // with no channel trace. Anything above it would double-count patients
+        // already credited elsewhere — the exact inflation this view exists to
+        // avoid.
+        const untracedPool = (perf.get('direct-walkin')?.bookedPatients ?? 0) + unattributedFiles.size;
         phonePath = {
           callTaps, directionTaps, otherClicks,
-          estAnswered: Math.round(callTaps * PHONE_PATH_BENCHMARKS.answerRate),
-          estBookings: Math.round(callTaps * PHONE_PATH_BENCHMARKS.answerRate * PHONE_PATH_BENCHMARKS.bookingRate),
+          estValidTaps: Math.round(estValidTaps),
+          estAnswered: Math.round(estAnswered),
+          estPatientCalls: Math.round(estPatientCalls),
+          estBookings,
+          untracedPool,
+          estBookingsReconciled: Math.min(estBookings, untracedPool),
           byCampaign: [...perCampaign.entries()].map(([campaign, taps]) => ({ campaign, callTaps: taps }))
             .sort((a, b) => b.callTaps - a.callTaps).slice(0, 6),
         };

@@ -173,8 +173,14 @@ export const TAG_RULES: { channel: string; keywords: string[] }[] = [
  * estimated on the dashboard automatically.
  */
 export const PHONE_PATH_BENCHMARKS = {
-  /** Share of call-button taps that become an answered conversation. */
+  /** Share of taps that are REAL attempts — nets out accidental taps, bots and
+   *  dead clicks (industry invalid-interaction rates for mobile call assets). */
+  validTapRate: 0.75,
+  /** Share of real attempts that become an answered conversation. */
   answerRate: 0.75,
-  /** Share of answered calls that become a booked appointment. */
+  /** Share of answered calls that are actual patient enquiries — nets out
+   *  suppliers, job seekers, sales calls and other non-patient callers. */
+  patientRate: 0.8,
+  /** Share of patient conversations that become a booked appointment. */
   bookingRate: 0.35,
 } as const;

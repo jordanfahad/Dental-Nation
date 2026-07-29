@@ -187,9 +187,26 @@ function PhonePathCard({ pp }: { pp: NonNullable<GrowthReport['phonePath']> }) {
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           {stat('Call-button taps', int(pp.callTaps))}
           {stat('Direction taps', int(pp.directionTaps))}
-          {stat('Calls answered', int(pp.estAnswered), true)}
-          {stat('Bookings from calls', int(pp.estBookings), true)}
+          {stat('Patient calls', int(pp.estPatientCalls), true)}
+          {stat('Bookings from calls', int(pp.estBookingsReconciled), true)}
         </div>
+
+        {/* The discount chain, stated so nobody mistakes the estimate for a count. */}
+        <p className="mt-3 rounded-card border border-dashed border-line px-3 py-2 text-[11.5px] leading-relaxed text-ink-soft">
+          <span className="font-medium text-ink">How the estimate is built:</span> {int(pp.callTaps)} taps
+          → net of dead/accidental taps ≈ {int(pp.estValidTaps)} real attempts
+          → answered ≈ {int(pp.estAnswered)}
+          → net of suppliers/job seekers/sales calls ≈ {int(pp.estPatientCalls)} patient enquiries
+          → booked ≈ {int(pp.estBookings)}.{' '}
+          {pp.estBookings > pp.untracedPool ? (
+            <>Capped at <span className="font-medium text-ink">{int(pp.untracedPool)}</span> — the estimate may only claim
+            patients who arrived with no channel trace, and that pool is {int(pp.untracedPool)} in this window.</>
+          ) : (
+            <>These {int(pp.estBookingsReconciled)} are claimed from the {int(pp.untracedPool)} untraced patients
+            (Direct / Walk-in + unattributed) — never from patients already credited to another channel.</>
+          )}
+        </p>
+
         {pp.byCampaign.length > 0 ? (
           <div className="mt-4">
             <p className="mb-1.5 text-[11px] uppercase tracking-wide text-ink-faint">Call taps by campaign (measured)</p>
@@ -204,8 +221,8 @@ function PhonePathCard({ pp }: { pp: NonNullable<GrowthReport['phonePath']> }) {
           </div>
         ) : null}
         <Takeaway>
-          Taps are measured by Google per campaign per day. The two dashed figures are <span className="font-medium">estimates</span> from
-          industry benchmarks (75% of taps answered, 35% of answered calls book) — Google cannot count real call
+          Taps are measured by Google per campaign per day; direction taps likely convert to walk-ins the same way.
+          Dashed figures are <span className="font-medium">benchmark estimates</span> — Google cannot count real call
           conversions in the UAE (no forwarding numbers; both call conversion actions read zero all-time). A
           dedicated tracking number replaces these estimates with the clinic&apos;s own measured rates.
         </Takeaway>
