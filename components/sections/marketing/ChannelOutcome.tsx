@@ -34,6 +34,12 @@ export async function ChannelOutcome({
   if (!p) return null;
   const shown = trace.patients.slice(0, 50);
   const tracedRevenue = trace.patients.reduce((a, x) => a + x.revenue, 0);
+  // The ≈ figures are DRAWN FROM real untraced DN patients — show that pool,
+  // or "≈AED 4k revenue, 0 patients" reads as a contradiction.
+  const est0 = channelKey === 'paid-search' ? (p.estExtraBookings ?? 0) : 0;
+  const poolTrace = est0 > 0 ? await getChannelTrace('direct-walkin', range, 'dn-alwasl') : null;
+  const poolShown = poolTrace?.patients.slice(0, 30) ?? [];
+  const poolRevenue = poolTrace?.patients.reduce((a, x) => a + x.revenue, 0) ?? 0;
   const est = channelKey === 'paid-search' ? (p.estExtraBookings ?? 0) : 0;
   const traceQs = `&from=${range.from}&to=${range.to}`;
   const combinedRevenue = p.revenue + (p.estRevenue ?? 0);
@@ -122,7 +128,7 @@ export async function ChannelOutcome({
             <p className="rounded-card border border-dashed border-line px-4 py-5 text-center text-[12px] text-ink-soft">
               No booked patients attribute to {label} in this window
               {channelKey === 'paid-search'
-                ? ' — measured Google tagging only went live 29 Jul, so older windows rely on reception tags and the ≈ model above.'
+                ? ' — measured Google tagging only went live 29 Jul, so older windows rely on reception tags and the ≈ model (whose real patient pool is listed below).'
                 : '.'}
             </p>
           ) : (
@@ -161,6 +167,52 @@ export async function ChannelOutcome({
               </table>
             </div>
           )}
+
+          {poolTrace && poolTrace.total > 0 ? (
+            <div className="mt-5">
+              <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-watch">
+                Where the ≈ figures come from — the Markov pool ({int(poolTrace.total)} real untraced patients
+                {poolRevenue > 0 ? ` · ${aed(poolRevenue)} billed in window` : ''}
+                {poolTrace.total > poolShown.length ? ` · showing latest ${poolShown.length}` : ''})
+              </p>
+              <p className="mb-2 rounded-card border border-dashed border-watch/60 bg-watch/5 px-3 py-2 text-[11.5px] leading-snug text-ink-soft">
+                The ≈{int(est0)} modelled bookings{p.estRevenue ? ` and ≈${aedShort(p.estRevenue)} revenue` : ''} are drawn
+                from these <span className="font-medium text-ink">real Dental Nation Al Wasl patients</span> — booked as
+                Direct / Walk-in because they arrived with no channel trace. Their bookings, shows and bills are real
+                Practo records; the Markov model only estimates <span className="font-medium text-ink">how many</span> of
+                them came via a Google ad call — never <span className="font-medium text-ink">which ones</span>. That is
+                why they are listed as a pool here rather than claimed individually above.
+              </p>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[680px] text-left">
+                  <thead>
+                    <tr className="text-[10px] uppercase tracking-wide text-ink-faint">
+                      <th className="py-1.5 pl-2 pr-2 font-medium">Date</th>
+                      <th className="px-2 py-1.5 font-medium">Patient</th>
+                      <th className="px-2 py-1.5 font-medium">Phone</th>
+                      <th className="px-2 py-1.5 font-medium">File</th>
+                      <th className="px-2 py-1.5 font-medium">Status</th>
+                      <th className="py-1.5 pl-2 pr-2 text-right font-medium">Revenue</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {poolShown.map((x, i) => (
+                      <tr key={`${x.mrNo}|${x.date}|${i}`} className="border-t border-line/60 align-top">
+                        <td className="whitespace-nowrap py-1.5 pl-2 pr-2 text-[11.5px] tabular-nums text-ink">{x.date ?? '—'}</td>
+                        <td className="px-2 py-1.5 text-[12px] font-medium text-ink">{x.patientName}</td>
+                        <td className="whitespace-nowrap px-2 py-1.5 text-[11.5px] tabular-nums text-ink-soft">{x.phone || '—'}</td>
+                        <td className="whitespace-nowrap px-2 py-1.5 text-[11.5px] text-ink-soft">{x.mrNo || '—'}</td>
+                        <td className="px-2 py-1.5 text-[11.5px] text-ink-soft">{x.status || '—'}</td>
+                        <td className="whitespace-nowrap py-1.5 pl-2 pr-2 text-right text-[11.5px] font-medium tabular-nums text-ink">
+                          {x.revenue > 0 ? aed(x.revenue) : '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
     </Card>
