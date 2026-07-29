@@ -4,6 +4,7 @@ import { PaidSocialRows } from './PaidSocialRows';
 import { AiChatRows } from './AiChatRows';
 import { FunnelGroupFilter, type GroupFunnel } from './FunnelGroupFilter';
 import { GrowthClinicFilter } from './GrowthClinicFilter';
+import { PdfButton } from './PdfButton';
 import { resolveGrowthClinic, type GrowthClinicKey } from '@/config/clinics';
 import { getChannelPerformance, type ChannelPerf, type GrowthReport } from '@/lib/growth/channelPerformance';
 import { getChannelTrace } from '@/lib/growth/channelTrace';
@@ -511,7 +512,10 @@ export async function GrowthPlatform({ range, gchan, gclinic }: { range?: { from
 
   return (
     <div className="space-y-4">
-      <GrowthClinicFilter active={clinic} />
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <GrowthClinicFilter active={clinic} />
+        <PdfButton />
+      </div>
       <p className="rounded-card border border-line bg-panel/40 px-3 py-2 text-[11.5px] leading-snug text-ink-soft">
         <span className="font-medium text-ink">Data coverage:</span> the Practo feed this view is built on starts in{' '}
         <span className="font-medium text-ink">2026</span> — appointments from January (substantive from March) and

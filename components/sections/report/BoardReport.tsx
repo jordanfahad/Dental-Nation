@@ -4,6 +4,7 @@ import { getExecutiveReport } from '@/lib/executive/report';
 import { getArabyAdsReport } from '@/lib/arabyads/report';
 import { getArabyLeadStatus } from '@/lib/arabyads/leadStatus';
 import { getArabyPractoOutcome } from '@/lib/arabyads/practoOutcome';
+import { BoardGrowthSection } from './BoardGrowthSection';
 import { getDoctorPerformance } from '@/lib/executive/doctors';
 import { getDigitalSeo } from '@/lib/analytics/digital';
 import { getGroupRevenue } from '@/lib/clinics/groupRevenue';
@@ -188,6 +189,11 @@ export async function BoardReport({
             &ldquo;All&rdquo; is a blended acquisition cost — total ad spend over every new patient (incl. organic / walk-in), not a
             paid-only CPL. The website lens isolates patients whose phone matches a booking-widget submission.
           </Insight>
+        </Section>
+
+        {/* ⭐ Growth Platform digest — the channel P&L at board altitude. */}
+        <Section eyebrow="⭐ Growth Platform" title="Every channel, one funnel — enquiry to revenue" breakBefore>
+          <BoardGrowthSection from={from} to={to} isAll={isAll} />
         </Section>
 
         {/* ArabyAds — effort vs. lead quality vs. clinic outcome */}
