@@ -153,9 +153,11 @@ export async function getChannelPerformance(range: { from?: string; to?: string 
       const p9 = phone9(S(d['Phone Number']));
       const src = S(d['Source']);
       const hasLane = Boolean(parseArabySource(src)?.lane);
-      // Google auto-tagging appends gclid to every ad click; utm_source=google
-      // covers a manually tagged tracking template. Either marks Paid Search.
-      const paidSearch = !hasLane && /gclid|utm_source\s*[=:]\s*google/i.test(src);
+      // The site writes captured UTMs into Source as "google / <campaignid>
+      // (PID:<keyword>)" — verified live with a tagged test booking (ref 128640,
+      // 29 Jul). Raw gclid/utm_source forms kept as a fallback in case the
+      // format changes. Either marks Paid Search.
+      const paidSearch = !hasLane && (/^\s*google\s*\//i.test(src) || /gclid|utm_source\s*[=:]\s*google/i.test(src));
       const date = S(d['Timestamp']).slice(0, 10) || S(d['Date']).slice(0, 10) || null;
       widgetRows.push({ p9, date, hasLane, paidSearch });
       if (!p9) continue;
