@@ -153,6 +153,9 @@ export const TAG_RULES: { channel: string; keywords: string[] }[] = [
   { channel: 'affiliate', keywords: ['affiliate'] },
   { channel: 'patient-referral', keywords: ['patient referral', 'referred by patient', 'friend referral', 'family referral', 'referral - patient'] },
   { channel: 'doctor-referral', keywords: ['as per dr', 'as per doctor', 'referred by dr', 'doctor referral', 'dr referral', 'referral - doctor'] },
+  // Reception's tag for calls arriving on the ads-only tracking number. Sits
+  // above 'gmb' so "google ad" never falls through to the organic Google rule.
+  { channel: 'paid-search', keywords: ['google ad', 'google ads', 'ads call', 'ad call', 'adwords'] },
   { channel: 'gmb', keywords: ['google maps', 'google map', 'found on google', 'found us on google', 'google search', 'google business', 'gmb'] },
   { channel: 'direct-walkin', keywords: ['walk in', 'walk-in', 'walkin'] },
 ];
