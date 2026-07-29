@@ -32,8 +32,8 @@ const num = 'py-2 px-2 text-right text-[12px] tabular-nums text-ink-soft';
  * (creative assets) deep dive. Live from the Meta Marketing API; metrics joined
  * from /insights per level. Honest: API issues degrade to an owned data gap.
  */
-export async function MetaAdsPerformance() {
-  const r = await getMetaAdsDetail();
+export async function MetaAdsPerformance({ range }: { range?: { from: string; to: string } } = {}) {
+  const r = await getMetaAdsDetail(range ?? {});
 
   if (!r.available) {
     return (

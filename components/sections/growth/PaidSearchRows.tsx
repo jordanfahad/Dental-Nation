@@ -16,7 +16,7 @@ const aed = (n: number) => `AED ${Math.round(n).toLocaleString('en-US')}`;
 const aedShort = (n: number) =>
   n >= 1_000_000 ? `AED ${(n / 1_000_000).toFixed(2)}M` : n >= 1_000 ? `AED ${(n / 1_000).toFixed(0)}k` : `AED ${Math.round(n)}`;
 
-export function PaidSearchRows({ p, traceQs }: { p: ChannelPerf; traceQs: string }) {
+export function PaidSearchRows({ p, traceQs, mktQs = '' }: { p: ChannelPerf; traceQs: string; mktQs?: string }) {
   const [open, setOpen] = useState(false);
   const est = p.estExtraBookings ?? 0;
   const combined = (a: number, b?: number) => `≈${int(a + (b ?? 0))}`;
@@ -28,7 +28,7 @@ export function PaidSearchRows({ p, traceQs }: { p: ChannelPerf; traceQs: string
           <span className="block text-[12.5px] font-medium leading-tight text-ink">
             <span className="mr-1 inline-block w-3 text-[10px] text-ink-faint">{open ? '▾' : '▸'}</span>
             <Link
-              href="/?tab=marketing&mtab=google"
+              href={`/?tab=marketing&mtab=google${mktQs}`}
               className="underline-offset-2 hover:text-accent hover:underline"
               title="Open Google Ads Performance — campaigns, budgets, ad groups, ads"
               onClick={(e) => e.stopPropagation()}

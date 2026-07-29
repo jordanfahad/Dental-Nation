@@ -348,7 +348,10 @@ async function ChannelTraceView({ channelKey, range, clinic }: { channelKey: str
         right={
           <span className="flex items-center gap-3">
             {cross ? (
-              <Link href={cross.href} className="text-[12px] font-medium text-accent hover:underline">
+              <Link
+                href={`${cross.href}${range?.from ? `&from=${range.from}` : ''}${range?.to ? `&to=${range.to}` : ''}`}
+                className="text-[12px] font-medium text-accent hover:underline"
+              >
                 {cross.label} →
               </Link>
             ) : null}
@@ -461,6 +464,9 @@ export async function GrowthPlatform({ range, gchan, gclinic }: { range?: { from
   }
 
   const traceQs = `${range?.from ? `&from=${range.from}` : ''}${range?.to ? `&to=${range.to}` : ''}${clinic !== 'all' ? `&gclinic=${clinic}` : ''}`;
+  // Marketing links carry ONLY the window — dropping it reset the marketing
+  // tab to all-time, which is exactly the misalignment the CEO caught.
+  const mktQs = `${range?.from ? `&from=${range.from}` : ''}${range?.to ? `&to=${range.to}` : ''}`;
   const report = await getChannelPerformance(range ?? {}, clinic);
   const t = report.totals;
 
@@ -600,9 +606,9 @@ export async function GrowthPlatform({ range, gchan, gclinic }: { range?: { from
                   </tr>
                   {rows.map((p) =>
                     p.key === 'paid-search'
-                      ? <PaidSearchRows key={p.key} p={p} traceQs={traceQs} />
+                      ? <PaidSearchRows key={p.key} p={p} traceQs={traceQs} mktQs={mktQs} />
                       : p.key === 'paid-social'
-                        ? <PaidSocialRows key={p.key} p={p} split={report.metaSplit} traceQs={traceQs} />
+                        ? <PaidSocialRows key={p.key} p={p} split={report.metaSplit} traceQs={traceQs} mktQs={mktQs} />
                         : p.key === 'ai-chat'
                           ? <AiChatRows key={p.key} p={p} split={report.organicSplit} />
                           : <ChannelRow key={p.key} p={p} traceQs={traceQs} />,

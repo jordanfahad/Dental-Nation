@@ -29,8 +29,8 @@ const num = 'py-2 px-2 text-right text-[12px] tabular-nums text-ink-soft';
  * assets) deep dive. Live from the Google Ads API; aggregated over the window.
  * Honest: any API issue degrades to an owned data gap, never a fabricated zero.
  */
-export async function GoogleAdsPerformance() {
-  const r = await getGoogleAdsDetail();
+export async function GoogleAdsPerformance({ range }: { range?: { from: string; to: string } } = {}) {
+  const r = await getGoogleAdsDetail(range ?? {});
 
   if (!r.available) {
     return (

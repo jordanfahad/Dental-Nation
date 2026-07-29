@@ -47,7 +47,7 @@ const periodLabel = (p: { from: string | null; to: string | null }): string => {
  */
 /** Scope pills for the Google / Meta pages: channel-attributed (default) vs
  *  all-channels. Plain links — the server re-renders with the chosen scope. */
-function ScopePills({ active, sub, channelLabel }: { active: 'channel' | 'all'; sub: string; channelLabel: string }) {
+function ScopePills({ active, sub, channelLabel, rangeQs }: { active: 'channel' | 'all'; sub: string; channelLabel: string; rangeQs: string }) {
   const pill = (isActive: boolean) =>
     `inline-block rounded-full border px-3 py-1 text-[11.5px] font-medium transition ${
       isActive ? 'border-accent bg-accent text-white' : 'border-line bg-card text-ink-soft hover:border-accent/40 hover:text-ink'
@@ -55,8 +55,8 @@ function ScopePills({ active, sub, channelLabel }: { active: 'channel' | 'all'; 
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       <span className="mr-1 text-[11px] font-medium uppercase tracking-wide text-ink-faint">Clinic outcome scope</span>
-      <a href={`/?tab=marketing&mtab=${sub}`} className={pill(active === 'channel')}>{channelLabel} only</a>
-      <a href={`/?tab=marketing&mtab=${sub}&mscope=all`} className={pill(active === 'all')}>All channels</a>
+      <a href={`/?tab=marketing&mtab=${sub}${rangeQs}`} className={pill(active === 'channel')}>{channelLabel} only</a>
+      <a href={`/?tab=marketing&mtab=${sub}&mscope=all${rangeQs}`} className={pill(active === 'all')}>All channels</a>
     </div>
   );
 }
@@ -80,15 +80,15 @@ export async function MarketingReport({ sub, range, mscope }: { sub?: string; ra
     <div className="space-y-5">
       <MarketingSubNav active={active} />
       {active === 'google' ? (
-        <GoogleAdsPerformance />
+        <GoogleAdsPerformance range={range} />
       ) : active === 'meta' ? (
-        <MetaAdsPerformance />
+        <MetaAdsPerformance range={range} />
       ) : (
         <MarketingOverview />
       )}
       {channelKey && range ? (
         <>
-          <ScopePills active={scope} sub={active} channelLabel={channelLabel} />
+          <ScopePills active={scope} sub={active} channelLabel={channelLabel} rangeQs={`&from=${range.from}&to=${range.to}`} />
           {scope === 'channel' ? (
             <ChannelOutcome channelKey={channelKey} label={channelLabel} range={range} />
           ) : (
