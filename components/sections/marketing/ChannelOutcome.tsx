@@ -45,6 +45,7 @@ export async function ChannelOutcome({
   const poolPatients = (poolTrace?.patients ?? []).filter((x) => !isBlockAppt(x.patientName));
   const poolShown = poolPatients.slice(0, 30);
   const poolRevenue = poolPatients.reduce((a, x) => a + x.revenue, 0);
+  const poolCompleted = poolPatients.filter((x) => /complete/i.test(x.status)).length;
   const est = channelKey === 'paid-search' ? (p.estExtraBookings ?? 0) : 0;
   const traceQs = `&from=${range.from}&to=${range.to}`;
   const combinedRevenue = p.revenue + (p.estRevenue ?? 0);
@@ -200,6 +201,14 @@ export async function ChannelOutcome({
                 Practo records; the Markov model only estimates <span className="font-medium text-ink">how many</span> of
                 them came via a Google ad call — never <span className="font-medium text-ink">which ones</span>. That is
                 why they are listed as a pool here rather than claimed individually above.
+                {poolCompleted > 0 ? (
+                  <>
+                    {' '}Worked example for this window: the pool holds {int(poolCompleted)} completed visits — the
+                    model&apos;s Google share of them is the ≈{int(p.estTreated ?? 0)} treated above; the other{' '}
+                    {int(Math.max(poolCompleted - (p.estTreated ?? 0), 0))} stay credited to Direct / Walk-in. The
+                    funnel never claims the whole pool.
+                  </>
+                ) : null}
               </p>
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[680px] text-left">
