@@ -88,17 +88,23 @@ function ChannelRow({ p, traceQs }: { p: ChannelPerf; traceQs: string }) {
         <span className={`text-[12.5px] font-semibold tabular-nums ${p.booked === 0 ? 'text-ink-faint' : 'text-ink'}`}>{int(p.booked)}</span>
         <span className="block text-[10px] text-ink-faint">{p.bookedPatients > 0 ? `${int(p.bookedPatients)} patients` : ''}</span>
         {p.estExtraBookings ? (
-          <span className="block text-[10px] font-medium text-watch">+{int(p.estExtraBookings)} est. from calls</span>
+          <span className="block text-[10px] font-medium text-watch">+{int(p.estExtraBookings)} MTA-MVM calls</span>
         ) : null}
         <span className="flex justify-end"><EvidenceBar tagged={p.taggedBooked} inferred={p.inferredBooked} /></span>
       </td>
-      <Num v={int(p.showed)} dim={p.showed === 0} est={p.estShowed ? `+${int(p.estShowed)} est.` : undefined} />
-      <Num v={int(p.treated)} dim={p.treated === 0} est={p.estTreated ? `+${int(p.estTreated)} est.` : undefined} />
+      <td className="px-2 py-2.5 text-right align-top">
+        <span className={`text-[12.5px] tabular-nums ${p.showed === 0 ? 'text-ink-faint' : 'font-medium text-ink'}`}>{int(p.showed)}</span>
+        {p.cancelled + p.noshow > 0 ? (
+          <span className="block text-[10px] leading-snug text-ink-faint">{int(p.cancelled)} cxl · {int(p.noshow)} no-show</span>
+        ) : null}
+        {p.estShowed ? <span className="block text-[10px] font-medium text-watch">+{int(p.estShowed)} MTA-MVM</span> : null}
+      </td>
+      <Num v={int(p.treated)} dim={p.treated === 0} est={p.estTreated ? `+${int(p.estTreated)} MTA-MVM` : undefined} />
       <td className="px-2 py-2.5 text-right align-top">
         <span className={`text-[12.5px] font-semibold tabular-nums ${p.revenue === 0 ? 'text-ink-faint' : 'text-ink'}`}>
           {p.revenue > 0 ? aedShort(p.revenue) : '—'}
         </span>
-        {p.estRevenue ? <span className="block text-[10px] font-medium text-watch">+{aedShort(p.estRevenue)} est.</span> : null}
+        {p.estRevenue ? <span className="block text-[10px] font-medium text-watch">+{aedShort(p.estRevenue)} MTA-MVM</span> : null}
       </td>
       <td className="py-2.5 pl-2 pr-3 text-right align-top">
         {p.spend != null ? (
@@ -116,7 +122,7 @@ function ChannelRow({ p, traceQs }: { p: ChannelPerf; traceQs: string }) {
             {p.estCostPerPatient != null ? (
               <span className="block text-[10px] font-medium leading-snug text-watch">
                 CPA {aed(p.estCostPerPatient)}
-                {p.estRoas != null ? ` · ROAS ${p.estRoas.toFixed(1)}×` : ''} incl. est. call bookings
+                {p.estRoas != null ? ` · ROAS ${p.estRoas.toFixed(1)}×` : ''} incl. MTA-MVM call bookings
               </span>
             ) : null}
             {p.spendThrough ? <span className="block text-[10px] text-watch">spend synced to {p.spendThrough}</span> : null}
@@ -257,7 +263,7 @@ function PhonePathCard({ pp }: { pp: NonNullable<GrowthReport['phonePath']> }) {
     <div className={`rounded-card border px-4 py-3 ${est ? 'border-dashed border-watch/60 bg-watch/5' : 'border-line bg-card'}`}>
       <p className="text-[11px] uppercase tracking-wide text-ink-faint">
         {label}
-        {est ? <span className="ml-1 font-semibold text-watch">est.</span> : null}
+        {est ? <span className="ml-1 font-semibold text-watch">MTA-MVM</span> : null}
       </p>
       <p className="mt-0.5 text-[20px] font-semibold tabular-nums text-ink">{value}</p>
     </div>
@@ -532,8 +538,8 @@ export async function GrowthPlatform({ range, gchan, gclinic }: { range?: { from
         <span className="font-medium text-ink">Data coverage:</span> the Practo feed this view is built on starts in{' '}
         <span className="font-medium text-ink">2026</span> — appointments from January (substantive from March) and
         billing/revenue from <span className="font-medium text-ink">21 April 2026</span>. Showed / Treated / Revenue
-        before those dates cannot appear here, whatever the window. Figures marked ≈ or “est.” include the estimated
-        Markov-chain phone-path model; solid figures are measured.
+        before those dates cannot appear here, whatever the window. Figures marked ≈ or “MTA-MVM” come from the
+        multi-touch attribution Markov model (the Google Ads phone path); solid figures are measured.
       </p>
       <Card>
         <SectionHeader
@@ -624,10 +630,15 @@ export async function GrowthPlatform({ range, gchan, gclinic }: { range?: { from
             })}
           </table>
           <p className="mt-2 px-3 text-[10.5px] leading-snug text-ink-faint">
-            The small green/amber bar under “Booked” shows how much of that channel’s attribution rests on hard
-            evidence (green) vs inference (amber). “Treated” = distinct patients with a finalized bill in the window.
-            Summing a column here can exceed the scorecard above by design: the Paid Search row folds in the
-            ≈ Markov-chain phone figures (marked), while the scorecard and funnel count measured events only.
+            How to read a row: <span className="font-medium">Booked</span> counts appointments — one patient can book
+            several times, so the “N patients” line under it counts distinct people (e.g. 36 bookings by 13 patients).{' '}
+            <span className="font-medium">Showed</span> = appointments that arrived or completed; the gap vs Booked is
+            cancellations, no-shows (both printed under Showed) and future/undecided appointments.{' '}
+            <span className="font-medium">Treated</span> = distinct patients with a finalized bill in the window — lower
+            than Showed when visits were consults or billing lands later. The small green/amber bar under Booked shows
+            hard-evidence (green) vs inferred (amber) attribution. Summing a column can exceed the scorecard above by
+            design: the Paid Search row folds in the ≈ MTA-MVM phone figures (marked), while the scorecard and funnel
+            count measured events only.
           </p>
           <div className="mx-3 mt-3 rounded-card border border-line bg-panel/40 px-3 py-2.5 text-[10.5px] leading-relaxed text-ink-soft">
             <p className="font-semibold uppercase tracking-wide text-ink">How every cost figure here is computed (net = deduped &amp; attributed)</p>
@@ -636,8 +647,8 @@ export async function GrowthPlatform({ range, gchan, gclinic }: { range?: { from
               across all sources and attributed to the channel · <span className="font-medium text-ink">cost per net booking</span> = spend ÷
               booked Practo appointments · <span className="font-medium text-ink">cost per net show</span> = spend ÷ arrived + completed ·{' '}
               <span className="font-medium text-ink">cost per treated patient</span> = spend ÷ distinct billed patients ·{' '}
-              <span className="font-medium text-ink">ROAS</span> = attributed billed revenue ÷ spend. Figures marked ≈ additionally include the
-              estimated Google Ads phone path (labelled est., reconciled against untraced Dental Nation Al Wasl patients only).
+              <span className="font-medium text-ink">ROAS</span> = attributed billed revenue ÷ spend. Figures marked ≈ additionally include the Google Ads phone path from the
+              MTA-MVM — multi-touch attribution · Markov model (labelled MTA-MVM, reconciled against untraced Dental Nation Al Wasl patients only).
             </p>
             <p className="mt-1">
               These net figures are the house numbers. The Meta / Google performance pages show the platforms’{' '}

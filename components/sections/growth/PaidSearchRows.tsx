@@ -37,7 +37,7 @@ export function PaidSearchRows({ p, traceQs, mktQs = '' }: { p: ChannelPerf; tra
             </Link>
           </span>
           <span className="mt-0.5 block max-w-[230px] pl-4 text-[10.5px] leading-snug text-ink-faint">
-            {open ? 'Website bookings (measured) + phone-call bookings (Markov-chain model). ≈ = includes modelled figures.' : 'Click to expand the split.'}
+            {open ? 'Website bookings (measured) + phone-call bookings (MTA-MVM · multi-touch attribution Markov model). ≈ = includes MTA-MVM figures.' : 'Click to expand the split.'}
           </span>
         </td>
         <td className="px-2 py-2.5 text-right align-top">
@@ -46,7 +46,7 @@ export function PaidSearchRows({ p, traceQs, mktQs = '' }: { p: ChannelPerf; tra
         <td className="px-2 py-2.5 text-right align-top"><span className="text-[12.5px] font-medium tabular-nums text-ink">{combined(p.enquiries, p.estEnquiries)}</span></td>
         <td className="px-2 py-2.5 text-right align-top">
           <span className="text-[13px] font-semibold tabular-nums text-ink">{combined(p.booked, est)}</span>
-          <span className="block text-[10px] text-ink-faint">{int(p.booked)} measured + {int(est)} est.</span>
+          <span className="block text-[10px] text-ink-faint">{int(p.booked)} measured + {int(est)} MTA-MVM</span>
         </td>
         <td className="px-2 py-2.5 text-right align-top"><span className="text-[12.5px] font-medium tabular-nums text-ink">{combined(p.showed, p.estShowed)}</span></td>
         <td className="px-2 py-2.5 text-right align-top"><span className="text-[12.5px] font-medium tabular-nums text-ink">{combined(p.treated, p.estTreated)}</span></td>
@@ -89,7 +89,7 @@ export function PaidSearchRows({ p, traceQs, mktQs = '' }: { p: ChannelPerf; tra
             </td>
           </tr>
           <tr className="bg-panel/30">
-            <td className="py-1.5 pl-7 pr-2 text-[11px] text-watch">↳ Phone-call bookings <span className="opacity-80">(Markov-chain model)</span></td>
+            <td className="py-1.5 pl-7 pr-2 text-[11px] text-watch">↳ Phone-call bookings <span className="opacity-80">(MTA-MVM)</span></td>
             <td className={`px-2 ${sub} text-ink-faint`}>—</td>
             <td className={`px-2 ${sub} text-watch`}>{int(p.estEnquiries ?? 0)}</td>
             <td className={`px-2 ${sub} font-medium text-watch`}>{int(est)}</td>

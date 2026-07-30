@@ -62,8 +62,8 @@ export async function ChannelOutcome({
         <div className="grid gap-6 md:grid-cols-[1.2fr_1fr]">
           <FunnelViz
             stages={[
-              { label: est > 0 ? 'Enquiries (incl. ≈ model)' : 'Enquiries', value: p.enquiries + (p.estEnquiries ?? 0) },
-              { label: est > 0 ? 'Booked (incl. ≈ model)' : 'Booked', value: p.booked + est },
+              { label: est > 0 ? 'Enquiries (incl. MTA-MVM)' : 'Enquiries', value: p.enquiries + (p.estEnquiries ?? 0) },
+              { label: est > 0 ? 'Booked (incl. MTA-MVM)' : 'Booked', value: p.booked + est },
               { label: 'Showed up', value: p.showed + (p.estShowed ?? 0) },
               { label: 'Treated (billed)', value: p.treated + (p.estTreated ?? 0) },
             ]}
@@ -84,7 +84,7 @@ export async function ChannelOutcome({
             </p>
             {p.spend != null ? (
               <p className="text-[11.5px] leading-snug">
-                Net unit costs{est > 0 ? ' (incl. the ≈ phone-path model)' : ''}:{' '}
+                Net unit costs{est > 0 ? ' (incl. MTA-MVM)' : ''}:{' '}
                 {channelKey === 'paid-search' ? (
                   <>
                     enquiry {p.estCostPerEnquiry != null ? `≈${aed(p.estCostPerEnquiry)}` : '—'} · booking{' '}
@@ -112,7 +112,7 @@ export async function ChannelOutcome({
           {channelKey === 'paid-search'
             ? ' (a gclid / Google campaign tag on their widget booking, or a reception "google ad" tag), plus the Markov-chain phone-path model (≈, reconciled against untraced Dental Nation Al Wasl patients only)'
             : ' (an ads-tagged lead-form or campaign trace)'}
-          . {int(p.booked)} measured booked{est > 0 ? ` + ${int(est)} modelled` : ''} in this window. The all-channel
+          . {int(p.booked)} measured booked{est > 0 ? ` + ${int(est)} MTA-MVM` : ''} in this window. MTA-MVM = multi-touch attribution · Markov model (the ≈ phone path). The all-channel
           clinic journey is under the “All channels” scope above — the two must never be read as the same population.
         </Takeaway>
 
