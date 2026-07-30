@@ -40,14 +40,45 @@ const iso = (d: Date) => d.toISOString().slice(0, 10);
 const isOrganic = (c: string) => /organic search/i.test(c);
 const isPaid = (c: string) => /paid|cpc|display|shopping/i.test(c);
 
+/**
+ * Await a source with a hard time budget. None of the four upstreams (GA4,
+ * PageSpeed, Meta social, Search Console) fails fast when a Google/Meta API
+ * throttles or stalls — and one stalled source used to hold the WHOLE tab at
+ * the skeleton until the function limit, which reads as "not loading". A
+ * source that misses its budget degrades to its fallback (an honest data gap
+ * on the page) and the timing is logged so the culprit is visible in Vercel.
+ */
+async function timed<T>(name: string, p: Promise<T>, ms: number, fallback: T): Promise<T> {
+  const t0 = Date.now();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const raced = await Promise.race([
+    p.then((v) => ({ v, timedOut: false as const })),
+    new Promise<{ v: T; timedOut: true }>((resolve) => {
+      timer = setTimeout(() => resolve({ v: fallback, timedOut: true }), ms);
+    }),
+  ]);
+  if (timer) clearTimeout(timer);
+  console.log(`[digital-seo] ${name}: ${raced.timedOut ? `TIMED OUT after ${ms}ms` : `ok in ${Date.now() - t0}ms`}`);
+  return raced.v;
+}
+
+type GaReport = Awaited<ReturnType<typeof getGoogleAnalyticsReport>>;
+
 export async function getDigitalSeo(range: { from?: string; to?: string }): Promise<DigitalSeoReport> {
   const from = range.from ?? '2026-01-01';
   const to = range.to ?? iso(new Date());
+  const gaFallback = {
+    available: false,
+    note: 'GA4 did not respond in time (API slow or throttled) — reload in a minute; the rest of the tab is live.',
+    data: null,
+    lanes: [],
+    lanesNote: null,
+  } as unknown as GaReport;
   const [ga, speed, social, search] = await Promise.all([
-    getGoogleAnalyticsReport(range),
-    getSiteSpeedReport().catch(() => null),
-    getSocialReport({ from, to }).catch(() => null),
-    getSearchConsoleReport(range).catch(() => null),
+    timed('ga4', getGoogleAnalyticsReport(range), 60_000, gaFallback),
+    timed('pagespeed', getSiteSpeedReport().catch(() => null), 30_000, null),
+    timed('social', getSocialReport({ from, to }).catch(() => null), 25_000, null),
+    timed('search-console', getSearchConsoleReport(range).catch(() => null), 25_000, null),
   ]);
 
   const data = ga.data;
