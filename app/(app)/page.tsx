@@ -1,6 +1,6 @@
 import { Suspense } from 'react';
 import { getRangeReport } from '@/lib/report';
-import { effectiveVisibleTabs, resolveTabInSet } from '@/components/tabs';
+import { TABS, effectiveVisibleTabs, resolveTabInSet } from '@/components/tabs';
 import { currentUser } from '@/lib/auth/role';
 import { resolveClinic } from '@/config/clinics';
 import { Header } from '@/components/Header';
@@ -95,6 +95,22 @@ export default async function DashboardPage({
       <Header range={shell.range} source={shell.source} />
       <TabBar role={role} visibleTabs={visibleTabs} />
       {clinicAware ? <ClinicFilter active={clinic} /> : null}
+
+      {/* A link asked for a tab this SESSION can't see (e.g. an old Viewer
+          cookie opening ?tab=group after the person was granted access on
+          their own login). Falling back silently reads as "the old view" —
+          say what happened and how to fix it instead. */}
+      {sp.tab && sp.tab !== tab && TABS.some((t) => t.key === sp.tab) ? (
+        <div className="mb-4 rounded-card border border-watch/50 bg-watch/5 px-4 py-3 text-[12.5px] leading-snug text-ink-soft">
+          <span className="font-medium text-ink">
+            This link opens “{TABS.find((t) => t.key === sp.tab)?.label}”, but your current login
+            {role ? ` (${role})` : ''} doesn&apos;t include that tab.
+          </span>{' '}
+          If you were recently given access under your own name, you are probably still signed in on an older shared
+          session — click <span className="font-medium text-ink">Sign out</span> (top right), then sign in with your
+          personal password and open the link again.
+        </div>
+      ) : null}
 
       {/* Stream the active tab. Keying on tab+params re-arms the boundary on
           navigation so the skeleton shows immediately instead of the shell
