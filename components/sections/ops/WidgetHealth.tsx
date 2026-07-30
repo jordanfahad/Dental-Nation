@@ -35,10 +35,12 @@ function dur(min: number): string {
 /**
  * Booking-widget uptime — can a patient actually book right now?
  *
- * Driven by a synthetic check that opens the real widget every 15 minutes and
- * asserts the time dropdown fills. An HTTP ping would show 100% through an
- * outage (the site answers 200; only the slot list is empty), so this panel
- * deliberately measures the patient's experience instead.
+ * Driven by a check that queries the Practo availability (slots) API every 15
+ * minutes — the same system the widget reads. Slots returned = healthy; an
+ * empty list = genuinely no availability (the widget shows patients an empty
+ * calendar); an API error/timeout = booking system down. An HTTP ping would
+ * show 100% through all of that (the site answers 200 throughout), so this
+ * panel deliberately measures bookability instead.
  */
 /**
  * @param compact Executive view — status and uptime only, no incident table.
@@ -86,7 +88,7 @@ export async function WidgetHealth({ compact = false }: { compact?: boolean } = 
         title="Website & booking availability"
         right={
           <span className={`text-[11px] font-medium ${down ? 'text-stop' : 'text-ink-faint'}`}>
-            {down ? 'widget down' : 'synthetic check · every 15 min'}
+            {down ? 'not bookable' : 'availability check · every 15 min'}
           </span>
         }
       />
@@ -94,16 +96,17 @@ export async function WidgetHealth({ compact = false }: { compact?: boolean } = 
         <p className="text-[12.5px] leading-snug text-ink-soft">
           {compact ? (
             <>
-              An automated check opens the live booking widget every 15 minutes and confirms real appointment times are
-              offered. A failure means a patient could not have booked at that moment.
+              An automated check asks the booking system&rsquo;s availability API every 15 minutes whether real
+              appointment slots are on offer. A failure means a patient could not have booked at that moment.
             </>
           ) : (
             <>
-              Every 15 minutes an automated check opens the live booking widget, picks a treatment and a date, and confirms
-              the time dropdown actually offers slots. A failure means a real patient hit{' '}
-              <span className="font-medium text-ink-soft">&ldquo;No slots available&rdquo;</span> at that moment. This is
-              measured from the patient&rsquo;s side on purpose — the site keeps returning 200 during an outage, so a normal
-              uptime ping would show 100% throughout.
+              Every 15 minutes an automated check queries the availability API the booking widget itself reads, over the
+              next 7 days for the monitored doctors. Slots returned means patients can book; an empty list means they see{' '}
+              <span className="font-medium text-ink-soft">&ldquo;No slots available&rdquo;</span> (genuine
+              no-availability); an API error or timeout means the booking system itself is down. A normal uptime ping
+              would show 100% through all of that — the site keeps returning 200 during an outage — so this measures
+              bookability, not page availability.
             </>
           )}
         </p>

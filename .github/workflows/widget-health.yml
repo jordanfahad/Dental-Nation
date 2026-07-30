@@ -1,7 +1,10 @@
 name: Booking widget health
 
-# A real browser is too heavy for a Vercel function, so the synthetic check runs
-# here instead and reports back to the dashboard, which stores and displays it.
+# Availability is checked against the Practo slots API directly (vendor
+# recommendation): slots → healthy, empty list → genuine no-availability,
+# HTTP error/timeout → outage. No browser, no DOM fragility, no side effects.
+# Until the SLOTS_API_KEY secret is configured the job falls back to the old
+# robot-patient browser check so monitoring never goes dark.
 on:
   schedule:
     - cron: '*/15 * * * *' # every 15 minutes (UTC)
@@ -16,6 +19,8 @@ jobs:
   check:
     runs-on: ubuntu-latest
     timeout-minutes: 6
+    env:
+      HAS_SLOTS_KEY: ${{ secrets.SLOTS_API_KEY != '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -23,11 +28,24 @@ jobs:
         with:
           node-version: '22'
 
-      # Only Playwright + its Chromium — this job never builds the dashboard.
-      - name: Install Playwright
+      - name: Availability check (slots API)
+        if: env.HAS_SLOTS_KEY == 'true'
+        env:
+          SLOTS_API_KEY: ${{ secrets.SLOTS_API_KEY }}
+          # "center:resource" pairs; override via repo variable when doctors change.
+          SLOTS_RESOURCES: ${{ vars.SLOTS_RESOURCES || '1:DOC0001,1:DOC0017' }}
+          SITE_URL: ${{ vars.SITE_URL || 'https://www.dentalnation.com/en/' }}
+          DASHBOARD_URL: ${{ secrets.DASHBOARD_URL }}
+          WIDGET_HEALTH_SECRET: ${{ secrets.WIDGET_HEALTH_SECRET }}
+        run: node scripts/slots-check.mjs
+
+      # ── Legacy robot-patient fallback (only while SLOTS_API_KEY is unset) ──
+      - name: Install Playwright (fallback only)
+        if: env.HAS_SLOTS_KEY != 'true'
         run: npm install --no-save playwright@1.56.1 && npx playwright install --with-deps chromium
 
-      - name: Run the robot-patient check
+      - name: Run the robot-patient check (fallback only)
+        if: env.HAS_SLOTS_KEY != 'true'
         env:
           SITE_URL: ${{ vars.SITE_URL || 'https://www.dentalnation.com/en/' }}
           DASHBOARD_URL: ${{ secrets.DASHBOARD_URL }}

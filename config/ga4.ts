@@ -128,6 +128,16 @@ export const GA4_LEAD_CHANNEL_DIMENSION =
  */
 export const GA4_WHATSAPP_EVENT = process.env.GA4_WHATSAPP_EVENT?.trim() || 'whatsapp_click';
 export const GA4_CALL_EVENT = process.env.GA4_CALL_EVENT?.trim() || 'call_click';
+/**
+ * All event names that count as a phone-call click. `phone_click` is the
+ * site-wide tel:-link listener Zavis shipped on dentalnation.com (30 Jul 2026,
+ * with a phone_number custom dimension); `call_click` was the previously
+ * assumed GTM name and is kept so any historical data still counts. The env
+ * override joins the list rather than replacing it.
+ */
+export const GA4_CALL_EVENTS: string[] = [
+  ...new Set([GA4_CALL_EVENT, 'phone_click', 'call_click']),
+];
 
 // ============================================================================
 // Offer landing pages (Website Bookings → "Booking funnel & events by offer").

@@ -5,7 +5,7 @@ import {
   BOOKING_OFFERS,
   GA4_BOOKING_COMPLETED_EVENT,
   GA4_BOOKING_INTENT_EVENT,
-  GA4_CALL_EVENT,
+  GA4_CALL_EVENTS,
   GA4_EVENTS,
   GA4_LANES,
   GA4_LEAD_CHANNEL_DIMENSION,
@@ -1219,7 +1219,7 @@ export async function fetchGa4FunnelDaily(from: string, to: string): Promise<Ga4
       dimensionFilter: {
         filter: {
           fieldName: 'eventName',
-          inListFilter: { values: [GA4_WHATSAPP_EVENT, GA4_CALL_EVENT] },
+          inListFilter: { values: [GA4_WHATSAPP_EVENT, ...GA4_CALL_EVENTS] },
         },
       },
       limit: '800',
@@ -1231,7 +1231,7 @@ export async function fetchGa4FunnelDaily(from: string, to: string): Promise<Ga4
     if (!iso || !name) continue;
     const row = ensure(iso);
     if (name === GA4_WHATSAPP_EVENT) row.whatsappClicks += metric(r, 0);
-    else if (name === GA4_CALL_EVENT) row.callClicks += metric(r, 0);
+    else if (GA4_CALL_EVENTS.includes(name)) row.callClicks += metric(r, 0);
   }
 
   return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
