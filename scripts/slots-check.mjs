@@ -94,41 +94,50 @@ function countSlots(data) {
  * A 4xx must never be recorded as a clinic outage: the first live run got
  * HTTP 400 on every doctor and wrote a false conclusive DOWN.
  *
- * Windows: tried with from_date=today first, then from_date=tomorrow — some
- * scheduler APIs reject a range that starts on the current day.
+ * Variants: the live API answered `Invalid request token, please login again`
+ * (code 1001) to the documented header — so each doctor is tried with the key
+ * as a header, then as a query param, and with a from_date=tomorrow window
+ * (some scheduler APIs reject ranges starting on the current day). Every
+ * rejection is logged with the API's own reason; the first variant that works
+ * wins.
  */
 async function getSlots(center, resource) {
+  const t1 = { from: iso(new Date(today.getTime() + 86400_000)), to: iso(new Date(today.getTime() + 8 * 86400_000)) };
   const windows = [
-    { from: FROM, to: TO },
-    { from: iso(new Date(today.getTime() + 86400_000)), to: iso(new Date(today.getTime() + 8 * 86400_000)) },
+    { from: FROM, to: TO, auth: 'header' },
+    { from: t1.from, to: t1.to, auth: 'header' },
+    { from: FROM, to: TO, auth: 'query' },
+    { from: t1.from, to: t1.to, auth: 'query' },
   ];
   let lastErr = null;
   let lastBadReq = null;
   for (const w of windows) {
     const url =
       `${API_BASE}?center_id=${encodeURIComponent(center)}&resource_id=${encodeURIComponent(resource)}` +
-      `&from_date=${w.from}&to_date=${w.to}&booked_slot=I&visit_mode=I&first_available=N`;
+      `&from_date=${w.from}&to_date=${w.to}&booked_slot=I&visit_mode=I&first_available=N` +
+      (w.auth === 'query' ? `&request_handler_key=${encodeURIComponent(KEY)}` : '');
     for (let attempt = 0; attempt < 2; attempt++) {
       if (attempt) await new Promise((r) => setTimeout(r, 4000));
+      const tag = `${resource}@center${center} ${w.from} key-in-${w.auth}`;
       try {
         const res = await fetch(url, {
-          headers: { request_handler_key: KEY },
+          headers: w.auth === 'header' ? { request_handler_key: KEY } : {},
           signal: AbortSignal.timeout(20000),
         });
         const text = await res.text();
         if (res.status === 401 || res.status === 403) {
-          console.log(`${resource}@center${center} ${w.from}: HTTP ${res.status} —`, text.slice(0, 300).replace(/\s+/g, ' '));
+          console.log(`${tag}: HTTP ${res.status} —`, text.slice(0, 300).replace(/\s+/g, ' '));
           return { kind: 'auth', status: res.status };
         }
         if (res.status >= 400 && res.status < 500) {
           // Our request was rejected. Log WHY (the body usually says), try the
-          // next window variant instead of retrying the same request.
-          console.log(`${resource}@center${center} ${w.from}: HTTP ${res.status} —`, text.slice(0, 300).replace(/\s+/g, ' '));
+          // next variant instead of retrying the same request.
+          console.log(`${tag}: HTTP ${res.status} —`, text.slice(0, 300).replace(/\s+/g, ' '));
           lastBadReq = `HTTP ${res.status} (${text.slice(0, 120).replace(/\s+/g, ' ')})`;
           break;
         }
         if (!res.ok) {
-          console.log(`${resource}@center${center} ${w.from}: HTTP ${res.status} —`, text.slice(0, 300).replace(/\s+/g, ' '));
+          console.log(`${tag}: HTTP ${res.status} —`, text.slice(0, 300).replace(/\s+/g, ' '));
           lastErr = `HTTP ${res.status}`;
           continue; // 5xx: retry once, then call it an outage
         }
@@ -139,8 +148,16 @@ async function getSlots(center, resource) {
           lastErr = `non-JSON response (${text.slice(0, 80).replace(/\s+/g, ' ')})`;
           continue;
         }
+        // An HTTP 200 can still carry an application error (return_code != 0)
+        // — that must never be read as "0 slots = genuinely no availability".
+        const rc = data?.return_code ?? data?.returnCode;
+        if (rc != null && String(rc) !== '0') {
+          console.log(`${tag}: application error —`, text.slice(0, 300).replace(/\s+/g, ' '));
+          lastBadReq = `app error ${rc} (${String(data?.return_message ?? '').slice(0, 120)})`;
+          break;
+        }
         // Log the head of the payload so the Action run shows the real shape.
-        console.log(`slots ${resource}@center${center} ${w.from}→${w.to}:`, text.slice(0, 400).replace(/\s+/g, ' '));
+        console.log(`slots ${tag} →${w.to}:`, text.slice(0, 400).replace(/\s+/g, ' '));
         return { kind: 'ok', slots: countSlots(data), window: `${w.from} → ${w.to}` };
       } catch (e) {
         lastErr = /timeout|abort/i.test(String(e?.message)) ? 'timeout after 20s' : String(e?.message ?? e).slice(0, 120);
