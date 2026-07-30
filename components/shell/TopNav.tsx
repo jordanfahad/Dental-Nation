@@ -19,6 +19,7 @@ export function TopNav({
   canEdit = true,
   showGrowthProjects = true,
   showLeaveCalendar = true,
+  identity = null,
 }: {
   components: Component[];
   projects: Project[];
@@ -26,6 +27,8 @@ export function TopNav({
   canEdit?: boolean;
   showGrowthProjects?: boolean;
   showLeaveCalendar?: boolean;
+  /** "Akbar · Staff · read-only" — who this session actually belongs to. */
+  identity?: string | null;
 }) {
   const pathname = usePathname();
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -101,7 +104,7 @@ export function TopNav({
             ) : (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-panel px-2.5 py-1 text-xs font-medium text-ink-2">
                 <span className="h-1.5 w-1.5 rounded-full bg-ink-3" />
-                Viewer · read-only
+                {identity ?? 'Viewer · read-only'}
               </span>
             )}
             <button

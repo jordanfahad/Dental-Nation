@@ -73,7 +73,12 @@ export async function middleware(req: NextRequest) {
 
   const url = req.nextUrl.clone();
   url.pathname = '/login';
-  url.searchParams.set('from', req.nextUrl.pathname);
+  // Carry the FULL deep link (path + query) through the login page. Pathname
+  // alone destroyed shared links: "/?tab=group&gtab=growth" became "/" after a
+  // successful login, landing the person on the default Executive tab — which
+  // reads as "I still have the old view" even though their access is correct.
+  url.search = '';
+  url.searchParams.set('from', req.nextUrl.pathname + req.nextUrl.search);
   return NextResponse.redirect(url);
 }
 

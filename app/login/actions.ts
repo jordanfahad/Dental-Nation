@@ -93,5 +93,6 @@ export async function login(_prev: { error?: string } | undefined, formData: For
   });
 
   const from = String(formData.get('from') ?? '/');
-  redirect(from.startsWith('/') ? from : '/');
+  // Same-site paths only ("//host" is a protocol-relative external URL).
+  redirect(from.startsWith('/') && !from.startsWith('//') ? from : '/');
 }
