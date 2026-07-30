@@ -1236,3 +1236,63 @@ export async function fetchGa4FunnelDaily(from: string, to: string): Promise<Ga4
 
   return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
 }
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Digital & SEO tab: range-aware organic detail.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+export interface Ga4OrganicDigital {
+  /** sessionSource × sessionMedium — feeds the search-engine / AI-chat split. */
+  sources: { source: string; medium: string; sessions: number }[];
+  /** country × region × channel group — WHOLE-SITE geography (not landing pages). */
+  regions: { country: string; region: string; channelGroup: string; sessions: number }[];
+}
+
+/**
+ * Two runReports for the Digital & SEO tab, honouring the selected window:
+ * source/medium (classified into search engines vs AI assistants vs Direct by
+ * the caller) and whole-site sessions by region × channel group, so geography
+ * can be shown for ALL site traffic and for organic specifically — the old
+ * lane-based numbers counted only the offer landing pages.
+ */
+export async function fetchGa4OrganicDigital(from: string, to: string): Promise<Ga4OrganicDigital> {
+  const analytics = getAnalyticsClient();
+  const property = `properties/${GA4_PROPERTY_ID}`;
+  const dateRanges = [{ startDate: from, endDate: to }];
+
+  const [sourcesRes, regionsRes] = await Promise.all([
+    analytics.properties.runReport({
+      property,
+      requestBody: {
+        dateRanges,
+        dimensions: [{ name: 'sessionSource' }, { name: 'sessionMedium' }],
+        metrics: [{ name: 'sessions' }],
+        orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+        limit: '250',
+      },
+    }),
+    analytics.properties.runReport({
+      property,
+      requestBody: {
+        dateRanges,
+        dimensions: [{ name: 'country' }, { name: 'region' }, { name: 'sessionDefaultChannelGroup' }],
+        metrics: [{ name: 'sessions' }],
+        orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+        limit: '1000',
+      },
+    }),
+  ]);
+
+  const sources = (sourcesRes.data.rows ?? []).map((r) => ({
+    source: r.dimensionValues?.[0]?.value || '(not set)',
+    medium: r.dimensionValues?.[1]?.value || '(none)',
+    sessions: metric(r, 0),
+  }));
+  const regions = (regionsRes.data.rows ?? []).map((r) => ({
+    country: r.dimensionValues?.[0]?.value || '',
+    region: r.dimensionValues?.[1]?.value || '',
+    channelGroup: r.dimensionValues?.[2]?.value || 'Unassigned',
+    sessions: metric(r, 0),
+  }));
+  return { sources, regions };
+}
