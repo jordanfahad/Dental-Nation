@@ -64,14 +64,20 @@ export async function login(_prev: { error?: string } | undefined, formData: For
   let role: Role | null = null;
   let uid: string | null = null;
   if (entered === password) role = 'admin';
-  else if (viewerPassword && entered === viewerPassword) role = 'viewer';
   else {
-    // Managed users (the admin Users tab) take precedence over the legacy
-    // app_secrets logins, so edits to a person's role/access apply on next login.
+    // Managed users (the admin Users tab) are checked BEFORE the shared env
+    // viewer password and the legacy app_secrets logins. Order matters: if a
+    // person's password collides with VIEWER_PASSWORD (e.g. it was reused as
+    // the shared password before their personal account existed), the env
+    // check would shadow their account forever — they'd type their own
+    // password and silently get the generic Viewer session instead of their
+    // grants. Named accounts always win over shared passwords.
     const user = await findUserByPassword(entered);
     if (user) {
       role = user.baseRole;
       uid = String(user.id);
+    } else if (viewerPassword && entered === viewerPassword) {
+      role = 'viewer';
     } else {
       const staffKey = await matchSecretKey(entered, 'staff_password_');
       if (staffKey) role = STAFF_ROLE_BY_KEY[staffKey] ?? 'staff';
