@@ -69,6 +69,18 @@ export async function ChannelOutcome({
             ]}
           />
           <div className="space-y-2 text-[12.5px] text-ink-soft">
+            {est > 0 ? (
+              <p className="rounded-card border border-line bg-panel/40 px-3 py-2 text-[11px] leading-relaxed text-ink-soft">
+                <span className="font-semibold text-ink">Measured vs MTA-MVM per stage:</span>{' '}
+                enquiries <span className="font-medium text-ink">{int(p.enquiries)}</span> measured + <span className="text-watch">≈{int(p.estEnquiries ?? 0)}</span> ·{' '}
+                booked <span className="font-medium text-ink">{int(p.booked)}</span> + <span className="text-watch">≈{int(est)}</span> ·{' '}
+                showed <span className="font-medium text-ink">{int(p.showed)}</span> + <span className="text-watch">≈{int(p.estShowed ?? 0)}</span> ·{' '}
+                treated <span className="font-medium text-ink">{int(p.treated)}</span> + <span className="text-watch">≈{int(p.estTreated ?? 0)}</span>.
+                Measured enquiries are reception-tracker rows tagged “google ad” and Google-tagged widget submissions —
+                an enquiry only becomes a measured booking when its phone matches a Practo appointment, so enquiries and
+                bookings are different stages, not the same people twice.
+              </p>
+            ) : null}
             <p>
               <span className="font-medium text-ink">{est > 0 ? '≈' : ''}{combinedRevenue > 0 ? aedShort(combinedRevenue) : '—'}</span>{' '}
               attributed billed revenue
