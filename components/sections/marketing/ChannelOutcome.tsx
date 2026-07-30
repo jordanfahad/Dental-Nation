@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { getChannelPerformance } from '@/lib/growth/channelPerformance';
 import { getChannelTrace } from '@/lib/growth/channelTrace';
-import { isBlockAppt } from '@/lib/growth/attribution';
+import { isBlockAppt, phone9 } from '@/lib/growth/attribution';
 import { Card, SectionHeader, Takeaway } from '@/components/ui/Card';
 import { FunnelViz } from '@/components/charts/FunnelViz';
 
@@ -41,11 +41,17 @@ export async function ChannelOutcome({
   // The ≈ figures are DRAWN FROM real untraced DN patients — show that pool,
   // or "≈AED 4k revenue, 0 patients" reads as a contradiction.
   const est0 = channelKey === 'paid-search' ? (p.estExtraBookings ?? 0) : 0;
-  const poolTrace = est0 > 0 ? await getChannelTrace('direct-walkin', range, 'dn-alwasl') : null;
-  const poolPatients = (poolTrace?.patients ?? []).filter((x) => !isBlockAppt(x.patientName));
-  const poolShown = poolPatients.slice(0, 30);
-  const poolRevenue = poolPatients.reduce((a, x) => a + x.revenue, 0);
-  const poolCompleted = poolPatients.filter((x) => /complete/i.test(x.status)).length;
+  const sel = channelKey === 'paid-search' ? report.mvmSelection : null;
+  const poolTrace = est0 > 0 && sel ? await getChannelTrace('direct-walkin', range, 'dn-alwasl') : null;
+  // The DETERMINISTIC selection: show exactly the patients the model picked
+  // (matched by file no. / phone key), not the whole anonymous pool.
+  const selKeys = new Set(sel?.keys ?? []);
+  const keyOf = (x: { mrNo: string; phone: string }) => x.mrNo || (phone9(x.phone) ? `p:${phone9(x.phone)}` : '');
+  const selectedPatients = (poolTrace?.patients ?? [])
+    .filter((x) => !isBlockAppt(x.patientName) && selKeys.has(keyOf(x)))
+    // one row per patient (their first in-window appointment)
+    .filter((x, i, arr) => arr.findIndex((y) => keyOf(y) === keyOf(x)) === i);
+  const selRevenue = selectedPatients.reduce((a, x) => a + x.revenue, 0);
   const est = channelKey === 'paid-search' ? (p.estExtraBookings ?? 0) : 0;
   const traceQs = `&from=${range.from}&to=${range.to}`;
   const combinedRevenue = p.revenue + (p.estRevenue ?? 0);
@@ -186,29 +192,18 @@ export async function ChannelOutcome({
             </div>
           )}
 
-          {poolPatients.length > 0 ? (
+          {sel && selectedPatients.length > 0 ? (
             <div className="mt-5">
               <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-watch">
-                Where the ≈ figures come from — the MTA-MVM pool: the model attributes ≈{int(est0)} of these{' '}
-                {int(poolPatients.length)} real untraced patients to {label}; the rest remain Direct / Walk-in
-                {poolRevenue > 0 ? ` · ${aed(poolRevenue)} billed in window` : ''}
-                {poolPatients.length > poolShown.length ? ` · showing latest ${poolShown.length}` : ''}
+                The ≈{int(selectedPatients.length)} patients the MTA-MVM selected
+                {selRevenue > 0 ? ` · ${aed(selRevenue)} billed in window` : ''} · picked from {int(sel.poolSize)} untraced walk-ins
               </p>
               <p className="mb-2 rounded-card border border-dashed border-watch/60 bg-watch/5 px-3 py-2 text-[11.5px] leading-snug text-ink-soft">
-                The ≈{int(est0)} modelled bookings{p.estRevenue ? ` and ≈${aedShort(p.estRevenue)} revenue` : ''} are drawn
-                from these <span className="font-medium text-ink">real Dental Nation Al Wasl patients</span> — booked as
-                Direct / Walk-in because they arrived with no channel trace. Their bookings, shows and bills are real
-                Practo records; the Markov model only estimates <span className="font-medium text-ink">how many</span> of
-                them came via a Google ad call — never <span className="font-medium text-ink">which ones</span>. That is
-                why they are listed as a pool here rather than claimed individually above.
-                {poolCompleted > 0 ? (
-                  <>
-                    {' '}Worked example for this window: the pool holds {int(poolCompleted)} completed visits — the
-                    model&apos;s Google share of them is the ≈{int(p.estTreated ?? 0)} treated above; the other{' '}
-                    {int(Math.max(poolCompleted - (p.estTreated ?? 0), 0))} stay credited to Direct / Walk-in. The
-                    funnel never claims the whole pool.
-                  </>
-                ) : null}
+                <span className="font-medium text-ink">Selection rule (deterministic):</span> Google measured the ad
+                call-taps per day; the model converts them into ≈{int(selectedPatients.length)} bookings and picks the
+                untraced Dental Nation Al Wasl walk-ins whose booking day had the most taps. These are those patients —
+                real Practo records; the ≈ showed / treated / revenue above are their actual outcomes. The remaining{' '}
+                {int(Math.max(sel.poolSize - selectedPatients.length, 0))} walk-ins stay credited to Direct / Walk-in.
               </p>
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[680px] text-left">
@@ -219,17 +214,21 @@ export async function ChannelOutcome({
                       <th className="px-2 py-1.5 font-medium">Phone</th>
                       <th className="px-2 py-1.5 font-medium">File</th>
                       <th className="px-2 py-1.5 font-medium">Status</th>
+                      <th className="px-2 py-1.5 text-right font-medium">Ad call-taps that day</th>
                       <th className="py-1.5 pl-2 pr-2 text-right font-medium">Revenue</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {poolShown.map((x, i) => (
+                    {selectedPatients.map((x, i) => (
                       <tr key={`${x.mrNo}|${x.date}|${i}`} className="border-t border-line/60 align-top">
                         <td className="whitespace-nowrap py-1.5 pl-2 pr-2 text-[11.5px] tabular-nums text-ink">{x.date ?? '—'}</td>
                         <td className="px-2 py-1.5 text-[12px] font-medium text-ink">{x.patientName}</td>
                         <td className="whitespace-nowrap px-2 py-1.5 text-[11.5px] tabular-nums text-ink-soft">{x.phone || '—'}</td>
                         <td className="whitespace-nowrap px-2 py-1.5 text-[11.5px] text-ink-soft">{x.mrNo || '—'}</td>
                         <td className="px-2 py-1.5 text-[11.5px] text-ink-soft">{x.status || '—'}</td>
+                        <td className="whitespace-nowrap px-2 py-1.5 text-right text-[11.5px] tabular-nums text-watch">
+                          {x.date != null && sel.tapsByDay[x.date] != null ? int(sel.tapsByDay[x.date]) : '0'}
+                        </td>
                         <td className="whitespace-nowrap py-1.5 pl-2 pr-2 text-right text-[11.5px] font-medium tabular-nums text-ink">
                           {x.revenue > 0 ? aed(x.revenue) : '—'}
                         </td>

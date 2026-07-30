@@ -180,6 +180,19 @@ export interface GrowthReport {
    *  "Leads generated" basis, exposed so the reconciliation card can show all
    *  three enquiry lenses side by side with live numbers. */
   trackerLeadRows: number;
+  /**
+   * The DETERMINISTIC MTA-MVM selection: the exact untraced DN walk-in
+   * patients the model attributes to Google — ranked by measured ad-call taps
+   * on their booking day, top-N taken (N = the reconciled tap-derived booking
+   * estimate). Their REAL Practo outcomes are the ≈ figures, so every ≈
+   * number is traceable to named patients. Keys are mr_no or `p:<phone9>`.
+   */
+  mvmSelection: {
+    keys: string[];
+    /** Ad call-taps per day in-window (the ranking signal, shown in the UI). */
+    tapsByDay: Record<string, number>;
+    poolSize: number;
+  } | null;
   notes: string[];
 }
 
@@ -201,7 +214,7 @@ function emptyReport(from: string | null, to: string | null): GrowthReport {
     })),
     totals: emptyTotals, confidence: { tagged: 0, inferred: 0, defaulted: 0 },
     ga4: null, unattributedRevenue: 0, unattributedPatients: 0, phonePath: null,
-    organicSplit: null, metaSplit: null, trackerLeadRows: 0, notes: [],
+    organicSplit: null, metaSplit: null, trackerLeadRows: 0, mvmSelection: null, notes: [],
   };
 }
 
@@ -403,6 +416,11 @@ const computeChannelPerformance = cache(async (
     const isDnAppt = (doctor: string) => clinicOfDoctor(doctor) !== 'dr-tosun';
     const dnDwBooked = new Set<string>();
     let dnDwShowed = 0;
+    // Per-patient candidate info for the DETERMINISTIC MTA-MVM selection:
+    // first in-window walk-in date + whether they ever showed. The model
+    // ranks these candidates by ad-call taps on their booking day and picks
+    // the top N — named, traceable patients instead of a proportional share.
+    const dnDwInfo = new Map<string, { firstDate: string; showed: boolean }>();
     const bookedPatientsByChannel = new Map<string, Set<string>>();
     let taggedAll = 0, inferredAll = 0, defaultedAll = 0;
     for (const a of appts) {
@@ -412,7 +430,16 @@ const computeChannelPerformance = cache(async (
       const pid = a.facts.mrNo || (a.facts.p9 ? `p:${a.facts.p9}` : '');
       if (v.channel === 'direct-walkin' && isDnAppt(a.doctor)) {
         if (pid) dnDwBooked.add(pid);
-        if (a.status === 'arrived' || a.status === 'completed') dnDwShowed += 1;
+        const showedNow = a.status === 'arrived' || a.status === 'completed';
+        if (showedNow) dnDwShowed += 1;
+        if (pid && a.date) {
+          const info = dnDwInfo.get(pid);
+          if (!info) dnDwInfo.set(pid, { firstDate: a.date, showed: showedNow });
+          else {
+            if (a.date < info.firstDate) info.firstDate = a.date;
+            info.showed = info.showed || showedNow;
+          }
+        }
       }
       if (!apptInClinic(a.doctor)) continue;
       const p = at(v.channel);
@@ -443,6 +470,7 @@ const computeChannelPerformance = cache(async (
     const dnUnattrFiles = new Set<string>();
     let dnDwRevenue = 0;
     const dnDwTreated = new Set<string>();
+    const dnDwRevenueByMr = new Map<string, number>();
     for (const b of (billRes.data as { bill_date: string | null; amount: number | null; data: Record<string, unknown> }[] | null) ?? []) {
       if (!inRange(b.bill_date, from, to)) continue;
       const isDnBill = clinicOfCenter(S(b.data?.['center_name'])) !== 'dr-tosun';
@@ -456,7 +484,10 @@ const computeChannelPerformance = cache(async (
           if (mr) dnUnattrFiles.add(mr);
         } else if (channel === 'direct-walkin') {
           dnDwRevenue += amount;
-          if (mr) dnDwTreated.add(mr);
+          if (mr) {
+            dnDwTreated.add(mr);
+            dnDwRevenueByMr.set(mr, (dnDwRevenueByMr.get(mr) ?? 0) + amount);
+          }
         }
       }
       if (clinic !== 'all' && isDnBill !== (clinic === 'dn-alwasl')) continue;
@@ -718,6 +749,7 @@ const computeChannelPerformance = cache(async (
     // call-button taps; GET_DIRECTIONS = direction taps (enum names verbatim
     // from the API, matched loosely so enum renames degrade to 'other').
     let phonePath: GrowthReport['phonePath'] = null;
+    let report_mvmSelection: GrowthReport['mvmSelection'] = null;
     {
       const ctRows = (ctRes.data as { date: string | null; click_type: string | null; clicks: number | null; campaign_name: string | null }[] | null) ?? [];
       const inWin = dnAssets ? ctRows.filter((r) => inRange(r.date, from, to)) : [];
@@ -766,22 +798,37 @@ const computeChannelPerformance = cache(async (
         // Estimated enquiries = patient-intent calls (the enquiry-equivalent of
         // a widget submission). Not pool-capped: an enquiry needn't book.
         ps.estEnquiries = phonePath.estPatientCalls;
-        // Carry the estimate DOWN the funnel at the pool's own measured rates.
-        // The orphan patients are real people with real Practo outcomes; the
-        // estimate only decides how many of them Google Ads may claim. Pool =
-        // DN Direct/Walk-in (has appointment rows) + DN unattributed billed
-        // files (no appointment rows — but a bill means they showed and were
-        // treated). Same DN scope as untracedPool above.
-        const poolPatients = untracedPool;
-        if (est > 0 && poolPatients > 0) {
-          const poolShowed = dnDwShowed + dnUnattrFiles.size;
-          const poolTreated = dnDwTreated.size + dnUnattrFiles.size;
-          const poolRevenue = dnDwRevenue + dnUnattrRevenue;
-          ps.estShowed = Math.round((est * poolShowed) / poolPatients);
-          ps.estTreated = Math.round((est * poolTreated) / poolPatients);
-          ps.estRevenue = Math.round((est * poolRevenue) / poolPatients);
+        // DETERMINISTIC SELECTION (CEO rule: nothing vague — the model must
+        // pick the actual patients). Rank the DN walk-in candidates by the
+        // measured ad-call taps on their booking day (more taps that day =
+        // more likely an ad caller), tiebreak on later date then key, and
+        // take the top `est`. Their REAL Practo outcomes become the ≈
+        // figures — showed/treated/revenue are actual records of the named
+        // selected patients, not proportional shares of an anonymous pool.
+        const tapsByDay: Record<string, number> = {};
+        for (const r of inWin) {
+          if (/CALL/i.test(String(r.click_type ?? '')) && r.date) {
+            tapsByDay[r.date] = (tapsByDay[r.date] ?? 0) + (r.clicks != null ? Number(r.clicks) || 0 : 0);
+          }
         }
-        const denom = ps.bookedPatients + est;
+        const candidates = [...dnDwInfo.entries()]
+          .map(([key, info]) => ({ key, ...info, taps: tapsByDay[info.firstDate] ?? 0 }))
+          .sort((a, b) => b.taps - a.taps || b.firstDate.localeCompare(a.firstDate) || a.key.localeCompare(b.key));
+        const selected = candidates.slice(0, Math.min(est, candidates.length));
+        ps.estExtraBookings = selected.length;
+        phonePath.estBookingsReconciled = selected.length;
+        if (selected.length > 0) {
+          ps.estShowed = selected.filter((c) => c.showed).length;
+          const selRevenue = selected.reduce((a, c) => a + (dnDwRevenueByMr.get(c.key) ?? 0), 0);
+          ps.estTreated = selected.filter((c) => (dnDwRevenueByMr.get(c.key) ?? 0) > 0).length;
+          ps.estRevenue = Math.round(selRevenue);
+        }
+        report_mvmSelection = {
+          keys: selected.map((c) => c.key),
+          tapsByDay,
+          poolSize: candidates.length,
+        };
+        const denom = ps.bookedPatients + (ps.estExtraBookings ?? 0);
         ps.estCostPerPatient = ps.spend != null && ps.spend > 0 && denom > 0 ? ps.spend / denom : null;
         const totalRev = ps.revenue + (ps.estRevenue ?? 0);
         ps.estRoas = ps.spend != null && ps.spend > 0 && totalRev > 0 ? totalRev / ps.spend : null;
@@ -789,7 +836,7 @@ const computeChannelPerformance = cache(async (
         // the CEO's cost-per-net-enquiry / booking / show / treatment set.
         const per = (n: number) => (ps.spend != null && ps.spend > 0 && n > 0 ? ps.spend / n : null);
         ps.estCostPerEnquiry = per(ps.enquiries + (ps.estEnquiries ?? 0));
-        ps.estCostPerBooked = per(ps.booked + est);
+        ps.estCostPerBooked = per(ps.booked + (ps.estExtraBookings ?? 0));
         ps.estCostPerShowed = per(ps.showed + (ps.estShowed ?? 0));
         ps.estCostPerTreated = per(ps.treated + (ps.estTreated ?? 0));
       }
@@ -818,6 +865,7 @@ const computeChannelPerformance = cache(async (
       organicSplit,
       metaSplit,
       trackerLeadRows,
+      mvmSelection: report_mvmSelection,
       notes,
     };
   } catch {
