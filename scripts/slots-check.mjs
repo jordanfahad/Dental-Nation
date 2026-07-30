@@ -86,42 +86,69 @@ function countSlots(data) {
   return times ? times.length : 0;
 }
 
-/** GET with a timeout; one retry on network error / 5xx (transient blips). */
+/**
+ * GET with a timeout. Status classification matters more than the fetch:
+ *   - 401/403        → OUR key problem            → kind 'auth'   (inconclusive)
+ *   - other 4xx      → OUR request rejected       → kind 'badreq' (inconclusive)
+ *   - 5xx / timeout  → THEIR system failed        → kind 'error'  (outage), one retry
+ * A 4xx must never be recorded as a clinic outage: the first live run got
+ * HTTP 400 on every doctor and wrote a false conclusive DOWN.
+ *
+ * Windows: tried with from_date=today first, then from_date=tomorrow — some
+ * scheduler APIs reject a range that starts on the current day.
+ */
 async function getSlots(center, resource) {
-  const url =
-    `${API_BASE}?center_id=${encodeURIComponent(center)}&resource_id=${encodeURIComponent(resource)}` +
-    `&from_date=${FROM}&to_date=${TO}&booked_slot=I&visit_mode=I&first_available=N`;
+  const windows = [
+    { from: FROM, to: TO },
+    { from: iso(new Date(today.getTime() + 86400_000)), to: iso(new Date(today.getTime() + 8 * 86400_000)) },
+  ];
   let lastErr = null;
-  for (let attempt = 0; attempt < 2; attempt++) {
-    if (attempt) await new Promise((r) => setTimeout(r, 4000));
-    try {
-      const res = await fetch(url, {
-        headers: { request_handler_key: KEY },
-        signal: AbortSignal.timeout(20000),
-      });
-      const text = await res.text();
-      if (res.status === 401 || res.status === 403) {
-        return { kind: 'auth', status: res.status };
-      }
-      if (!res.ok) {
-        lastErr = `HTTP ${res.status}`;
-        continue; // 5xx and friends: retry once, then call it an outage
-      }
-      let data;
+  let lastBadReq = null;
+  for (const w of windows) {
+    const url =
+      `${API_BASE}?center_id=${encodeURIComponent(center)}&resource_id=${encodeURIComponent(resource)}` +
+      `&from_date=${w.from}&to_date=${w.to}&booked_slot=I&visit_mode=I&first_available=N`;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      if (attempt) await new Promise((r) => setTimeout(r, 4000));
       try {
-        data = JSON.parse(text);
-      } catch {
-        lastErr = `non-JSON response (${text.slice(0, 80).replace(/\s+/g, ' ')})`;
-        continue;
+        const res = await fetch(url, {
+          headers: { request_handler_key: KEY },
+          signal: AbortSignal.timeout(20000),
+        });
+        const text = await res.text();
+        if (res.status === 401 || res.status === 403) {
+          console.log(`${resource}@center${center} ${w.from}: HTTP ${res.status} —`, text.slice(0, 300).replace(/\s+/g, ' '));
+          return { kind: 'auth', status: res.status };
+        }
+        if (res.status >= 400 && res.status < 500) {
+          // Our request was rejected. Log WHY (the body usually says), try the
+          // next window variant instead of retrying the same request.
+          console.log(`${resource}@center${center} ${w.from}: HTTP ${res.status} —`, text.slice(0, 300).replace(/\s+/g, ' '));
+          lastBadReq = `HTTP ${res.status} (${text.slice(0, 120).replace(/\s+/g, ' ')})`;
+          break;
+        }
+        if (!res.ok) {
+          console.log(`${resource}@center${center} ${w.from}: HTTP ${res.status} —`, text.slice(0, 300).replace(/\s+/g, ' '));
+          lastErr = `HTTP ${res.status}`;
+          continue; // 5xx: retry once, then call it an outage
+        }
+        let data;
+        try {
+          data = JSON.parse(text);
+        } catch {
+          lastErr = `non-JSON response (${text.slice(0, 80).replace(/\s+/g, ' ')})`;
+          continue;
+        }
+        // Log the head of the payload so the Action run shows the real shape.
+        console.log(`slots ${resource}@center${center} ${w.from}→${w.to}:`, text.slice(0, 400).replace(/\s+/g, ' '));
+        return { kind: 'ok', slots: countSlots(data), window: `${w.from} → ${w.to}` };
+      } catch (e) {
+        lastErr = /timeout|abort/i.test(String(e?.message)) ? 'timeout after 20s' : String(e?.message ?? e).slice(0, 120);
       }
-      // Log the head of the first payload so the Action run shows the real shape.
-      console.log(`slots ${resource}@center${center}:`, text.slice(0, 400).replace(/\s+/g, ' '));
-      return { kind: 'ok', slots: countSlots(data) };
-    } catch (e) {
-      lastErr = /timeout|abort/i.test(String(e?.message)) ? 'timeout after 20s' : String(e?.message ?? e).slice(0, 120);
     }
   }
-  return { kind: 'error', error: lastErr ?? 'request failed' };
+  if (lastErr) return { kind: 'error', error: lastErr };
+  return { kind: 'badreq', error: lastBadReq ?? 'request rejected' };
 }
 
 const started = Date.now();
@@ -152,15 +179,17 @@ for (const r of RESOURCES) {
 const okReads = reads.filter((r) => r.kind === 'ok');
 const authReads = reads.filter((r) => r.kind === 'auth');
 const errReads = reads.filter((r) => r.kind === 'error');
+const badReads = reads.filter((r) => r.kind === 'badreq');
 const totalSlots = okReads.reduce((a, r) => a + r.slots, 0);
 const perDoc = okReads.map((r) => `${r.resource}: ${r.slots}`).join(', ');
-const window = `${FROM} → ${TO}`;
+const window = okReads[0]?.window ?? `${FROM} → ${TO}`;
 
 let result;
 if (okReads.length > 0) {
   // At least one clean read → the API answered; the verdict is the slot count.
-  const errNote = errReads.length
-    ? ` (${errReads.map((r) => `${r.resource} read failed: ${r.error}`).join('; ')})`
+  const failed = [...errReads, ...badReads];
+  const errNote = failed.length
+    ? ` (${failed.map((r) => `${r.resource} read failed: ${r.error}`).join('; ')})`
     : '';
   result =
     totalSlots > 0
@@ -178,23 +207,28 @@ if (okReads.length > 0) {
           slotsFound: 0,
           detail: `Availability API healthy but returned NO bookable slots over ${window} for any checked doctor (${okReads.map((r) => r.resource).join(', ')}) — patients see an empty calendar. Genuine no-availability, not a system error${errNote}.`,
         };
-} else if (authReads.length === reads.length) {
-  // The key was rejected — that's OUR configuration, not the clinic's system.
-  result = {
-    ok: false,
-    conclusive: false,
-    stage: 'api',
-    slotsFound: null,
-    detail: `Monitor error (not a clinic verdict): availability API rejected the key (HTTP ${authReads[0].status}) — check the SLOTS_API_KEY secret.`,
-  };
-} else {
-  // Every read failed with an error/timeout → the booking system is down or unreadable.
+} else if (errReads.length > 0) {
+  // At least one 5xx/timeout and no clean read → the booking system failed us.
   result = {
     ok: false,
     conclusive: true,
     stage: 'api',
     slotsFound: null,
-    detail: `Availability API unreachable for every checked doctor — booking system down or read failed (${reads.map((r) => `${r.resource}: ${r.error ?? `HTTP ${r.status}`}`).join('; ')}).`,
+    detail: `Availability API unreachable — booking system down or read failed (${reads.map((r) => `${r.resource}: ${r.error ?? `HTTP ${r.status}`}`).join('; ')}).`,
+  };
+} else {
+  // Only auth/bad-request rejections → OUR side is wrong (key or request
+  // format), which says nothing about whether patients can book. Never an
+  // outage: the first live run wrote a false DOWN from exactly this case.
+  const why = authReads.length
+    ? `key rejected (HTTP ${authReads[0].status}) — check the SLOTS_API_KEY secret`
+    : badReads.map((r) => `${r.resource}: ${r.error}`).join('; ');
+  result = {
+    ok: false,
+    conclusive: false,
+    stage: 'api',
+    slotsFound: null,
+    detail: `Monitor error (not a clinic verdict): availability API rejected the check's request — ${why}. See the Action log for the API's response body.`,
   };
 }
 
