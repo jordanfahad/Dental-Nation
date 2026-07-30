@@ -129,6 +129,9 @@ export default async function DashboardPage({
       </Suspense>
 
       <Footer ingestion={shell.ingestion} />
+      <p className="mt-2 text-center text-[9.5px] text-ink-faint/70">
+        build {(process.env.VERCEL_GIT_COMMIT_SHA ?? 'dev').slice(0, 7)}
+      </p>
     </main>
   );
 }

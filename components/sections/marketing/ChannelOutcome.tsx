@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { getChannelPerformance } from '@/lib/growth/channelPerformance';
 import { getChannelTrace } from '@/lib/growth/channelTrace';
+import { isBlockAppt } from '@/lib/growth/attribution';
 import { Card, SectionHeader, Takeaway } from '@/components/ui/Card';
 import { FunnelViz } from '@/components/charts/FunnelViz';
 
@@ -32,14 +33,18 @@ export async function ChannelOutcome({
   ]);
   const p = report.channels.find((c) => c.key === channelKey);
   if (!p) return null;
-  const shown = trace.patients.slice(0, 50);
-  const tracedRevenue = trace.patients.reduce((a, x) => a + x.revenue, 0);
+  // Belt-and-braces: the trace layer already excludes reception calendar
+  // blocks; filter again at render so a block row can never reach the CEO.
+  const realPatients = trace.patients.filter((x) => !isBlockAppt(x.patientName));
+  const shown = realPatients.slice(0, 50);
+  const tracedRevenue = realPatients.reduce((a, x) => a + x.revenue, 0);
   // The ≈ figures are DRAWN FROM real untraced DN patients — show that pool,
   // or "≈AED 4k revenue, 0 patients" reads as a contradiction.
   const est0 = channelKey === 'paid-search' ? (p.estExtraBookings ?? 0) : 0;
   const poolTrace = est0 > 0 ? await getChannelTrace('direct-walkin', range, 'dn-alwasl') : null;
-  const poolShown = poolTrace?.patients.slice(0, 30) ?? [];
-  const poolRevenue = poolTrace?.patients.reduce((a, x) => a + x.revenue, 0) ?? 0;
+  const poolPatients = (poolTrace?.patients ?? []).filter((x) => !isBlockAppt(x.patientName));
+  const poolShown = poolPatients.slice(0, 30);
+  const poolRevenue = poolPatients.reduce((a, x) => a + x.revenue, 0);
   const est = channelKey === 'paid-search' ? (p.estExtraBookings ?? 0) : 0;
   const traceQs = `&from=${range.from}&to=${range.to}`;
   const combinedRevenue = p.revenue + (p.estRevenue ?? 0);
@@ -132,9 +137,9 @@ export async function ChannelOutcome({
             drill-down, with each patient's in-window billed revenue. */}
         <div className="mt-4">
           <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-ink-faint">
-            The patients behind the numbers — {int(trace.total)} attributed booking{trace.total === 1 ? '' : 's'}
+            The patients behind the numbers — {int(realPatients.length)} attributed booking{realPatients.length === 1 ? '' : 's'}
             {tracedRevenue > 0 ? ` · ${aed(tracedRevenue)} billed in window` : ''}
-            {trace.total > shown.length ? ` (showing latest ${shown.length})` : ''}
+            {realPatients.length > shown.length ? ` (showing latest ${shown.length})` : ''}
           </p>
           {shown.length === 0 ? (
             <p className="rounded-card border border-dashed border-line px-4 py-5 text-center text-[12px] text-ink-soft">
@@ -180,12 +185,13 @@ export async function ChannelOutcome({
             </div>
           )}
 
-          {poolTrace && poolTrace.total > 0 ? (
+          {poolPatients.length > 0 ? (
             <div className="mt-5">
               <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-watch">
-                Where the ≈ figures come from — the Markov pool ({int(poolTrace.total)} real untraced patients
+                Where the ≈ figures come from — the MTA-MVM pool: the model attributes ≈{int(est0)} of these{' '}
+                {int(poolPatients.length)} real untraced patients to {label}; the rest remain Direct / Walk-in
                 {poolRevenue > 0 ? ` · ${aed(poolRevenue)} billed in window` : ''}
-                {poolTrace.total > poolShown.length ? ` · showing latest ${poolShown.length}` : ''})
+                {poolPatients.length > poolShown.length ? ` · showing latest ${poolShown.length}` : ''}
               </p>
               <p className="mb-2 rounded-card border border-dashed border-watch/60 bg-watch/5 px-3 py-2 text-[11.5px] leading-snug text-ink-soft">
                 The ≈{int(est0)} modelled bookings{p.estRevenue ? ` and ≈${aedShort(p.estRevenue)} revenue` : ''} are drawn
