@@ -5,6 +5,7 @@ import { HBarChart, Donut, TrendChart, CATEGORICAL, TOKENS, type BarDatum, type 
 import { GroupSubNav } from './GroupSubNav';
 import { resolveGroupSub } from './subtabs';
 import { GrowthPlatform } from '@/components/sections/growth/GrowthPlatform';
+import { KpiBenchmarks } from '@/components/sections/growth/KpiBenchmarks';
 
 /**
  * Group Revenue tab — the portfolio view across the three commonly-owned
@@ -259,6 +260,17 @@ export async function GroupRevenue({ range, sub, gchan, gclinic }: { range?: { f
       <div className="space-y-4">
         <GroupSubNav active={active} />
         <GrowthPlatform range={{ from: range?.from, to: range?.to }} gchan={gchan} gclinic={gclinic} />
+      </div>
+    );
+  }
+
+  // KPI Benchmarks lives here for the same reason as Growth Platform: it
+  // inherits the Group grant (Akbar already has it) without a new ACL.
+  if (active === 'kpis') {
+    return (
+      <div className="space-y-4">
+        <GroupSubNav active={active} />
+        <KpiBenchmarks range={{ from: range?.from, to: range?.to, preset: range?.preset }} />
       </div>
     );
   }

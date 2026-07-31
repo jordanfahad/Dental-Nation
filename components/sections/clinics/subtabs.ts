@@ -14,6 +14,7 @@ export const GROUP_SUBTABS = [
   { key: 'dr-tosun', label: 'Dr Tosun Dental' },
   { key: 'al-maher', label: 'AMC' },
   { key: 'growth', label: 'Growth Platform' },
+  { key: 'kpis', label: 'KPI Benchmarks' },
 ] as const;
 
 export type GroupSubTab = (typeof GROUP_SUBTABS)[number]['key'];
