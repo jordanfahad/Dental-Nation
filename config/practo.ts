@@ -28,9 +28,12 @@ export function isPractoConfigured(): boolean {
   return getPractoConfig() !== null;
 }
 
-/** Days a request_handler_key is treated as valid before we proactively re-login
- *  (the token lasts ~21 days; we refresh a little early). */
-export const PRACTO_TOKEN_TTL_DAYS = 20;
+/** Minutes a request_handler_key is treated as valid before we proactively
+ *  re-login. Vendor (Sagar, 2026-07-31): the key is a short-lived SESSION token
+ *  expiring in ~8 minutes — never a static credential — so we cache it only
+ *  briefly and mint a fresh one when stale. (The 1001 re-login retry remains
+ *  the backstop either way.) */
+export const PRACTO_TOKEN_TTL_MINUTES = 5;
 
 /** Practo's "login again" sentinel — triggers a single re-login + retry. */
 export const PRACTO_RELOGIN_CODE = '1001';

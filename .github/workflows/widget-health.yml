@@ -1,16 +1,19 @@
 name: Booking widget health
 
-# Availability is checked against the Practo slots API directly (vendor
-# recommendation): slots → healthy, empty list → genuine no-availability,
-# HTTP error/timeout → outage. No browser, no DOM fragility, no side effects.
-# Until the SLOTS_API_KEY secret is configured the job falls back to the old
-# robot-patient browser check so monitoring never goes dark.
+# MANUAL FALLBACK ONLY. The primary availability monitor runs inside the
+# dashboard's 15-minute Vercel cron (/api/cron/sync → lib/ops/slotsMonitor.ts),
+# using the PRACTO_AUTH credential already configured there — the vendor
+# confirmed the request_handler_key is a short-lived session token minted by a
+# login call, so no static-key secret can work and none is needed.
+#
+# This workflow stays for on-demand checks from the Actions tab:
+#   - with the SLOTS_API_AUTH secret ("user:password" for x-insta-auth) set,
+#     it runs the two-step slots-API check;
+#   - without it, it falls back to the old robot-patient browser check.
 on:
-  schedule:
-    - cron: '*/15 * * * *' # every 15 minutes (UTC)
-  workflow_dispatch: {} # lets you run it on demand from the Actions tab
+  workflow_dispatch: {} # on demand from the Actions tab; no schedule — the app cron is primary
 
-# Never let two checks overlap; a slow run should be skipped, not queued.
+# Never let two checks overlap.
 concurrency:
   group: widget-health
   cancel-in-progress: false
@@ -20,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 6
     env:
-      HAS_SLOTS_KEY: ${{ secrets.SLOTS_API_KEY != '' }}
+      HAS_SLOTS_AUTH: ${{ secrets.SLOTS_API_AUTH != '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -28,10 +31,10 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Availability check (slots API)
-        if: env.HAS_SLOTS_KEY == 'true'
+      - name: Availability check (slots API, login + read)
+        if: env.HAS_SLOTS_AUTH == 'true'
         env:
-          SLOTS_API_KEY: ${{ secrets.SLOTS_API_KEY }}
+          SLOTS_API_AUTH: ${{ secrets.SLOTS_API_AUTH }}
           # "center:resource" pairs; override via repo variable when doctors change.
           SLOTS_RESOURCES: ${{ vars.SLOTS_RESOURCES || '1:DOC0001,1:DOC0017' }}
           SITE_URL: ${{ vars.SITE_URL || 'https://www.dentalnation.com/en/' }}
@@ -39,13 +42,13 @@ jobs:
           WIDGET_HEALTH_SECRET: ${{ secrets.WIDGET_HEALTH_SECRET }}
         run: node scripts/slots-check.mjs
 
-      # ── Legacy robot-patient fallback (only while SLOTS_API_KEY is unset) ──
+      # ── Legacy robot-patient fallback (only while SLOTS_API_AUTH is unset) ──
       - name: Install Playwright (fallback only)
-        if: env.HAS_SLOTS_KEY != 'true'
+        if: env.HAS_SLOTS_AUTH != 'true'
         run: npm install --no-save playwright@1.56.1 && npx playwright install --with-deps chromium
 
       - name: Run the robot-patient check (fallback only)
-        if: env.HAS_SLOTS_KEY != 'true'
+        if: env.HAS_SLOTS_AUTH != 'true'
         env:
           SITE_URL: ${{ vars.SITE_URL || 'https://www.dentalnation.com/en/' }}
           DASHBOARD_URL: ${{ secrets.DASHBOARD_URL }}

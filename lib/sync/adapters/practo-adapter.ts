@@ -4,7 +4,7 @@ import type { AdminClient } from '@/lib/supabase/server';
 import {
   getPractoConfig,
   PRACTO_RELOGIN_CODE,
-  PRACTO_TOKEN_TTL_DAYS,
+  PRACTO_TOKEN_TTL_MINUTES,
   type PractoConfig,
 } from '@/config/practo';
 
@@ -88,22 +88,67 @@ async function postJson(url: string, headers: Record<string, string>): Promise<u
   }
 }
 
-/** Log in and cache the fresh token. Returns the token or throws. */
-export async function practoLogin(supabase: AdminClient): Promise<string> {
-  const cfg = getPractoConfig();
-  if (!cfg) throw new Error('Practo not configured (PRACTO_BASE_URL/HOSPITAL/AUTH)');
-  const body = await postJson(loginUrl(cfg), { 'x-insta-auth': cfg.auth });
-  const token = extractToken(body);
-  if (!token) {
-    throw new Error(`Practo login returned no request_handler_key: ${JSON.stringify(body).slice(0, 300)}`);
+export type PractoLoginAttempt =
+  | { ok: true; token: string }
+  | { ok: false; kind: 'network' | 'rejected'; note: string };
+
+/**
+ * One login call, CLASSIFIED — the availability monitor needs to tell
+ * "Practo unreachable / server error" (their side → a real outage) apart from
+ * "our credential was refused" (our side → a monitor error, never an outage).
+ */
+export async function practoLoginAttempt(cfg: PractoConfig, timeoutMs = 15000): Promise<PractoLoginAttempt> {
+  let res: Response;
+  try {
+    res = await fetch(loginUrl(cfg), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-insta-auth': cfg.auth },
+      cache: 'no-store',
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+  } catch (e) {
+    const msg = String((e as Error)?.message ?? e);
+    return {
+      ok: false,
+      kind: 'network',
+      note: /timeout|abort/i.test(msg) ? `login timed out after ${Math.round(timeoutMs / 1000)}s` : `login fetch failed: ${msg.slice(0, 120)}`,
+    };
   }
+  const text = await res.text();
+  let body: unknown = null;
+  try {
+    body = JSON.parse(text);
+  } catch {
+    /* non-JSON → classified by HTTP status below */
+  }
+  const token = extractToken(body);
+  if (token) return { ok: true, token };
+  if (res.status >= 500) return { ok: false, kind: 'network', note: `login HTTP ${res.status}` };
+  return {
+    ok: false,
+    kind: 'rejected',
+    note: `login returned no request_handler_key (HTTP ${res.status}): ${text.slice(0, 200).replace(/\s+/g, ' ')}`,
+  };
+}
+
+/** Cache a freshly minted token so every Practo caller shares it. */
+export async function cachePractoToken(supabase: AdminClient, token: string): Promise<void> {
   const now = new Date();
-  const expires = new Date(now.getTime() + PRACTO_TOKEN_TTL_DAYS * 86400_000);
+  const expires = new Date(now.getTime() + PRACTO_TOKEN_TTL_MINUTES * 60_000);
   await supabase.from('practo_token').upsert(
     { id: 1, token, obtained_at: now.toISOString(), expires_at: expires.toISOString() },
     { onConflict: 'id' },
   );
-  return token;
+}
+
+/** Log in and cache the fresh token. Returns the token or throws. */
+export async function practoLogin(supabase: AdminClient): Promise<string> {
+  const cfg = getPractoConfig();
+  if (!cfg) throw new Error('Practo not configured (PRACTO_BASE_URL/HOSPITAL/AUTH)');
+  const attempt = await practoLoginAttempt(cfg);
+  if (!attempt.ok) throw new Error(`Practo login failed: ${attempt.note}`);
+  await cachePractoToken(supabase, attempt.token);
+  return attempt.token;
 }
 
 /** Return a valid cached token, logging in if missing/expired or when forced. */

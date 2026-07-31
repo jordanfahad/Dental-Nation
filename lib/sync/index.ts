@@ -13,6 +13,7 @@ import { syncGmb } from './adapters/gmb-adapter';
 import { isGmbConfigured } from '@/config/gmb';
 import { syncMetaOrganic } from './adapters/meta-organic-adapter';
 import { resolveMetaOrganicConfig } from '@/config/meta-organic';
+import { runSlotsMonitor } from '@/lib/ops/slotsMonitor';
 import { sendNewLeadAlerts } from '@/lib/ops/alerts';
 import { sendWatchedTabAlerts } from '@/lib/ops/tabAlerts';
 import {
@@ -181,6 +182,36 @@ export async function runSync(trigger: SyncTrigger): Promise<SyncSummary> {
       dataGaps.push({
         area: 'tracking',
         detail: `Google Analytics (GA4) failed: ${(err as Error).message}`,
+        owner: 'Data/Analytics',
+      });
+    }
+  }
+
+  // ----- Booking-availability monitor (Practo slots API) — replaces the
+  // scheduled GitHub Action. The vendor confirmed the request_handler_key is a
+  // short-lived session token minted per run via the same login as bills, so
+  // the monitor lives here where PRACTO_AUTH already is. Runs FIRST so its
+  // fresh token is cached for the bills/appointments syncs below. Writes into
+  // widget_health (uptime history + Clinical Ops panel unbroken). Best-effort;
+  // a DOWN verdict is a successful monitor run, not a sync failure.
+  if (isPractoConfigured()) {
+    try {
+      const sm = await runSlotsMonitor(supabase);
+      if (sm.recorded) {
+        sheetsOk.push(`Availability monitor — ${sm.summary}`);
+      } else {
+        sheetsFailed.push('Availability monitor');
+        dataGaps.push({
+          area: 'clinic',
+          detail: `Availability monitor could not record its check: ${sm.error ?? sm.summary}`,
+          owner: 'Data/Analytics',
+        });
+      }
+    } catch (err) {
+      sheetsFailed.push('Availability monitor');
+      dataGaps.push({
+        area: 'clinic',
+        detail: `Availability monitor failed: ${(err as Error).message}`,
         owner: 'Data/Analytics',
       });
     }
