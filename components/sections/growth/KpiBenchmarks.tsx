@@ -21,7 +21,20 @@ const STATUS_STYLE: Record<KpiStatus, { label: string; cls: string }> = {
   na: { label: '—', cls: 'text-ink-faint' },
 };
 
-function StatusPill({ status }: { status: KpiStatus }) {
+function StatusPill({ status, flagged }: { status: KpiStatus; flagged: string | null }) {
+  // An open measurement-integrity flag suppresses the verdict entirely: a
+  // number judged against a known-corrupt denominator would be a lie with a
+  // color on it. The flag itself lives on Marketing OS → Overview.
+  if (flagged) {
+    return (
+      <span
+        className="inline-block whitespace-nowrap rounded-full border border-dashed border-watch/60 px-2 py-0.5 text-[10.5px] font-medium text-watch"
+        title={flagged}
+      >
+        unreliable denominator
+      </span>
+    );
+  }
   if (status === 'na') return <span className="text-[11px] text-ink-faint">—</span>;
   const s = STATUS_STYLE[status];
   return (
@@ -76,7 +89,7 @@ function KpiTableRow({ row, rangeQs }: { row: KpiRow; rangeQs: string }) {
         {row.note ? <span className="mt-0.5 block max-w-[200px] text-[10px] leading-snug text-ink-faint">{row.note}</span> : null}
       </td>
       <td className="px-2 py-2.5 text-center">
-        <StatusPill status={row.status} />
+        <StatusPill status={row.status} flagged={row.flagged} />
       </td>
       <td className="py-2.5 pl-2 pr-3 text-right">
         {d.mapsTo ? (

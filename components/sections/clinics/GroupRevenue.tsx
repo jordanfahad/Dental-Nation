@@ -6,6 +6,7 @@ import { GroupSubNav } from './GroupSubNav';
 import { resolveGroupSub } from './subtabs';
 import { GrowthPlatform } from '@/components/sections/growth/GrowthPlatform';
 import { KpiBenchmarks } from '@/components/sections/growth/KpiBenchmarks';
+import { MarketingOs } from '@/components/sections/mos/MarketingOs';
 
 /**
  * Group Revenue tab — the portfolio view across the three commonly-owned
@@ -249,7 +250,7 @@ function ClinicDetail({ c }: { c: ClinicRevenue }) {
 
 /* ---------------------------------------------------------------- entry --- */
 
-export async function GroupRevenue({ range, sub, gchan, gclinic }: { range?: { from?: string; to?: string; preset?: string }; sub?: string; gchan?: string; gclinic?: string } = {}) {
+export async function GroupRevenue({ range, sub, gchan, gclinic, mpipe, compare }: { range?: { from?: string; to?: string; preset?: string }; sub?: string; gchan?: string; gclinic?: string; mpipe?: string; compare?: boolean } = {}) {
   const active = resolveGroupSub(sub);
 
   // Growth Platform sits under this tab for access control only — it has its
@@ -271,6 +272,16 @@ export async function GroupRevenue({ range, sub, gchan, gclinic }: { range?: { f
       <div className="space-y-4">
         <GroupSubNav active={active} />
         <KpiBenchmarks range={{ from: range?.from, to: range?.to, preset: range?.preset }} />
+      </div>
+    );
+  }
+
+  // Marketing OS — same parking spot, same reason. Group-level by design.
+  if (active === 'mos') {
+    return (
+      <div className="space-y-4">
+        <GroupSubNav active={active} />
+        <MarketingOs range={{ from: range?.from, to: range?.to, preset: range?.preset }} mpipe={mpipe} compare={compare} />
       </div>
     );
   }

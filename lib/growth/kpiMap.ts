@@ -4,6 +4,7 @@ import { getChannelPerformance, type GrowthReport, type ChannelPerf } from '@/li
 import { getGoogleAdsDetail } from '@/lib/sync/adapters/google-ads-adapter';
 import { getMetaAdsDetail } from '@/lib/meta/detail';
 import { KPI_MOTIONS, type KpiBenchmark, type KpiDef, type KpiMotion, type KpiUnit } from '@/config/kpi-benchmarks';
+import { openFlagFor } from '@/config/marketing-os';
 
 /**
  * KPI map read layer — joins the curated industry benchmarks
@@ -29,6 +30,12 @@ export interface KpiRow {
   status: KpiStatus;
   /** Why a value is missing / any caveat specific to this window. */
   note: string | null;
+  /**
+   * Open measurement-integrity flag title (config/marketing-os.ts) — when set,
+   * the value's denominator is known-corrupt and NO ahead/behind verdict is
+   * rendered ("unreliable denominator" instead).
+   */
+  flagged: string | null;
 }
 
 export interface KpiMotionResolved {
@@ -217,14 +224,25 @@ export async function getKpiMap(range: { from?: string; to?: string } = {}): Pro
   const motions: KpiMotionResolved[] = KPI_MOTIONS.map((motion) => ({
     motion,
     rows: motion.kpis.map((def): KpiRow => {
-      const a = actuals[def.key] ?? { value: null };
-      const unit = def.benchmark?.unit ?? a.unit ?? 'count';
+      const a = actuals[def.key];
+      const unit = def.benchmark?.unit ?? a?.unit ?? 'count';
+      const value = a?.value ?? null;
+      // No resolver at all (CRM / Smile Club rows until their feeds land):
+      // say where the data will come from instead of a bare dash.
+      const note =
+        a?.note ??
+        (a === undefined && def.mapsTo
+          ? 'no live feed yet — arrives via Marketing OS (Phase 1 manual entry, Phase 2 API)'
+          : null);
+      // A known-corrupt denominator gets NO verdict, per the integrity rule.
+      const flag = value != null ? openFlagFor(def.key) : null;
       return {
         def,
-        value: a.value,
-        display: a.value == null ? '—' : fmt(unit, a.value),
-        status: statusFor(def.benchmark, a.value),
-        note: a.note ?? null,
+        value,
+        display: value == null ? '—' : fmt(unit, value),
+        status: flag ? 'na' : statusFor(def.benchmark, value),
+        note,
+        flagged: flag ? flag.title : null,
       };
     }),
   }));
