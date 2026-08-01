@@ -2,22 +2,14 @@
 
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { MOS_VIEWS } from './views';
 
 /**
  * Pill sub-navigation inside Marketing OS. Sets `?mpipe=` while preserving the
  * rest of the query (tab=group&gtab=mos + date params), mirroring GroupSubNav
  * so deep links stay shareable and the date filter carries across views.
+ * View definitions live in ./views.ts (plain module — see note there).
  */
-export const MOS_VIEWS = [
-  { key: '', label: 'Overview' },
-  { key: 'organic', label: '1 · Organic Engine' },
-  { key: 'smile-club', label: '2 · Smile Club' },
-  { key: 'creative', label: '3 · Creative' },
-  { key: 'crm', label: '4 · CRM & Segments' },
-  { key: 'infra', label: '5 · Infrastructure' },
-  { key: 'approvals', label: 'Approval Queue' },
-  { key: 'risk', label: 'Risk Register' },
-] as const;
 
 export function MosSubNav({ active }: { active: string }) {
   const params = useSearchParams();

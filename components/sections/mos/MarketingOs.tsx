@@ -4,7 +4,8 @@ import { getKpiMap, type KpiRow as BenchRow } from '@/lib/growth/kpiMap';
 import { INTEGRITY_FLAGS, MOS_RISKS, ZAVIS_ASKS } from '@/config/marketing-os';
 import { currentRole } from '@/lib/auth/role';
 import { Card, SectionHeader } from '@/components/ui/Card';
-import { MosSubNav, MOS_VIEWS } from './MosSubNav';
+import { MosSubNav } from './MosSubNav';
+import { MOS_VIEWS } from './views';
 import { WeeklyEntryForms, ApprovalDecide } from './AdminForms';
 
 /**
