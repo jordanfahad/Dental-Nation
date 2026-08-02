@@ -41,13 +41,30 @@ function Stat({ label, value, sub, accent = false }: { label: string; value: str
 
 function Bar({ value, max, color, label }: { value: number; max: number; color: string; label: string }) {
   const w = max > 0 ? Math.max((value / max) * 100, 2) : 2;
+  // The label only fits INSIDE the bar when the bar is actually wide enough.
+  // Below that it sits outside in ink — otherwise a short bar with a long
+  // label ("AED 41.0k") spills its white text past the fill and onto the
+  // track, which is what made the old chart look broken.
+  const inside = w >= 26 && label.length <= 12;
   return (
     <div className="flex items-center gap-2">
-      <div className="h-[14px] flex-1 rounded-sm bg-[#EEF1F5]">
-        <div className="flex h-full items-center rounded-sm pl-1.5" style={{ width: `${w}%`, background: color }}>
-          <span className="text-[9px] font-semibold text-white">{label}</span>
+      <div className="h-[14px] min-w-0 flex-1 rounded-sm bg-[#EEF1F5]">
+        <div
+          className={`flex h-full items-center rounded-sm ${inside ? 'justify-end pr-1.5' : ''}`}
+          style={{ width: `${w}%`, background: color }}
+        >
+          {inside ? (
+            <span className="whitespace-nowrap text-[9px] font-semibold text-white">{label}</span>
+          ) : null}
         </div>
       </div>
+      {!inside ? (
+        <span className="w-[62px] shrink-0 whitespace-nowrap text-[9px] font-semibold tabular-nums text-ink">
+          {label}
+        </span>
+      ) : (
+        <span className="w-[62px] shrink-0" aria-hidden />
+      )}
     </div>
   );
 }
