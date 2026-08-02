@@ -153,27 +153,39 @@ export function buildInsights(
   });
 
   // ── Exhibit action titles ─────────────────────────────────────────────────
-  const months = monthly.filter((m) => (m.revenue ?? 0) > 0);
-  const first = months[0];
-  const last = months[months.length - 1];
+  // Revenue ramp, measured between COMPARABLE months.
+  //
+  // The practice-management feed switched on mid-April and recorded a single
+  // AED 380 bill that month. Taking that as the baseline produced "revenue has
+  // grown 785×" — arithmetically real, completely meaningless, and the kind of
+  // number that discredits every honest figure next to it. Months contributing
+  // under 5% of the peak are treated as partial-feed artifacts and excluded
+  // from the baseline, and an implausible multiple falls back to neutral
+  // wording rather than being printed.
+  const withRevenue = monthly.filter((m) => (m.revenue ?? 0) > 0);
+  const peak = Math.max(...withRevenue.map((m) => m.revenue as number), 0);
+  const comparable = withRevenue.filter((m) => (m.revenue as number) >= peak * 0.05);
+  const firstFull = comparable[0];
+  const lastFull = comparable[comparable.length - 1];
   const revenueRamp =
-    first && last && (first.revenue ?? 0) > 0 && first !== last
-      ? (last.revenue as number) / (first.revenue as number)
+    firstFull && lastFull && firstFull !== lastFull
+      ? (lastFull.revenue as number) / (firstFull.revenue as number)
       : null;
+  const rampCredible = revenueRamp != null && revenueRamp > 1.5 && revenueRamp < 60;
+  const mLabel = (m?: MonthRow) => {
+    if (!m) return '';
+    const names = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    return names[Number(m.month.split('-')[1]) - 1];
+  };
 
   const titles = {
     funnel:
-      totals.booked != null && totals.showed != null && totals.revenue != null
-        ? `Reach converts to revenue at every step — but one in ${
-            totals.booked > 0 && totals.booked > totals.showed
-              ? Math.max(2, Math.round(totals.booked / Math.max(totals.booked - totals.showed, 1)))
-              : 2
-          } booked appointments still does not arrive`
+      totals.showRate != null
+        ? `Reach converts to revenue at every step — but ${pctChange(1 - totals.showRate)} of resolved appointments end in a cancellation or no-show`
         : 'The funnel is measured end to end, from ad impression to billed treatment',
-    trend:
-      revenueRamp != null && revenueRamp > 1.5
-        ? `Billed revenue has grown ${revenueRamp.toFixed(1)}× since the practice-management feed went live, on flat media spend`
-        : 'Billed revenue is tracked against media investment, month by month',
+    trend: rampCredible
+      ? `Billed revenue grew ${(revenueRamp as number).toFixed(1)}× between ${mLabel(firstFull)} and ${mLabel(lastFull)} while media investment stayed flat`
+      : 'Billed revenue is tracked against media investment, month by month',
     unitEconomics:
       dCpb != null && dCpb < 0 && dBooked != null && dBooked > 0
         ? `Volume ${growthPhrase(dBooked)} while cost per booking fell ${pctChange(dCpb)} — growth and efficiency at the same time`
