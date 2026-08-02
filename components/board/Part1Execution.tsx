@@ -87,6 +87,7 @@ export function Part1Execution({ range, totals, prior, monthly, manual, publicVi
           value={totals.spend != null ? aed(totals.spend) : null}
           delta={d(totals.spend, prior?.spend ?? null)}
           deltaLabel={cmp}
+          polarity="neutral"
           source="Meta + Google Ads, in window"
         />
         <MetricCard
@@ -103,6 +104,7 @@ export function Part1Execution({ range, totals, prior, monthly, manual, publicVi
           value={totals.costPerBooking != null ? aedFull(totals.costPerBooking) : null}
           delta={d(totals.costPerBooking, prior?.costPerBooking ?? null)}
           deltaLabel={cmp}
+          polarity="down-good"
           source="Spend ÷ booked appointments"
         />
         <MetricCard
@@ -141,6 +143,7 @@ export function Part1Execution({ range, totals, prior, monthly, manual, publicVi
           value={totals.impressions != null ? int(totals.impressions) : null}
           delta={d(totals.impressions, prior?.impressions ?? null)}
           deltaLabel={cmp}
+          polarity="neutral"
           source="Meta + Google Ads reach"
         />
       </div>
@@ -154,9 +157,9 @@ export function Part1Execution({ range, totals, prior, monthly, manual, publicVi
       <SectionHead id="s-timeline" n="1.1" title="Growth timeline" note="Dec 2025 → today" />
       <ol className="space-y-0">
         {TIMELINE.map((t, i) => (
-          <li key={`${t.period}-${i}`} className="print-avoid-break flex gap-4">
-            <div className="flex w-[92px] shrink-0 flex-col items-end pt-[2px] sm:w-[118px]">
-              <span className="text-right text-[11px] font-semibold text-accent">{t.period}</span>
+          <li key={`${t.period}-${i}`} className="print-avoid-break flex gap-2.5 sm:gap-4">
+            <div className="flex w-[74px] shrink-0 flex-col items-end pt-[2px] sm:w-[118px]">
+              <span className="text-right text-[11px] font-semibold leading-snug text-accent">{t.period}</span>
             </div>
             <div className="relative flex flex-col items-center">
               <span
@@ -166,7 +169,10 @@ export function Part1Execution({ range, totals, prior, monthly, manual, publicVi
               />
               {i < TIMELINE.length - 1 ? <span className="w-px flex-1 bg-line" /> : null}
             </div>
-            <div className="pb-4">
+            {/* min-w-0: without it this flex child refuses to shrink below its
+                text width and the whole board report scrolls sideways on a
+                phone — which is exactly where it gets opened. */}
+            <div className="min-w-0 flex-1 pb-4">
               <p className="text-[12.5px] leading-snug text-ink">{t.milestone}</p>
               {t.evidence ? (
                 <p className="mt-0.5 text-[10.5px] leading-snug text-ink-faint">✓ {t.evidence}</p>
@@ -226,6 +232,7 @@ export function Part1Execution({ range, totals, prior, monthly, manual, publicVi
             value={totals.clicks != null ? int(totals.clicks) : null}
             delta={d(totals.clicks, prior?.clicks ?? null)}
             deltaLabel={cmp}
+            polarity="neutral"
             source="Meta + Google Ads, in window"
           />
           <MetricCard
@@ -233,6 +240,7 @@ export function Part1Execution({ range, totals, prior, monthly, manual, publicVi
             value={totals.noshow != null ? int(totals.noshow) : null}
             delta={d(totals.noshow, prior?.noshow ?? null)}
             deltaLabel={cmp}
+            polarity="down-good"
             source="Practo — the leakage to close"
           />
         </div>
