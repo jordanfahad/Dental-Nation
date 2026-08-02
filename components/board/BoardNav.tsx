@@ -46,9 +46,18 @@ const PART2 = [
 
 const ALL = [...PART1, ...PART2];
 
-export function BoardNav() {
+/**
+ * Scroll-spy shared by both presentations.
+ *
+ * The mobile bar and the desktop rail are SEPARATE exports on purpose: the
+ * rail is a flex item beside the report, and rendering the mobile bar from
+ * the same place made it a second column on a phone — the report squeezed
+ * into ~170px next to a nav that was supposed to be a full-width strip above
+ * it. They live in different places in the layout, so they ship as different
+ * components.
+ */
+function useActiveSection() {
   const [active, setActive] = useState<string>('s-summary');
-  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     const seen = new Map<string, number>();
@@ -74,6 +83,14 @@ export function BoardNav() {
     return () => obs.disconnect();
   }, []);
 
+  return active;
+}
+
+/** Phone: a full-width sticky strip that opens a sheet. Renders ABOVE the report. */
+export function BoardNavMobile() {
+  const active = useActiveSection();
+  const [open, setOpen] = useState(false);
+
   const go = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     setOpen(false);
@@ -84,8 +101,7 @@ export function BoardNav() {
 
   return (
     <>
-      {/* Phone: a sticky bar that opens a sheet. */}
-      <div className="no-print sticky top-0 z-30 -mx-4 mb-5 border-b border-line bg-surface/95 px-4 py-2 backdrop-blur lg:hidden">
+      <div className="no-print sticky top-0 z-30 -mx-4 mb-5 border-b border-line bg-surface/95 px-4 py-2 backdrop-blur sm:-mx-8 sm:px-8 lg:hidden">
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
@@ -108,13 +124,21 @@ export function BoardNav() {
           </div>
         ) : null}
       </div>
-
-      {/* Desktop: a rail that follows the reader. */}
-      <nav className="no-print sticky top-6 hidden max-h-[calc(100vh-3rem)] w-[212px] shrink-0 overflow-y-auto lg:block">
-        <NavGroup title="Part 1 · Execution" items={PART1} active={active} onGo={go} />
-        <NavGroup title="Part 2 · Operating system" items={PART2} active={active} onGo={go} />
-      </nav>
     </>
+  );
+}
+
+/** Desktop: a rail beside the report that follows the reader. */
+export function BoardNavRail() {
+  const active = useActiveSection();
+  const go = (id: string) =>
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  return (
+    <nav className="no-print sticky top-6 hidden max-h-[calc(100vh-3rem)] w-[212px] shrink-0 overflow-y-auto lg:block">
+      <NavGroup title="Part 1 · Execution" items={PART1} active={active} onGo={go} />
+      <NavGroup title="Part 2 · Operating system" items={PART2} active={active} onGo={go} />
+    </nav>
   );
 }
 

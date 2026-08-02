@@ -6,7 +6,7 @@ import { resolveBoardRange } from '@/lib/board/range';
 import { dubaiToday } from '@/lib/dates';
 import { Part1Execution } from './Part1Execution';
 import { Part2OperatingSystem } from './Part2OperatingSystem';
-import { BoardNav } from './BoardNav';
+import { BoardNavMobile, BoardNavRail } from './BoardNav';
 import { RangeControl } from './RangeControl';
 import { PrintButton } from './PrintButton';
 
@@ -105,8 +105,11 @@ export async function BoardReport({
         </div>
       </header>
 
+      {/* Full-width on a phone — it must not become a second column. */}
+      <BoardNavMobile />
+
       <div className="flex gap-8">
-        <BoardNav />
+        <BoardNavRail />
         <div className="min-w-0 flex-1">
           <Part1Execution
             range={range}
