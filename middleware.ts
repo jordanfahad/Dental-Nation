@@ -85,6 +85,10 @@ export async function middleware(req: NextRequest) {
 export const config = {
   // Everything except login, the cron + practo endpoints (CRON_SECRET-gated),
   // the standalone Leave Calendar (Leave-Calendar + api/leave-auth — it runs its
-  // own CEO/super-admin-only gate), Next internals and static files.
-  matcher: ['/((?!login|reports/arabyads|api/cron|api/practo|api/meta|api/google-ads|api/notify|api/widget-health|api/widget-probe|Leave-Calendar|api/leave-|_next/static|_next/image|favicon.ico).*)'],
+  // own CEO/super-admin-only gate), the tokenized board + handover share links
+  // (share/* — the uuid token IS the credential and is validated server-side on
+  // every request against lane_e.report_share_links; a password prompt there
+  // would defeat the point of a link the CEO can open in a board meeting or
+  // forward to an investor), Next internals and static files.
+  matcher: ['/((?!login|share/|reports/arabyads|api/cron|api/practo|api/meta|api/google-ads|api/notify|api/widget-health|api/widget-probe|Leave-Calendar|api/leave-|_next/static|_next/image|favicon.ico).*)'],
 };
