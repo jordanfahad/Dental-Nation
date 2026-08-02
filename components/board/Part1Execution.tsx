@@ -1,6 +1,8 @@
 import { COVER, SECTIONS, TIMELINE } from '@/config/growth-execution';
 import type { BoardRange } from '@/lib/board/range';
-import type { MonthRow, WindowTotals } from '@/lib/board/metrics';
+import type { CrmSummary, MonthRow, WindowTotals } from '@/lib/board/metrics';
+import { DEMAND_PLAN } from '@/config/demand-plan';
+import { DemandCascade, DemandChannelSplit, DemandLaneTargets } from './charts/DemandPlan';
 import type { ManualMetric } from '@/config/board-metrics';
 import { MANUAL_METRIC_KEYS } from '@/config/board-metrics';
 import type { Insights } from '@/lib/board/insights';
@@ -27,11 +29,12 @@ export interface Part1Props {
   monthly: MonthRow[];
   manual: Map<string, ManualMetric>;
   insights: Insights;
+  crm: CrmSummary | null;
   lastUpdated: string | null;
   publicView?: boolean;
 }
 
-export function Part1Execution({ range, totals, prior, monthly, manual, insights, publicView = false }: Part1Props) {
+export function Part1Execution({ range, totals, prior, monthly, manual, insights, crm, publicView = false }: Part1Props) {
   const d = (cur: number | null, pri: number | null): number | null =>
     cur == null || pri == null || pri === 0 ? null : (cur - pri) / pri;
   const cmp = range.compareLabel ?? undefined;
@@ -225,11 +228,20 @@ export function Part1Execution({ range, totals, prior, monthly, manual, insights
             </>
           }
           footer={
-            <div className="grid gap-2 sm:grid-cols-3">
-              {manualCard('gsc_indexed_pages', 'Pages indexed')}
-              {manualCard('gsc_impressions', 'Impressions')}
-              {manualCard('gsc_clicks', 'Clicks')}
-            </div>
+            <>
+              <div className="grid gap-2 sm:grid-cols-3">
+                {manualCard('gsc_indexed_pages', 'Pages in sitemap')}
+                {manualCard('gsc_impressions', 'Search impressions')}
+                {manualCard('gsc_clicks', 'Search clicks')}
+              </div>
+              <p className="mt-2.5 border-l-[3px] border-l-watch bg-watch-50 px-3 py-2 text-[11px] leading-relaxed text-ink-soft">
+                <span className="font-semibold text-ink">Read this honestly:</span> organic today is brand capture,
+                not acquisition. Every search click lands on the homepage and every top query is a brand term —
+                people already looking for Dental Nation. That is worth holding, but the 128 pages in the sitemap are
+                not yet earning non-brand demand. Turning them into a content engine is the compounding opportunity,
+                and it is the one item in the next-90-days list that reduces future paid dependency.
+              </p>
+            </>
           }
         />
 
@@ -280,25 +292,157 @@ export function Part1Execution({ range, totals, prior, monthly, manual, insights
           n="06"
           title="Demand generation ramp"
           status="building"
-          body={<>The next phase of the engine — dedicated ownership to drive demand generation up across channels.</>}
+          body={
+            <>
+              The next phase of the engine: a documented lead cascade with a named owner per channel, sized against
+              each clinic&apos;s capacity rather than against the media budget. Targets and sequencing are set out in
+              the exhibit below.
+            </>
+          }
+          facts={[
+            { k: 'Monthly lead target', v: DEMAND_PLAN.cascade.leads },
+            { k: 'Monthly revenue target', v: DEMAND_PLAN.cascade.revenue },
+          ]}
           footer={
             <>
               <p className="text-[11.5px] text-ink-soft">
                 Owner: <SlotText slot={SECTIONS.demandGen.owner} />
               </p>
               <p className="mt-1.5 text-[11.5px] text-ink-soft">
-                Focus: <SlotText slot={SECTIONS.demandGen.focus} />
+                Mix: <SlotText slot={SECTIONS.demandGen.focus} />
               </p>
             </>
           }
         />
       </div>
 
-      <div className="mt-5 grid gap-3 sm:grid-cols-3">
-        {manualCard('whatsapp_messages', 'WhatsApp messages sent')}
-        {manualCard('whatsapp_response_rate', 'WhatsApp response rate')}
-        {manualCard('whatsapp_bookings', 'Bookings via WhatsApp')}
-      </div>
+      {/* ── Exhibit 5 · The WhatsApp layer, live from Zavis ── */}
+      <Exhibit
+        id="s-whatsapp"
+        n={5}
+        kicker="Patient communication"
+        title={
+          crm?.whatsappConversations != null && crm.totalConversations
+            ? `WhatsApp is now the group's primary patient channel — ${Math.round((crm.whatsappConversations / crm.totalConversations) * 100)}% of every conversation the clinics have`
+            : 'WhatsApp carries the group’s patient communication'
+        }
+        source="Zavis CRM — conversation and inbox reports, synced into the Lane E pipeline"
+        note={
+          crm?.periodStart
+            ? `Zavis reporting period ${crm.periodStart} to ${crm.periodEnd}. Booking origin is reported exactly as the practice platform records it — platform, widget, CRM or AI agent. There is no "WhatsApp" booking source in the data, so no WhatsApp booking count is claimed.`
+            : undefined
+        }
+      >
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <MetricCard
+            label="WhatsApp conversations"
+            value={v(crm?.whatsappConversations ?? null, fmt.int)}
+            source={`Across ${crm?.whatsappInboxes ?? '—'} clinic WhatsApp inboxes`}
+            hero
+          />
+          <MetricCard
+            label="Messages exchanged"
+            value={
+              crm?.messagesSent != null && crm?.messagesReceived != null
+                ? fmt.int(crm.messagesSent + crm.messagesReceived)
+                : null
+            }
+            source={
+              crm?.messagesSent != null
+                ? `${fmt.int(crm.messagesSent)} sent · ${fmt.int(crm.messagesReceived ?? 0)} received`
+                : 'Zavis CRM'
+            }
+            hero
+          />
+          <MetricCard
+            label="Bookings from CRM & AI agent"
+            value={v(crm?.crmOriginatedBookings ?? null, fmt.int)}
+            source={`Of which ${crm?.aiAgentBookings ?? 0} booked by the AI agent`}
+          />
+          <MetricCard
+            label="Bookings from the website widget"
+            value={v(crm?.widgetBookings ?? null, fmt.int)}
+            source="Practo — booking origin"
+          />
+        </div>
+        {crm?.whatsappConversations != null ? (
+          <Takeaway>
+            {fmt.int(crm.whatsappConversations)} conversations ran through WhatsApp against{' '}
+            {fmt.int(crm.instagramConversations ?? 0)} on Instagram — patients in this market talk to clinics the way
+            they talk to everyone else. That is why the WhatsApp layer was built into the operating system rather
+            than bolted on, and why response speed on that channel is the single highest-leverage operational metric
+            the group has.
+          </Takeaway>
+        ) : null}
+      </Exhibit>
+
+      {/* ── Exhibit 6 · The demand plan ── */}
+      <Exhibit
+        id="s-demandplan"
+        n={6}
+        kicker="Demand generation"
+        title="The next phase is a sized cascade, not a bigger budget — 2,500 qualified leads a month converting to AED 500K"
+        source={DEMAND_PLAN.source}
+        note="Targets, not results. Lane letters in this plan follow the March execution document (E = Lifestyle) and differ from the 13-lane architecture in Part 2 (E = Corporate & Insurance) — the two lane sets should be reconciled before the documents circulate together."
+        tall
+      >
+        <DemandCascade />
+        <p className="mt-2 text-[11px] text-ink-faint">
+          {DEMAND_PLAN.cascade.perPatient} · owner {SECTIONS.demandGen.owner.value}
+        </p>
+
+        <div className="mt-6">
+          <Eyebrow>Where the 2,500 comes from</Eyebrow>
+          <DemandChannelSplit />
+        </div>
+
+        <div className="mt-7">
+          <Eyebrow>Segment targets — leads and revenue per lane</Eyebrow>
+          <DemandLaneTargets />
+        </div>
+
+        <div className="mt-7">
+          <Eyebrow>Clinic targets</Eyebrow>
+          <TableWrap>
+            <table className="w-full min-w-[520px] border-collapse">
+              <thead>
+                <tr className="border-b-2 border-ink">
+                  <th className={TH}>Clinic</th>
+                  <th className={TH}>Primary lane</th>
+                  <th className={THR}>Share</th>
+                  <th className={THR}>Leads / mo</th>
+                  <th className={THR}>New patients</th>
+                  <th className={THR}>Revenue / mo</th>
+                </tr>
+              </thead>
+              <tbody>
+                {DEMAND_PLAN.clinics.map((c2) => (
+                  <tr key={c2.name} className="border-t border-line/70">
+                    <td className={`${TD} font-medium`}>{c2.name}</td>
+                    <td className={`${TD} text-ink-soft`}>{c2.primaryLane}</td>
+                    <td className={TDR}>{c2.share}%</td>
+                    <td className={TDR}>{c2.leads.toLocaleString('en-US')}</td>
+                    <td className={TDR}>{c2.patients}</td>
+                    <td className={`${TDR} font-semibold`}>{c2.revenue}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </TableWrap>
+        </div>
+
+        <div className="mt-7">
+          <Eyebrow>First milestones</Eyebrow>
+          <ol className="grid gap-2.5 sm:grid-cols-3">
+            {DEMAND_PLAN.milestones.map((m) => (
+              <li key={m.window} className="border-t-2 border-accent pt-2">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-accent">{m.window}</p>
+                <p className="mt-0.5 text-[11.5px] leading-snug text-ink-soft">{m.what}</p>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </Exhibit>
 
       {/* ── Continuity & next 90 days ── */}
       <div id="s-next" className="mt-12 scroll-mt-24 border-t border-ink pt-4">
@@ -322,7 +466,7 @@ export function Part1Execution({ range, totals, prior, monthly, manual, insights
       {/* ── Exhibit 5 · KPI appendix ── */}
       <Exhibit
         id="s-appendix"
-        n={5}
+        n={7}
         kicker="Appendix"
         title={insights.titles.appendix}
         source="Meta Ads, Google Ads, Practo appointments and billing — Dental Nation Lane E pipeline"

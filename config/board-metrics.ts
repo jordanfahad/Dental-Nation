@@ -19,15 +19,23 @@ export interface ManualMetric {
   updatedAt: string;
 }
 
-/** The metric keys the report knows how to display. */
+/**
+ * The metric keys the report knows how to display.
+ *
+ * The WhatsApp figures used to live here and no longer do: the Zavis export
+ * already lands in lane_e.crm_* on every sync, so they read live from
+ * lane_e.board_crm_summary (migration 0022) instead of being retyped. A number
+ * only belongs on this list if there is genuinely no feed for it.
+ *
+ * "Pages in sitemap" is deliberately NOT called "pages indexed" — Search
+ * Console reports 128 pages DISCOVERED in the sitemap, which is a different
+ * (and larger) number than the pages Google has actually indexed.
+ */
 export const MANUAL_METRIC_KEYS: { key: string; label: string; unit: string; hint: string }[] = [
-  { key: 'gsc_indexed_pages', label: 'Pages indexed', unit: 'count', hint: 'Search Console — indexed pages' },
+  { key: 'gsc_indexed_pages', label: 'Pages in sitemap', unit: 'count', hint: 'Search Console sitemap — discovered pages' },
   { key: 'gsc_impressions', label: 'Search impressions', unit: 'count', hint: 'Search Console — impressions' },
   { key: 'gsc_clicks', label: 'Search clicks', unit: 'count', hint: 'Search Console — clicks' },
-  { key: 'whatsapp_messages', label: 'WhatsApp messages sent', unit: 'count', hint: 'Marketing OS — WhatsApp layer' },
-  { key: 'whatsapp_response_rate', label: 'WhatsApp response rate', unit: 'pct', hint: '0–100' },
-  { key: 'whatsapp_bookings', label: 'Bookings via WhatsApp', unit: 'count', hint: 'Marketing OS — WhatsApp layer' },
   { key: 'smile_club_members', label: 'Smile Club members', unit: 'count', hint: 'Smile Club — owner: Gautam' },
   { key: 'smile_club_revenue', label: 'Smile Club revenue', unit: 'aed', hint: 'Membership revenue to date' },
-  { key: 'creative_monthly_output', label: 'Creative output / month', unit: 'count', hint: 'In-house creative assets' },
+  { key: 'creative_monthly_output', label: 'Creative assets / month', unit: 'count', hint: 'Dental Nation Creative Platform output' },
 ];

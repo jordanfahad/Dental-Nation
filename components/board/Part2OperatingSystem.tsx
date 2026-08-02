@@ -104,7 +104,7 @@ export function Part2OperatingSystem() {
       {/* 2.4 Demand engine */}
       <Exhibit
         id="s-engine"
-        n={6}
+        n={8}
         kicker="Demand engine"
         title="Five layers that feed each other — the fifth layer optimises the first, which is what makes it a flywheel rather than a funnel"
         source="Demand Generation Engine (Notion, Growth OS reference library)"
@@ -164,7 +164,7 @@ export function Part2OperatingSystem() {
         ))}
       </div>
       <Exhibit
-        n={7}
+        n={9}
         kicker="Portfolio"
         title="The three lanes funded without restriction are also the three largest, highest-return markets"
         source="The 13 Demand Lanes v2.0 — full architecture (Notion, Founding Partner Strategy Room)"
@@ -211,7 +211,7 @@ export function Part2OperatingSystem() {
       {/* 2.7 Targets vs market */}
       <Exhibit
         id="s-targets"
-        n={8}
+        n={10}
         kicker="Benchmarks"
         title="Every lane target sits above the Dubai norm — that gap is what the operating system exists to close"
         source="The 13 Demand Lanes v2.0 — lane unit-economics tables (Notion)"

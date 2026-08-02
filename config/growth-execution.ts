@@ -24,7 +24,7 @@ export const COVER = {
   title: 'Dental Nation — Growth Report',
   periodLabel: 'December 2025 – August 2026',
   preparedBy: 'Fahad',
-  preparedByTitle: P('Title to confirm'),
+  preparedByTitle: V('Marketing Head'),
   preparedFor: 'Mr. Akbar, Board & Investors',
 };
 
@@ -119,7 +119,7 @@ export const SECTIONS = {
     practitioner: V('Dr Tosun'),
   },
   website: {
-    vendor: P('Website vendor name/spelling to confirm'),
+    vendor: V('Zavis'),
     body:
       'Fully live and functional — the group’s owned digital front door, and the property every paid click and every organic search now lands on.',
     organicPoint:
@@ -128,9 +128,9 @@ export const SECTIONS = {
   creative: {
     phase1: 'External agency engaged to establish production volume.',
     phase2:
-      'Agency transitioned out; in-house creative onboarded — faster turnaround, materially lower cost, and tighter brand consistency.',
-    name: P('In-house creative name to confirm'),
-    costDelta: P('Monthly output count and cost delta vs. the agency retainer to confirm'),
+      'Agency transitioned out and replaced by the Dental Nation Creative Platform — production software we built and host ourselves, not a retained supplier. Faster turnaround, brand consistency enforced by the system rather than re-briefed each time, and a cost base that moved from a monthly retainer to infrastructure the group owns.',
+    name: V('The Dental Nation Creative Platform — built in-house, hosted on Vercel'),
+    costDelta: V('20–30 videos and 20–30 statics per month'),
   },
   marketingOs: {
     intro: 'Owned infrastructure, not rented SaaS — a durable operating advantage.',
@@ -149,8 +149,8 @@ export const SECTIONS = {
       'Strategic role: recurring revenue plus a retention flywheel per patient — the membership loop named in the Lifecycle / Retention Engine (Part 2, §2.12).',
   },
   demandGen: {
-    owner: P('Demand generation owner to confirm'),
-    focus: P('Channels, segments and first milestones to confirm'),
+    owner: V('Fahad, Marketing Head'),
+    focus: V('Digital 70% · Reactivation 15% · B2B and referrals 15%'),
   },
   continuity: {
     line:

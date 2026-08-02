@@ -201,6 +201,53 @@ export const getManualMetrics = cache(async (): Promise<Map<string, ManualMetric
   return out;
 });
 
+// ── CRM / WhatsApp (live from Zavis, migration 0022) ────────────────────────
+
+export interface CrmSummary {
+  periodStart: string | null;
+  periodEnd: string | null;
+  totalConversations: number | null;
+  messagesReceived: number | null;
+  messagesSent: number | null;
+  whatsappConversations: number | null;
+  instagramConversations: number | null;
+  whatsappInboxes: number | null;
+  crmOriginatedBookings: number | null;
+  aiAgentBookings: number | null;
+  widgetBookings: number | null;
+  allBookings: number | null;
+  /**
+   * Average first response, in hours, as the CRM reports it. Deliberately NOT
+   * rendered on the board report: only 14 of 3,500+ conversations are marked
+   * resolved, so this figure measures how little the resolution workflow is
+   * used rather than how fast the clinic replies. Exposed for the internal
+   * view and for whoever fixes the workflow.
+   */
+  avgFirstResponseHours: number | null;
+}
+
+export const getBoardCrm = cache(async (): Promise<CrmSummary | null> => {
+  const db = getSupabaseAdmin();
+  if (!db) return null;
+  const { data, error } = await db.from('board_crm_summary').select('*').maybeSingle();
+  if (error || !data) return null;
+  return {
+    periodStart: data.period_start ? String(data.period_start) : null,
+    periodEnd: data.period_end ? String(data.period_end) : null,
+    totalConversations: num(data.total_conversations),
+    messagesReceived: num(data.messages_received),
+    messagesSent: num(data.messages_sent),
+    whatsappConversations: num(data.whatsapp_conversations),
+    instagramConversations: num(data.instagram_conversations),
+    whatsappInboxes: num(data.whatsapp_inboxes),
+    crmOriginatedBookings: num(data.crm_originated_bookings),
+    aiAgentBookings: num(data.ai_agent_bookings),
+    widgetBookings: num(data.widget_bookings),
+    allBookings: num(data.all_bookings),
+    avgFirstResponseHours: num(data.avg_first_response_hours),
+  };
+});
+
 /**
  * Last completed ingestion run — the report's "Last updated" stamp.
  *

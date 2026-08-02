@@ -29,7 +29,7 @@ export const HANDOVER = {
   cover: {
     title: 'Marketing & Growth — Leave Handover',
     author: 'Fahad',
-    authorTitle: P('Title to confirm'),
+    authorTitle: V('Marketing Head'),
     audience: 'Prepared for Mr. Akbar',
     awayFrom: '5 August 2026',
     awayTo: '20 August 2026',
@@ -73,13 +73,13 @@ export const HANDOVER = {
     },
     {
       area: 'Creative production',
-      owner: P('In-house creative — name to confirm'),
-      notes: 'Pipeline pre-approved through the leave period.',
+      owner: V('Dental Nation Creative Platform'),
+      notes: 'Runs on our own platform, not a retained agency. Pipeline pre-approved through the leave period.',
     },
     {
       area: 'Demand generation',
-      owner: P('Demand-gen owner — name to confirm'),
-      notes: 'Continues the ramp per the agreed plan.',
+      owner: P('Cover owner to confirm — this is my own area'),
+      notes: 'Steady state only: the ramp continues on what is already live, no new activation until I return.',
     },
     {
       area: 'Paid campaigns',

@@ -1,6 +1,6 @@
 import { format, parseISO } from 'date-fns';
 import {
-  getBoardDaily, getBoardMonthly, getLastIngestion, getManualMetrics, sumWindow, delta,
+  getBoardCrm, getBoardDaily, getBoardMonthly, getLastIngestion, getManualMetrics, sumWindow, delta,
 } from '@/lib/board/metrics';
 import { resolveBoardRange } from '@/lib/board/range';
 import { buildInsights } from '@/lib/board/insights';
@@ -34,11 +34,12 @@ export async function BoardReport({
   publicView?: boolean;
   deckHref?: string;
 }) {
-  const [daily, monthly, manual, lastUpdated] = await Promise.all([
+  const [daily, monthly, manual, lastUpdated, crm] = await Promise.all([
     getBoardDaily(),
     getBoardMonthly(),
     getManualMetrics(),
     getLastIngestion(),
+    getBoardCrm(),
   ]);
 
   const today = dubaiToday();
@@ -129,6 +130,7 @@ export async function BoardReport({
             monthly={appendix}
             manual={manual}
             insights={insights}
+            crm={crm}
             lastUpdated={lastUpdated}
             publicView={publicView}
           />
