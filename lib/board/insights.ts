@@ -50,25 +50,39 @@ function growthPhrase(d: number): string {
   return `fell ${pctChange(d)}`;
 }
 
+/**
+ * @param totals   the selected window — drives comparisons and deltas
+ * @param allTime  the full recorded history — drives any RETURN claim
+ *
+ * The split matters. Billed revenue inside a 30-day window largely comes from
+ * patients acquired in earlier months, so dividing it by that window's media
+ * spend produces a spectacular and meaningless number (43× on a recent month
+ * here). A ratio like that on a board cover invites exactly one question and
+ * does not survive it. Every return-on-investment statement in this report is
+ * therefore computed over the FULL period, where the numerator and the
+ * denominator describe the same cohort, and is labelled "since launch".
+ */
 export function buildInsights(
   totals: WindowTotals,
   prior: WindowTotals | null,
   monthly: MonthRow[],
   rangeLabel: string,
+  allTime: WindowTotals,
 ): Insights {
   const dRevenue = delta(totals.revenue, prior?.revenue ?? null);
   const dBooked = delta(totals.booked, prior?.booked ?? null);
   const dCpb = delta(totals.costPerBooking, prior?.costPerBooking ?? null);
   const dShowed = delta(totals.showed, prior?.showed ?? null);
 
-  // ── Cover headline ────────────────────────────────────────────────────────
+  // ── Cover headline — always computed over the FULL period, never the window.
   let coverHeadline: string;
-  if (totals.revenue != null && totals.spend != null && totals.roas != null) {
+  if (allTime.revenue != null && allTime.spend != null && allTime.roas != null) {
     coverHeadline =
-      `${aed(totals.spend)} of paid investment has returned ${aed(totals.revenue)} in billed treatment — ` +
-      `${totals.roas.toFixed(1)}× — on an operating system built from a standing start.`;
-  } else if (totals.spend != null) {
-    coverHeadline = `${aed(totals.spend)} of paid investment deployed while the measurement layer was built.`;
+      `Since launch, ${aed(allTime.spend)} of media investment has been accompanied by ` +
+      `${aed(allTime.revenue)} of billed treatment — ${allTime.roas.toFixed(1)}× — from a marketing function ` +
+      `built from a standing start.`;
+  } else if (allTime.spend != null) {
+    coverHeadline = `${aed(allTime.spend)} of media investment deployed while the measurement layer was built from a standing start.`;
   } else {
     coverHeadline = 'The growth engine has been built from a standing start; the measurement layer is live.';
   }
@@ -103,8 +117,8 @@ export function buildInsights(
           ? `Each booked appointment costs ${aed(totals.costPerBooking)} in media.`
           : 'Unit economics become measurable as the attribution layer completes.',
     detail:
-      totals.roas != null
-        ? `Every dirham of media has returned ${totals.roas.toFixed(1)} dirhams of billed treatment in this window.`
+      allTime.roas != null
+        ? `Across the full period, ${aed(allTime.spend ?? 0)} of media sits alongside ${aed(allTime.revenue ?? 0)} of billed treatment — ${allTime.roas.toFixed(1)}×. Measured over the whole period deliberately: revenue booked in any one month largely comes from patients acquired earlier.`
         : 'Return on ad spend reports once billed revenue is joined to the acquisition source.',
     stat: totals.costPerBooking != null ? aed(totals.costPerBooking) : undefined,
     statLabel: 'cost per booking',

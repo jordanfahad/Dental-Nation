@@ -76,7 +76,7 @@ export function Part1Execution({ range, totals, prior, monthly, manual, insights
         kicker="Performance"
         title={insights.titles.unitEconomics}
         source="Meta Ads & Google Ads spend; Practo appointments and billing"
-        note="Every card compares the selected window against the equivalent prior period. Cost and no-show metrics are scored so that a fall reads as an improvement."
+        note="Every card compares the selected window against the equivalent prior period; cost and no-show metrics are scored so a fall reads as an improvement. Revenue per AED of media is a within-window ratio, NOT a payback figure: treatment billed in any month is largely delivered to patients acquired earlier, so short windows flatter it. The whole-period figure on the cover is the one to quote."
       >
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <MetricCard label="Media investment" value={v(totals.spend, fmt.aed)} delta={d(totals.spend, prior?.spend ?? null)} deltaLabel={cmp} polarity="neutral" source="Meta + Google Ads" />
@@ -85,7 +85,7 @@ export function Part1Execution({ range, totals, prior, monthly, manual, insights
           <MetricCard label="Billed revenue" value={v(totals.revenue, fmt.aed)} delta={d(totals.revenue, prior?.revenue ?? null)} deltaLabel={cmp} source="Practo billing" hero />
           <MetricCard label="Patients attended" value={v(totals.showed, fmt.int)} delta={d(totals.showed, prior?.showed ?? null)} deltaLabel={cmp} source="Practo — arrived + completed" />
           <MetricCard label="Show-up rate" value={totals.showRate != null ? fmt.pct(totals.showRate) : null} delta={d(totals.showRate, prior?.showRate ?? null)} deltaLabel={cmp} source="Attended ÷ resolved appointments" />
-          <MetricCard label="Return on ad spend" value={totals.roas != null ? `${totals.roas.toFixed(1)}×` : null} delta={d(totals.roas, prior?.roas ?? null)} deltaLabel={cmp} source="Billed revenue ÷ media spend" />
+          <MetricCard label="Revenue per AED of media" value={totals.roas != null ? `${totals.roas.toFixed(1)}×` : null} delta={d(totals.roas, prior?.roas ?? null)} deltaLabel={cmp} source="In-window revenue ÷ in-window spend — see note" />
           <MetricCard label="No-shows" value={v(totals.noshow, fmt.int)} delta={d(totals.noshow, prior?.noshow ?? null)} deltaLabel={cmp} polarity="down-good" source="Practo — the leakage to close" />
         </div>
       </Exhibit>

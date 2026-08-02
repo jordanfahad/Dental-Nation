@@ -54,7 +54,10 @@ export async function BoardReport({
   // the audit trail behind the exhibits, and truncating it to the filter would
   // hide exactly the months a sceptical reader wants to check.
   const appendix = monthly.filter((m) => (m.spendTotal ?? m.apptsBooked ?? m.revenue) != null);
-  const insights = buildInsights(totals, prior, appendix, range.label);
+  // Return-on-investment claims are computed over the whole recorded history,
+  // never the selected window — see the note in buildInsights.
+  const allTime = sumWindow(daily, dataFrom, dataTo);
+  const insights = buildInsights(totals, prior, appendix, range.label, allTime);
 
   const tone = (dv: number | null, invert = false): 'good' | 'stop' | 'flat' | undefined => {
     if (dv == null) return undefined;
