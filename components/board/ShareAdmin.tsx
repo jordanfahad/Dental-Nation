@@ -52,7 +52,7 @@ export function ShareAdmin({
         <button
           type="submit"
           disabled={pending}
-          className="rounded-md border border-accent bg-accent px-3 py-1.5 text-[12.5px] font-medium text-white transition hover:opacity-90 disabled:opacity-50"
+          className="min-h-[36px] rounded-md border border-accent bg-accent px-3 py-2 text-[12.5px] font-medium text-white transition hover:opacity-90 disabled:opacity-50"
         >
           {pending ? 'Creating…' : 'Generate link'}
         </button>

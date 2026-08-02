@@ -1,4 +1,5 @@
 import { C } from '../design';
+import { ChartWrap } from '../Primitives';
 import { DEMAND_ENGINE, LANES, type Command } from '@/config/growth-os';
 import type { TimelineEntry } from '@/config/growth-execution';
 
@@ -43,7 +44,8 @@ export function LanePortfolioMatrix() {
   const r = (l: (typeof LANES)[number]) => (l.command === 'OWN' ? 15 : l.command === 'BUILD' ? 11.5 : 9);
 
   return (
-    <div className="overflow-x-auto print:overflow-visible">
+    <div>
+      <ChartWrap label="the full matrix">
       <svg viewBox={`0 0 ${MW} ${MH}`} className="h-auto w-full min-w-[580px]" role="img" aria-label="Demand lanes by market size and return">
         {/* quadrant wash — top-right is where OWN belongs */}
         <rect x={x(midTam)} y={MP.top} width={MPW - (x(midTam) - MP.left)} height={y(midLtv) - MP.top} fill={C.navyWash} />
@@ -106,6 +108,7 @@ export function LanePortfolioMatrix() {
           Target LTV : CAC
         </text>
       </svg>
+      </ChartWrap>
 
       <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1.5">
         {(Object.keys(COMMAND_COLOR) as Command[]).map((k) => (
@@ -179,9 +182,12 @@ export function DemandFlywheel() {
   const n = layers.length;
 
   return (
-    <div className="overflow-x-auto print:overflow-visible">
-      <div className="flex min-w-[560px] items-center gap-6">
-        <svg viewBox={`0 0 336 ${FH}`} className="h-auto w-[336px] shrink-0" role="img" aria-label="Five-layer demand generation flywheel">
+    /* Stacks on a phone rather than scrolling: the ring and the list are
+       complementary, not two halves of one picture, so putting the list under
+       the ring loses nothing and needs no swipe. */
+    <div>
+      <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center sm:gap-6">
+        <svg viewBox={`0 0 336 ${FH}`} className="h-auto w-[264px] shrink-0 sm:w-[336px]" role="img" aria-label="Five-layer demand generation flywheel">
           <circle cx={cx} cy={cy} r={rad} fill="none" stroke={C.rule} strokeWidth={22} />
           {layers.map((l, i) => {
             const a0 = (i / n) * Math.PI * 2 - Math.PI / 2 + 0.045;

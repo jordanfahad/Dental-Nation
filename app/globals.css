@@ -60,6 +60,67 @@ body {
   print-color-adjust: exact;
 }
 
+/* ---- Board report on a phone ----------------------------------------------
+   The exhibit typography is sized for A4 and for a desktop rail, where 9–10px
+   captions and axis labels are perfectly legible. On a 375px screen they are
+   not, and this document is opened on phones in board meetings.
+
+   Rather than fork every component into responsive pairs (284 elements), the
+   small arbitrary sizes are raised once here, scoped to .report and to small
+   screens only, so print and desktop keep their intended density. */
+@media (max-width: 639px) {
+  .report .text-\[9px\] {
+    font-size: 10.5px;
+    line-height: 1.35;
+  }
+  .report .text-\[9\.5px\] {
+    font-size: 11px;
+    line-height: 1.4;
+  }
+  .report .text-\[10px\],
+  .report .text-\[10\.5px\] {
+    font-size: 11.5px;
+    line-height: 1.45;
+  }
+  .report .text-\[11px\] {
+    font-size: 12px;
+  }
+}
+
+/* Scroll affordance: a wide table or chart on a phone must LOOK scrollable.
+   A right-edge fade plus the "swipe" chip below tells the reader there is more
+   to the right — without it, half an exhibit silently reads as the whole
+   exhibit. Both disappear in print, where nothing scrolls. */
+.scroll-x {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+.scroll-hint {
+  position: relative;
+}
+/* Only on the screens where these containers actually scroll. */
+@media (max-width: 639px) {
+  .scroll-hint::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 26px;
+    height: 100%;
+    pointer-events: none;
+    background: linear-gradient(to right, rgba(250, 250, 250, 0), rgba(250, 250, 250, 0.95));
+  }
+}
+@media print {
+  .scroll-x {
+    overflow-x: visible !important;
+  }
+  .scroll-hint::after {
+    display: none;
+  }
+}
+
 /* ---- Print / PDF (§14): clean A4, page-break between sections ---- */
 @media print {
   @page {

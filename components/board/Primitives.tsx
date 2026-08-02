@@ -140,9 +140,37 @@ export function SourceCaption({ children }: { children: ReactNode }) {
   return <p className="mt-2 text-[10.5px] italic leading-snug text-ink-ghost">Source: {children}</p>;
 }
 
-/** Responsive table shell — wide tables scroll on a phone, never the page. */
-export function TableWrap({ children }: { children: ReactNode }) {
-  return <div className="-mx-1 overflow-x-auto px-1 print:overflow-visible">{children}</div>;
+/**
+ * Responsive table shell — wide tables scroll inside themselves, never the
+ * page.
+ *
+ * The scroll has to be VISIBLE. A board table that hides half its columns off
+ * the right edge with no cue reads, on a phone, as if those columns don't
+ * exist — which is worse than a cramped table, because the reader doesn't know
+ * they're missing anything. Hence the edge fade and the swipe line, both
+ * mobile-only and both gone in print.
+ */
+export function TableWrap({ children, label = 'columns' }: { children: ReactNode; label?: string }) {
+  return (
+    <div>
+      <div className="scroll-hint">
+        <div className="scroll-x -mx-1 px-1">{children}</div>
+      </div>
+      <p className="no-print mt-1.5 text-[10.5px] text-ink-ghost sm:hidden">Swipe sideways for all {label} →</p>
+    </div>
+  );
+}
+
+/** Same affordance for the SVG exhibits, which are wider than a phone. */
+export function ChartWrap({ children, label = 'the full chart' }: { children: ReactNode; label?: string }) {
+  return (
+    <div>
+      <div className="scroll-hint">
+        <div className="scroll-x">{children}</div>
+      </div>
+      <p className="no-print mt-1.5 text-[10.5px] text-ink-ghost sm:hidden">Swipe sideways for {label} →</p>
+    </div>
+  );
 }
 
 export const TH = 'whitespace-nowrap px-2 py-1.5 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-faint';

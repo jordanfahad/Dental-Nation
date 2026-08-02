@@ -96,7 +96,7 @@ export async function BoardReport({
           <a
             href={deckHref}
             download
-            className="rounded-md border border-accent bg-accent px-3 py-1.5 text-[12.5px] font-medium text-white transition hover:opacity-90"
+            className="min-h-[36px] rounded-md border border-accent bg-accent px-3 py-2 text-[12.5px] font-medium text-white transition hover:opacity-90"
           >
             Download the deck (PPTX)
           </a>

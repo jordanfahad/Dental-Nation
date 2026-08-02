@@ -53,7 +53,7 @@ export function RangeControl({ range, basePath }: { range: BoardRange; basePath:
                   q.delete('to');
                 });
               }}
-              className={`rounded-md border px-2.5 py-1 text-[12px] font-medium transition disabled:opacity-50 ${
+              className={`min-h-[36px] rounded-md border px-3 py-1.5 text-[12px] font-medium transition disabled:opacity-50 ${
                 on ? 'border-accent bg-accent text-white' : 'border-line bg-card text-ink-soft hover:bg-panel'
               }`}
             >
@@ -64,7 +64,7 @@ export function RangeControl({ range, basePath }: { range: BoardRange; basePath:
         <button
           type="button"
           onClick={() => setCustom((v) => !v)}
-          className={`rounded-md border px-2.5 py-1 text-[12px] font-medium transition ${
+          className={`min-h-[36px] rounded-md border px-3 py-1.5 text-[12px] font-medium transition ${
             custom || range.preset === 'custom'
               ? 'border-accent bg-accent text-white'
               : 'border-line bg-card text-ink-soft hover:bg-panel'

@@ -62,7 +62,9 @@ export function Part2OperatingSystem() {
         </div>
       </div>
       <TableWrap>
-        <table className="w-full min-w-[560px] border-collapse">
+        {/* Text columns wrap on a phone instead of scrolling — only the
+            numeric tables genuinely need a fixed width. */}
+        <table className="w-full border-collapse sm:min-w-[560px]">
           <thead>
             <tr className="border-b border-accent">
               <th className={TH}>Layer</th>
@@ -465,7 +467,7 @@ export function Part2OperatingSystem() {
       {/* 2.15 Group structure */}
       <SectionHead id="s-structure" n="2.15" title="One platform, separate clinic entities" />
       <TableWrap>
-        <table className="w-full min-w-[600px] border-collapse">
+        <table className="w-full border-collapse sm:min-w-[600px]">
           <thead>
             <tr className="border-b border-accent">
               <th className={TH}>Entity</th>

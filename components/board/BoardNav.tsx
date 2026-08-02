@@ -164,7 +164,9 @@ function NavGroup({
               <button
                 type="button"
                 onClick={() => onGo(s.id)}
-                className={`block w-full border-l-2 py-[3px] pl-2.5 text-left text-[11.5px] leading-snug transition ${
+                /* py-2 on a phone keeps every nav row a real tap target
+                   (36px+); the desktop rail stays tight at py-[3px]. */
+                className={`block w-full border-l-2 py-2 pl-2.5 text-left text-[11.5px] leading-snug transition sm:py-[3px] ${
                   on
                     ? 'border-l-accent font-semibold text-ink'
                     : 'border-l-line text-ink-faint hover:border-l-accent-400 hover:text-ink-soft'

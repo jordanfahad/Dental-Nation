@@ -472,6 +472,35 @@ export function Part1Execution({ range, totals, prior, monthly, manual, insights
         source="Meta Ads, Google Ads, Practo appointments and billing — Dental Nation Lane E pipeline"
         note="An em-dash means no source reported that metric in that month — not a zero result. Practo billing and attendance begin 21 April 2026; Meta spend ends 27 April 2026."
       >
+        {/* Phone: one card per month. Eight columns in 350px is not a table a
+            board member can read, and side-scrolling a ledger loses the
+            month-to-month comparison that is the whole point of it. */}
+        <ol className="space-y-2.5 sm:hidden">
+          {monthly.map((m) => {
+            const cpb = m.spendTotal != null && m.apptsBooked ? m.spendTotal / m.apptsBooked : null;
+            return (
+              <li key={m.month} className="rounded-card border border-line bg-card px-3.5 py-3">
+                <div className="flex items-baseline justify-between gap-2 border-b border-line/70 pb-1.5">
+                  <p className="text-[13px] font-semibold text-ink">{monthLabel(m.month)}</p>
+                  <p className="tnum text-[13px] font-semibold text-ink">
+                    {m.revenue != null ? fmt.aed(m.revenue) : <span className="text-ink-ghost">—</span>}
+                    <span className="ml-1 text-[10px] font-normal text-ink-faint">billed</span>
+                  </p>
+                </div>
+                <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1.5">
+                  <MobileStat k="Media spend" v={m.spendTotal} f={fmt.aedExact} />
+                  <MobileStat k="Cost / booking" v={cpb} f={fmt.aedExact} />
+                  <MobileStat k="Booked" v={m.apptsBooked} f={fmt.int} />
+                  <MobileStat k="Attended" v={m.apptsShowed} f={fmt.int} />
+                  <MobileStat k="No-show" v={m.apptsNoshow} f={fmt.int} />
+                  <MobileStat k="Impressions" v={m.impressions} f={fmt.int} />
+                </dl>
+              </li>
+            );
+          })}
+        </ol>
+
+        <div className="hidden sm:block">
         <TableWrap>
           <table className="w-full min-w-[700px] border-collapse">
             <thead>
@@ -517,6 +546,7 @@ export function Part1Execution({ range, totals, prior, monthly, manual, insights
             </tfoot>
           </table>
         </TableWrap>
+        </div>
         <div className="mt-4">
           <Eyebrow>Creative output</Eyebrow>
           <div className="grid gap-3 sm:grid-cols-3">{manualCard('creative_monthly_output', 'Assets per month')}</div>
@@ -541,6 +571,18 @@ function sum(rows: MonthRow[], pick: (m: MonthRow) => number | null): number | n
     }
   }
   return seen ? t : null;
+}
+
+/** One label/value pair inside a phone appendix card. */
+function MobileStat({ k, v: val, f }: { k: string; v: number | null; f: (n: number) => string }) {
+  return (
+    <div className="flex items-baseline justify-between gap-2">
+      <dt className="text-[11px] text-ink-faint">{k}</dt>
+      <dd className="tnum text-[12px] font-medium text-ink">
+        {val == null ? <span className="text-ink-ghost">—</span> : f(val)}
+      </dd>
+    </div>
+  );
 }
 
 function Cell({ v: val, f, bold }: { v: number | null; f: (n: number) => string; bold?: boolean }) {

@@ -92,7 +92,7 @@ export function HandoverDoc() {
       {/* ── 2 · Coverage ── */}
       <SectionHead n="2" title="Coverage while I'm away" note="one named owner per area" />
       <TableWrap>
-        <table className="w-full min-w-[560px] border-collapse">
+        <table className="w-full border-collapse sm:min-w-[560px]">
           <thead>
             <tr className="border-b border-accent">
               <th className={TH}>Area</th>
@@ -170,7 +170,7 @@ export function HandoverDoc() {
         needed while I&apos;m away, it comes from the named holder, not from here.
       </p>
       <TableWrap>
-        <table className="w-full min-w-[420px] border-collapse">
+        <table className="w-full border-collapse sm:min-w-[420px]">
           <thead>
             <tr className="border-b border-accent">
               <th className={TH}>System</th>

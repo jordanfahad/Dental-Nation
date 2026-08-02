@@ -1,4 +1,5 @@
 import { C } from '../design';
+import { ChartWrap } from '../Primitives';
 import type { MonthRow } from '@/lib/board/metrics';
 
 /**
@@ -62,7 +63,8 @@ export function TrendChart({ rows }: { rows: MonthRow[] }) {
   }));
 
   return (
-    <div className="overflow-x-auto print:overflow-visible">
+    <div>
+      <ChartWrap label="the full timeline">
       <svg
         viewBox={`0 0 ${W} ${H}`}
         className="h-auto w-full min-w-[560px]"
@@ -164,8 +166,11 @@ export function TrendChart({ rows }: { rows: MonthRow[] }) {
           AED revenue
         </text>
       </svg>
+      </ChartWrap>
 
-      <div className="mt-1 flex flex-wrap items-center gap-x-5 gap-y-1.5 px-1">
+      {/* Legend sits OUTSIDE the scroller so it is always visible, whatever
+          part of the chart the reader has scrolled to. */}
+      <div className="mt-1.5 flex flex-wrap items-center gap-x-5 gap-y-1.5 px-1">
         <Legend swatch={C.navyPale} label="Media investment (Meta + Google)" />
         <Legend swatch={C.amber} label="Billed revenue (Practo)" line />
       </div>
