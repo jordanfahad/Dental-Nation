@@ -28,12 +28,15 @@ export function LaneTamChart() {
       <div className="space-y-[5px]">
         {rows.map((r) => (
           <div key={r.lane} className="flex items-center gap-2">
-            <span className="w-[150px] shrink-0 truncate text-[11px] text-ink-soft sm:w-[190px]">
+            <span className="w-[104px] shrink-0 truncate text-[11px] text-ink-soft sm:w-[190px]">
               <span className="font-semibold text-ink">{r.lane}</span> · {r.name}
             </span>
-            <div className="flex h-[16px] flex-1 items-center rounded-sm bg-panel">
+            {/* min-w-0 on the track: without it the 38px minimum bar width
+                becomes the track's own minimum, and the row refuses to shrink
+                on a phone — pushing the whole page sideways. */}
+            <div className="flex h-[16px] min-w-0 flex-1 items-center rounded-sm bg-panel">
               <div
-                className="flex h-full min-w-[38px] items-center justify-end rounded-sm pr-1.5"
+                className="flex h-full min-w-[34px] items-center justify-end rounded-sm pr-1.5"
                 style={{ width: `${(r.tam / max) * 100}%`, background: COMMAND_COLOR[r.command] }}
               >
                 <span className="tnum text-[9.5px] font-semibold text-white">{r.tam}</span>
@@ -80,7 +83,7 @@ export function TargetVsMarketChart() {
             <div className="space-y-[3px]">
               <div className="flex items-center gap-2">
                 <span className="w-[54px] shrink-0 text-[9.5px] uppercase tracking-wide text-ink-faint">DN</span>
-                <div className="flex h-[13px] flex-1 items-center rounded-sm bg-panel">
+                <div className="flex h-[13px] min-w-0 flex-1 items-center rounded-sm bg-panel">
                   <div
                     className="flex h-full min-w-[30px] items-center justify-end rounded-sm bg-accent pr-1.5"
                     style={{ width: `${(r.dn / max) * 100}%` }}
@@ -91,7 +94,7 @@ export function TargetVsMarketChart() {
               </div>
               <div className="flex items-center gap-2">
                 <span className="w-[54px] shrink-0 text-[9.5px] uppercase tracking-wide text-ink-faint">Leader</span>
-                <div className="flex h-[13px] flex-1 items-center rounded-sm bg-panel">
+                <div className="flex h-[13px] min-w-0 flex-1 items-center rounded-sm bg-panel">
                   <div
                     className="flex h-full min-w-[30px] items-center justify-end rounded-sm pr-1.5"
                     style={{ width: `${(r.threshold / max) * 100}%`, background: '#C7CFDA' }}

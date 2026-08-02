@@ -5,6 +5,8 @@ import {
   PPP, RETENTION, REVOPS, SCORECARD, TARGETS_SOURCE,
 } from '@/config/growth-os';
 import { LaneTamChart, TargetVsMarketChart } from './Charts';
+import { DemandFlywheel, LanePortfolioMatrix } from './charts/StrategyGraphics';
+import { ChapterDivider, Exhibit, Takeaway } from './Exhibit';
 import { SectionHead, SourceCaption, TD, TDR, TH, THR, TableWrap } from './Primitives';
 
 /**
@@ -17,7 +19,14 @@ import { SectionHead, SourceCaption, TD, TDR, TH, THR, TableWrap } from './Primi
 export function Part2OperatingSystem() {
   return (
     <section id="part-2" className="scroll-mt-24">
-      <PartHeader />
+      <ChapterDivider
+        id="s-part2"
+        breakBefore
+        part="Part 2"
+        title="The operating system it plugs into"
+        standfirst="The documented architecture for scaling from these first campaigns to a multi-clinic growth platform: thirteen demand lanes, the Growth Office, the conversion control room, clinic chapters and the retention engine. Every figure in this part is a design target or market estimate from the July 2026 Growth Operating Report — not a measured result. Part 1 is where the live numbers are."
+        contents={['Portfolio', 'Operating model', 'Growth Office', 'Demand engine', 'Targets', 'Control room', 'Structure', 'Cadence']}
+      />
 
       {/* 2.1 At a glance */}
       <SectionHead id="s-glance" n="2.1" title="At a glance" />
@@ -93,17 +102,17 @@ export function Part2OperatingSystem() {
       <SourceCaption>{GROWTH_OFFICE.source}</SourceCaption>
 
       {/* 2.4 Demand engine */}
-      <SectionHead id="s-engine" n="2.4" title="The Demand Generation Engine" note="a five-layer flywheel" />
-      <div className="grid gap-3 lg:grid-cols-5 sm:grid-cols-2">
-        {DEMAND_ENGINE.layers.map((l) => (
-          <div key={l.n} className="print-avoid-break rounded-card border border-line bg-card px-3.5 py-3">
-            <p className="eyebrow text-[9.5px]">{l.role}</p>
-            <p className="mt-1 text-[12.5px] font-semibold text-ink">{l.name}</p>
-            <p className="mt-1 text-[11px] leading-snug text-ink-soft">{l.detail}</p>
-          </div>
-        ))}
-      </div>
-      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+      <Exhibit
+        id="s-engine"
+        n={6}
+        kicker="Demand engine"
+        title="Five layers that feed each other — the fifth layer optimises the first, which is what makes it a flywheel rather than a funnel"
+        source="Demand Generation Engine (Notion, Growth OS reference library)"
+      >
+        <DemandFlywheel />
+      </Exhibit>
+
+      <div className="mt-6 grid gap-3 sm:grid-cols-3">
         {DEMAND_ENGINE.phases.map((p) => (
           <div key={p.name} className="print-avoid-break rounded-card border border-line border-l-[3px] border-l-accent bg-card px-3.5 py-3">
             <p className="text-[12.5px] font-semibold text-ink">{p.name}</p>
@@ -154,8 +163,24 @@ export function Part2OperatingSystem() {
           </span>
         ))}
       </div>
-      <div className="mt-6">
-        <p className="eyebrow mb-2.5">Addressable market by lane</p>
+      <Exhibit
+        n={7}
+        kicker="Portfolio"
+        title="The three lanes funded without restriction are also the three largest, highest-return markets"
+        source="The 13 Demand Lanes v2.0 — full architecture (Notion, Founding Partner Strategy Room)"
+        note="Bubble size is the funding command. Targets and market sizing are the deck's own estimates, not measured results."
+        tall
+      >
+        <LanePortfolioMatrix />
+        <Takeaway>
+          Funding follows the market rather than the org chart: every OWN lane sits in the large-market, high-return
+          quadrant, and the lanes with no acquisition budget sit where the market is thinnest. That alignment is the
+          test the lane architecture exists to pass.
+        </Takeaway>
+      </Exhibit>
+
+      <div className="mt-8">
+        <p className="eyebrow mb-2.5">Addressable market by lane (AED millions)</p>
         <LaneTamChart />
       </div>
       <SourceCaption>{LANES_SOURCE}</SourceCaption>
@@ -184,7 +209,15 @@ export function Part2OperatingSystem() {
       <SourceCaption>{OWN_LANES_SOURCE}</SourceCaption>
 
       {/* 2.7 Targets vs market */}
-      <SectionHead id="s-targets" n="2.7" title="Targets vs. the Dubai market" />
+      <Exhibit
+        id="s-targets"
+        n={8}
+        kicker="Benchmarks"
+        title="Every lane target sits above the Dubai norm — that gap is what the operating system exists to close"
+        source="The 13 Demand Lanes v2.0 — lane unit-economics tables (Notion)"
+        note="Design targets against published market benchmarks: the standards the system is being built to hit, not results it has recorded."
+        tall
+      >
       <div className="grid gap-6 lg:grid-cols-2">
         <div>
           <p className="eyebrow mb-2">Conversion & retention</p>
@@ -214,7 +247,7 @@ export function Part2OperatingSystem() {
           <TargetVsMarketChart />
         </div>
       </div>
-      <SourceCaption>{TARGETS_SOURCE}</SourceCaption>
+      </Exhibit>
 
       {/* 2.8 Rest of portfolio */}
       <SectionHead id="s-portfolio" n="2.8" title="The rest of the portfolio" note="BUILD · PILOT · RUN" />
@@ -511,26 +544,6 @@ export function Part2OperatingSystem() {
         <p className="mt-2 text-[12.5px] leading-relaxed text-ink-soft">{CLOSING.body}</p>
       </div>
     </section>
-  );
-}
-
-function PartHeader() {
-  return (
-    <div className="print-break mb-6 border-t-2 border-accent pt-5">
-      <p className="eyebrow text-accent">Part 2</p>
-      <h2 className="mt-1 text-[22px] font-semibold tracking-tight text-ink sm:text-[26px]">
-        The Growth Operating System
-      </h2>
-      <p className="mt-2 max-w-[70ch] text-[12.5px] leading-relaxed text-ink-soft">
-        The documented strategy architecture — 13 demand lanes, the Growth Office, the conversion control room, clinic
-        chapters, the retention engine, channels, group structure and operating cadence.{' '}
-        <span className="font-medium text-ink">
-          Every figure in this part is a design target or market estimate from the July 2026 Growth Operating Report,
-          not a measured result.
-        </span>{' '}
-        Part 1 is where the live numbers are.
-      </p>
-    </div>
   );
 }
 

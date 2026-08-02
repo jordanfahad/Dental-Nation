@@ -38,6 +38,7 @@ export function MetricCard({
   deltaLabel,
   source,
   hero = false,
+  polarity = 'up-good',
 }: {
   label: string;
   value: string | null;
@@ -46,6 +47,8 @@ export function MetricCard({
   deltaLabel?: string;
   source: string;
   hero?: boolean;
+  /** Which direction is good for THIS metric — see DeltaChip. */
+  polarity?: Polarity;
 }) {
   const pending = value == null;
   return (
@@ -69,7 +72,9 @@ export function MetricCard({
         </p>
       )}
       <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
-        {!pending && delta != null && Number.isFinite(delta) ? <DeltaChip delta={delta} /> : null}
+        {!pending && delta != null && Number.isFinite(delta) ? (
+          <DeltaChip delta={delta} polarity={polarity} />
+        ) : null}
         {!pending && delta != null && deltaLabel ? (
           <span className="text-[10.5px] text-ink-faint">{deltaLabel}</span>
         ) : null}
@@ -79,12 +84,25 @@ export function MetricCard({
   );
 }
 
-/** ▲ / ▼ comparison chip. Neutral grey at ±0, never a fake sign. */
-export function DeltaChip({ delta }: { delta: number }) {
+/**
+ * Which direction counts as an improvement for a given metric.
+ *
+ * This exists because colour is read faster than the label. Cost per booking
+ * falling by half is one of the best numbers on the page, and tinting it red
+ * because the arrow points down would tell the board the opposite of the
+ * truth. Spend and reach are inputs rather than results, so they carry no
+ * judgement at all.
+ */
+export type Polarity = 'up-good' | 'down-good' | 'neutral';
+
+/** ▲ / ▼ comparison chip. Grey at ±0 and for neutral metrics; never a fake sign. */
+export function DeltaChip({ delta, polarity = 'up-good' }: { delta: number; polarity?: Polarity }) {
   const pct = Math.round(delta * 100);
   const flat = pct === 0;
   const up = pct > 0;
-  const tone = flat ? 'text-ink-faint' : up ? 'text-good' : 'text-stop';
+  const good = polarity === 'down-good' ? !up : up;
+  const tone =
+    flat || polarity === 'neutral' ? 'text-ink-faint' : good ? 'text-good' : 'text-stop';
   return (
     <span className={`tnum inline-flex items-center gap-0.5 text-[11px] font-semibold ${tone}`}>
       <span aria-hidden>{flat ? '—' : up ? '▲' : '▼'}</span>
