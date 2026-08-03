@@ -125,19 +125,24 @@ export function HandoverDoc() {
       {/* ── Where to look ── */}
       <div className="print-avoid-break mt-6 rounded-card border border-line border-l-[3px] border-l-accent bg-card px-4 py-3.5">
         <p className="eyebrow mb-2">Where to look — this replaces most of this document</p>
-        <ul className="space-y-2.5">
+        {/* The whole row is the link, not just the label: on a phone this block
+            is how the reader actually navigates, so the tap target is the
+            entire card rather than one line of 12px text. */}
+        <ul className="-mx-1.5 divide-y divide-line/70">
           {HANDOVER.links.map((l) => (
             <li key={l.href}>
               <a
                 href={l.href}
                 target="_blank"
                 rel="noreferrer"
-                className="text-[12.5px] font-semibold text-accent underline decoration-accent/30 underline-offset-2 hover:decoration-accent"
+                className="block rounded-md px-1.5 py-2.5 transition hover:bg-panel/60"
               >
-                {l.label}
+                <span className="text-[12.5px] font-semibold text-accent underline decoration-accent/30 underline-offset-2">
+                  {l.label} →
+                </span>
+                <span className="mt-0.5 block text-[11.5px] leading-snug text-ink-soft">{l.what}</span>
+                <span className="mt-0.5 hidden break-all text-[10px] text-ink-ghost print:block">{l.href}</span>
               </a>
-              <p className="mt-0.5 text-[11.5px] leading-snug text-ink-soft">{l.what}</p>
-              <p className="mt-0.5 hidden break-all text-[10px] text-ink-ghost print:block">{l.href}</p>
             </li>
           ))}
         </ul>
@@ -187,6 +192,22 @@ export function HandoverDoc() {
               </p>
             </div>
             <p className="mt-1.5 text-[12.5px] leading-relaxed text-ink-soft">{item.position}</p>
+            {/* `in` narrows the union — only some open items carry a link. */}
+            {'link' in item && item.link ? (
+              <p className="mt-2">
+                <a
+                  href={item.link.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex min-h-[36px] items-center rounded-md text-[12px] font-semibold text-accent underline decoration-accent/30 underline-offset-2 hover:decoration-accent"
+                >
+                  {item.link.label} →
+                </a>
+                <span className="mt-0.5 hidden break-all text-[10px] text-ink-ghost print:block">
+                  {item.link.href}
+                </span>
+              </p>
+            ) : null}
           </div>
         ))}
       </div>

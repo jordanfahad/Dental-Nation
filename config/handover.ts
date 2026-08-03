@@ -144,6 +144,11 @@ export const HANDOVER = {
       href: 'https://dental-nation-one.vercel.app/share/growth/c612dfb4-ff89-4099-8a8c-00c114097037',
       what: 'The read-only board link. No login; safe to open in a meeting or forward to an investor.',
     },
+    {
+      label: 'Creative desk — asset production',
+      href: 'https://creative-desk.vercel.app/download-jobs/Hashid',
+      what: 'Live status of the creative assets the Lane B/D/E launch is waiting on. Check here rather than asking for an update. Access is held by the team — sign-in comes from the holder, not from this page.',
+    },
   ],
 
   /** Decision rules — so nobody has to make a judgement call in my absence. */
@@ -170,9 +175,19 @@ export const HANDOVER = {
   openItems: [
     {
       title: 'Hashid — onboarding',
-      status: V('Green light given · offer letter to be sent'),
+      status: V('Trial complete · interview cleared · offer letter next'),
       position:
-        'This is the one item that needs someone to act while I am away, so it has a named owner: Gautam carries the follow-up, aligning with Syed at Zavis to issue the offer letter and complete onboarding. It does not wait for my return — and it is on the critical path, because the BAU ad renewals below are waiting on the creative assets Hashid brings.',
+        'The trial is done and Hashid has cleared the interview, so this is no longer an assessment — it is paperwork on the critical path. Gautam carries the follow-up, aligning with Syed at Zavis to issue the offer letter and complete onboarding. It does not wait for my return, because the campaign launch below is waiting on the assets he produces.',
+    },
+    {
+      title: 'Lane B, D & E campaign launch',
+      status: V('Assets in progress — the only blocker'),
+      position:
+        'Family (B), Emergency (D) and Lifestyle (E) launch simultaneously, not in sequence. Nothing else is outstanding: strategy, budget and targeting are set, and the single dependency is creative. Hashid is already briefed and the work is moving — BAU organic assets first, then paid social, then paid search (PMax). Progress is visible on the creative desk rather than by asking for an update.',
+      link: {
+        label: 'Creative desk — Hashid’s asset jobs',
+        href: 'https://creative-desk.vercel.app/download-jobs/Hashid',
+      },
     },
     {
       title: 'Performance partner (Araby Ads) — campaign & commercial',
@@ -217,6 +232,7 @@ export const HANDOVER = {
   onReturn: [
     'Away-period reconciliation — spend, leads, and anything the automated rules paused.',
     'Pick up Hashid’s onboarding from wherever Gautam and Syed have taken it.',
+    'Lane B / D / E — check whether the assets landed and the simultaneous launch went out.',
     'Complete the board report data fills.',
     'Resume campaign scaling on the winners.',
     'Restart the partner commercial discussion — delivery will have resumed; the billing terms are what waited.',
