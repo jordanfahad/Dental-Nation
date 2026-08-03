@@ -146,8 +146,8 @@ export const HANDOVER = {
     },
     {
       label: 'Creative desk — asset production',
-      href: 'https://creative-desk.vercel.app/download-jobs/Hashid',
-      what: 'Live status of the creative assets the Lane B/D/E launch is waiting on. Check here rather than asking for an update. Access is held by the team — sign-in comes from the holder, not from this page.',
+      href: 'https://creative-desk.vercel.app/download-jobs/Hashid?access=HwbWVf8aaGih7fsFZ1Cyka92leWH7sA7',
+      what: 'Live status of the creative assets the Lane B/D/E launch is waiting on. Check here rather than asking for an update — the link opens straight in, no password. It reaches this brief only, and can be switched off on its own without disturbing the designers’ own access.',
     },
   ],
 
@@ -186,7 +186,11 @@ export const HANDOVER = {
         'Family (B), Emergency (D) and Lifestyle (E) launch simultaneously, not in sequence. Nothing else is outstanding: strategy, budget and targeting are set, and the single dependency is creative. Hashid is already briefed and the work is moving — BAU organic assets first, then paid social, then paid search (PMax). Progress is visible on the creative desk rather than by asking for an update.',
       link: {
         label: 'Creative desk — Hashid’s asset jobs',
-        href: 'https://creative-desk.vercel.app/download-jobs/Hashid',
+        // Passwordless share link. The ?access= token is redeemed once, then
+        // stripped from the URL; it unlocks the creative jobs pack and nothing
+        // else, and can be revoked on its own without changing the password
+        // the external designers use. No credential appears on this page.
+        href: 'https://creative-desk.vercel.app/download-jobs/Hashid?access=HwbWVf8aaGih7fsFZ1Cyka92leWH7sA7',
       },
     },
     {
