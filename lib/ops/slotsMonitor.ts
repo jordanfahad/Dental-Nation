@@ -2,6 +2,7 @@ import 'server-only';
 import { getPractoConfig, type PractoConfig } from '@/config/practo';
 import { practoLoginAttempt, cachePractoToken } from '@/lib/sync/adapters/practo-adapter';
 import { recordWidgetCheck } from '@/lib/ops/widgetHealth';
+import { readPreviousUptimeState, sendUptimeAlerts } from '@/lib/ops/uptimeAlerts';
 import type { AdminClient } from '@/lib/supabase/server';
 
 /**
@@ -253,6 +254,9 @@ export async function runSlotsMonitor(supabase: AdminClient): Promise<SlotsMonit
     }
   }
 
+  // Previous state BEFORE this run's row lands — the transition detector.
+  const prev = await readPreviousUptimeState(supabase).catch(() => ({ widgetOk: null, siteOk: null }));
+
   const res = await recordWidgetCheck({
     ok: verdict.ok,
     slotsFound: verdict.slotsFound,
@@ -265,10 +269,27 @@ export async function runSlotsMonitor(supabase: AdminClient): Promise<SlotsMonit
     siteMs: site.ms,
   });
 
-  const summary = verdict.conclusive
-    ? verdict.slotsFound != null
-      ? `${verdict.slotsFound} slots next 7d`
-      : 'outage recorded'
-    : 'monitor error (inconclusive)';
+  // DOWN/RECOVERED emails on state transitions (Akbar, Gautam, Dr Luvi,
+  // Fahad, Zavis). Best-effort — an email failure never breaks the monitor.
+  let alertNote = '';
+  try {
+    const alert = await sendUptimeAlerts(prev, {
+      widgetOk: verdict.conclusive ? verdict.ok : null,
+      siteDown: site.ok === false,
+      widgetDetail: verdict.detail,
+      siteStatus: site.status,
+    });
+    if (alert.sent) alertNote = ` · ${alert.events} alert email${alert.events === 1 ? '' : 's'} sent`;
+    else if (alert.error) alertNote = ` · alert email failed: ${alert.error}`;
+  } catch {
+    /* never let alerting break the monitor */
+  }
+
+  const summary =
+    (verdict.conclusive
+      ? verdict.slotsFound != null
+        ? `${verdict.slotsFound} slots next 7d`
+        : 'outage recorded'
+      : 'monitor error (inconclusive)') + alertNote;
   return res.ok ? { recorded: true, summary } : { recorded: false, summary, error: res.error };
 }

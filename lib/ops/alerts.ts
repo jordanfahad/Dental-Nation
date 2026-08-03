@@ -1,12 +1,14 @@
 import 'server-only';
 import type { AdminClient } from '@/lib/supabase/server';
 import { sendEmail, emailConfigured } from '@/lib/notify/email';
-import { OPS_ALERT_EMAILS, OPS_ALERT_FROM, OPS_ALERT_MAX_PER_RUN } from '@/config/ops';
+import { OPS_ALERT_FROM, OPS_ALERT_MAX_PER_RUN, leadAlertRecipients } from '@/config/ops';
 
 /**
  * New-lead email alerts. On each sync, any NON-TEST website booking-widget
- * submission newer than the last-alerted high-water mark emails the ops inbox
- * (OPS_ALERT_EMAILS). The mark lives in app_secrets so it survives deploys.
+ * submission newer than the last-alerted high-water mark emails the CLINIC'S
+ * OWN recipients (config/ops.ts LEAD_ALERT_ROUTES, routed on the form's
+ * "Clinic Name"; unrecognised clinics use the fallback list). The mark lives
+ * in app_secrets so it survives deploys.
  *
  * Safety: gated on emailConfigured() — no transport (MS_GRAPH_* / SMTP_* /
  * RESEND_API_KEY) → no send, no mark change. The FIRST run after enabling seeds
@@ -59,7 +61,6 @@ function leadHtml(f: Record<string, string>): string {
 
 export async function sendNewLeadAlerts(supabase: AdminClient): Promise<LeadAlertResult> {
   if (!emailConfigured()) return { sent: 0, skipped: true, note: 'alerts disabled (no MS_GRAPH_* / SMTP_* / RESEND_API_KEY)' };
-  if (OPS_ALERT_EMAILS.length === 0) return { sent: 0, skipped: true, note: 'no OPS_ALERT_EMAILS' };
 
   try {
     // High-water mark. First run after enabling → seed to now, alert nothing yet.
@@ -106,8 +107,13 @@ export async function sendNewLeadAlerts(supabase: AdminClient): Promise<LeadAler
     let sent = 0;
     let maxMs = mark;
     for (const { ms, f } of batch) {
-      const subject = `New website lead — ${f.name || 'Unknown'}${f.treatment ? ` · ${f.treatment}` : ''}`;
-      const res = await sendEmail({ to: OPS_ALERT_EMAILS, subject, html: leadHtml(f), from: OPS_ALERT_FROM });
+      // Route on the form's clinic: each clinic's own reception + clinical
+      // owner + Fahad; unrecognised clinic → fallback list, flagged in the
+      // subject so someone routes it by hand.
+      const route = leadAlertRecipients(f.clinic ?? '');
+      const clinicTag = route.label ?? (f.clinic ? f.clinic : 'clinic not stated');
+      const subject = `New website lead (${clinicTag}) — ${f.name || 'Unknown'}${f.treatment ? ` · ${f.treatment}` : ''}`;
+      const res = await sendEmail({ to: route.emails, subject, html: leadHtml(f), from: OPS_ALERT_FROM });
       if (res.ok) {
         sent++;
         if (ms > maxMs) maxMs = ms; // only advance past forms we actually delivered

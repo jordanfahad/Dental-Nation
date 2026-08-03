@@ -9,13 +9,20 @@
  * alerts are safely skipped (the Clinical Operations tab still works — it
  * reads the same lead forms live).
  */
-export const OPS_ALERT_EMAILS: string[] = (
-  process.env.OPS_ALERT_EMAILS ||
-  ['lu.kaprani@dentalnation.com', 'la.dayag@dentalnation.com', 'fa.siddiqui@dentalnation.com'].join(',')
-)
-  .split(',')
-  .map((s) => s.trim())
-  .filter(Boolean);
+/** Fahad receives EVERY alert, irrespective of route or env override —
+ *  withOwner() is applied to every recipient list this file exports. */
+const FAHAD = ['fa.siddiqui@dentalnation.com']; // confirmed by Fahad, 1 Aug
+const withOwner = (emails: string[]): string[] => [...new Set([...emails, ...FAHAD])];
+
+export const OPS_ALERT_EMAILS: string[] = withOwner(
+  (
+    process.env.OPS_ALERT_EMAILS ||
+    ['lu.kaprani@dentalnation.com', 'la.dayag@dentalnation.com', 'fa.siddiqui@dentalnation.com'].join(',')
+  )
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean),
+);
 
 /**
  * From address for alert emails. Honored by the SMTP and Resend transports
@@ -27,6 +34,85 @@ export const OPS_ALERT_FROM = process.env.OPS_ALERT_FROM?.trim() || 'Dental Nati
 
 /** Max alert emails per sync run — a backstop against a burst re-blasting the inbox. */
 export const OPS_ALERT_MAX_PER_RUN = 15;
+
+/* ─── Per-clinic lead-alert routing (Fahad, 1 Aug 2026) ─────────────────────
+ * A new lead form alerts the CLINIC it is for, not one shared inbox. Each
+ * route is env-overridable (CSV) so recipients rotate without a deploy.
+ * Every list passes through withOwner(), so Fahad cannot be dropped by an
+ * env override.
+ */
+const csv = (env: string | undefined, dflt: string[]): string[] =>
+  withOwner(
+    (env || dflt.join(','))
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean),
+  );
+
+const DR_LUVI = 'lu.kaprani@dentalnation.com'; // confirmed by Fahad, 1 Aug
+
+export interface LeadAlertRoute {
+  key: 'dr-tosun' | 'al-maher' | 'dn-alwasl';
+  label: string;
+  /** Tested against the form's "Clinic Name". Order matters — first match wins. */
+  match: RegExp;
+  emails: string[];
+}
+
+export const LEAD_ALERT_ROUTES: LeadAlertRoute[] = [
+  {
+    key: 'dr-tosun',
+    label: 'Dr Tosun Dental Clinic',
+    match: /tosun/i,
+    emails: csv(process.env.LEAD_ALERT_TOSUN, [
+      DR_LUVI,
+      'mj.torreta@dentalnation.com',
+      'reception.drtosun@dentalnation.com',
+      ...FAHAD,
+    ]),
+  },
+  {
+    key: 'al-maher',
+    label: 'Al Maher Clinic (AMC)',
+    match: /maher|\bamc\b/i,
+    emails: csv(process.env.LEAD_ALERT_AMC, [DR_LUVI, 'reception@almahermc.com', ...FAHAD]),
+  },
+  {
+    // Live form values seen: "DENTAL NATION GENERAL DENTAL CLINIC L.L.C S.O.C"
+    // and the truncated "GENERAL DENTAL CLINIC L.L.C S.O.C" — both are Al Wasl.
+    key: 'dn-alwasl',
+    label: 'Dental Nation Al Wasl',
+    match: /dental nation|general dental/i,
+    emails: csv(process.env.LEAD_ALERT_ALWASL, [DR_LUVI, 'reception.alwasl@dentalnation.com', ...FAHAD]),
+  },
+];
+
+/** Leads whose clinic is missing/unrecognised — no reception can be picked. */
+export const LEAD_ALERT_FALLBACK: string[] = csv(process.env.LEAD_ALERT_FALLBACK, [
+  DR_LUVI,
+  'mj.torreta@dentalnation.com',
+  ...FAHAD,
+]);
+
+/** Resolve a form's "Clinic Name" to its alert route. */
+export function leadAlertRecipients(clinic: string): { emails: string[]; label: string | null } {
+  const route = LEAD_ALERT_ROUTES.find((r) => r.match.test(clinic));
+  return route ? { emails: route.emails, label: route.label } : { emails: LEAD_ALERT_FALLBACK, label: null };
+}
+
+/**
+ * Website / booking-widget DOWN alerts (transition-triggered, from the
+ * availability monitor): sent when a CONCLUSIVE verdict flips up→down, with a
+ * recovery email when it flips back. Monitor errors (inconclusive) never page
+ * anyone. syed@zavis.ai is the vendor contact — the booking system is theirs.
+ */
+export const UPTIME_ALERT_EMAILS: string[] = csv(process.env.UPTIME_ALERT_EMAILS, [
+  'am@dentalnation.com', // Mr Akbar
+  'gautam.n@dentalnation.com', // Gautam
+  DR_LUVI,
+  ...FAHAD,
+  'syed@zavis.ai', // Zavis (vendor)
+]);
 
 /**
  * Extra sheet tabs watched for new rows (beyond the booking-widget Bookings tab,
