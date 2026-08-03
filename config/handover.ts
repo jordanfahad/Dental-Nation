@@ -35,7 +35,7 @@ export const HANDOVER = {
     awayTo: '20 August 2026',
     returnDate: '21 August 2026',
     availability: 'Async on WhatsApp for genuine emergencies only — see the escalation rules below. Everything else holds for my return.',
-    responseWindow: P('Expected response window to confirm (e.g. within 24h)'),
+    responseWindow: V('Within 2–3 hours, same day'),
     banner: 'Internal — prepared for Mr. Akbar. Not for board circulation.',
     bannerWhy: 'It references vendor and commercial matters.',
   },
@@ -78,18 +78,38 @@ export const HANDOVER = {
     },
     {
       area: 'Demand generation',
-      owner: P('Cover owner to confirm — this is my own area'),
-      notes: 'Steady state only: the ramp continues on what is already live, no new activation until I return.',
+      owner: V('No cover needed — monitored on the dashboard'),
+      notes:
+        'I push the ads live before I go. Nothing needs changing while I am away; the team watches performance directly on the Performance Dashboard.',
     },
     {
       area: 'Paid campaigns',
-      owner: P('Monitoring owner to confirm'),
-      notes: 'Steady state only — see the decision rules below.',
+      owner: V('Zavis externally · internal review by Gautam / Dr Luvi'),
+      notes:
+        'Zavis runs delivery. Mr. Akbar nominates Gautam or Dr Luvi to review from our side. Budgets stay at current daily levels.',
+    },
+    {
+      area: 'Performance-partner alerts (Araby Ads)',
+      owner: V('Internal team — email alerts enabled'),
+      notes:
+        'Alert email notifications are switched on, so the team is notified and responds directly. No manual monitoring required.',
+    },
+    {
+      area: 'Zavis deliverables — QA',
+      owner: V('Gautam / Dr Luvi'),
+      notes:
+        'Zavis sends the gatekeeping tasks to each team; Gautam and Dr Luvi review the deliverables and come back with a response.',
     },
     {
       area: 'WhatsApp / Marketing OS',
-      owner: V('Automated — escalate only if flows stop'),
+      owner: V('Zavis — automated; escalate only if flows stop'),
       notes: 'The system runs itself. Escalate on outage, not on volume.',
+    },
+    {
+      area: 'Website & widget uptime',
+      owner: V('Automated monitoring — Clinical Operations tab'),
+      notes:
+        'Booking-widget up/down time and site availability are monitored automatically and visible on the dashboard’s Clinical Operations tab.',
     },
     {
       area: 'Website / organic',
@@ -97,9 +117,32 @@ export const HANDOVER = {
       notes: 'I review on return.',
     },
     {
-      area: 'Lane E dashboard',
+      area: 'Performance Dashboard',
       owner: V('Runs automatically — 15-minute sync'),
       notes: 'Live throughout. The board report and this handover are served from it.',
+    },
+  ],
+
+  /**
+   * The links that replace most of this document in practice — if something
+   * needs checking, it is on one of these three screens rather than in
+   * someone's inbox.
+   */
+  links: [
+    {
+      label: 'Performance Dashboard',
+      href: 'https://dental-nation-one.vercel.app/',
+      what: 'All clinical and marketing operations, automated and comprehensive. Campaign performance is monitored here directly — no report requests needed.',
+    },
+    {
+      label: 'Clinical Operations — uptime & incidents',
+      href: 'https://dental-nation-one.vercel.app/?tab=clinical-ops',
+      what: 'Booking-widget up/down time, incident history, and whether the website itself is down.',
+    },
+    {
+      label: 'Board Growth Report',
+      href: 'https://dental-nation-one.vercel.app/share/growth/c612dfb4-ff89-4099-8a8c-00c114097037',
+      what: 'The read-only board link. No login; safe to open in a meeting or forward to an investor.',
     },
   ],
 
@@ -110,20 +153,27 @@ export const HANDOVER = {
       'No new vendor commitments, no billing-term confirmations, no contract signatures.',
     ],
     pauseRule: {
-      text: 'If any ad set’s CPL breaches the agreed threshold for 3 consecutive days → pause it and note it for my return.',
-      threshold: P('CPL pause threshold to confirm'),
+      text:
+        'Nobody has to judge this. An automated rule is enabled that pauses an ad set when it stops performing — so underperformance is handled by the system, not by someone watching a chart.',
+      threshold: V('Automated rule — no manual threshold to apply'),
     },
     escalate: [
       'Ad account disabled or billing failure.',
       'Facebook page or Google account restriction.',
-      'Booking widget or WhatsApp flow outage lasting more than a few hours.',
+      'Booking widget or WhatsApp flow outage that the Clinical Operations tab shows persisting.',
     ],
     escalateNote:
-      'These are the only "call Fahad" events. Everything else waits — and nothing is lost by waiting.',
+      'These are the only "call Fahad" events, and even these surface as alerts first. Everything else waits — and nothing is lost by waiting.',
   },
 
   /** Open items and where each one stands on 5 August. */
   openItems: [
+    {
+      title: 'Hashid — onboarding',
+      status: V('Green light given · offer letter to be sent'),
+      position:
+        'This is the one item that needs someone to act while I am away, so it has a named owner: Gautam carries the follow-up, aligning with Syed at Zavis to issue the offer letter and complete onboarding. It does not wait for my return.',
+    },
     {
       title: 'Performance partner commercial discussion',
       status: P('Status line to confirm before 5 Aug'),
@@ -148,17 +198,24 @@ export const HANDOVER = {
    * Adding a password, key or recovery detail to this list is a spec violation.
    */
   accessMap: [
-    { system: 'Lane E dashboard (admin)', holders: P('Fahad + names to confirm') },
-    { system: 'Meta Business Manager', holders: P('Names / roles to confirm') },
-    { system: 'Google Ads', holders: P('Names / roles to confirm') },
-    { system: 'Google Search Console', holders: P('Names to confirm') },
-    { system: 'WhatsApp / Marketing OS admin', holders: P('Names to confirm') },
-    { system: 'Website deploy (Vercel / Supabase)', holders: P('Fahad + names to confirm') },
+    {
+      system: 'Performance Dashboard (admin)',
+      holders: V('Mr. Akbar manages · Gautam and Dr Luvi each have their own view'),
+    },
+    { system: 'Meta Business Manager', holders: V('Gautam · Dr Luvi · Zavis — admin view') },
+    { system: 'Google Ads', holders: V('Gautam · Dr Luvi · Zavis — admin view') },
+    { system: 'Google Search Console', holders: V('Gautam · Dr Luvi · Zavis — admin view') },
+    { system: 'WhatsApp / Marketing OS admin', holders: V('Zavis — admin view') },
+    {
+      system: 'Website deploy (Vercel / Supabase) — incl. Dr Tosun and Al Maher sites',
+      holders: V('Zavis — admin view'),
+    },
   ],
 
   /** First week back. */
   onReturn: [
-    'Away-period reconciliation — spend, leads, and anything that was paused.',
+    'Away-period reconciliation — spend, leads, and anything the automated rules paused.',
+    'Pick up Hashid’s onboarding from wherever Gautam and Syed have taken it.',
     'Complete the board report data fills.',
     'Resume campaign scaling on the winners.',
     'Restart the partner commercial discussion.',

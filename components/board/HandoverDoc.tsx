@@ -114,6 +114,27 @@ export function HandoverDoc() {
         </table>
       </TableWrap>
 
+      {/* ── Where to look ── */}
+      <div className="print-avoid-break mt-6 rounded-card border border-line border-l-[3px] border-l-accent bg-card px-4 py-3.5">
+        <p className="eyebrow mb-2">Where to look — this replaces most of this document</p>
+        <ul className="space-y-2.5">
+          {HANDOVER.links.map((l) => (
+            <li key={l.href}>
+              <a
+                href={l.href}
+                target="_blank"
+                rel="noreferrer"
+                className="text-[12.5px] font-semibold text-accent underline decoration-accent/30 underline-offset-2 hover:decoration-accent"
+              >
+                {l.label}
+              </a>
+              <p className="mt-0.5 text-[11.5px] leading-snug text-ink-soft">{l.what}</p>
+              <p className="mt-0.5 hidden break-all text-[10px] text-ink-ghost print:block">{l.href}</p>
+            </li>
+          ))}
+        </ul>
+      </div>
+
       {/* ── 3 · Decision rules ── */}
       <SectionHead n="3" title="Decision rules for campaigns" note="no judgement calls needed" />
       <div className="grid gap-5 sm:grid-cols-3">
