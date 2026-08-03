@@ -172,13 +172,13 @@ export const HANDOVER = {
       title: 'Hashid — onboarding',
       status: V('Green light given · offer letter to be sent'),
       position:
-        'This is the one item that needs someone to act while I am away, so it has a named owner: Gautam carries the follow-up, aligning with Syed at Zavis to issue the offer letter and complete onboarding. It does not wait for my return.',
+        'This is the one item that needs someone to act while I am away, so it has a named owner: Gautam carries the follow-up, aligning with Syed at Zavis to issue the offer letter and complete onboarding. It does not wait for my return — and it is on the critical path, because the BAU ad renewals below are waiting on the creative assets Hashid brings.',
     },
     {
-      title: 'Performance partner commercial discussion',
-      status: P('Status line to confirm before 5 Aug'),
+      title: 'Performance partner (Araby Ads) — campaign & commercial',
+      status: V('Campaign resuming this week'),
       position:
-        'Holding position — no billing-term confirmations and no new commitments while I am away. It waits for my return.',
+        'Two separate things, and they move at different speeds. DELIVERY resumes: Araby Ads restart the campaign this week, and low-hanging BAU ads are renewed once Hashid joins and shares the creative assets. The COMMERCIAL discussion does not move — no billing-term confirmations and no new commitments while I am away; that still waits for my return.',
     },
     {
       title: 'Board growth report',
@@ -188,8 +188,9 @@ export const HANDOVER = {
     },
     {
       title: 'Voice agent R&D',
-      status: P('Paused until return, or continuing — to confirm'),
-      position: 'Core infrastructure is built and functional; this is the next-step decision, not a live dependency.',
+      status: V('In progress — Zavis to report back'),
+      position:
+        'Not paused. Core infrastructure is built and functional and the work continues; Zavis come back with the status. Nothing here needs a decision from our side while I am away.',
     },
   ],
 
@@ -218,8 +219,8 @@ export const HANDOVER = {
     'Pick up Hashid’s onboarding from wherever Gautam and Syed have taken it.',
     'Complete the board report data fills.',
     'Resume campaign scaling on the winners.',
-    'Restart the partner commercial discussion.',
-    'Voice agent — decide and schedule the next step.',
+    'Restart the partner commercial discussion — delivery will have resumed; the billing terms are what waited.',
+    'Voice agent — pick up Zavis’s status report and decide the next step.',
   ],
 } as const;
 

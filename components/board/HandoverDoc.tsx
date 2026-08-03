@@ -51,13 +51,21 @@ export function HandoverDoc() {
             <SlotText slot={c.responseWindow} />
           </Field>
         </div>
+        {/* An empty state has to SAY it is complete. If the amber chip simply
+            disappeared, "nothing left to confirm" and "the check stopped
+            running" would look identical to the reader. */}
         {toConfirm > 0 ? (
           <p className="no-print mt-4 inline-flex items-center gap-1.5 rounded border border-dashed border-watch/60 bg-watch-50 px-2 py-1 text-[11.5px] font-medium text-watch">
             <span aria-hidden>◇</span>
             {toConfirm} item{toConfirm === 1 ? '' : 's'} still to confirm before 5 August — every one is marked
             below.
           </p>
-        ) : null}
+        ) : (
+          <p className="mt-4 inline-flex items-center gap-1.5 rounded border border-good/40 bg-good-50 px-2 py-1 text-[11.5px] font-medium text-good">
+            <span aria-hidden>✓</span>
+            Complete — every owner, rule and access holder is confirmed. Nothing on this handover is outstanding.
+          </p>
+        )}
       </header>
 
       {/* ── 1 · The rhythm ── */}
