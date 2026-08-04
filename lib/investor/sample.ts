@@ -45,8 +45,12 @@ export const SAMPLE_FUNNEL: Record<PeriodKey, Record<StageId, SampleStageValue>>
       pending: true,
     },
     reach: {
-      value: 386000, delta: -0.04,
-      series: series([43607, 438428, 1741720, 512535, 617718, 200939, 40294, 386000]),
+      // The series' final step and the delta must agree in SIGN, or the chip
+      // above the chart contradicts the chart. Jun is 402,940 (a digit was
+      // dropped here originally), so Jun → Jul is −4.2% and the −4% chip reads
+      // as the same movement the bars show.
+      value: 386000, delta: -0.042,
+      series: series([43607, 438428, 1741720, 512535, 617718, 200939, 402940, 386000]),
       channels: [
         { name: 'Google Ads', value: 214000 },
         { name: 'Meta', value: 98000 },
@@ -112,6 +116,16 @@ export const SAMPLE_FUNNEL: Record<PeriodKey, Record<StageId, SampleStageValue>>
   launch: {} as never,
 };
 
+/**
+ * Scale a period.
+ *
+ * The breakdowns MUST scale with the headline. An earlier version multiplied
+ * only `value`, so selecting "This quarter" put a headline of 1,714 inquiries
+ * directly above channel bars still reading 381 + 142 + 63 + 26 = 612. The
+ * month view trains the reader that the parts add up to the whole in every
+ * stage, so a period where they silently do not is a self-contradicting panel
+ * — and this page is being judged on "not at all confusing, for a layman".
+ */
 const scale = (base: Record<StageId, SampleStageValue>, k: number, deltaShift: number) =>
   Object.fromEntries(
     Object.entries(base).map(([id, v]) => [
@@ -120,6 +134,8 @@ const scale = (base: Record<StageId, SampleStageValue>, k: number, deltaShift: n
         ...v,
         value: Math.round(v.value * k),
         delta: v.delta == null ? null : Math.max(-0.6, v.delta + deltaShift),
+        series: v.series.map((p) => ({ ...p, value: Math.round(p.value * k) })),
+        channels: v.channels.map((c) => ({ ...c, value: Math.round(c.value * k) })),
       },
     ]),
   ) as Record<StageId, SampleStageValue>;
@@ -127,13 +143,26 @@ const scale = (base: Record<StageId, SampleStageValue>, k: number, deltaShift: n
 SAMPLE_FUNNEL.quarter = scale(SAMPLE_FUNNEL.month, 2.8, -0.12);
 SAMPLE_FUNNEL.launch = scale(SAMPLE_FUNNEL.month, 7.4, -0.2);
 
-/** Delivery scorecard strip (spec §2). */
+/**
+ * Delivery scorecard strip (spec §2).
+ *
+ * Two corrections that matter in front of investors:
+ *
+ *  1. This strip counts SINCE LAUNCH and does not move with the period
+ *     selector, so every label says so. Sitting unqualified under the period
+ *     tabs, "AED 501K revenue attributed" read as this month's figure while
+ *     the funnel beneath it said AED 298K.
+ *  2. It previously claimed "14 projects delivered". The project list is 14
+ *     entries of which SEVEN are live — the rest are pipeline and future,
+ *     including a clinic that opens in 2027. Counting unbuilt things as
+ *     delivered is the single most damaging claim this page could make.
+ */
 export const SAMPLE_SCORECARD = [
-  { value: '14', label: 'projects delivered' },
-  { value: '6', label: 'systems live' },
-  { value: 'AED 95K', label: 'media invested to date' },
-  { value: '3,451', label: 'patient conversations' },
-  { value: 'AED 501K', label: 'revenue attributed' },
+  { value: '7', label: 'projects live today' },
+  { value: '6', label: 'systems running' },
+  { value: 'AED 95K', label: 'media invested since Dec 2025' },
+  { value: '3,451', label: 'patient conversations since Dec 2025' },
+  { value: 'AED 501K', label: 'revenue billed since Dec 2025' },
 ];
 
 /**

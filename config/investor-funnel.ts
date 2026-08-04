@@ -89,7 +89,10 @@ export const STAGES: FunnelStage[] = [
     id: 'showups',
     n: 5,
     label: 'Patients who walked in',
-    caption: 'Show-up rate',
+    // A countable noun, not "Show-up rate" — the number under this caption is
+    // a headcount (186 patients), and captioning a count as a rate invites the
+    // reader to parse 186 as a percentage.
+    caption: 'Attended appointments',
     meaning:
       'Of the appointments booked, how many people actually arrived. Everyone who books but does not arrive is money already spent with nothing to show for it.',
     unit: 'count',

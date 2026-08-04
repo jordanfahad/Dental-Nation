@@ -1,7 +1,7 @@
 'use client';
 
 import { STAGES, type StageId } from '@/config/investor-funnel';
-import { funnelScale } from '@/lib/investor/geometry';
+import { funnelScale, isComparableStep } from '@/lib/investor/geometry';
 
 /**
  * The funnel on a phone — designed as an equal, not a squeezed desktop.
@@ -54,7 +54,11 @@ export function FunnelMobile({
       {stages.map((s, i) => {
         const st = STAGES.find((x) => x.id === s.id)!;
         const prev = i > 0 ? stages[i - 1] : null;
-        const rate = prev && prev.value > 0 && !s.pending && !prev.pending ? s.value / prev.value : null;
+        // Same unit guard as the desktop rail — see isComparableStep.
+        const rate =
+          prev && prev.value > 0 && !s.pending && !prev.pending && isComparableStep(prev.id, s.id)
+            ? s.value / prev.value
+            : null;
         const isSel = selected === s.id;
         return (
           <li key={s.id}>

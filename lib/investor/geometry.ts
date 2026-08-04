@@ -32,8 +32,21 @@ import type { StageId } from '@/config/investor-funnel';
  * geometry — are what carry the precise magnitudes.
  */
 
-/** Stages whose values are directly comparable (all count people). */
-const FLOW_STAGES: StageId[] = ['reach', 'inquiries', 'bookings', 'showups', 'treatments'];
+/**
+ * Stages whose values are directly comparable — all of them count people.
+ *
+ * Exported because the same invariant governs the CONVERSION CHIPS, not just
+ * the silhouette. A chip between two stages divides one by the other, and that
+ * is only meaningful when both are the same kind of quantity: dividing billed
+ * dirhams by a headcount produces "252810%", which is arithmetic, not a
+ * conversion rate.
+ */
+export const FLOW_STAGES: StageId[] = ['reach', 'inquiries', 'bookings', 'showups', 'treatments'];
+
+/** True when a step-conversion between these two stages is a meaningful ratio. */
+export function isComparableStep(from: StageId, to: StageId): boolean {
+  return FLOW_STAGES.includes(from) && FLOW_STAGES.includes(to);
+}
 
 export interface StageValue {
   id: StageId;
@@ -82,6 +95,17 @@ export function funnelScale(stages: StageValue[]): number[] {
   return out;
 }
 
-/** The one-line explanation the page owes the reader for the rule above. */
+/**
+ * The explanation the page owes the reader — and it must not overclaim.
+ *
+ * An earlier version said "block size shows how the number of people narrows
+ * at each step". That reads as proportional, and it is not: the scale is
+ * logarithmic with a floor, so a true 631:1 ratio between reach and inquiries
+ * draws at roughly 2.7:1, and the smallest stages all sit on the floor at the
+ * same size. Saying "shows how it narrows" when the drawing compresses by two
+ * orders of magnitude is exactly the kind of quiet overclaim this page cannot
+ * afford. The note now tells the reader the sizes are squeezed and points them
+ * at the printed figures.
+ */
 export const GEOMETRY_NOTE =
-  'Block size shows how the number of people narrows at each step. Revenue is money rather than people, so it is not drawn to that scale — its figure is exact.';
+  'Block sizes are deliberately squeezed so the smaller later steps stay readable — they show that each step narrows, not by how much. The printed figures are the exact ones. Revenue is money rather than people, so it is not drawn to this scale at all.';

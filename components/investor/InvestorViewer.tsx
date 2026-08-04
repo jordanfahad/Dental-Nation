@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { HERO, PERIODS, STAGES, type PeriodKey, type StageId } from '@/config/investor-funnel';
 import { SAMPLE_FUNNEL, SAMPLE_SCORECARD } from '@/lib/investor/sample';
-import { GEOMETRY_NOTE } from '@/lib/investor/geometry';
+import { GEOMETRY_NOTE, isComparableStep } from '@/lib/investor/geometry';
 import { FunnelBand } from './FunnelBand';
 import { FunnelMobile } from './FunnelMobile';
 import { StagePanel } from './StagePanel';
@@ -64,16 +64,24 @@ export function InvestorViewer({ recipientLabel }: { recipientLabel: string }) {
           </div>
         </header>
 
-        {/* ── Delivery scorecard strip ── */}
-        <section className="mt-8 grid grid-cols-2 gap-x-5 gap-y-5 border-y border-dn-line py-5 sm:grid-cols-3 lg:grid-cols-5">
-          {SAMPLE_SCORECARD.map((s) => (
-            <div key={s.label}>
-              <p className="tnum text-[24px] font-bold leading-none tracking-tight text-dn-navy sm:text-[28px]">
-                {s.value}
-              </p>
-              <p className="mt-1 text-[10.5px] leading-snug text-dn-ink/55">{s.label}</p>
-            </div>
-          ))}
+        {/* ── Delivery scorecard strip ──
+            Headed explicitly, because it does NOT follow the period selector
+            above it. Unlabelled, "AED 501K" sat under "This month" next to a
+            funnel reading AED 298K and read as a contradiction. */}
+        <section className="mt-8 border-y border-dn-line py-5">
+          <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-dn-ink/45">
+            What has been delivered so far · totals since December 2025, not affected by the period above
+          </p>
+          <div className="grid grid-cols-2 gap-x-5 gap-y-5 sm:grid-cols-3 lg:grid-cols-5">
+            {SAMPLE_SCORECARD.map((s) => (
+              <div key={s.label}>
+                <p className="tnum text-[24px] font-bold leading-none tracking-tight text-dn-navy sm:text-[28px]">
+                  {s.value}
+                </p>
+                <p className="mt-1 text-[10.5px] leading-snug text-dn-ink/55">{s.label}</p>
+              </div>
+            ))}
+          </div>
         </section>
 
         {/* ── THE FUNNEL ── */}
@@ -83,9 +91,11 @@ export function InvestorViewer({ recipientLabel }: { recipientLabel: string }) {
             From someone seeing our name, to treatment paid for
           </h2>
           <p className="mt-3 max-w-[70ch] text-[13px] leading-relaxed text-dn-ink/75">
-            Read it left to right. Each block is a step, and each step is smaller than the one before — that is
+            {/* Direction-neutral: the band runs left-to-right on a laptop but
+                top-to-bottom on a phone, and most readers meet the phone. */}
+            Follow the steps in order. Each block is a step, and each step is smaller than the one before — that is
             normal, and the job of the machine is to keep as many people moving through as possible.{' '}
-            <span className="font-semibold text-dn-ink">Tap any step to see what feeds it.</span>
+            <span className="font-semibold text-dn-ink">Tap or click any step to see what feeds it.</span>
           </p>
 
           {/* Desktop band */}
@@ -111,7 +121,7 @@ export function InvestorViewer({ recipientLabel }: { recipientLabel: string }) {
         {/* ── Stage drill-down ── */}
         {selected ? (
           <section className="mt-6 overflow-hidden rounded-card border border-dn-line">
-            <StagePanel id={selected} data={data[selected]} />
+            <StagePanel id={selected} data={data[selected]} period={period} />
           </section>
         ) : (
           <p className="mt-6 rounded-card border border-dashed border-dn-line px-4 py-6 text-center text-[12.5px] text-dn-ink/50">
@@ -130,11 +140,20 @@ export function InvestorViewer({ recipientLabel }: { recipientLabel: string }) {
         </div>
 
         {/* ── Footer ── */}
+        {/* The footer is the LAST provenance sentence a reader meets, and in a
+            printed pack it is the only one on pages 2+ (the sticky banner
+            prints once, on page 1). It previously said "Live data from the
+            Dental Nation group growth platform" — the exact opposite of the
+            truth on a sample-data page. In Phase 2 this becomes the live line. */}
         <footer className="mt-16 border-t border-dn-line pt-5 text-[11px] leading-relaxed text-dn-ink/50">
           <p>
-            Live data from the Dental Nation group growth platform · Last updated{' '}
-            <span className="tnum">during design review</span> · Prepared for{' '}
-            <span className="font-medium text-dn-ink/70">{recipientLabel}</span>
+            <span className="font-semibold text-dn-amber">
+              Sample data — design review only · no real figures on this page
+            </span>{' '}
+            · Prepared for <span className="font-medium text-dn-ink/70">{recipientLabel}</span>
+          </p>
+          <p className="mt-1">
+            Dental Nation group growth platform · this page will read live data once the design is approved.
           </p>
         </footer>
       </main>
@@ -148,7 +167,13 @@ function ConversionRail({ stages }: { stages: { id: StageId; value: number; pend
     <div className="mt-1 hidden grid-cols-7 lg:grid">
       {stages.map((s, i) => {
         const prev = i > 0 ? stages[i - 1] : null;
-        const rate = prev && prev.value > 0 && !s.pending && !prev.pending ? s.value / prev.value : null;
+        // A conversion chip is only meaningful between two stages that count
+        // the SAME thing. Without isComparableStep the Revenue chip divides
+        // dirhams by a headcount and renders "252810%".
+        const rate =
+          prev && prev.value > 0 && !s.pending && !prev.pending && isComparableStep(prev.id, s.id)
+            ? s.value / prev.value
+            : null;
         const st = STAGES.find((x) => x.id === s.id)!;
         return (
           <div key={s.id} className="px-1 text-center">

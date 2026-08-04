@@ -169,8 +169,31 @@ export function ScenarioModule() {
           ))}
         </ul>
 
+        {/* Return on spend, stated explicitly.
+            Without this row the card showed, at 1x, "AED 3K – AED 46K revenue"
+            against a 7,000 budget and never put the two side by side — so a
+            reader could not see that the BOTTOM of the range is a loss before
+            a single clinical cost. A budget ask that hides its own downside is
+            not a budget ask an investor should trust. */}
+        <div className="mt-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-t border-dn-line pt-3">
+          <span className="text-[12.5px] font-semibold text-dn-ink">
+            Revenue for every dirham of marketing spend
+          </span>
+          <span className="tnum text-[15px] font-bold text-dn-navy">
+            {(model.revLow / model.budget).toFixed(1)}× – {(model.revHigh / model.budget).toFixed(1)}×
+          </span>
+        </div>
+        {model.revLow < model.budget ? (
+          <p className="mt-1.5 text-[11.5px] leading-relaxed text-dn-amber">
+            Read the bottom of that range honestly: at the low end the model returns less than the media spend
+            itself, before any clinical cost. The upside case is what the machine is built to reach — it is not the
+            expected case.
+          </p>
+        ) : null}
+
         <p className="mt-3 border-t border-dn-line pt-3 text-[13px] leading-relaxed text-dn-ink">
-          At <span className="font-semibold">{mult}× budget</span>, the model projects{' '}
+          At <span className="font-semibold">{mult}× budget</span> — about{' '}
+          <span className="font-semibold">{aed(model.budget)} a month</span> — the model projects{' '}
           <span className="font-semibold">
             {int(model.bookLow)}–{int(model.bookHigh)} bookings
           </span>{' '}

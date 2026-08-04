@@ -1,6 +1,6 @@
 'use client';
 
-import { STAGES, projectsForStage, type ProjectState, type StageId } from '@/config/investor-funnel';
+import { STAGES, projectsForStage, type PeriodKey, type ProjectState, type StageId } from '@/config/investor-funnel';
 import type { SampleStageValue } from '@/lib/investor/sample';
 
 /**
@@ -40,7 +40,16 @@ const fmtVal = (n: number, unit: string): string =>
       : `AED ${Math.round(n).toLocaleString('en-US')}`
     : Math.round(n).toLocaleString('en-US');
 
-export function StagePanel({ id, data }: { id: StageId; data: SampleStageValue }) {
+export function StagePanel({
+  id,
+  data,
+  period,
+}: {
+  id: StageId;
+  data: SampleStageValue;
+  /** "Since Dec 2025" has no prior period, so no delta chip may claim one. */
+  period: PeriodKey;
+}) {
   const st = STAGES.find((s) => s.id === id)!;
   const projects = projectsForStage(id);
   const maxCh = Math.max(...data.channels.map((c) => c.value), 1);
@@ -62,14 +71,20 @@ export function StagePanel({ id, data }: { id: StageId; data: SampleStageValue }
             <span className="tnum text-[34px] font-bold leading-none tracking-tight text-dn-navy">
               {data.pending ? '—' : fmtVal(data.value, st.unit)}
             </span>
-            {data.delta != null && !data.pending ? (
+            {/* "Since Dec 2025" is the whole recorded history — there is no
+                period before it, so no chip may claim a comparison. */}
+            {period !== 'launch' && data.delta != null && !data.pending ? (
               <span
                 className={`tnum text-[12.5px] font-semibold ${
                   data.delta >= 0 ? 'text-dn-green' : 'text-dn-red'
                 }`}
               >
-                {data.delta >= 0 ? '▲' : '▼'} {Math.abs(Math.round(data.delta * 100))}% vs. prior period
+                {data.delta >= 0 ? '▲' : '▼'} {Math.abs(Math.round(data.delta * 100))}%{' '}
+                {period === 'month' ? 'vs. last month' : 'vs. last quarter'}
               </span>
+            ) : null}
+            {period === 'launch' ? (
+              <span className="text-[11.5px] text-dn-ink/45">whole period — nothing before it to compare</span>
             ) : null}
           </div>
           {data.pending ? (
