@@ -15,7 +15,7 @@ import { funnelScale, isComparableStep } from '@/lib/investor/geometry';
  * readers will actually meet.
  */
 
-const FILL = ['#16293C', '#244260', '#315779', '#3E6B8E', '#5793A3', '#8FBAC4', '#B8873B'];
+const FILL = ['#16293C', '#244260', '#315779', '#3E6B8E', '#5793A3', '#8FBAC4', '#B8873B', '#2E7D32', '#4E9A54'];
 
 export interface MobileStage {
   id: StageId;

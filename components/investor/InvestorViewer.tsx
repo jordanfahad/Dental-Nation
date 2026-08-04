@@ -9,6 +9,9 @@ import { FunnelMobile } from './FunnelMobile';
 import { StagePanel } from './StagePanel';
 import { MachineMap } from './MachineMap';
 import { ScenarioModule } from './ScenarioModule';
+import { Waterfall } from './Waterfall';
+import { Enablers } from './Enablers';
+import { CHANNEL_IMPACTS } from '@/config/impact-model';
 
 /**
  * The investor viewer (spec §2) — Phase 1, sample data.
@@ -26,6 +29,19 @@ import { ScenarioModule } from './ScenarioModule';
 export function InvestorViewer({ recipientLabel }: { recipientLabel: string }) {
   const [period, setPeriod] = useState<PeriodKey>('month');
   const [selected, setSelected] = useState<StageId | null>('inquiries');
+  // Owned here so the waterfall and the budget ask price the SAME selection —
+  // switching on an organic channel must move the return figure, or the claim
+  // that executing projects improves return is just an assertion.
+  const [activeActions, setActiveActions] = useState<Set<string>>(
+    () => new Set(CHANNEL_IMPACTS.filter((c) => c.state === 'LIVE').map((c) => c.id)),
+  );
+  const toggleAction = (id: string) =>
+    setActiveActions((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
   const data = SAMPLE_FUNNEL[period];
   const stages = STAGES.map((s) => ({ id: s.id, value: data[s.id].value, pending: data[s.id].pending }));
@@ -129,14 +145,24 @@ export function InvestorViewer({ recipientLabel }: { recipientLabel: string }) {
           </p>
         )}
 
+        {/* ── The waterfall: every action, in patients ── */}
+        <div className="mt-16">
+          <Waterfall active={activeActions} onToggle={toggleAction} />
+        </div>
+
+        {/* ── Who and what makes it work ── */}
+        <div className="mt-16">
+          <Enablers />
+        </div>
+
         {/* ── The machine ── */}
         <div className="mt-16">
           <MachineMap />
         </div>
 
-        {/* ── Scenarios ── */}
+        {/* ── The budget ask, priced from the same selection ── */}
         <div className="mt-16">
-          <ScenarioModule />
+          <ScenarioModule active={activeActions} />
         </div>
 
         {/* ── Footer ── */}

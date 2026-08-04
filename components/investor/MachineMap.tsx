@@ -32,7 +32,7 @@ export function MachineMap() {
                 key={s.id}
                 className="flex-1 rounded-[2px] px-2 py-2 text-center"
                 style={{
-                  background: ['#16293C', '#244260', '#315779', '#3E6B8E', '#5793A3', '#8FBAC4', '#B8873B'][i],
+                  background: ['#16293C', '#244260', '#315779', '#3E6B8E', '#5793A3', '#8FBAC4', '#B8873B', '#2E7D32', '#4E9A54'][i],
                 }}
               >
                 <span className="block text-[9px] font-semibold uppercase tracking-wide text-white/70">
@@ -46,7 +46,7 @@ export function MachineMap() {
           </div>
         </div>
       </div>
-      <p className="no-print mt-1.5 text-[10.5px] text-dn-ink/45 sm:hidden">Swipe sideways for all seven steps →</p>
+      <p className="no-print mt-1.5 text-[10.5px] text-dn-ink/45 sm:hidden">Swipe sideways for all nine steps →</p>
 
       {/* Systems, each showing which stages it feeds — full width on a phone */}
       <div className="mt-4 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
@@ -69,7 +69,7 @@ export function MachineMap() {
                     key={p}
                     className="tnum rounded-[2px] px-1.5 py-[1px] text-[9px] font-bold text-white"
                     style={{
-                      background: ['#16293C', '#244260', '#315779', '#3E6B8E', '#5793A3', '#8FBAC4', '#B8873B'][
+                      background: ['#16293C', '#244260', '#315779', '#3E6B8E', '#5793A3', '#8FBAC4', '#B8873B', '#2E7D32', '#4E9A54'][
                         st.n - 1
                       ],
                     }}

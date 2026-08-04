@@ -22,7 +22,9 @@ export type StageId =
   | 'bookings'
   | 'showups'
   | 'treatments'
-  | 'revenue';
+  | 'revenue'
+  | 'retention'
+  | 'referral';
 
 export interface FunnelStage {
   id: StageId;
@@ -121,7 +123,37 @@ export const STAGES: FunnelStage[] = [
     source: 'Practo billing · group revenue platform',
     ofPrevious: 'from the treatments started',
   },
+  // ── The loop ──────────────────────────────────────────────────────────────
+  // These two are deliberately NOT part of the narrowing funnel. Everything
+  // above is one patient's journey inwards; these two send them back to the
+  // start, which is why they are drawn as a return loop rather than as two
+  // more segments of the taper.
+  {
+    id: 'retention',
+    n: 8,
+    label: 'Patients who come back',
+    caption: 'Recall & membership',
+    meaning:
+      'Patients who return for their next visit rather than disappearing. This is the cheapest revenue the group has — no advertising is needed to win someone we already treated well.',
+    unit: 'count',
+    source: 'Practo recall · Smile Club membership',
+  },
+  {
+    id: 'referral',
+    n: 9,
+    label: 'Patients who bring someone',
+    caption: 'Referrals & word of mouth',
+    meaning:
+      'Patients who recommend us to family, friends or colleagues. A referred patient costs us almost nothing to acquire and arrives already trusting the clinic — which is why this loop feeds straight back to the first step.',
+    unit: 'count',
+    source: 'Referral codes · patient survey',
+  },
 ];
+
+/** The two stages that close the loop rather than continuing the taper. */
+export const LOOP_STAGES: StageId[] = ['retention', 'referral'];
+export const FUNNEL_STAGES_MAIN = STAGES.filter((s) => !LOOP_STAGES.includes(s.id));
+export const FUNNEL_STAGES_LOOP = STAGES.filter((s) => LOOP_STAGES.includes(s.id));
 
 // ── Projects powering each stage (spec §4 seed map) ─────────────────────────
 

@@ -108,6 +108,27 @@ export const SAMPLE_FUNNEL: Record<PeriodKey, Record<StageId, SampleStageValue>>
         { name: 'Orthodontics', value: 32000 },
       ],
     },
+    // ── The loop ──
+    retention: {
+      value: 74, delta: 0.19,
+      series: series([0, 0, 0, 0, 2, 18, 41, 74]),
+      channels: [
+        { name: 'Recall — WhatsApp & calls', value: 44 },
+        { name: 'Smile Club membership', value: 21 },
+        { name: 'Post-treatment follow-up', value: 9 },
+      ],
+      pending: true,
+    },
+    referral: {
+      value: 23, delta: 0.34,
+      series: series([0, 0, 0, 0, 1, 6, 14, 23]),
+      channels: [
+        { name: 'Family & friends', value: 15 },
+        { name: 'Colleague referral', value: 5 },
+        { name: 'Doctor cross-referral', value: 3 },
+      ],
+      pending: true,
+    },
   },
 
   // Quarter and since-launch reuse the same shapes at larger magnitudes — the

@@ -30,7 +30,11 @@ const PAD_TOP = 34;
 const PAD_BOTTOM = 74;
 const BAND_H = H - PAD_TOP - PAD_BOTTOM;
 
-/** Navy dark → light across stages 1–6; gold reserved for Revenue. */
+/**
+ * Navy dark → light across stages 1–6; gold reserved for Revenue; green for
+ * the two loop stages, because Retention and Referral are not more of the
+ * same journey — they send the patient back to the beginning.
+ */
 const FILL: string[] = [
   '#16293C', // navyDeep
   '#244260', // navy — the brand hue
@@ -39,6 +43,8 @@ const FILL: string[] = [
   '#5793A3', // soft
   '#8FBAC4', // between soft and pale
   '#B8873B', // gold — Revenue only
+  '#2E7D32', // green — the loop: patients who come back
+  '#4E9A54', // green — the loop: patients who bring someone
 ];
 
 export interface BandStage {

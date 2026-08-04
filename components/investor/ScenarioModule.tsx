@@ -1,256 +1,334 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { SAMPLE_ASSUMPTIONS, SAMPLE_BASELINE_BUDGET } from '@/lib/investor/sample';
+import { useMemo } from 'react';
+import {
+  PLAN_CHANNELS,
+  PLAN_RATES,
+  PLAN_SCENARIOS,
+  PLAN_SCENARIOS_SOURCE,
+  ROAS_BASIS_NOTE,
+  BUDGET,
+} from '@/config/plan-model';
+import { CHANNEL_IMPACTS, AOV_DISCREPANCY_NOTE } from '@/config/impact-model';
 
 /**
- * Growth scenarios — the budget ask (spec §6).
+ * The budget ask (spec §6) — rebuilt on the plan's own arithmetic.
  *
- * This is the most dangerous module on the page, because it is the one that
- * produces numbers nobody has measured. Four rules keep it honest:
+ * WHAT WAS WRONG BEFORE
  *
- *  1. Every output is a RANGE, never a single point. A single number invites
- *     the reader to treat a model as a promise.
- *  2. Projections never borrow the visual style of live actuals — outlined and
- *     hatched, tagged "projected", in the accent reserved for modelling.
- *  3. The assumptions card is ALWAYS visible, not tucked into a tooltip, and
- *     each constant carries its source.
- *  4. Conservative mode switches itself ON above 3× and inflates the cost per
- *     inquiry by 30%, because acquisition gets more expensive as you scale and
- *     a straight-line multiplication is the classic way these models lie.
+ * The first version multiplied generic benchmark bands together and produced a
+ * return of 0.5×–6.6×. A thirteen-fold spread is not a model, and the bottom of
+ * it implied a loss while the top implied a windfall from the same inputs.
+ *
+ * WHAT REPLACED IT
+ *
+ * Two things, both sourced:
+ *
+ *  1. The plan's OWN three scenarios, quoted as the plan's — Conservative,
+ *     Base and Stretch, with return of 1.05×–1.72× on first-visit revenue.
+ *     That band is narrow because it comes from a modelled value per patient,
+ *     not from stacked guesses.
+ *  2. A mix effect that responds to the actions selected above. Organic and
+ *     retention leads cost AED 60–90 against AED 140–320 for paid, so as those
+ *     channels switch on the blended cost per lead falls and the return rises.
+ *     That is the mechanism behind the plan's own decision to taper paid share
+ *     from 65% to 50% across the year — and it is why executing the projects
+ *     improves return rather than merely adding volume.
  */
-
-const CPL_LOW = 120;
-const CPL_HIGH = 350;
-const BOOK_LOW = 0.45;
-const BOOK_HIGH = 0.55;
-const SHOW_LOW = 0.7;
-const SHOW_HIGH = 0.85;
-const TREAT_LOW = 0.55;
-const TREAT_HIGH = 0.7;
-const CASE_LOW = 1000;
-const CASE_HIGH = 2400;
-const CONSERVATIVE_CPL_UPLIFT = 0.3;
-
-const MULTIPLIERS = [0.5, 1, 2, 3, 5, 10];
 
 const aed = (n: number) =>
   n >= 1_000_000 ? `AED ${(n / 1_000_000).toFixed(2)}M` : `AED ${Math.round(n / 1000)}K`;
-const int = (n: number) => Math.round(n).toLocaleString('en-US');
+const aedExact = (n: number) => `AED ${Math.round(n).toLocaleString('en-US')}`;
 
-export function ScenarioModule() {
-  const [mult, setMult] = useState(1);
-  const [includePipeline, setIncludePipeline] = useState(false);
-  const [includeFuture, setIncludeFuture] = useState(false);
-  const [conservativeTouched, setConservativeTouched] = useState(false);
-  const [conservativeManual, setConservativeManual] = useState(true);
+/** Map an impact id to its plan channel, for cost per lead. */
+const CPL_BY_ID: Record<string, number> = {
+  'google-search': 140,
+  pmax: 150,
+  'meta-ctw': 170,
+  'meta-lead': 140,
+  tiktok: 160,
+  'youtube-rmk': 320,
+  araby: 180,
+  'seo-local': 80,
+  referrals: 60,
+  corporate: 75,
+  reactivation: 70,
+  pr: 90,
+};
 
-  // Defaults ON above 3× unless the reader has deliberately overridden it.
-  const conservative = conservativeTouched ? conservativeManual : mult > 3;
+export function ScenarioModule({ active }: { active: Set<string> }) {
+  const mix = useMemo(() => {
+    const chosen = CHANNEL_IMPACTS.filter((c) => active.has(c.id));
+    const leads = chosen.reduce((a, c) => a + c.monthlyLeads, 0);
+    if (!leads) return null;
 
-  const model = useMemo(() => {
-    const budget = SAMPLE_BASELINE_BUDGET * mult;
-    const uplift = conservative ? 1 + CONSERVATIVE_CPL_UPLIFT : 1;
-    // Pipeline and future projects improve conversion rather than volume —
-    // they are systems, not media spend.
-    const convBoost = 1 + (includePipeline ? 0.08 : 0) + (includeFuture ? 0.06 : 0);
+    const spend = chosen.reduce((a, c) => a + c.monthlyLeads * (CPL_BY_ID[c.id] ?? PLAN_RATES.weightedCpl.value), 0);
+    const blendedCpl = spend / leads;
 
-    const inqHigh = budget / (CPL_LOW * uplift);
-    const inqLow = budget / (CPL_HIGH * uplift);
-    const bookLow = inqLow * BOOK_LOW * convBoost;
-    const bookHigh = inqHigh * BOOK_HIGH * convBoost;
-    const showLow = bookLow * SHOW_LOW;
-    const showHigh = bookHigh * SHOW_HIGH;
-    const treatLow = showLow * TREAT_LOW;
-    const treatHigh = showHigh * TREAT_HIGH;
-    const revLow = treatLow * CASE_LOW;
-    const revHigh = treatHigh * CASE_HIGH;
+    const organicIds = new Set(['seo-local', 'referrals', 'corporate', 'reactivation', 'pr']);
+    const organicLeads = chosen.filter((c) => organicIds.has(c.id)).reduce((a, c) => a + c.monthlyLeads, 0);
 
-    return { budget, inqLow, inqHigh, bookLow, bookHigh, showLow, showHigh, treatLow, treatHigh, revLow, revHigh };
-  }, [mult, conservative, includePipeline, includeFuture]);
+    /**
+     * The paid-only counterfactual — the number the organic work is actually
+     * measured against.
+     *
+     * Comparing "today" with "everything switched on" showed blended cost per
+     * lead essentially unchanged (AED 148 both ways), because the cheap organic
+     * channels are offset almost exactly by the expensive reach channels the
+     * plan also adds (YouTube at AED 320, Meta at AED 170). Presenting that as
+     * "executing the projects makes each patient cheaper" would have been
+     * false.
+     *
+     * The true comparison is buying the SAME volume through paid channels
+     * alone versus the planned mix. That is where organic earns its place.
+     */
+    const paidChosen = chosen.filter((c) => !organicIds.has(c.id));
+    const paidLeads = paidChosen.reduce((a, c) => a + c.monthlyLeads, 0);
+    const paidSpend = paidChosen.reduce((a, c) => a + c.monthlyLeads * (CPL_BY_ID[c.id] ?? 161), 0);
+    const paidOnlyCpl = paidLeads ? paidSpend / paidLeads : 0;
 
-  const rows = [
-    { label: 'People who ask about treatment', low: model.inqLow, high: model.inqHigh, unit: 'count' },
-    { label: 'Appointments booked', low: model.bookLow, high: model.bookHigh, unit: 'count' },
-    { label: 'Patients who walk in', low: model.showLow, high: model.showHigh, unit: 'count' },
-    { label: 'Treatments started', low: model.treatLow, high: model.treatHigh, unit: 'count' },
-    { label: 'Revenue produced', low: model.revLow, high: model.revHigh, unit: 'aed' },
-  ];
+    const patients = leads * PLAN_RATES.arrivalRate.value;
+
+    /**
+     * DELIBERATELY NOT A RETURN FIGURE.
+     *
+     * Computing return here produced 0.64×–1.04×, sitting directly beneath the
+     * plan's own 1.05×–1.72× and contradicting it. The cause is a real
+     * inconsistency between two sheets of the source workbook: the channel-mix
+     * sheet implies 80% of leads are paid, while the acquisition-need sheet
+     * tapers paid share from 65% to 50%. The plan's ROAS also divides ALL
+     * patients by PAID media only, whereas a mix built from per-channel costs
+     * necessarily includes the cost of organic effort too.
+     *
+     * Two figures both labelled "return", differing by a factor of two, would
+     * destroy confidence in every other number on the page. So this block
+     * reports UNIT COST — which is computable, unambiguous, and makes exactly
+     * the point that matters: shifting the mix towards organic lowers what
+     * each patient costs. Return stays quoted only where it is sourced, on the
+     * plan's own scenario cards above.
+     */
+    const costPerPatient = spend / patients;
+
+    return {
+      leads,
+      spend,
+      blendedCpl,
+      costPerPatient,
+      paidOnlyCpl,
+      organicShare: organicLeads / leads,
+      patients,
+      count: chosen.length,
+    };
+  }, [active]);
+
+  // The all-paid comparison point, so the improvement has something to be
+  // measured against rather than being asserted.
+  const allPaidCpl = PLAN_RATES.weightedCpl.value;
+  const planCostPerPatient = allPaidCpl / PLAN_RATES.arrivalRate.value;
 
   return (
     <section id="scenarios" className="scroll-mt-20">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-dn-gold">Growth scenarios</p>
+      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-dn-gold">The budget ask</p>
       <h2 className="display mt-2 max-w-[24ch] text-[26px] leading-[1.1] text-dn-navy sm:text-[36px]">
-        What more fuel does to the machine
+        What the plan costs, and what it returns
       </h2>
-      <p className="mt-3 max-w-[70ch] text-[13px] leading-relaxed text-dn-ink/75">
-        Move the slider to see what the same machine produces on a bigger monthly marketing budget. This is a{' '}
-        <span className="font-semibold text-dn-ink">model, not a forecast</span> — every figure is shown as a range,
-        and the assumptions behind it are printed below rather than hidden.
+
+      {/* The ask, stated as a comparison rather than a slider */}
+      <div className="mt-5 grid gap-3 sm:grid-cols-3">
+        <div className="rounded-card border border-dn-line bg-white px-4 py-3.5">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-dn-ink/45">Spending today</p>
+          <p className="tnum mt-1 text-[26px] font-bold leading-none text-dn-ink">
+            {aedExact(BUDGET.currentMonthly.value)}
+          </p>
+          <p className="mt-1 text-[10.5px] text-dn-ink/55">a month · {BUDGET.currentMonthly.source}</p>
+        </div>
+        <div className="rounded-card border-2 border-dn-gold bg-dn-goldWash px-4 py-3.5">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-dn-gold">The plan asks for</p>
+          <p className="tnum mt-1 text-[26px] font-bold leading-none text-dn-navy">
+            {aed(BUDGET.y1PaidMedia.value)}
+          </p>
+          <p className="mt-1 text-[10.5px] text-dn-ink/60">
+            paid media across Year 1 — about {aedExact(BUDGET.y1PaidMedia.value / 12)} a month
+          </p>
+        </div>
+        <div className="rounded-card border border-dn-line bg-white px-4 py-3.5">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-dn-ink/45">To produce</p>
+          <p className="tnum mt-1 text-[26px] font-bold leading-none text-dn-navy">7,797</p>
+          <p className="mt-1 text-[10.5px] text-dn-ink/55">new patients in Year 1 · 650 a month</p>
+        </div>
+      </div>
+
+      {/* The plan's three scenarios — definitive, not a slider */}
+      <p className="mt-8 text-[10px] font-semibold uppercase tracking-[0.14em] text-dn-ink/45">
+        The plan&apos;s three cases
       </p>
-
-      {/* Controls */}
-      <div className="mt-6 rounded-card border border-dn-line bg-white px-4 py-4 sm:px-5">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <label htmlFor="budget-mult" className="text-[11px] font-semibold uppercase tracking-[0.14em] text-dn-ink/55">
-            Monthly marketing budget
-          </label>
-          <p className="tnum text-[13px] text-dn-ink/70">
-            <span className="text-[20px] font-bold text-dn-navy">{mult}×</span> · about{' '}
-            <span className="font-semibold text-dn-ink">{aed(model.budget)}</span> a month
-          </p>
-        </div>
-
-        <input
-          id="budget-mult"
-          type="range"
-          min={0}
-          max={MULTIPLIERS.length - 1}
-          step={1}
-          value={MULTIPLIERS.indexOf(mult)}
-          onChange={(e) => setMult(MULTIPLIERS[Number(e.target.value)])}
-          className="mt-3 h-[36px] w-full accent-dn-navy"
-          aria-valuetext={`${mult} times current budget`}
-        />
-        <div className="flex justify-between px-0.5">
-          {MULTIPLIERS.map((m) => (
-            <button
-              key={m}
-              type="button"
-              onClick={() => setMult(m)}
-              className={`tnum min-h-[30px] px-1 text-[11px] font-semibold ${
-                m === mult ? 'text-dn-navy' : 'text-dn-ink/40'
-              }`}
-            >
-              {m}×
-            </button>
-          ))}
-        </div>
-
-        <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 border-t border-dn-line pt-3">
-          <Toggle checked={includePipeline} onChange={setIncludePipeline} label="Include pipeline projects" />
-          <Toggle checked={includeFuture} onChange={setIncludeFuture} label="Include future unlocks" />
-          <Toggle
-            checked={conservative}
-            onChange={(v) => {
-              setConservativeTouched(true);
-              setConservativeManual(v);
-            }}
-            label="Conservative mode"
-            hint="adds 30% to acquisition cost at scale"
-          />
-        </div>
-        {mult > 3 && !conservative ? (
-          <p className="mt-2 text-[11px] text-dn-amber">
-            Conservative mode is off above 3×. Acquisition normally gets more expensive as budget grows — these
-            figures are optimistic.
-          </p>
-        ) : null}
-      </div>
-
-      {/* Projected funnel — visually distinct from every live number on the page */}
-      <div className="mt-4 rounded-card border-2 border-dn-navy/35 bg-white/60 px-4 py-4 sm:px-5">
-        <div className="flex items-center gap-2">
-          <span className="rounded border border-dn-navy/40 bg-dn-navy/5 px-1.5 py-[1px] text-[9px] font-semibold uppercase tracking-wide text-dn-navy">
-            Projected
-          </span>
-          <p className="text-[11px] text-dn-ink/55">Outlined throughout — never shown like a measured result</p>
-        </div>
-
-        <ul className="mt-3 space-y-2.5">
-          {rows.map((r) => (
-            <li key={r.label} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-b border-dashed border-dn-line pb-2.5 last:border-0">
-              <span className="text-[12.5px] text-dn-ink/80">{r.label}</span>
-              <span className="tnum text-[15px] font-bold text-dn-navy">
-                {r.unit === 'aed' ? `${aed(r.low)} – ${aed(r.high)}` : `${int(r.low)} – ${int(r.high)}`}
-                <span className="ml-1.5 text-[10px] font-normal text-dn-ink/45">per month</span>
-              </span>
-            </li>
-          ))}
-        </ul>
-
-        {/* Return on spend, stated explicitly.
-            Without this row the card showed, at 1x, "AED 3K – AED 46K revenue"
-            against a 7,000 budget and never put the two side by side — so a
-            reader could not see that the BOTTOM of the range is a loss before
-            a single clinical cost. A budget ask that hides its own downside is
-            not a budget ask an investor should trust. */}
-        <div className="mt-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-t border-dn-line pt-3">
-          <span className="text-[12.5px] font-semibold text-dn-ink">
-            Revenue for every dirham of marketing spend
-          </span>
-          <span className="tnum text-[15px] font-bold text-dn-navy">
-            {(model.revLow / model.budget).toFixed(1)}× – {(model.revHigh / model.budget).toFixed(1)}×
-          </span>
-        </div>
-        {model.revLow < model.budget ? (
-          <p className="mt-1.5 text-[11.5px] leading-relaxed text-dn-amber">
-            Read the bottom of that range honestly: at the low end the model returns less than the media spend
-            itself, before any clinical cost. The upside case is what the machine is built to reach — it is not the
-            expected case.
-          </p>
-        ) : null}
-
-        <p className="mt-3 border-t border-dn-line pt-3 text-[13px] leading-relaxed text-dn-ink">
-          At <span className="font-semibold">{mult}× budget</span> — about{' '}
-          <span className="font-semibold">{aed(model.budget)} a month</span> — the model projects{' '}
-          <span className="font-semibold">
-            {int(model.bookLow)}–{int(model.bookHigh)} bookings
-          </span>{' '}
-          and{' '}
-          <span className="font-semibold">
-            {aed(model.revLow)}–{aed(model.revHigh)} revenue
-          </span>{' '}
-          per month.
-        </p>
-      </div>
-
-      {/* Assumptions — always visible, never a tooltip */}
-      <div className="mt-4 rounded-card border border-dn-line bg-dn-off px-4 py-4 sm:px-5">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-dn-ink/55">
-          The assumptions behind these figures
-        </p>
-        <dl className="mt-2.5 grid gap-x-6 gap-y-2 sm:grid-cols-2">
-          {SAMPLE_ASSUMPTIONS.map((a) => (
-            <div key={a.key} className="flex flex-wrap items-baseline justify-between gap-x-3 border-b border-dn-line/70 pb-1.5">
-              <dt className="text-[11.5px] text-dn-ink/75">{a.key}</dt>
-              <dd className="tnum text-[12px] font-semibold text-dn-ink">{a.value}</dd>
-              <dd className="w-full text-[9.5px] italic text-dn-ink/45">{a.source}</dd>
+      <div className="mt-2.5 grid gap-3 lg:grid-cols-3">
+        {PLAN_SCENARIOS.map((sc) => (
+          <div
+            key={sc.key}
+            className={`rounded-card px-4 py-4 ${
+              sc.key === 'base' ? 'border-2 border-dn-navy bg-white' : 'border border-dn-line bg-white'
+            }`}
+          >
+            <div className="flex items-baseline justify-between gap-2">
+              <p className="text-[13px] font-semibold text-dn-ink">{sc.label}</p>
+              {sc.key === 'base' ? (
+                <span className="rounded bg-dn-navy px-1.5 py-[1px] text-[9px] font-semibold uppercase tracking-wide text-white">
+                  Planned
+                </span>
+              ) : null}
             </div>
-          ))}
+            <p className="text-[10.5px] text-dn-ink/50">{sc.newPatientShare}</p>
+            <p className="tnum mt-3 text-[28px] font-bold leading-none text-dn-navy">
+              {sc.newPatients.toLocaleString('en-US')}
+            </p>
+            <p className="text-[10.5px] text-dn-ink/55">new patients in Year 1</p>
+            <dl className="mt-3 space-y-1.5 border-t border-dn-line pt-2.5">
+              <Row k="Paid media" v={aed(sc.paidMedia)} />
+              <Row k="First-visit revenue" v={`${aed(sc.revenueLow)} – ${aed(sc.revenueHigh)}`} />
+              <Row k="Return on media" v={`${sc.roasLow}× – ${sc.roasHigh}×`} strong />
+            </dl>
+          </div>
+        ))}
+      </div>
+      <p className="mt-2 text-[9.5px] italic text-dn-ink/45">Source: {PLAN_SCENARIOS_SOURCE}</p>
+
+      {/* Mix effect — the answer to "does executing projects improve return?" */}
+      {mix ? (
+        <div className="mt-8 rounded-card border-2 border-dn-navy/30 bg-white px-4 py-4 sm:px-5">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded border border-dn-navy/40 bg-dn-navy/5 px-1.5 py-[1px] text-[9px] font-semibold uppercase tracking-wide text-dn-navy">
+              Projected
+            </span>
+            <p className="text-[11px] text-dn-ink/55">
+              Priced from the {mix.count} action{mix.count === 1 ? '' : 's'} selected above
+            </p>
+          </div>
+
+          <h3 className="display mt-2 text-[19px] leading-tight text-dn-navy">
+            The organic channels are what stop cost rising as volume grows
+          </h3>
+          <p className="mt-1.5 max-w-[74ch] text-[12px] leading-relaxed text-dn-ink/65">
+            Scaling on paid alone gets more expensive, because the cheap high-intent searches run out and the budget
+            moves to costlier reach channels. Organic, referral and reactivation leads cost AED 60–90 against AED
+            140–320 for paid — enough to hold the blended figure down while volume multiplies.
+          </p>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Stat
+              label="Blended cost per lead"
+              value={aedExact(mix.blendedCpl)}
+              sub={
+                mix.paidOnlyCpl > 0
+                  ? `paid channels alone would be ${aedExact(mix.paidOnlyCpl)}`
+                  : `plan average is AED ${allPaidCpl}`
+              }
+              good={mix.paidOnlyCpl > 0 && mix.blendedCpl < mix.paidOnlyCpl}
+            />
+            <Stat label="Organic share of leads" value={`${Math.round(mix.organicShare * 100)}%`} sub="organic leads cost AED 60–90" good={mix.organicShare > 0.15} />
+            <Stat label="Patients a month" value={Math.round(mix.patients).toLocaleString('en-US')} sub={`from ${Math.round(mix.leads).toLocaleString('en-US')} people asking`} />
+            <Stat
+              label="Cost per patient acquired"
+              value={aedExact(mix.costPerPatient)}
+              sub={`at the plan average this is ${aedExact(planCostPerPatient)}`}
+              good={mix.costPerPatient < planCostPerPatient}
+            />
+          </div>
+          <p className="mt-2 text-[10.5px] leading-relaxed text-dn-ink/50">
+            This block reports what a patient <span className="font-semibold">costs</span>, not what they return.
+            Return is quoted only on the plan&apos;s own cards above, where it is sourced — the plan measures it
+            against paid media alone, so mixing it with organic effort here would produce a second, different
+            &ldquo;return&rdquo; and neither figure would be trusted.
+          </p>
+
+          {/* Blended CPL bar against the plan average */}
+          <div className="mt-5">
+            <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-dn-ink/45">
+              Cost per lead by channel — why the mix matters
+            </p>
+            <ul className="space-y-1.5">
+              {PLAN_CHANNELS.map((c) => {
+                const maxCpl = 320;
+                return (
+                  <li key={c.name} className="flex items-center gap-2.5">
+                    <span className="w-[128px] shrink-0 truncate text-[11px] text-dn-ink/75 sm:w-[186px]">
+                      {c.name}
+                    </span>
+                    <span className="flex h-[15px] min-w-0 flex-1 items-center rounded-sm bg-dn-navy/8">
+                      <span
+                        className="h-full rounded-sm"
+                        style={{
+                          width: `${(c.cpl / maxCpl) * 100}%`,
+                          background: c.type === 'Organic' ? '#2E7D32' : '#5793A3',
+                        }}
+                      />
+                    </span>
+                    <span className="tnum w-[62px] shrink-0 text-right text-[11px] font-semibold text-dn-ink">
+                      AED {c.cpl}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+            <p className="mt-2 text-[10.5px] leading-relaxed text-dn-ink/55">
+              <span className="inline-block h-[8px] w-[8px] rounded-sm bg-dn-green align-middle" /> Organic and
+              retention leads cost AED 60–90.{' '}
+              <span className="inline-block h-[8px] w-[8px] rounded-sm bg-dn-soft align-middle" /> Paid leads cost AED
+              140–320. Every point of lead share that moves from paid to organic lowers the blended cost and raises
+              the return — which is exactly why the plan tapers paid share from 65% to 50% across the year.
+            </p>
+          </div>
+        </div>
+      ) : (
+        <p className="mt-8 rounded-card border border-dashed border-dn-line px-4 py-6 text-center text-[12.5px] text-dn-ink/50">
+          Select at least one action above to price the mix.
+        </p>
+      )}
+
+      {/* Basis — always visible */}
+      <div className="mt-4 rounded-card border border-dn-line bg-dn-off px-4 py-4 sm:px-5">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-dn-ink/55">How to read the return</p>
+        <p className="mt-2 text-[12px] leading-relaxed text-dn-ink/75">{ROAS_BASIS_NOTE}</p>
+        <p className="mt-2 text-[11.5px] leading-relaxed text-dn-ink/60">{AOV_DISCREPANCY_NOTE}</p>
+        <p className="mt-2 text-[11.5px] leading-relaxed text-dn-ink/60">
+          One further inconsistency worth knowing about, since it affects any return calculation: the plan&apos;s
+          channel-mix sheet implies 80% of leads come from paid, while its acquisition sheet tapers paid share from
+          65% to 50% across the year. Both are internally consistent; they have not been reconciled with each other.
+          This page uses the channel-mix figures for the build-up and quotes the plan&apos;s own return figures
+          unchanged.
+        </p>
+        <dl className="mt-3 grid gap-x-6 gap-y-1.5 border-t border-dn-line pt-3 sm:grid-cols-2">
+          <Row k="People who ask → book" v={`${Math.round(PLAN_RATES.leadToBooking.value * 100)}%`} />
+          <Row k="Bookings → arrive" v={`${Math.round(PLAN_RATES.showRate.value * 100)}%`} />
+          <Row k="People who ask → patients" v={`${Math.round(PLAN_RATES.arrivalRate.value * 100)}% (one in five)`} />
+          <Row k="First-visit value per patient" v={`AED ${PLAN_RATES.aovLow.value}–${PLAN_RATES.aovHigh.value}`} />
         </dl>
-        <p className="mt-3 text-[11.5px] italic leading-relaxed text-dn-ink/60">
-          Illustrative model based on documented lane benchmarks — actual results depend on execution and market
-          conditions.
+        <p className="mt-3 text-[11.5px] italic leading-relaxed text-dn-ink/55">
+          Illustrative model built on the Year-1 Comprehensive Plan — actual results depend on execution, clinical
+          capacity and market conditions.
         </p>
       </div>
     </section>
   );
 }
 
-function Toggle({
-  checked,
-  onChange,
-  label,
-  hint,
-}: {
-  checked: boolean;
-  onChange: (v: boolean) => void;
-  label: string;
-  hint?: string;
-}) {
+function Row({ k, v, strong }: { k: string; v: string; strong?: boolean }) {
   return (
-    <label className="flex min-h-[36px] cursor-pointer items-center gap-2">
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-        className="h-[16px] w-[16px] accent-dn-navy"
-      />
-      <span className="text-[12px] text-dn-ink/80">
-        {label}
-        {hint ? <span className="block text-[10px] text-dn-ink/45">{hint}</span> : null}
-      </span>
-    </label>
+    <div className="flex items-baseline justify-between gap-3">
+      <dt className="text-[11.5px] text-dn-ink/70">{k}</dt>
+      <dd className={`tnum text-[12px] ${strong ? 'font-bold text-dn-navy' : 'font-semibold text-dn-ink'}`}>{v}</dd>
+    </div>
+  );
+}
+
+function Stat({ label, value, sub, good }: { label: string; value: string; sub: string; good?: boolean }) {
+  return (
+    <div className="rounded-card border border-dn-line bg-dn-off px-3.5 py-3">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-dn-ink/45">{label}</p>
+      <p className={`tnum mt-1 text-[20px] font-bold leading-none ${good ? 'text-dn-green' : 'text-dn-navy'}`}>
+        {value}
+      </p>
+      <p className="mt-1 text-[10px] leading-snug text-dn-ink/50">{sub}</p>
+    </div>
   );
 }
