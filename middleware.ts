@@ -89,8 +89,10 @@ export const config = {
   // (share/* — the uuid token IS the credential and is validated server-side on
   // every request against lane_e.report_share_links; a password prompt there
   // would defeat the point of a link the CEO can open in a board meeting or
-  // forward to an investor), the board deck itself (board-assets/* — it is the
-  // download button ON that link, and without this exclusion a board member
-  // gets the login page delivered as a .pptx), Next internals and static files.
-  matcher: ['/((?!login|share/|board-assets/|reports/arabyads|api/cron|api/practo|api/meta|api/google-ads|api/notify|api/widget-health|api/widget-probe|Leave-Calendar|api/leave-|_next/static|_next/image|favicon.ico).*)'],
+  // forward to an investor), the investor funnel viewer (i/* — same tokenized
+  // model, aimed at investors and the board), the board deck itself
+  // (board-assets/* — it is the download button ON that link, and without this
+  // exclusion a board member gets the login page delivered as a .pptx), Next
+  // internals and static files.
+  matcher: ['/((?!login|share/|i/|board-assets/|reports/arabyads|api/cron|api/practo|api/meta|api/google-ads|api/notify|api/widget-health|api/widget-probe|Leave-Calendar|api/leave-|_next/static|_next/image|favicon.ico).*)'],
 };

@@ -69,6 +69,16 @@ const config: Config = {
           amber: '#B54708',
           green: '#2E7D32',
           grey: '#ADAC99',
+          // --- Investor funnel additions -----------------------------------
+          // The funnel band is a single-hue navy progression, dark → light,
+          // across stages 1–6; `gold` is the ONE warm accent and is reserved
+          // for Revenue, so a reader learns "warm = money" in one glance and
+          // never sees that colour used decoratively anywhere else.
+          navyDeep: '#16293C',
+          navy3: '#3E6B8E',
+          gold: '#B8873B',
+          goldSoft: '#EBD9B4',
+          goldWash: '#FBF5E9',
         },
       },
       fontFamily: {
