@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { bumpShareView, resolveShareToken } from '@/lib/board/shareLinks';
 import { BoardReport } from '@/components/board/BoardReport';
+import { CommandDeck } from '@/components/deck/CommandDeck';
 
 export const dynamic = 'force-dynamic';
 // Both parts plus the aggregate reads; give it headroom like the other reports.
@@ -37,10 +38,24 @@ export default async function GrowthSharePage({
 
   await bumpShareView(token);
   const sp = await searchParams;
+  const basePath = `/share/growth/${token}`;
+
+  // One link system, two board-facing views (spec v3 §0). Links minted before
+  // the Command Deck carry view='funnel' and keep rendering the report they
+  // always did; new board/investor links default to the Command Deck.
+  const hidden = link.sections
+    ? Object.entries(link.sections)
+        .filter(([, on]) => on === false)
+        .map(([key]) => key)
+    : [];
 
   return (
     <main className="mx-auto max-w-[1240px] px-4 py-7 sm:px-8 sm:py-10">
-      <BoardReport searchParams={sp} basePath={`/share/growth/${token}`} publicView />
+      {link.view === 'command_deck' ? (
+        <CommandDeck searchParams={sp} basePath={basePath} recipientLabel={link.label} hiddenModules={hidden} />
+      ) : (
+        <BoardReport searchParams={sp} basePath={basePath} publicView />
+      )}
     </main>
   );
 }

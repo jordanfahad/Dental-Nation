@@ -39,8 +39,12 @@ export async function generateLink(_prev: ActionState, formData: FormData): Prom
   const label = String(formData.get('label') ?? '').trim();
   if (!label) return { ok: false, error: 'Give the link a label so you can tell them apart later.' };
 
+  // Board links carry a view: the Command Deck (default for board/investor
+  // recipients) or the funnel report. Anything else falls back to the deck.
+  const view = String(formData.get('view') ?? '') === 'funnel' ? 'funnel' : 'command_deck';
+
   const who = (await currentUser())?.name ?? 'admin';
-  const link = await createShareLink(scope, label, who);
+  const link = await createShareLink(scope, label, who, view);
   if (!link) return { ok: false, error: 'Could not create the link.' };
 
   revalidatePath(ADMIN_PATH);

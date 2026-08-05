@@ -49,6 +49,18 @@ export function ShareAdmin({
           placeholder={scope === 'growth' ? 'e.g. Board — Q3 2026' : 'e.g. Mr. Akbar — Aug leave'}
           className="min-w-[200px] flex-1 rounded-md border border-line bg-card px-2.5 py-1.5 text-[12.5px] text-ink placeholder:text-ink-ghost"
         />
+        {/* Board links choose their view; a handover link has only one page. */}
+        {scope === 'growth' ? (
+          <select
+            name="view"
+            defaultValue="command_deck"
+            aria-label="Which view this link opens"
+            className="min-h-[36px] rounded-md border border-line bg-card px-2.5 py-1.5 text-[12.5px] text-ink"
+          >
+            <option value="command_deck">Command Deck (board &amp; investors)</option>
+            <option value="funnel">Growth report (story)</option>
+          </select>
+        ) : null}
         <button
           type="submit"
           disabled={pending}
@@ -108,6 +120,11 @@ function LinkRow({ link, url }: { link: ShareLink; url: string }) {
             )}
           </p>
           <p className="tnum mt-0.5 text-[10.5px] text-ink-faint">
+            {link.scope === 'growth' ? (
+              <span className="font-medium text-ink-soft">
+                {link.view === 'command_deck' ? 'Command Deck' : 'Growth report'} ·{' '}
+              </span>
+            ) : null}
             {link.viewCount} view{link.viewCount === 1 ? '' : 's'}
             {link.lastViewedAt ? ` · last opened ${new Date(link.lastViewedAt).toLocaleDateString('en-GB')}` : ''}
             {link.createdBy ? ` · created by ${link.createdBy}` : ''}

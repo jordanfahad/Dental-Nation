@@ -16,10 +16,19 @@ import { getSupabaseAdmin } from '@/lib/supabase/server';
 
 export type ShareScope = 'growth' | 'handover';
 
+/**
+ * Which board-facing page a `growth` link renders. One link system, two views
+ * (spec v3 §0): the Command Deck is the instrument one-pager issued to the
+ * board and investors; `funnel` keeps every link minted before it working
+ * exactly as it did.
+ */
+export type ShareView = 'command_deck' | 'funnel';
+
 export interface ShareLink {
   id: number;
   token: string;
   scope: ShareScope;
+  view: ShareView;
   label: string;
   createdBy: string | null;
   createdAt: string;
@@ -27,6 +36,8 @@ export interface ShareLink {
   revoked: boolean;
   viewCount: number;
   lastViewedAt: string | null;
+  /** Per-link module toggles: {"partner": false} hides that Command Deck card. */
+  sections: Record<string, boolean> | null;
 }
 
 const TABLE = 'report_share_links';
@@ -40,6 +51,8 @@ function toLink(row: any): ShareLink {
     id: row.id,
     token: row.token,
     scope: row.scope,
+    view: row.view === 'funnel' ? 'funnel' : 'command_deck',
+    sections: row.sections && typeof row.sections === 'object' ? row.sections : null,
     label: row.label ?? '',
     createdBy: row.created_by ?? null,
     createdAt: row.created_at,
@@ -112,12 +125,19 @@ export async function createShareLink(
   scope: ShareScope,
   label: string,
   createdBy?: string | null,
+  view: ShareView = 'command_deck',
 ): Promise<ShareLink | null> {
   const db = getSupabaseAdmin();
   if (!db) return null;
   const { data, error } = await db
     .from(TABLE)
-    .insert({ scope, label: label.trim().slice(0, 120), created_by: createdBy ?? null })
+    .insert({
+      scope,
+      label: label.trim().slice(0, 120),
+      created_by: createdBy ?? null,
+      // The view only means anything for board links; a handover link has one page.
+      view: scope === 'growth' ? view : 'funnel',
+    })
     .select('*')
     .single();
   if (error || !data) return null;
