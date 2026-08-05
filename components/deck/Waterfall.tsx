@@ -140,8 +140,8 @@ export function Waterfall({ data }: { data: WaterfallData }) {
 
       {/* Each component opens its own live dashboard in place. */}
       <div className="mt-4">
-        <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide" style={{ color: C.inkFaint }}>
-          Open any route for its own figures and how the revenue is traced
+        <p className="mb-1 text-[11px] font-medium" style={{ color: C.navyMid }}>
+          ▸ Click any route below to expand its full detail — figures, method and how the revenue is traced
         </p>
         {measured.map((b) => (
           <details key={b.key} className="group border-t" style={{ borderColor: C.ruleSoft }}>
@@ -197,7 +197,11 @@ export function Waterfall({ data }: { data: WaterfallData }) {
       {pending.length > 0 ? (
         <div className="mt-4">
           <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: C.inkFaint }}>
-            Active, revenue attribution pending — no share of the bars above
+            The other {pending.length} channels — active, revenue attribution pending
+          </p>
+          <p className="mb-2 mt-0.5 max-w-[860px] text-[10.5px] leading-snug" style={{ color: C.inkSoft }}>
+            These are running and measured, but none of them can yet trace a specific billed patient, so none is given
+            a slice of the bars above. What each one CAN prove is shown here.
           </p>
           <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {pending.map((b) => (

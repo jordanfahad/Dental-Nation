@@ -18,13 +18,16 @@
 /** Waterfall component keys, in the order the bars are laid out. */
 export type ComponentKey =
   | 'seo'
+  | 'ai_seo'
+  | 'social_organic'
+  | 'gmb'
   | 'google_ads'
   | 'meta'
+  | 'partner'
+  | 'smile_club'
   | 'crm'
   | 'ai_agent'
   | 'widget'
-  | 'smile_club'
-  | 'partner'
   | 'direct'
   | 'unattributed';
 
@@ -52,10 +55,34 @@ export const DECK_COMPONENTS: ComponentDef[] = [
   {
     key: 'seo',
     label: 'Organic / SEO',
-    detail: 'Search engines and AI assistants finding the clinic without paid media.',
+    detail: 'Search engines finding the clinic without paid media.',
     attribution: 'pending',
     pendingNote:
       'Search Console access is still pending, and an organic visitor who later phones or walks in leaves no identifier to match. Impressions and clicks arrive with the Search Console feed.',
+  },
+  {
+    key: 'ai_seo',
+    label: 'AI SEO — assistants',
+    detail: 'ChatGPT, Claude, Perplexity and Copilot recommending the clinic.',
+    attribution: 'pending',
+    pendingNote:
+      'AI-assistant referrals are visible as website sessions, but an assistant sends no identifier and the visitor typically phones or walks in, so no bill can be traced back. Session volumes are on the Digital & SEO tab.',
+  },
+  {
+    key: 'social_organic',
+    label: 'Organic social',
+    detail: 'Instagram and Facebook content the clinic did not pay to distribute.',
+    attribution: 'pending',
+    pendingNote:
+      'Reach, followers and profile visits are measured, but a follower who books by phone or walk-in carries no identifier through to billing.',
+  },
+  {
+    key: 'gmb',
+    label: 'Google Business Profile',
+    detail: 'Maps and local search — calls and direction requests.',
+    attribution: 'pending',
+    pendingNote:
+      'Profile actions are counted by Google, but a Maps caller reaches reception directly and is booked as a normal clinic appointment, so the bill shows as direct.',
   },
   {
     key: 'google_ads',

@@ -146,6 +146,67 @@ export const getDeckCosts = cache(async (): Promise<{ rows: number; total: numbe
   return { rows: data.length, total };
 });
 
+export interface GoogleCampaignRow {
+  day: string;
+  campaignName: string;
+  campaignType: string;
+  spend: number | null;
+  impressions: number | null;
+  clicks: number | null;
+  conversions: number | null;
+}
+
+export const getGoogleCampaigns = cache(async (): Promise<GoogleCampaignRow[]> => {
+  const db = getSupabaseAdmin();
+  if (!db) return [];
+  const { data, error } = await db.from('board_deck_google_campaigns').select('*').limit(20000);
+  if (error || !data) return [];
+  return data.map((r) => ({
+    day: String(r.day),
+    campaignName: String(r.campaign_name),
+    campaignType: String(r.campaign_type),
+    spend: num(r.spend),
+    impressions: num(r.impressions),
+    clicks: num(r.clicks),
+    conversions: num(r.conversions),
+  }));
+});
+
+export interface ClickTypeRow {
+  day: string;
+  clickType: string;
+  clicks: number | null;
+}
+
+export const getGoogleClickTypes = cache(async (): Promise<ClickTypeRow[]> => {
+  const db = getSupabaseAdmin();
+  if (!db) return [];
+  const { data, error } = await db.from('board_deck_google_clicktypes').select('*').limit(20000);
+  if (error || !data) return [];
+  return data.map((r) => ({ day: String(r.day), clickType: String(r.click_type), clicks: num(r.clicks) }));
+});
+
+/** A cascade row for a drill-down rendered in waterfall style. */
+export interface CascadeRow {
+  label: string;
+  sublabel: string | null;
+  spend: number | null;
+  impressions: number | null;
+  clicks: number | null;
+  conversions: number | null;
+  /** Share of the parent total, 0..1 — drives the bar width. */
+  share: number | null;
+}
+
+export interface GoogleDetail {
+  byType: CascadeRow[];
+  byCampaign: CascadeRow[];
+  clickTypes: { label: string; clicks: number; share: number }[];
+  totalSpend: number | null;
+  totalConversions: number | null;
+  typeNote: string;
+}
+
 export interface UptimeDay {
   day: string;
   checks: number;
@@ -500,6 +561,8 @@ export interface DeckReport {
   funnel: FunnelStage[];
   investment: InvestmentSummary;
   modules: ModuleCard[];
+  /** Campaign-level Google Ads cascade for its drawer. */
+  google: GoogleDetail;
   lastUpdated: string | null;
   liveModules: number;
   totalModules: number;
@@ -525,6 +588,10 @@ export async function getCommandDeck(
     getLastIngestion().catch(() => null),
     getDeckVisibility().catch(() => [] as VisibilityRow[]),
     getDeckCosts().catch(() => ({ rows: 0, total: null as number | null })),
+  ]);
+  const [gCampaigns, gClickTypes] = await Promise.all([
+    getGoogleCampaigns().catch(() => [] as GoogleCampaignRow[]),
+    getGoogleClickTypes().catch(() => [] as ClickTypeRow[]),
   ]);
 
   const win = windowFrom(daily, from, to, priorFrom, priorTo);
@@ -911,6 +978,57 @@ export async function getCommandDeck(
         : `Build and platform cost is taken from supplier invoices, recorded in the month each was raised: the website build and booking module go-live (AED 6,500, invoice 30 Jan 2026), the Zavis AI Pro subscription for three seats (AED 2,422 per quarter, invoiced 13 Mar 2026) and the continuous-care retainer (AED 3,000 per quarter, invoiced 23 Mar 2026), plus Azure infrastructure at the stated USD 100 per month. Quarterly fees sit in the month they were invoiced rather than spread across the quarter, so a short window can look lumpy — over the whole period the total is exact. Only the invoices supplied so far are recorded; any earlier or later invoice would raise this figure and lower the return.`,
   };
 
+  /* ── Google Ads, campaign by campaign ─────────────────────────────────── */
+
+  const gWin = gCampaigns.filter((r) => r.day >= from && r.day <= to);
+  const gTotalSpend = gWin.length ? gWin.reduce((a, r) => a + (r.spend ?? 0), 0) : null;
+  const gTotalConv = gWin.length ? gWin.reduce((a, r) => a + (r.conversions ?? 0), 0) : null;
+
+  const roll = (keyOf: (r: GoogleCampaignRow) => string, subOf?: (r: GoogleCampaignRow) => string): CascadeRow[] => {
+    const m = new Map<string, { spend: number; impressions: number; clicks: number; conversions: number; sub: string | null }>();
+    for (const r of gWin) {
+      const k = keyOf(r);
+      const cur = m.get(k) ?? { spend: 0, impressions: 0, clicks: 0, conversions: 0, sub: subOf ? subOf(r) : null };
+      cur.spend += r.spend ?? 0;
+      cur.impressions += r.impressions ?? 0;
+      cur.clicks += r.clicks ?? 0;
+      cur.conversions += r.conversions ?? 0;
+      m.set(k, cur);
+    }
+    return [...m.entries()]
+      .map(([label, v]) => ({
+        label,
+        sublabel: v.sub,
+        spend: v.spend,
+        impressions: v.impressions,
+        clicks: v.clicks,
+        conversions: v.conversions,
+        share: gTotalSpend && gTotalSpend > 0 ? v.spend / gTotalSpend : null,
+      }))
+      .sort((a, b) => (b.spend ?? 0) - (a.spend ?? 0));
+  };
+
+  const ctWin = gClickTypes.filter((r) => r.day >= from && r.day <= to);
+  const ctTotal = ctWin.reduce((a, r) => a + (r.clicks ?? 0), 0);
+  const ctMap = new Map<string, number>();
+  for (const r of ctWin) ctMap.set(r.clickType, (ctMap.get(r.clickType) ?? 0) + (r.clicks ?? 0));
+  const clickTypes = [...ctMap.entries()]
+    .map(([label, clicks]) => ({ label, clicks, share: ctTotal > 0 ? clicks / ctTotal : 0 }))
+    .sort((a, b) => b.clicks - a.clicks);
+
+  const google: GoogleDetail = {
+    byType: roll((r) => r.campaignType),
+    byCampaign: roll(
+      (r) => r.campaignName,
+      (r) => r.campaignType,
+    ).slice(0, 12),
+    clickTypes,
+    totalSpend: gTotalSpend,
+    totalConversions: gTotalConv,
+    typeNote:
+      'Campaign type is read from the campaign naming convention (Search, Performance Max, Brand, Competitor) because the stored Google Ads export carries no channel-type field. Conversions are what Google itself counts — a conversion is not a booked patient, and one campaign records an order of magnitude more than the rest, which is a tracking-configuration difference rather than performance.',
+  };
+
   return {
     from,
     to,
@@ -919,6 +1037,7 @@ export async function getCommandDeck(
     funnel,
     investment,
     modules: cards,
+    google,
     lastUpdated,
     liveModules: modules.filter((m) => m.status === 'LIVE').length,
     totalModules: modules.length,

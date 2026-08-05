@@ -124,8 +124,9 @@ export function FunnelView({ stages }: { stages: FunnelStage[] }) {
           where it is calculated from, what it is made of, and what would make
           a reader misread it. */}
       <div className="mt-3">
-        <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide" style={{ color: C.inkFaint }}>
-          Open any stage for its own figures and how it is calculated
+        <p className="mb-1 text-[11px] font-medium" style={{ color: C.navyMid }}>
+          ▸ Click any stage below to expand its live dashboard — what the number is made of and exactly where it is
+          calculated from
         </p>
         {stages.map((s) => (
           <details key={s.key} className="group border-t" style={{ borderColor: C.ruleSoft }}>

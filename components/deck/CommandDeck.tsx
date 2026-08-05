@@ -5,6 +5,7 @@ import { getCommandDeck, getDeckDaily, type ModuleCard, type ModuleStat } from '
 import { ATTRIBUTION_NOTE, JOURNEY_STAGES, MODULE_STATUS_LABEL, type ModuleStatus } from '@/config/command-deck';
 import { Waterfall } from './Waterfall';
 import { FunnelView } from './FunnelView';
+import { GoogleCascade } from './GoogleCascade';
 import { PrintButton } from '@/components/board/PrintButton';
 
 /**
@@ -57,7 +58,7 @@ function DeltaChip({ value, downGood }: { value: number | null | undefined; down
 }
 
 /** One gauge in the instrument grid. Opens in place — the page stays one page. */
-function Instrument({ m }: { m: ModuleCard }) {
+function Instrument({ m, extra }: { m: ModuleCard; extra?: React.ReactNode }) {
   return (
     <details className="group rounded-lg border bg-white print-avoid-break" style={{ borderColor: C.rule }}>
       <summary className="flex cursor-pointer list-none items-start justify-between gap-3 px-4 py-3">
@@ -123,8 +124,13 @@ function Instrument({ m }: { m: ModuleCard }) {
           </div>
         ) : null}
 
-        <p className="mt-2 text-[10px] group-open:hidden" style={{ color: C.navyMid }}>
-          Open details ↓
+        {extra ? <div className="mt-3 hidden group-open:block">{extra}</div> : null}
+
+        <p className="mt-2 text-[10.5px] font-medium group-open:hidden" style={{ color: C.navyMid }}>
+          ▸ Click to expand the full detail
+        </p>
+        <p className="mt-2 hidden text-[10.5px] group-open:block" style={{ color: C.inkFaint }}>
+          ▾ Click the title again to collapse
         </p>
       </div>
     </details>
@@ -331,13 +337,17 @@ export async function CommandDeck({
       <section>
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="text-[15px] font-semibold">The systems</h2>
-          <p className="text-[11px]" style={{ color: C.inkFaint }}>
-            One gauge per delivered system · tap any card for its detail
+          <p className="text-[11px] font-medium" style={{ color: C.navyMid }}>
+            ▸ Click any card to expand its live detail
           </p>
         </div>
         <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {modules.map((m) => (
-            <Instrument key={m.key} m={m} />
+            <Instrument
+              key={m.key}
+              m={m}
+              extra={m.key === 'google_ads' ? <GoogleCascade g={deck.google} /> : undefined}
+            />
           ))}
         </div>
       </section>
