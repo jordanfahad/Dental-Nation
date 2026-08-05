@@ -6,6 +6,8 @@ import { ATTRIBUTION_NOTE, JOURNEY_STAGES, MODULE_STATUS_LABEL, type ModuleStatu
 import { Waterfall } from './Waterfall';
 import { FunnelView } from './FunnelView';
 import { GoogleCascade } from './GoogleCascade';
+import { ForwardView } from './ForwardView';
+import { getPipelineView } from '@/lib/deck/pipeline';
 import { PrintButton } from '@/components/board/PrintButton';
 
 /**
@@ -156,6 +158,7 @@ export async function CommandDeck({
   const dataTo = daily[daily.length - 1]?.day ?? dataFrom;
   const range = resolveBoardRange(searchParams, dataFrom, dataTo);
   const deck = await getCommandDeck(range.from, range.to, range.compareFrom, range.compareTo);
+  const pipeline = await getPipelineView();
 
   const modules = deck.modules.filter((m) => !hiddenModules.includes(m.key));
   const j = deck.window.journey;
@@ -339,6 +342,19 @@ export async function CommandDeck({
             code per placement, or asking new patients at reception how they heard of us.
           </p>
         ) : null}
+      </section>
+
+      {/* ── Forward view ─────────────────────────────────────────────────── */}
+      <section className="rounded-lg border bg-white p-4 print-avoid-break sm:p-5" style={{ borderColor: C.amberSoft }}>
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-[15px] font-semibold">What is in the pipeline, and what it is expected to produce</h2>
+          <p className="text-[11px] font-medium" style={{ color: C.amber }}>
+            Projections — click or tap any initiative for its assumptions and arithmetic
+          </p>
+        </div>
+        <div className="mt-3">
+          <ForwardView data={pipeline} />
+        </div>
       </section>
 
       {/* ── Instrument grid ──────────────────────────────────────────────── */}
