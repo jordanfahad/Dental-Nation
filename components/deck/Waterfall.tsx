@@ -74,6 +74,12 @@ export function Waterfall({ data }: { data: WaterfallData }) {
     return step;
   });
 
+  // Column totals come from the bars, not from the traced grand total: the two
+  // pool routes hand their revenue to the allocation, so summing traced-as-read
+  // would double-count it against Contribution.
+  const tracedShown = bars.reduce((a, b) => a + (b.traced ?? 0), 0);
+  const allocatedShown = bars.reduce((a, b) => a + b.allocated, 0);
+
   const totalX = bars.length * (colW + gap);
   const totalH = Math.max(scale(total), 2);
   const totalY = padTop + plotH - totalH;
@@ -214,15 +220,18 @@ export function Waterfall({ data }: { data: WaterfallData }) {
         <div className="flex items-center gap-3 border-t-2 pt-1.5 text-[11.5px] font-semibold" style={{ borderColor: C.ink, color: C.ink }}>
           <span className="w-[11px]" />
           <span className="flex-1">Total billed revenue</span>
-          <span className="w-[96px] text-right tabular-nums">{aedExact(data.total ?? 0)}</span>
-          <span className="w-[96px] text-right tabular-nums">{aedExact(alloc.pool)}</span>
+          <span className="w-[96px] text-right tabular-nums">{aedExact(tracedShown)}</span>
+          <span className="w-[96px] text-right tabular-nums">{aedExact(allocatedShown)}</span>
           <span className="w-[104px] text-right tabular-nums">{aedExact(total)}</span>
           <span className="w-[44px] text-right tabular-nums">100%</span>
         </div>
-        <p className="mt-1 text-[10px] leading-snug" style={{ color: C.inkFaint }}>
-          The Traced column is what the platform can prove today; the Modelled column is the {aedExact(alloc.pool)} it
-          could not trace, shared out. Only the Contribution column adds up to billed revenue — reading the Traced
-          column alone understates every advertising channel, and reading Contribution as measured overstates them.
+        <p className="mt-1 max-w-[900px] text-[10px] leading-snug" style={{ color: C.inkFaint }}>
+          Traced plus Modelled equals Contribution on every row and on the total. Only Contribution adds up to billed
+          revenue: reading the Traced column alone understates every advertising channel, and reading Contribution as
+          if it were measured overstates them.
+          {alloc.available
+            ? ` The ${aedExact(alloc.pool)} booked at reception, by phone or with no CRM record at all is the pool being shared out, which is why those two rows show only what came back to them — their full traced figures are inside their drawers.`
+            : ''}
         </p>
       </div>
     </div>

@@ -611,6 +611,7 @@ export interface Waterfall {
 const GA4_TO_COMPONENT: { match: RegExp; key: ComponentKey }[] = [
   { match: /paid search|cross-network/i, key: 'google_ads' },
   { match: /paid social|paid other|display|paid video/i, key: 'meta' },
+  { match: /ai assistant|generative|chatgpt|perplexity|copilot/i, key: 'ai_seo' },
   { match: /organic search/i, key: 'seo' },
   { match: /organic social/i, key: 'social_organic' },
   { match: /referral/i, key: 'partner' },
@@ -648,17 +649,25 @@ export function buildWaterfall(
   const pool =
     (byComponent.get('direct')?.revenue ?? 0) + (byComponent.get('unattributed')?.revenue ?? 0);
 
+  /* The key is SESSIONS, not conversions, and that choice is deliberate.
+   * Conversion events are configured inconsistently across the site: recorded
+   * conversion rates by channel currently range from about 11% to over 80%,
+   * which is an event-tagging difference rather than real behaviour. Splitting
+   * half a million dirhams on that key would hand the largest share of group
+   * revenue to whichever channel happens to fire the most events. Sessions are
+   * counted the same way for every channel, so they are the only comparable
+   * measure of demand the platform has today. */
   const convByComponent = new Map<string, { conv: number; names: string[] }>();
   let convTotal = 0;
   for (const ch of ga4Channels) {
-    const conv = ch.conversions ?? 0;
-    if (conv <= 0) continue;
+    const sessions = ch.sessions ?? 0;
+    if (sessions <= 0) continue;
     const key = GA4_TO_COMPONENT.find((m) => m.match.test(ch.channel))?.key ?? 'unattributed';
     const cur = convByComponent.get(key) ?? { conv: 0, names: [] };
-    cur.conv += conv;
+    cur.conv += sessions;
     cur.names.push(ch.channel);
     convByComponent.set(key, cur);
-    convTotal += conv;
+    convTotal += sessions;
   }
   const allocationAvailable = convTotal > 0 && pool > 0;
 
@@ -684,12 +693,18 @@ export function buildWaterfall(
     const TRACED =
       'Traced patient by patient: each bill carries the patient file number, the file gives the phone number, and the CRM records which route booked that patient. One bill, one route — nothing is shared out or estimated.';
 
+    const HANDED_OVER =
+      ' Because these patients cannot be tied to any channel, this revenue is the pool that gets shared out across the routes above, so this row shows only what came back to it rather than the full amount traced. The full traced figure is in the panel below.';
+
     const source =
       c.attribution === 'pending'
         ? 'No identity chain exists from this channel to a billed patient, so no revenue is assigned. The figures shown are what the platform itself reports.'
         : c.key === 'unattributed'
-          ? 'Bills whose patient has no booking record in the CRM at all — shown rather than folded into another route, so the bars still add up to the total.'
-          : TRACED;
+          ? 'Bills whose patient has no booking record in the CRM at all — shown rather than folded into another route, so the bars still add up to the total.' +
+            (allocationAvailable ? HANDED_OVER : '')
+          : c.key === 'direct'
+            ? TRACED + (allocationAvailable ? HANDED_OVER : '')
+            : TRACED;
 
     const breakdown: Breakdown[] =
       c.attribution === 'pending'
@@ -742,10 +757,12 @@ export function buildWaterfall(
     const allocationBasis = !allocationAvailable
       ? 'No allocation applied in this window.'
       : convHit
-        ? `Allocated on ${convHit.names.join(', ')} — ${Math.round((convHit.conv / convTotal) * 100)}% of the conversions analytics recorded.`
+        ? `Allocated on ${convHit.names.join(', ')} — ${Math.round((convHit.conv / convTotal) * 100)}% of the website sessions analytics recorded (${Math.round(convHit.conv).toLocaleString('en-US')} of ${Math.round(convTotal).toLocaleString('en-US')}).`
         : c.key === 'ooh'
           ? 'No web analytics channel can observe this route: someone who passes a billboard and later telephones or walks in leaves no digital trace anywhere. Its effect is real and currently sits inside the routes above.'
-          : 'No analytics conversions map to this route in this window, so it receives no allocated share.';
+          : c.key === 'gmb'
+            ? 'Maps and local-search visitors reach the website as organic search or direct traffic, so analytics cannot separate them out — this route receives no share of its own, and its effect sits inside those two.'
+            : 'No analytics channel maps to this route in this window, so it receives no allocated share.';
 
     return {
       key: c.key,
@@ -758,7 +775,7 @@ export function buildWaterfall(
       provenLabel,
       source,
       breakdown,
-      traced: revenue,
+      traced: allocationAvailable && isPool ? null : revenue,
       allocated,
       contribution: kept + allocated,
       allocationBasis,
@@ -782,8 +799,8 @@ export function buildWaterfall(
       windowed: ga4Windowed,
       invisible: allocationAvailable ? DECK_COMPONENTS.filter((c) => c.key === 'ooh').map((c) => c.label) : [],
       method: allocationAvailable
-        ? `Solid bar = revenue traced to a named billed patient. Pale bar = that route's modelled share of the ${aed(pool)} nobody could trace, split by each channel's share of the conversions Google Analytics recorded${ga4Windowed ? ' in this same window' : ' in its rolling four-week snapshot'}. The pale half is an allocation, not a measurement: it answers "what did each channel probably contribute", not "which patients came from where".`
-        : 'Every bar here is traced revenue — no allocation was applied, because there were no analytics conversions to split the untraced revenue by.',
+        ? `Solid bar = revenue traced to a named billed patient. Pale bar = that route's modelled share of the ${aed(pool)} nobody could trace, split by each channel's share of the website sessions Google Analytics recorded${ga4Windowed ? ' in this same window' : ' in its rolling four-week snapshot'}. Sessions are the key rather than conversions on purpose: recorded conversion rates by channel currently range from about 11% to over 80%, which is a difference in how events are tagged rather than in how people behave, and splitting revenue on it would flatter whichever channel fires the most events. The pale half is an allocation, not a measurement — it answers "what did each channel probably contribute", not "which patients came from where".`
+        : 'Every bar here is traced revenue — no allocation was applied, because there was no analytics traffic to split the untraced revenue by.',
     },
   };
 }
