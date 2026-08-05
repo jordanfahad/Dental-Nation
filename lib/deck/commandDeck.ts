@@ -146,6 +146,72 @@ export const getDeckCosts = cache(async (): Promise<{ rows: number; total: numbe
   return { rows: data.length, total };
 });
 
+export interface Ga4Event {
+  key: string;
+  label: string;
+  count: number | null;
+  /** Conversion from the previous step, 0..1. */
+  fromPrev: number | null;
+}
+
+export interface Ga4Channel {
+  channel: string;
+  sessions: number | null;
+  conversions: number | null;
+}
+
+export interface Ga4Snapshot {
+  periodStart: string | null;
+  periodEnd: string | null;
+  sessions: number | null;
+  users: number | null;
+  newUsers: number | null;
+  engagedSessions: number | null;
+  conversions: number | null;
+  channels: Ga4Channel[];
+  events: Ga4Event[];
+}
+
+/**
+ * The GA4 snapshot. One row, covering a rolling ~28-day window rather than a
+ * daily history, so every figure taken from it is labelled with its own period
+ * and never silently presented as answering the page's date filter.
+ */
+export const getDeckGa4 = cache(async (): Promise<Ga4Snapshot | null> => {
+  const db = getSupabaseAdmin();
+  if (!db) return null;
+  const { data, error } = await db.from('board_deck_ga4').select('*').maybeSingle();
+  if (error || !data) return null;
+
+  /* eslint-disable @typescript-eslint/no-explicit-any */
+  const chRaw = Array.isArray(data.channels) ? (data.channels as any[]) : [];
+  const evRaw = Array.isArray(data.onsite_funnel) ? (data.onsite_funnel as any[]) : [];
+  /* eslint-enable @typescript-eslint/no-explicit-any */
+
+  return {
+    periodStart: data.period_start ? String(data.period_start) : null,
+    periodEnd: data.period_end ? String(data.period_end) : null,
+    sessions: num(data.sessions),
+    users: num(data.users),
+    newUsers: num(data.new_users),
+    engagedSessions: num(data.engaged_sessions),
+    conversions: num(data.conversions),
+    channels: chRaw
+      .map((c) => ({
+        channel: String(c?.channel ?? 'Unknown'),
+        sessions: num(c?.sessions),
+        conversions: num(c?.conversions),
+      }))
+      .sort((a, b) => (b.sessions ?? 0) - (a.sessions ?? 0)),
+    events: evRaw.map((e) => ({
+      key: String(e?.key ?? ''),
+      label: String(e?.label ?? e?.key ?? ''),
+      count: num(e?.count),
+      fromPrev: num(e?.conversionFromPrev),
+    })),
+  };
+});
+
 export interface GoogleCampaignRow {
   day: string;
   campaignName: string;
@@ -553,11 +619,51 @@ export interface InvestmentSummary {
   costNote: string;
 }
 
+/**
+ * MODELLED contribution — every channel gets a share of revenue.
+ *
+ * The measured waterfall can only credit revenue it can trace patient by
+ * patient, which leaves the whole "direct and walk-in" block uncredited even
+ * though those patients plainly saw the advertising before they walked in.
+ * This view answers the fair objection that every channel contributes
+ * something, WITHOUT pretending the result is measured:
+ *
+ *   measured revenue stays exactly where it was traced, and the UNTRACED pool
+ *   (direct/walk-in + unattributed) is shared out across channels in
+ *   proportion to each channel's share of GA4-recorded conversions.
+ *
+ * It is an allocation, not a measurement, and the page says so in those words.
+ * Two limits ride with it: GA4's snapshot covers a rolling ~28 days rather
+ * than the selected window, and website analytics cannot see a patient who saw
+ * a billboard-style impression and simply phoned the clinic.
+ */
+export interface ModelledContribution {
+  key: string;
+  label: string;
+  measured: number | null;
+  modelled: number;
+  total: number;
+  share: number;
+  /** The GA4 channels whose conversions drove this allocation. */
+  basis: string;
+}
+
+export interface ModelledView {
+  rows: ModelledContribution[];
+  pool: number;
+  total: number;
+  ga4Window: string | null;
+  available: boolean;
+  method: string;
+}
+
 export interface DeckReport {
   from: string;
   to: string;
   window: DeckWindow;
   waterfall: Waterfall;
+  modelled: ModelledView;
+  ga4: Ga4Snapshot | null;
   funnel: FunnelStage[];
   investment: InvestmentSummary;
   modules: ModuleCard[];
@@ -589,9 +695,10 @@ export async function getCommandDeck(
     getDeckVisibility().catch(() => [] as VisibilityRow[]),
     getDeckCosts().catch(() => ({ rows: 0, total: null as number | null })),
   ]);
-  const [gCampaigns, gClickTypes] = await Promise.all([
+  const [gCampaigns, gClickTypes, ga4] = await Promise.all([
     getGoogleCampaigns().catch(() => [] as GoogleCampaignRow[]),
     getGoogleClickTypes().catch(() => [] as ClickTypeRow[]),
+    getDeckGa4().catch(() => null),
   ]);
 
   const win = windowFrom(daily, from, to, priorFrom, priorTo);
@@ -616,18 +723,46 @@ export async function getCommandDeck(
   const byKey: Record<string, Omit<ModuleCard, 'key' | 'title' | 'status' | 'sourceNote'>> = {
     website: {
       stats: [
+        { label: 'Sessions', value: ga4?.sessions ?? null, format: 'int' },
         { label: 'Widget enquiries', value: win.widgetEnquiries, format: 'int', delta: null },
-        { label: 'Appointments booked', value: win.journey.booked, format: 'int', delta: d(win.journey.booked, pj?.booked ?? null) },
         { label: 'Availability uptime', value: pctOrNull(okChecks, checks), format: 'pct' },
       ],
       contribution: `${aed(compRev('widget'))} billed from patients who booked on the website`,
       detail: [
+        ...(ga4
+          ? [
+              {
+                label: 'Google Analytics window',
+                value: `${ga4.periodStart ?? '—'} → ${ga4.periodEnd ?? '—'} (rolling snapshot, not the window above)`,
+              },
+              { label: 'Sessions', value: int(ga4.sessions) },
+              { label: 'Users', value: int(ga4.users) },
+              { label: 'New users', value: int(ga4.newUsers) },
+              { label: 'Engaged sessions', value: int(ga4.engagedSessions) },
+              { label: 'Conversion events recorded', value: int(ga4.conversions) },
+              // Every on-site event GA4 fired, with its step conversion.
+              ...ga4.events.map((e) => ({
+                label: `Event · ${e.label}`,
+                value:
+                  e.fromPrev != null
+                    ? `${int(e.count)}  (${(e.fromPrev * 100).toFixed(1)}% of previous step)`
+                    : int(e.count),
+              })),
+              // Traffic by channel grouping.
+              ...ga4.channels.slice(0, 10).map((c) => ({
+                label: `Traffic · ${c.channel}`,
+                value: `${int(c.sessions)} sessions · ${int(c.conversions)} conversions`,
+              })),
+            ]
+          : [{ label: 'Google Analytics', value: 'Snapshot unavailable' }]),
         { label: 'Booking-widget submissions (non-test)', value: int(win.widgetEnquiries) },
         { label: 'Site reachable', value: siteChecks ? `${((siteOk / siteChecks) * 100).toFixed(1)}% of ${siteChecks} checks` : 'pending' },
         { label: 'Booking availability', value: checks ? `${((okChecks / checks) * 100).toFixed(1)}% of ${checks} checks` : 'pending' },
         { label: 'Monitoring', value: 'Automated check every 15 minutes against the booking system' },
       ],
-      pendingNote: null,
+      pendingNote: ga4
+        ? 'Google Analytics figures come from a rolling four-week snapshot, so they describe that period rather than the window selected at the top of the page.'
+        : null,
     },
     widget: {
       stats: [
@@ -1029,11 +1164,81 @@ export async function getCommandDeck(
       'Campaign type is read from the campaign naming convention (Search, Performance Max, Brand, Competitor) because the stored Google Ads export carries no channel-type field. Conversions are what Google itself counts — a conversion is not a booked patient, and one campaign records an order of magnitude more than the rest, which is a tracking-configuration difference rather than performance.',
   };
 
+  /* ── Modelled contribution: every channel gets a share ────────────────── */
+
+  // Map GA4's channel-grouping names onto the deck's components. A GA4 name
+  // not listed here falls to 'unattributed' rather than being dropped, so the
+  // allocation always sums to the untraced pool.
+  const GA4_TO_COMPONENT: { match: RegExp; key: ComponentKey }[] = [
+    { match: /paid search|cross-network/i, key: 'google_ads' },
+    { match: /paid social|paid other|display|paid video/i, key: 'meta' },
+    { match: /organic search/i, key: 'seo' },
+    { match: /organic social/i, key: 'social_organic' },
+    { match: /referral/i, key: 'partner' },
+    { match: /email/i, key: 'crm' },
+    { match: /direct/i, key: 'direct' },
+  ];
+
+  const measuredByKey = new Map<string, number>();
+  for (const b of waterfall.bars) if (b.revenue != null) measuredByKey.set(b.key, b.revenue);
+
+  const tracedPool = (measuredByKey.get('direct') ?? 0) + (measuredByKey.get('unattributed') ?? 0);
+  const totalRevenue = win.journey.revenue ?? 0;
+
+  const convByComponent = new Map<string, { conv: number; names: string[] }>();
+  let convTotal = 0;
+  for (const c of ga4?.channels ?? []) {
+    const hit = GA4_TO_COMPONENT.find((m) => m.match.test(c.channel));
+    const key = hit?.key ?? 'unattributed';
+    const conv = c.conversions ?? 0;
+    if (conv <= 0) continue;
+    const cur = convByComponent.get(key) ?? { conv: 0, names: [] };
+    cur.conv += conv;
+    cur.names.push(c.channel);
+    convByComponent.set(key, cur);
+    convTotal += conv;
+  }
+
+  const modelledRows: ModelledContribution[] = DECK_COMPONENTS.map((c) => {
+    const measured = measuredByKey.get(c.key) ?? null;
+    // Only direct/unattributed revenue is redistributed; traced revenue keeps
+    // its own credit and is never handed to another channel.
+    const isPool = c.key === 'direct' || c.key === 'unattributed';
+    const hit = convByComponent.get(c.key);
+    const modelled =
+      convTotal > 0 && hit ? (hit.conv / convTotal) * tracedPool : 0;
+    const keptMeasured = isPool ? 0 : (measured ?? 0);
+    const total = keptMeasured + modelled;
+    return {
+      key: c.key,
+      label: c.label,
+      measured: isPool ? null : measured,
+      modelled,
+      total,
+      share: totalRevenue > 0 ? total / totalRevenue : 0,
+      basis: hit ? hit.names.join(', ') : 'no GA4 conversions recorded for this channel',
+    };
+  })
+    .filter((r) => r.total > 0)
+    .sort((a, b) => b.total - a.total);
+
+  const modelled: ModelledView = {
+    rows: modelledRows,
+    pool: tracedPool,
+    total: totalRevenue,
+    ga4Window: ga4?.periodStart && ga4?.periodEnd ? `${ga4.periodStart} → ${ga4.periodEnd}` : null,
+    available: convTotal > 0 && tracedPool > 0,
+    method:
+      'Traced revenue stays with the route that earned it. The revenue that could not be traced — patients booked at the clinic or by phone, plus bills with no CRM record — is then shared out across channels in proportion to each channel\'s share of the conversions Google Analytics recorded on the website. This is an ALLOCATION, not a measurement: it answers "what did each channel probably contribute" rather than "which patients came from where". Two limits matter — the analytics snapshot covers a rolling four-week window rather than the period selected above, and website analytics cannot see a patient who saw an advert and simply telephoned the clinic.',
+  };
+
   return {
     from,
     to,
     window: win,
     waterfall,
+    modelled,
+    ga4,
     funnel,
     investment,
     modules: cards,

@@ -324,6 +324,61 @@ export async function CommandDeck({
         <div className="mt-4">
           <Waterfall data={deck.waterfall} />
         </div>
+        {/* Modelled view — every channel gets a share, clearly labelled as an
+            allocation rather than a measurement. */}
+        {deck.modelled.available ? (
+          <div className="mt-6 rounded-lg border p-4" style={{ borderColor: C.navyPale, background: C.navyWash }}>
+            <h3 className="text-[13.5px] font-semibold">
+              Modelled contribution — what each channel probably contributed
+            </h3>
+            <p className="mt-1 max-w-[880px] text-[11px] leading-snug" style={{ color: C.inkSoft }}>
+              {deck.modelled.method}
+              {deck.modelled.ga4Window ? ` Analytics window: ${deck.modelled.ga4Window}.` : ''}
+            </p>
+            <div className="mt-3">
+              {deck.modelled.rows.map((r) => (
+                <div key={r.key} className="border-t py-2" style={{ borderColor: C.navyPale }}>
+                  <div className="flex flex-wrap items-baseline justify-between gap-x-3">
+                    <p className="text-[11.5px] font-medium" style={{ color: C.ink }}>
+                      {r.label}
+                    </p>
+                    <p className="text-[12px] font-semibold tabular-nums" style={{ color: C.ink }}>
+                      {fmt.aedExact(r.total)}
+                      <span className="ml-1 text-[10px] font-normal" style={{ color: C.inkFaint }}>
+                        {Math.round(r.share * 100)}%
+                      </span>
+                    </p>
+                  </div>
+                  {/* measured portion solid, modelled portion hatched-light */}
+                  <div className="mt-1 flex h-[7px] w-full overflow-hidden rounded-sm" style={{ background: '#fff' }}>
+                    <div
+                      style={{
+                        width: `${Math.max(((r.measured ?? 0) / (deck.modelled.total || 1)) * 100, 0)}%`,
+                        background: C.navy,
+                      }}
+                    />
+                    <div
+                      style={{
+                        width: `${Math.max((r.modelled / (deck.modelled.total || 1)) * 100, 0)}%`,
+                        background: C.navyPale,
+                      }}
+                    />
+                  </div>
+                  <p className="mt-1 text-[10px] tabular-nums" style={{ color: C.inkFaint }}>
+                    {r.measured != null && r.measured > 0 ? `${fmt.aedExact(r.measured)} traced` : 'nothing traced'}
+                    {r.modelled > 0 ? ` · ${fmt.aedExact(r.modelled)} allocated` : ''}
+                    {r.basis ? ` · from ${r.basis}` : ''}
+                  </p>
+                </div>
+              ))}
+            </div>
+            <p className="mt-2 text-[10px]" style={{ color: C.inkFaint }}>
+              Solid bar = traced to a billed patient. Pale bar = allocated share of the{' '}
+              {fmt.aedExact(deck.modelled.pool)} that could not be traced.
+            </p>
+          </div>
+        ) : null}
+
         {deck.waterfall.total != null && j.revenue != null ? (
           <p className="mt-3 text-[11px]" style={{ color: deck.waterfall.reconciles ? C.inkFaint : C.amber }}>
             {deck.waterfall.reconciles
