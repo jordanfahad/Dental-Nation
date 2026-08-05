@@ -23,6 +23,7 @@ export type ComponentKey =
   | 'gmb'
   | 'google_ads'
   | 'meta'
+  | 'ooh'
   | 'partner'
   | 'smile_club'
   | 'crm'
@@ -127,11 +128,20 @@ export const DECK_COMPONENTS: ComponentDef[] = [
       'The plan is live and priced (AED 69/month · AED 799/year); membership and MRR are not yet fed into the platform, so no revenue is claimed here.',
   },
   {
-    key: 'partner',
-    label: 'Partner campaigns',
-    detail: 'Affiliate-delivered leads.',
+    key: 'ooh',
+    label: 'Out-of-home & offline',
+    detail: 'Billboards, print, events and offline collaborations around the clinics.',
     attribution: 'pending',
-    pendingNote: 'Delivery resumes with the campaign restart; reconciliation of verified vs billed leads is not yet wired.',
+    pendingNote:
+      'Offline media leaves no digital identifier of any kind: a person who passes a billboard and later walks into the clinic cannot be traced by any system we run, and web analytics cannot see them either. Its effect is real but sits inside the direct and walk-in block, which is the largest revenue bar on the page. Measuring it needs a deliberate instrument — a dedicated phone number or promotion code per placement, or asking new patients how they heard of us at reception.',
+  },
+  {
+    key: 'partner',
+    label: 'Partner & collaborations',
+    detail: 'Affiliate-delivered leads, influencer and partnership activity.',
+    attribution: 'pending',
+    pendingNote:
+      'Delivery resumes with the campaign restart; reconciliation of verified vs billed leads is not yet wired, and collaborations carry no per-partner tracking link or promotion code yet.',
   },
   {
     key: 'direct',

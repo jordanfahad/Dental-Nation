@@ -376,6 +376,14 @@ export async function CommandDeck({
               Solid bar = traced to a billed patient. Pale bar = allocated share of the{' '}
               {fmt.aedExact(deck.modelled.pool)} that could not be traced.
             </p>
+            {deck.modelled.invisible.length > 0 ? (
+              <p className="mt-1 text-[10px] leading-snug" style={{ color: C.amber }}>
+                Not in this model at all: {deck.modelled.invisible.join(', ')}. Offline media leaves no digital trace,
+                so no analytics tool can allocate it a share — its effect is real and sits inside the direct and
+                walk-in revenue above. Measuring it needs a dedicated number or code per placement, or asking new
+                patients at reception how they heard of us.
+              </p>
+            ) : null}
           </div>
         ) : null}
 

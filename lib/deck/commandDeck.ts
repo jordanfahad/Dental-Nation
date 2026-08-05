@@ -650,6 +650,8 @@ export interface ModelledContribution {
 
 export interface ModelledView {
   rows: ModelledContribution[];
+  /** Channels no web analytics can observe — named, never scored zero silently. */
+  invisible: string[];
   pool: number;
   total: number;
   ga4Window: string | null;
@@ -1222,8 +1224,15 @@ export async function getCommandDeck(
     .filter((r) => r.total > 0)
     .sort((a, b) => b.total - a.total);
 
+  // Channels that web analytics is structurally blind to. They are named on
+  // the modelled view rather than silently receiving nothing, because a zero
+  // next to "billboards" reads as "billboards did nothing" when the truth is
+  // "nothing we run can see them".
+  const invisibleToAnalytics = DECK_COMPONENTS.filter((c) => c.key === 'ooh').map((c) => c.label);
+
   const modelled: ModelledView = {
     rows: modelledRows,
+    invisible: invisibleToAnalytics,
     pool: tracedPool,
     total: totalRevenue,
     ga4Window: ga4?.periodStart && ga4?.periodEnd ? `${ga4.periodStart} → ${ga4.periodEnd}` : null,
