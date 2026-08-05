@@ -120,28 +120,79 @@ export function FunnelView({ stages }: { stages: FunnelStage[] }) {
         </ul>
       ) : null}
 
-      {/* Exact figures, always available under the picture. */}
-      <div className="mt-3 overflow-x-auto">
-        <table className="w-full min-w-[560px] border-collapse">
-          <tbody>
-            {stages.map((s) => (
-              <tr key={s.key} className="border-t" style={{ borderColor: C.ruleSoft }}>
-                <td className="py-1.5 pr-3 text-[11.5px] font-medium" style={{ color: C.ink }}>
-                  {s.label}
-                </td>
-                <td className="py-1.5 pr-3 text-[10.5px]" style={{ color: C.inkFaint }}>
-                  {s.basis}
-                </td>
-                <td className="py-1.5 text-right text-[12px] font-semibold tabular-nums" style={{ color: s.value == null ? C.inkGhost : C.ink }}>
-                  {s.value == null ? '—' : s.unit === 'aed' ? fmt.aedExact(s.value) : fmt.int(s.value)}
-                </td>
-                <td className="w-[64px] py-1.5 text-right text-[10.5px] tabular-nums" style={{ color: C.amber }}>
-                  {s.rate ?? ''}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {/* Each stage opens its own live dashboard in place — the exact figure,
+          where it is calculated from, what it is made of, and what would make
+          a reader misread it. */}
+      <div className="mt-3">
+        <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide" style={{ color: C.inkFaint }}>
+          Open any stage for its own figures and how it is calculated
+        </p>
+        {stages.map((s) => (
+          <details key={s.key} className="group border-t" style={{ borderColor: C.ruleSoft }}>
+            <summary className="flex cursor-pointer list-none items-center gap-3 py-2">
+              <span className="text-[11px]" style={{ color: C.navyMid }}>
+                <span className="inline-block group-open:hidden">▸</span>
+                <span className="hidden group-open:inline-block">▾</span>
+              </span>
+              <span className="flex-1 text-[11.5px] font-medium" style={{ color: C.ink }}>
+                {s.label}
+              </span>
+              <span className="hidden text-[10.5px] sm:block" style={{ color: C.inkFaint }}>
+                {s.basis}
+              </span>
+              <span
+                className="w-[92px] text-right text-[12px] font-semibold tabular-nums"
+                style={{ color: s.value == null ? C.inkGhost : C.ink }}
+              >
+                {s.value == null ? '—' : s.unit === 'aed' ? fmt.aedExact(s.value) : fmt.int(s.value)}
+              </span>
+              <span className="w-[52px] text-right text-[10.5px] tabular-nums" style={{ color: C.amber }}>
+                {s.rate ?? ''}
+              </span>
+            </summary>
+
+            <div className="pb-3 pl-6 pr-1">
+              <p className="text-[10.5px] leading-snug" style={{ color: C.inkSoft }}>
+                <span className="font-semibold" style={{ color: C.ink }}>
+                  Where this comes from:{' '}
+                </span>
+                {s.source}
+              </p>
+
+              {s.breakdown.length > 0 ? (
+                <div className="mt-2 flex flex-wrap gap-x-6 gap-y-2 rounded px-3 py-2" style={{ background: C.navyWash }}>
+                  {s.breakdown.map((b) => (
+                    <div key={b.label}>
+                      <p
+                        className="text-[15px] font-semibold tabular-nums leading-none"
+                        style={{ color: b.value == null ? C.inkGhost : C.ink }}
+                      >
+                        {b.value == null ? '—' : b.unit === 'aed' ? fmt.aedExact(b.value) : fmt.int(b.value)}
+                      </p>
+                      <p className="mt-1 text-[9.5px] uppercase tracking-wide" style={{ color: C.inkFaint }}>
+                        {b.label}
+                      </p>
+                      {b.note ? (
+                        <p className="text-[9.5px]" style={{ color: C.amber }}>
+                          {b.note}
+                        </p>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+
+              {s.caveat ? (
+                <p
+                  className="mt-2 rounded border-l-2 px-3 py-1.5 text-[10.5px] leading-snug"
+                  style={{ borderColor: C.amberSoft, background: C.amberWash, color: C.inkSoft }}
+                >
+                  {s.caveat}
+                </p>
+              ) : null}
+            </div>
+          </details>
+        ))}
       </div>
     </div>
   );

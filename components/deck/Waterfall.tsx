@@ -138,6 +138,61 @@ export function Waterfall({ data }: { data: WaterfallData }) {
         </svg>
       </div>
 
+      {/* Each component opens its own live dashboard in place. */}
+      <div className="mt-4">
+        <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide" style={{ color: C.inkFaint }}>
+          Open any route for its own figures and how the revenue is traced
+        </p>
+        {measured.map((b) => (
+          <details key={b.key} className="group border-t" style={{ borderColor: C.ruleSoft }}>
+            <summary className="flex cursor-pointer list-none items-center gap-3 py-2">
+              <span className="text-[11px]" style={{ color: C.navyMid }}>
+                <span className="inline-block group-open:hidden">▸</span>
+                <span className="hidden group-open:inline-block">▾</span>
+              </span>
+              <span className="flex-1 text-[11.5px] font-medium" style={{ color: C.ink }}>
+                {b.label}
+              </span>
+              <span className="hidden text-[10.5px] sm:block" style={{ color: C.inkFaint }}>
+                {b.detail}
+              </span>
+              <span className="w-[100px] text-right text-[12px] font-semibold tabular-nums" style={{ color: C.ink }}>
+                AED {Math.round(b.revenue ?? 0).toLocaleString('en-US')}
+              </span>
+            </summary>
+            <div className="pb-3 pl-6 pr-1">
+              <p className="text-[10.5px] leading-snug" style={{ color: C.inkSoft }}>
+                <span className="font-semibold" style={{ color: C.ink }}>
+                  How this is traced:{' '}
+                </span>
+                {b.source}
+              </p>
+              <div className="mt-2 flex flex-wrap gap-x-6 gap-y-2 rounded px-3 py-2" style={{ background: C.navyWash }}>
+                {b.breakdown.map((d) => (
+                  <div key={d.label}>
+                    <p
+                      className="text-[15px] font-semibold tabular-nums leading-none"
+                      style={{ color: d.value == null ? C.inkGhost : C.ink }}
+                    >
+                      {d.value == null
+                        ? '—'
+                        : d.unit === 'aed'
+                          ? `AED ${Math.round(d.value).toLocaleString('en-US')}`
+                          : d.note === 'shown as a share on the chart'
+                            ? `${Math.round(d.value * 100)}%`
+                            : Math.round(d.value).toLocaleString('en-US')}
+                    </p>
+                    <p className="mt-1 text-[9.5px] uppercase tracking-wide" style={{ color: C.inkFaint }}>
+                      {d.label}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </details>
+        ))}
+      </div>
+
       {/* Pending components — deliberately outside the bars. */}
       {pending.length > 0 ? (
         <div className="mt-4">

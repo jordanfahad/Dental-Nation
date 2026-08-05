@@ -288,6 +288,10 @@ export interface WaterfallBar {
   pendingNote: string | null;
   /** What this component CAN prove when revenue is pending (leads / spend). */
   provenLabel: string | null;
+  /** Exactly how this component's figure is derived. */
+  source: string;
+  /** The component's own live dashboard, opened in place. */
+  breakdown: Breakdown[];
 }
 
 export interface Waterfall {
@@ -332,15 +336,71 @@ export function buildWaterfall(
       provenLabel = 'Reconciliation feed pending';
     }
 
+    const revenue = c.attribution === 'pending' ? null : hit ? hit.revenue : null;
+    const bills = hit ? hit.bills : null;
+
+    const TRACED =
+      'Traced patient by patient: each bill carries the patient file number, the file gives the phone number, and the CRM records which route booked that patient. One bill, one route — nothing is shared out or estimated.';
+
+    const source =
+      c.attribution === 'pending'
+        ? 'No identity chain exists from this channel to a billed patient, so no revenue is assigned. The figures shown are what the platform itself reports.'
+        : c.key === 'unattributed'
+          ? 'Bills whose patient has no booking record in the CRM at all — shown rather than folded into another route, so the bars still add up to the total.'
+          : TRACED;
+
+    const breakdown: Breakdown[] =
+      c.attribution === 'pending'
+        ? c.key === 'google_ads'
+          ? [
+              { label: 'Spend', value: win.spendGoogle, unit: 'aed' },
+              { label: 'Clicks', value: win.clicksGoogle, unit: 'count' },
+              { label: 'Conversions reported by Google', value: win.googleConversions, unit: 'count' },
+              {
+                label: 'Cost per click',
+                value: win.spendGoogle != null && win.clicksGoogle ? win.spendGoogle / win.clicksGoogle : null,
+                unit: 'aed',
+              },
+            ]
+          : c.key === 'meta'
+            ? [
+                { label: 'Spend', value: win.spendMeta, unit: 'aed' },
+                { label: 'Clicks', value: win.clicksMeta, unit: 'count' },
+                { label: 'Lead events reported by Meta', value: win.metaLeads, unit: 'count' },
+                {
+                  label: 'Cost per click',
+                  value: win.spendMeta != null && win.clicksMeta ? win.spendMeta / win.clicksMeta : null,
+                  unit: 'aed',
+                },
+              ]
+            : []
+        : [
+            { label: 'Billed revenue', value: revenue, unit: 'aed' },
+            { label: 'Treatments billed', value: bills, unit: 'count' },
+            {
+              label: 'Average bill',
+              value: revenue != null && bills ? revenue / bills : null,
+              unit: 'aed',
+            },
+            {
+              label: 'Share of total billed',
+              value: revenue != null && win.journey.revenue ? revenue / win.journey.revenue : null,
+              unit: 'count',
+              note: 'shown as a share on the chart',
+            },
+          ];
+
     return {
       key: c.key,
       label: c.label,
       detail: c.detail,
       attribution: c.attribution,
-      revenue: c.attribution === 'pending' ? null : hit ? hit.revenue : null,
-      bills: hit ? hit.bills : null,
+      revenue,
+      bills,
       pendingNote: c.pendingNote ?? null,
       provenLabel,
+      source,
+      breakdown,
     };
   });
 
@@ -384,6 +444,13 @@ export interface ModuleCard {
  * paid reach) and at the lead stage (an indirect lead event vs a qualified
  * booking request that names a treatment, clinic and date).
  */
+export interface Breakdown {
+  label: string;
+  value: number | null;
+  unit: 'count' | 'aed';
+  note?: string;
+}
+
 export interface FunnelStage {
   key: string;
   label: string;
@@ -396,6 +463,15 @@ export interface FunnelStage {
   rate: string | null;
   /** Set when the stage has no feed yet — never a zero standing in for a gap. */
   pending: string | null;
+  /** Exactly which system and record type this figure is counted from. */
+  source: string;
+  /** The stage's own live dashboard — what the number is made of. */
+  breakdown: Breakdown[];
+  /**
+   * Anything that would make a reader misread the number or the conversion
+   * into it. Shown in the drawer, never buried.
+   */
+  caveat: string | null;
 }
 
 export interface InvestmentSummary {
@@ -642,6 +718,20 @@ export async function getCommandDeck(
     return `${(r * 100).toFixed(r < 0.01 ? 2 : r < 10 ? 1 : 0)}%`;
   };
 
+  const igFollowers = latestFollowerDay
+    ? visInWindow
+        .filter((r) => r.metric === 'followers' && r.channel === 'instagram' && r.day === latestFollowerDay)
+        .reduce((a, r) => a + (r.value ?? 0), 0)
+    : null;
+  const fbFollowers = latestFollowerDay
+    ? visInWindow
+        .filter((r) => r.metric === 'followers' && r.channel === 'facebook' && r.day === latestFollowerDay)
+        .reduce((a, r) => a + (r.value ?? 0), 0)
+    : null;
+
+  const compRevOf = (key: string): number | null =>
+    waterfall.bars.find((b) => b.key === key)?.revenue ?? null;
+
   const funnel: FunnelStage[] = [
     {
       key: 'visibility',
@@ -651,6 +741,16 @@ export async function getCommandDeck(
       unit: 'count',
       rate: null,
       pending: followers == null ? 'Social audience feed covers recent weeks only' : null,
+      source:
+        'Meta Graph API via the social feed (lane_e.social_insights → board_deck_visibility). Followers is the audience size on the most recent day in the window, never a sum of daily snapshots.',
+      breakdown: [
+        { label: 'Instagram followers (latest day)', value: igFollowers, unit: 'count' },
+        { label: 'Facebook followers (latest day)', value: fbFollowers, unit: 'count' },
+        { label: 'Instagram profile visits (window)', value: profileViews, unit: 'count' },
+        { label: 'Organic social reach (window)', value: socialReach, unit: 'count', note: 'Partial — reach reporting began mid-June' },
+      ],
+      caveat:
+        'The social feed starts in mid-June 2026, so a window earlier than that shows no audience. Followers is a stock (size today), while profile visits and reach are flows (activity in the window) — they are not added together.',
     },
     {
       key: 'reach',
@@ -660,6 +760,16 @@ export async function getCommandDeck(
       unit: 'count',
       rate: null,
       pending: null,
+      source: 'Meta Marketing API and Google Ads API daily insights (board_deck_daily.impressions).',
+      breakdown: [
+        { label: 'Meta impressions', value: win.impressionsMeta, unit: 'count' },
+        { label: 'Google impressions', value: win.impressionsGoogle, unit: 'count' },
+        { label: 'Meta clicks', value: win.clicksMeta, unit: 'count' },
+        { label: 'Google clicks', value: win.clicksGoogle, unit: 'count' },
+        { label: 'Media spend', value: win.spend, unit: 'aed' },
+      ],
+      caveat:
+        'Paid reach only. Organic and referral visits are not counted here, so this is what the brand BOUGHT, not everyone who saw it.',
     },
     {
       key: 'indirect',
@@ -669,6 +779,14 @@ export async function getCommandDeck(
       unit: 'count',
       rate: rate(win.journey.viewed, indirectLeads),
       pending: null,
+      source:
+        'Lead events as the advertising platforms themselves report them: Meta lead events and Google Ads conversions (board_deck_daily).',
+      breakdown: [
+        { label: 'Meta lead events', value: win.metaLeads, unit: 'count' },
+        { label: 'Google Ads conversions', value: win.googleConversions, unit: 'count' },
+      ],
+      caveat:
+        'These are the platforms\' own counts and carry no patient identity, which is why none of them can be traced to revenue. A single person can also register on both platforms.',
     },
     {
       key: 'instant',
@@ -678,6 +796,14 @@ export async function getCommandDeck(
       unit: 'count',
       rate: null,
       pending: null,
+      source:
+        'Booking-widget submissions on dentalnation.com (board_deck_daily.widget_enquiries), with test rows excluded by the same rules the operations team uses.',
+      breakdown: [
+        { label: 'Widget submissions (non-test)', value: instantLeads, unit: 'count' },
+        { label: 'Revenue later billed to these patients', value: compRevOf('widget'), unit: 'aed' },
+      ],
+      caveat:
+        'Counted separately from indirect leads rather than added to them: a booking request that names a treatment, a clinic and a date is a different quality of demand from a platform lead event.',
     },
     {
       key: 'booked',
@@ -687,6 +813,15 @@ export async function getCommandDeck(
       unit: 'count',
       rate: rate(win.journey.inquired, win.journey.booked),
       pending: null,
+      source: 'Practo Insta, the practice-management system of record (board_deck_daily.booked, dated by appointment date).',
+      breakdown: [
+        { label: 'Appointments booked', value: win.journey.booked, unit: 'count' },
+        { label: 'Of which attended', value: win.journey.showed, unit: 'count' },
+        { label: 'No-shows', value: win.noshow, unit: 'count' },
+        { label: 'Cancelled', value: win.cancelled, unit: 'count' },
+      ],
+      caveat:
+        'Bookings include walk-in and phone demand that never appeared as a lead, so the conversion shown into this stage is not a pure lead-to-booking rate — it compares two populations that only partly overlap.',
     },
     {
       key: 'showed',
@@ -696,6 +831,14 @@ export async function getCommandDeck(
       unit: 'count',
       rate: rate(win.journey.booked, win.journey.showed),
       pending: null,
+      source: 'Practo appointment status — arrived or completed (board_deck_daily.showed).',
+      breakdown: [
+        { label: 'Attended', value: win.journey.showed, unit: 'count' },
+        { label: 'No-shows', value: win.noshow, unit: 'count' },
+        { label: 'Cancelled', value: win.cancelled, unit: 'count' },
+      ],
+      caveat:
+        'Appointments booked for future dates are already counted at the booking stage but cannot have attended yet, so this conversion understates the true show rate on any window that includes forward bookings.',
     },
     {
       key: 'treated',
@@ -703,8 +846,26 @@ export async function getCommandDeck(
       basis: 'Bills raised for treatment delivered',
       value: win.journey.treated,
       unit: 'count',
-      rate: rate(win.journey.showed, win.journey.treated),
+      // Deliberately NOT a conversion: bills are not a subset of attended
+      // appointments (one visit can raise several, and a bill is dated when it
+      // is raised). A percentage here would read as ">100% of patients treated".
+      rate: null,
       pending: null,
+      source: 'Practo billing records (board_deck_daily.treatments — one row per bill, dated by bill date).',
+      breakdown: [
+        { label: 'Bills raised', value: win.journey.treated, unit: 'count' },
+        { label: 'Billed revenue', value: win.journey.revenue, unit: 'aed' },
+        {
+          label: 'Average bill',
+          value:
+            win.journey.revenue != null && win.journey.treated != null && win.journey.treated > 0
+              ? win.journey.revenue / win.journey.treated
+              : null,
+          unit: 'aed',
+        },
+      ],
+      caveat:
+        'No conversion is shown into this stage on purpose. A bill is not a subset of an attended appointment — one visit can raise several bills, and a bill is dated when it is raised, so the ratio can exceed 100% and would be meaningless as a funnel step.',
     },
     {
       key: 'revenue',
@@ -714,6 +875,16 @@ export async function getCommandDeck(
       unit: 'aed',
       rate: null,
       pending: null,
+      source: 'Practo billed amounts (board_deck_daily.revenue), split by acquisition route in board_component_revenue.',
+      breakdown: [
+        { label: 'Website booking widget', value: compRevOf('widget'), unit: 'aed' },
+        { label: 'CRM / WhatsApp', value: compRevOf('crm'), unit: 'aed' },
+        { label: 'AI booking agent', value: compRevOf('ai_agent'), unit: 'aed' },
+        { label: 'Direct, walk-in & referral', value: compRevOf('direct'), unit: 'aed' },
+        { label: 'Unattributed', value: compRevOf('unattributed'), unit: 'aed' },
+      ],
+      caveat:
+        'Billed revenue, not collected cash. The split is by the route that booked the patient — see the waterfall below for how each route is traced.',
     },
   ];
 
@@ -736,8 +907,8 @@ export async function getCommandDeck(
     returnOnMedia: revenueWin != null && mediaSpend != null && mediaSpend > 0 ? revenueWin / mediaSpend : null,
     costNote:
       buildCost == null
-        ? 'Build, platform and vendor fees have not been entered yet, so total investment and the return multiple cannot be stated. The figure shown is media spend only — a return calculated against it alone flatters the picture and is labelled as partial.'
-        : 'Total investment is media spend plus build, platform and vendor fees recorded in the Marketing OS cost line.',
+        ? 'Build, platform and vendor fees have not been entered for this window, so total investment and the return multiple cannot be stated. The figure shown is media spend only — a return calculated against it alone flatters the picture and is labelled as partial.'
+        : `Build and platform cost is taken from supplier invoices, recorded in the month each was raised: the website build and booking module go-live (AED 6,500, invoice 30 Jan 2026), the Zavis AI Pro subscription for three seats (AED 2,422 per quarter, invoiced 13 Mar 2026) and the continuous-care retainer (AED 3,000 per quarter, invoiced 23 Mar 2026), plus Azure infrastructure at the stated USD 100 per month. Quarterly fees sit in the month they were invoiced rather than spread across the quarter, so a short window can look lumpy — over the whole period the total is exact. Only the invoices supplied so far are recorded; any earlier or later invoice would raise this figure and lower the return.`,
   };
 
   return {
