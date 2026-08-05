@@ -199,6 +199,11 @@ export function Waterfall({ data }: { data: WaterfallData }) {
       <p className="mt-2 max-w-[900px] rounded border-l-2 px-3 py-2 text-[10.5px] leading-snug" style={{ borderColor: C.navyPale, background: C.navyWash, color: C.inkSoft }}>
         {alloc.method}
       </p>
+      {alloc.confidence ? (
+        <p className="mt-1.5 max-w-[900px] rounded border-l-2 px-3 py-2 text-[10.5px] leading-snug" style={{ borderColor: C.amber, background: C.amberWash, color: C.inkSoft }}>
+          {alloc.confidence}
+        </p>
+      ) : null}
 
       {/* ── The one table: every channel, every number, expandable ────────── */}
       <div className="mt-4">

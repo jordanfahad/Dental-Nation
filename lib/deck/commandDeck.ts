@@ -588,6 +588,8 @@ export interface AllocationInfo {
   /** Whether the allocation key covers the selected window or a rolling snapshot. */
   windowed: boolean;
   method: string;
+  /** What would make a reader over-trust the pale bars. Never hidden. */
+  confidence: string | null;
   /** Routes no web analytics can observe — named, never silently scored zero. */
   invisible: string[];
 }
@@ -649,26 +651,48 @@ export function buildWaterfall(
   const pool =
     (byComponent.get('direct')?.revenue ?? 0) + (byComponent.get('unattributed')?.revenue ?? 0);
 
-  /* The key is SESSIONS, not conversions, and that choice is deliberate.
-   * Conversion events are configured inconsistently across the site: recorded
-   * conversion rates by channel currently range from about 11% to over 80%,
-   * which is an event-tagging difference rather than real behaviour. Splitting
-   * half a million dirhams on that key would hand the largest share of group
-   * revenue to whichever channel happens to fire the most events. Sessions are
-   * counted the same way for every channel, so they are the only comparable
-   * measure of demand the platform has today. */
+  /* THE KEY, and why it is what it is.
+   *
+   * Not conversions: conversion events are tagged inconsistently across the
+   * site, with recorded rates by channel running from about 11% to over 80%.
+   * That is an instrumentation difference, not a behavioural one, and
+   * splitting half a million dirhams on it would hand the biggest share of
+   * group revenue to whichever channel happens to fire the most events.
+   *
+   * Website sessions, therefore — counted identically for every channel. But
+   * sessions alone are blind in one specific and material way: Meta's
+   * click-to-WhatsApp campaigns send people to a conversation, not to the
+   * site, so only a few percent of Meta's clicks ever appear as a session
+   * while nearly all of Google's do. Keying on sessions alone would read that
+   * measurement blind spot as a performance gap and under-credit Meta by an
+   * order of magnitude. So each channel's key is the demand the platform can
+   * count FOR THAT CHANNEL: website sessions, plus off-site lead events for
+   * the channels whose demand deliberately never reaches the website.
+   *
+   * That mixes two counting systems in one denominator, which is a real
+   * weakness and is stated on the page rather than buried here. */
   const convByComponent = new Map<string, { conv: number; names: string[] }>();
   let convTotal = 0;
-  for (const ch of ga4Channels) {
-    const sessions = ch.sessions ?? 0;
-    if (sessions <= 0) continue;
-    const key = GA4_TO_COMPONENT.find((m) => m.match.test(ch.channel))?.key ?? 'unattributed';
+  const addKey = (key: string, amount: number, name: string) => {
+    if (amount <= 0) return;
     const cur = convByComponent.get(key) ?? { conv: 0, names: [] };
-    cur.conv += sessions;
-    cur.names.push(ch.channel);
+    cur.conv += amount;
+    cur.names.push(name);
     convByComponent.set(key, cur);
-    convTotal += sessions;
+    convTotal += amount;
+  };
+
+  for (const ch of ga4Channels) {
+    const key = GA4_TO_COMPONENT.find((m) => m.match.test(ch.channel))?.key ?? 'unattributed';
+    addKey(key, ch.sessions ?? 0, `${Math.round(ch.sessions ?? 0).toLocaleString('en-US')} ${ch.channel} sessions`);
   }
+  // Off-site demand: enquiries that by design never land on the website.
+  addKey(
+    'meta',
+    win.metaLeads ?? 0,
+    `${Math.round(win.metaLeads ?? 0).toLocaleString('en-US')} click-to-WhatsApp lead events Meta reported (these never reach the website, so analytics cannot see them)`,
+  );
+
   const allocationAvailable = convTotal > 0 && pool > 0;
 
   const bars: WaterfallBar[] = DECK_COMPONENTS.map((c) => {
@@ -757,7 +781,7 @@ export function buildWaterfall(
     const allocationBasis = !allocationAvailable
       ? 'No allocation applied in this window.'
       : convHit
-        ? `Allocated on ${convHit.names.join(', ')} — ${Math.round((convHit.conv / convTotal) * 100)}% of the website sessions analytics recorded (${Math.round(convHit.conv).toLocaleString('en-US')} of ${Math.round(convTotal).toLocaleString('en-US')}).`
+        ? `Allocated on ${convHit.names.join(' + ')} — ${Math.round(convHit.conv).toLocaleString('en-US')} of ${Math.round(convTotal).toLocaleString('en-US')} countable demand events in this window, or ${((convHit.conv / convTotal) * 100).toFixed(1)}%.`
         : c.key === 'ooh'
           ? 'No web analytics channel can observe this route: someone who passes a billboard and later telephones or walks in leaves no digital trace anywhere. Its effect is real and currently sits inside the routes above.'
           : c.key === 'gmb'
@@ -799,8 +823,11 @@ export function buildWaterfall(
       windowed: ga4Windowed,
       invisible: allocationAvailable ? DECK_COMPONENTS.filter((c) => c.key === 'ooh').map((c) => c.label) : [],
       method: allocationAvailable
-        ? `Solid bar = revenue traced to a named billed patient. Pale bar = that route's modelled share of the ${aed(pool)} nobody could trace, split by each channel's share of the website sessions Google Analytics recorded${ga4Windowed ? ' in this same window' : ' in its rolling four-week snapshot'}. Sessions are the key rather than conversions on purpose: recorded conversion rates by channel currently range from about 11% to over 80%, which is a difference in how events are tagged rather than in how people behave, and splitting revenue on it would flatter whichever channel fires the most events. The pale half is an allocation, not a measurement — it answers "what did each channel probably contribute", not "which patients came from where".`
-        : 'Every bar here is traced revenue — no allocation was applied, because there was no analytics traffic to split the untraced revenue by.',
+        ? `Solid bar = revenue traced to a named billed patient. Pale bar = that route's modelled share of the ${aed(pool)} nobody could trace, split by each channel's share of the demand the platform can actually count for it${ga4Windowed ? ' in this same window' : ' in a rolling four-week snapshot'} — website sessions, plus the off-site lead events for channels whose enquiries deliberately never reach the website. The pale half is an allocation, not a measurement: it answers "what did each channel probably contribute", not "which patients came from where".`
+        : 'Every bar here is traced revenue — no allocation was applied, because there was no countable demand to split the untraced revenue by.',
+      confidence: allocationAvailable
+        ? 'READ THE PALE BARS WITH CARE. Three things limit them. Website sessions and platform lead events are counted by different systems, so adding them into one denominator is approximate by construction. The revenue being shared out is mostly patients who walked into a clinic or telephoned, and it is being split by a measure of WEBSITE demand — that assumes the two behave alike, which is an assumption rather than a finding. And any channel the web cannot see at all, above all out-of-home, gets nothing, so the channels that can be seen absorb its share. One cheap instrument replaces all of this with measurement: ask every new patient at reception how they heard of us, and record the answer.'
+        : null,
     },
   };
 }
