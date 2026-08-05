@@ -24,6 +24,7 @@ export const TABS = [
   { key: 'digital', label: 'Digital & SEO' },
   { key: 'clarity', label: 'Heatmaps & Recordings' },
   { key: 'group', label: 'Group Revenue', adminOnly: true },
+  { key: 'operations', label: 'Head of Operations', adminOnly: true },
   { key: 'report', label: 'Board Report', adminOnly: true },
   { key: 'status', label: 'Status & Rules', adminOnly: true },
   { key: 'users', label: 'Users', adminOnly: true },

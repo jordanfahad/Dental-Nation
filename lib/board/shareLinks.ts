@@ -5,16 +5,17 @@ import { getSupabaseAdmin } from '@/lib/supabase/server';
  * Tokenized read-only share links for the board growth report and the leave
  * handover (migration 0020).
  *
- * Two scopes, deliberately separate tokens:
- *   - `growth`   → /share/growth/[token]    — board & investors
- *   - `handover` → /share/handover/[token]  — Mr. Akbar only, not for the board
+ * Three scopes, deliberately separate tokens:
+ *   - `growth`     → /share/growth/[token]     — board & investors
+ *   - `handover`   → /share/handover/[token]   — Mr. Akbar only, not for the board
+ *   - `operations` → /share/operations/[token] — the Head of Operations report
  *
  * A token is validated SERVER-SIDE on every request and is scope-checked: a
  * handover token pasted into the board URL is a 404, and vice versa. Revoking
  * one link never touches the other.
  */
 
-export type ShareScope = 'growth' | 'handover';
+export type ShareScope = 'growth' | 'handover' | 'operations';
 
 /**
  * Which board-facing page a `growth` link renders. One link system, two views

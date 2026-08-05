@@ -26,10 +26,11 @@ export default async function BoardReportAdminPage({
   searchParams: Promise<{ preset?: string; from?: string; to?: string; view?: string }>;
 }) {
   const sp = await searchParams;
-  const [role, growthLinks, handoverLinks, manual, h] = await Promise.all([
+  const [role, growthLinks, handoverLinks, opsLinks, manual, h] = await Promise.all([
     currentRole(),
     listShareLinks('growth'),
     listShareLinks('handover'),
+    listShareLinks('operations'),
     getManualMetrics(),
     headers(),
   ]);
@@ -74,6 +75,13 @@ export default async function BoardReportAdminPage({
             origin={origin}
             title="Handover links (Mr. Akbar only)"
             blurb="A separate token for the leave handover, revocable independently of the board link. Not for board circulation — it references vendor and commercial matters."
+          />
+          <ShareAdmin
+            scope="operations"
+            links={opsLinks}
+            origin={origin}
+            title="Head of Operations dashboard links"
+            blurb="Read-only, no login — the operational-excellence report maintained by the Operations Director. Edits made on the Head of Operations tab appear on these links immediately."
           />
           {!showHandover ? (
             <div className="lg:col-span-2">

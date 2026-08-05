@@ -25,7 +25,7 @@ const ADMIN_PATH = '/reports/board';
 
 function scopeOf(v: FormDataEntryValue | null): ShareScope | null {
   const s = String(v ?? '').trim();
-  return s === 'growth' || s === 'handover' ? s : null;
+  return s === 'growth' || s === 'handover' || s === 'operations' ? s : null;
 }
 
 /** Mint a new tokenized link for a scope. */

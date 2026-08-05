@@ -60,7 +60,52 @@ function DeltaChip({ value, downGood }: { value: number | null | undefined; down
 }
 
 /** One gauge in the instrument grid. Opens in place — the page stays one page. */
-function Instrument({ m, extra }: { m: ModuleCard; extra?: React.ReactNode }) {
+/**
+ * Which live-dashboard tab sits behind each deck widget. Board links open it
+ * through the SAME token (/share/…/dash — no login, back button returns
+ * here); the internal preview opens the internal dashboard directly. Keys
+ * deliberately absent (ooh, creative, voice) have no aggregate-safe dashboard
+ * view yet. CRM maps to the Growth Platform aggregates, never to the internal
+ * CRM tab — conversations are patient-level and stay behind the login.
+ */
+const MODULE_DASH_TAB: Record<string, string> = {
+  website: 'analytics',
+  widget: 'clinical-ops',
+  uptime: 'clinical-ops',
+  seo: 'digital',
+  ai_seo: 'digital',
+  google_ads: 'marketing',
+  meta: 'marketing',
+  social_organic: 'social',
+  gmb: 'social',
+  crm: 'group',
+  ai_agent: 'group',
+  smile_club: 'group',
+  partner: 'group',
+  direct: 'group',
+  unattributed: 'group',
+};
+
+function dashHrefFor(basePath: string, key: string): string | null {
+  const tab = MODULE_DASH_TAB[key];
+  if (!tab) return null;
+  return basePath.startsWith('/share/growth/') ? `${basePath}/dash?tab=${tab}` : `/?tab=${tab}`;
+}
+
+function DashLink({ href }: { href: string | null }) {
+  if (!href) return null;
+  return (
+    <a
+      href={href}
+      className="mt-3 inline-block rounded border px-3 py-1.5 text-[11px] font-semibold no-underline"
+      style={{ borderColor: C.navyPale, color: C.navyMid, background: C.navyWash }}
+    >
+      Open the full live dashboard view → <span style={{ color: C.inkFaint, fontWeight: 400 }}>(no login needed — use Back to return here)</span>
+    </a>
+  );
+}
+
+function Instrument({ m, extra, dashHref }: { m: ModuleCard; extra?: React.ReactNode; dashHref?: string | null }) {
   return (
     <details className="group rounded-lg border bg-white print-avoid-break" style={{ borderColor: C.rule }}>
       <summary className="flex cursor-pointer list-none items-start justify-between gap-3 px-4 py-3">
@@ -127,6 +172,11 @@ function Instrument({ m, extra }: { m: ModuleCard; extra?: React.ReactNode }) {
         ) : null}
 
         {extra ? <div className="mt-3 hidden group-open:block">{extra}</div> : null}
+        {dashHref ? (
+          <div className="no-print hidden group-open:block">
+            <DashLink href={dashHref} />
+          </div>
+        ) : null}
 
         <p className="mt-2 text-[10.5px] font-medium group-open:hidden" style={{ color: C.navyMid }}>
           ▸ Click to expand the full detail
@@ -325,7 +375,7 @@ export async function CommandDeck({
           {ATTRIBUTION_NOTE}
         </p>
         <div className="mt-4">
-          <Waterfall data={deck.waterfall} />
+          <Waterfall data={deck.waterfall} dashHrefFor={(key) => dashHrefFor(basePath, key)} />
         </div>
         {deck.waterfall.total != null && j.revenue != null ? (
           <p className="mt-3 text-[11px]" style={{ color: deck.waterfall.reconciles ? C.inkFaint : C.amber }}>
@@ -371,6 +421,7 @@ export async function CommandDeck({
               key={m.key}
               m={m}
               extra={m.key === 'google_ads' ? <GoogleCascade g={deck.google} /> : undefined}
+              dashHref={dashHrefFor(basePath, m.key)}
             />
           ))}
         </div>

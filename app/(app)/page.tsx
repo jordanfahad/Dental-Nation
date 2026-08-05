@@ -25,6 +25,7 @@ import { BoardReport } from '@/components/sections/report/BoardReport';
 import { DigitalSeo } from '@/components/sections/digital/DigitalSeo';
 import { GroupRevenue } from '@/components/sections/clinics/GroupRevenue';
 import { UserManagement } from '@/components/sections/users/UserManagement';
+import { OpsReport } from '@/components/sections/opsreport/OpsReport';
 
 export const dynamic = 'force-dynamic';
 // The Marketing deep-dive sub-tabs make several live Meta/Google ad-API calls,
@@ -141,6 +142,11 @@ export default async function DashboardPage({
           <GroupRevenue range={{ from: shell.range.from, to: shell.range.to, preset: shell.range.preset }} sub={sp.gtab} gchan={sp.gchan} gclinic={sp.gclinic} mpipe={sp.mpipe} compare={shell.range.compare === 'prev'} />
         ) : null}
         {tab === 'report' ? <BoardReport date={sp.rdate} cadence={sp.rcad} compare={sp.rcmp === '1'} clinic={clinic} /> : null}
+        {/* The operations tab grant IS the edit right — that is how the
+            Operations Director owns the document without other admin power. */}
+        {tab === 'operations' ? (
+          <OpsReport editable={isAdmin || (me?.extraTabs ?? []).includes('operations')} editorName={me?.name} />
+        ) : null}
         {tab === 'status' && isAdmin ? <StatusReport /> : null}
         {tab === 'users' && isAdmin ? <UserManagement /> : null}
       </Suspense>

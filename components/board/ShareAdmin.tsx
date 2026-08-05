@@ -46,7 +46,13 @@ export function ShareAdmin({
           name="label"
           value={label}
           onChange={(e) => setLabel(e.target.value)}
-          placeholder={scope === 'growth' ? 'e.g. Board — Q3 2026' : 'e.g. Mr. Akbar — Aug leave'}
+          placeholder={
+            scope === 'growth'
+              ? 'e.g. Board — Q3 2026'
+              : scope === 'operations'
+                ? 'e.g. Ms Shadi — leadership review'
+                : 'e.g. Mr. Akbar — Aug leave'
+          }
           className="min-w-[200px] flex-1 rounded-md border border-line bg-card px-2.5 py-1.5 text-[12.5px] text-ink placeholder:text-ink-ghost"
         />
         {/* Board links choose their view; a handover link has only one page. */}
