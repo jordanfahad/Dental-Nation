@@ -39,6 +39,8 @@ export interface ShareLink {
   lastViewedAt: string | null;
   /** Per-link module toggles: {"partner": false} hides that Command Deck card. */
   sections: Record<string, boolean> | null;
+  /** Operations links only: the holder may EDIT the report, not just read it. */
+  canEdit: boolean;
 }
 
 const TABLE = 'report_share_links';
@@ -53,6 +55,7 @@ function toLink(row: any): ShareLink {
     token: row.token,
     scope: row.scope,
     view: row.view === 'funnel' ? 'funnel' : 'command_deck',
+    canEdit: Boolean(row.can_edit),
     sections: row.sections && typeof row.sections === 'object' ? row.sections : null,
     label: row.label ?? '',
     createdBy: row.created_by ?? null,
@@ -127,6 +130,7 @@ export async function createShareLink(
   label: string,
   createdBy?: string | null,
   view: ShareView = 'command_deck',
+  canEdit = false,
 ): Promise<ShareLink | null> {
   const db = getSupabaseAdmin();
   if (!db) return null;
@@ -138,11 +142,23 @@ export async function createShareLink(
       created_by: createdBy ?? null,
       // The view only means anything for board links; a handover link has one page.
       view: scope === 'growth' ? view : 'funnel',
+      // Editing rides on a link ONLY for the operations report, and only when
+      // minted that way on purpose — every other scope is read-only by type.
+      can_edit: scope === 'operations' && canEdit,
     })
     .select('*')
     .single();
   if (error || !data) return null;
   return toLink(data);
+}
+
+/**
+ * Resolve a token that must carry EDIT rights on the operations report.
+ * Anything else — read-only link, wrong scope, revoked, expired — is null.
+ */
+export async function resolveEditToken(token: string): Promise<ShareLink | null> {
+  const link = await resolveShareToken(token, 'operations');
+  return link?.canEdit ? link : null;
 }
 
 /**

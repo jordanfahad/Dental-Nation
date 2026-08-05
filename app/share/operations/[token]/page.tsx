@@ -16,10 +16,14 @@ export const metadata: Metadata = {
  *
  * Same pattern as the board link: the uuid IS the credential, validated
  * server-side on every request and scoped to `operations`; revoking the link
- * kills the page instantly. Strictly read-only — `editable` is false, so the
- * tree renders no form and imports no action. Content edits made by the
- * Operations Director on the internal tab appear here immediately (the route
- * is force-dynamic).
+ * kills the page instantly. Two kinds of link, decided at mint time:
+ *
+ *  · read-only (the default) — `editable` false, no form in the tree;
+ *  · EDITOR — minted with can_edit for the Operations Director. The same page
+ *    renders with the edit controls, every form carries the token, and every
+ *    mutation re-validates it server-side. She opens the link, edits, and a
+ *    refresh shows the change everywhere — no login involved. Revoking the
+ *    link ends its editing on the next request.
  *
  * 🔒 PII: the report renders lane_e.ops_report_sections only — narrative
  * content authored by the Operations Office. No patient-level surface is
@@ -38,8 +42,11 @@ export default async function OperationsSharePage({
 
   return (
     <main className="mx-auto max-w-[1080px] px-4 py-7 sm:px-8 sm:py-10">
-      <OpsReport editable={false} />
-      <p className="mt-4 text-center text-[10px] text-ink-ghost">Prepared for {link.label}</p>
+      <OpsReport editable={link.canEdit} editorName={link.canEdit ? link.label : null} editToken={link.canEdit ? token : null} />
+      <p className="mt-4 text-center text-[10px] text-ink-ghost">
+        Prepared for {link.label}
+        {link.canEdit ? ' · editor link — keep it private' : ''}
+      </p>
     </main>
   );
 }

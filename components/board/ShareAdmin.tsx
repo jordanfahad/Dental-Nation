@@ -55,6 +55,13 @@ export function ShareAdmin({
           }
           className="min-w-[200px] flex-1 rounded-md border border-line bg-card px-2.5 py-1.5 text-[12.5px] text-ink placeholder:text-ink-ghost"
         />
+        {/* Operations links can carry EDIT rights — minted deliberately. */}
+        {scope === 'operations' ? (
+          <label className="flex min-h-[36px] items-center gap-1.5 rounded-md border border-line bg-card px-2.5 text-[11.5px] text-ink-soft">
+            <input type="checkbox" name="can_edit" className="h-3.5 w-3.5" />
+            Editor link — can modify the report
+          </label>
+        ) : null}
         {/* Board links choose their view; a handover link has only one page. */}
         {scope === 'growth' ? (
           <select
@@ -115,6 +122,11 @@ function LinkRow({ link, url }: { link: ShareLink; url: string }) {
         <div className="min-w-0">
           <p className="flex items-center gap-2 text-[12.5px] font-medium text-ink">
             <span className="truncate">{link.label || 'Untitled link'}</span>
+            {link.canEdit ? (
+              <span className="shrink-0 rounded border border-watch/50 bg-watch-50 px-1.5 py-[1px] text-[9.5px] font-semibold uppercase tracking-wide text-watch">
+                Editor
+              </span>
+            ) : null}
             {link.revoked ? (
               <span className="shrink-0 rounded border border-stop/40 bg-stop-50 px-1.5 py-[1px] text-[9.5px] font-semibold uppercase tracking-wide text-stop">
                 Revoked

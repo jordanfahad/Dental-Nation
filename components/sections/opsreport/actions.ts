@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { currentUser } from '@/lib/auth/role';
+import { resolveEditToken } from '@/lib/board/shareLinks';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
 import {
   SECTION_KINDS,
@@ -13,14 +14,23 @@ import {
 /**
  * Mutations for the Head of Operations report.
  *
- * WHO MAY EDIT: admins, and any signed-in user whose tab grants include
- * `operations` — that grant IS the edit right, which is how Ms Shadi
- * (viewer base role + operations grant) owns the document without holding any
- * other admin power. The share route renders no form and imports none of
- * this, so a token holder can never reach a mutation.
+ * WHO MAY EDIT — two credentials, checked server-side on every call:
+ *  1. A signed-in admin, or any user whose tab grants include `operations`
+ *     (Ms Shadi's login on the internal tab).
+ *  2. An EDITOR share link: the form carries its token, and the token must
+ *     resolve to a live operations link minted with can_edit — this is what
+ *     lets Ms Shadi edit straight from a link with no login at all. Refresh
+ *     shows the change immediately (the routes are force-dynamic).
+ *  Read-only links carry no edit flag and fail this check; revoking an editor
+ *  link kills its editing on the very next request.
  */
 
-async function editor(): Promise<{ name: string } | null> {
+async function editor(formData?: FormData): Promise<{ name: string } | null> {
+  const token = String(formData?.get('edit_token') ?? '').trim();
+  if (token) {
+    const link = await resolveEditToken(token);
+    return link ? { name: link.label || 'editor link' } : null;
+  }
   const me = await currentUser();
   if (!me) return null;
   if (me.role === 'admin' || me.extraTabs.includes('operations')) {
@@ -41,7 +51,7 @@ const num = (v: FormDataEntryValue | null): number | null => {
 };
 
 export async function saveOpsSection(formData: FormData): Promise<void> {
-  const who = await editor();
+  const who = await editor(formData);
   const db = getSupabaseAdmin();
   const id = num(formData.get('id'));
   const kind = String(formData.get('kind') ?? '') as SectionKind;
@@ -62,7 +72,7 @@ export async function saveOpsSection(formData: FormData): Promise<void> {
 }
 
 export async function addOpsSection(formData: FormData): Promise<void> {
-  const who = await editor();
+  const who = await editor(formData);
   const db = getSupabaseAdmin();
   const kind = String(formData.get('kind') ?? '') as SectionKind;
   if (!who || !db || !SECTION_KINDS.includes(kind)) return;
@@ -88,7 +98,7 @@ export async function addOpsSection(formData: FormData): Promise<void> {
 }
 
 export async function deleteOpsSection(formData: FormData): Promise<void> {
-  const who = await editor();
+  const who = await editor(formData);
   const db = getSupabaseAdmin();
   const id = num(formData.get('id'));
   // The checkbox is the two-step: Delete does nothing unless it was ticked.
@@ -98,7 +108,7 @@ export async function deleteOpsSection(formData: FormData): Promise<void> {
 }
 
 export async function toggleOpsSection(formData: FormData): Promise<void> {
-  const who = await editor();
+  const who = await editor(formData);
   const db = getSupabaseAdmin();
   const id = num(formData.get('id'));
   if (!who || !db || !id) return;
@@ -112,7 +122,7 @@ export async function toggleOpsSection(formData: FormData): Promise<void> {
 }
 
 export async function moveOpsSection(formData: FormData): Promise<void> {
-  const who = await editor();
+  const who = await editor(formData);
   const db = getSupabaseAdmin();
   const id = num(formData.get('id'));
   const dir = String(formData.get('dir') ?? '');

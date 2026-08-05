@@ -394,19 +394,6 @@ export async function CommandDeck({
         ) : null}
       </section>
 
-      {/* ── Forward view ─────────────────────────────────────────────────── */}
-      <section className="rounded-lg border bg-white p-4 print-avoid-break sm:p-5" style={{ borderColor: C.amberSoft }}>
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-[15px] font-semibold">What is in the pipeline, and what it is expected to produce</h2>
-          <p className="text-[11px] font-medium" style={{ color: C.amber }}>
-            Projections — click or tap any initiative for its assumptions and arithmetic
-          </p>
-        </div>
-        <div className="mt-3">
-          <ForwardView data={pipeline} />
-        </div>
-      </section>
-
       {/* ── Instrument grid ──────────────────────────────────────────────── */}
       <section>
         <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -424,6 +411,19 @@ export async function CommandDeck({
               dashHref={dashHrefFor(basePath, m.key)}
             />
           ))}
+        </div>
+      </section>
+
+      {/* ── Forward view ─────────────────────────────────────────────────── */}
+      <section className="rounded-lg border bg-white p-4 print-avoid-break sm:p-5" style={{ borderColor: C.amberSoft }}>
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-[15px] font-semibold">What is in the pipeline, and what it is expected to produce</h2>
+          <p className="text-[11px] font-medium" style={{ color: C.amber }}>
+            Projections — click or tap any initiative for its assumptions and arithmetic
+          </p>
+        </div>
+        <div className="mt-3">
+          <ForwardView data={pipeline} />
         </div>
       </section>
 

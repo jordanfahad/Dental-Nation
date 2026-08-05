@@ -44,7 +44,8 @@ export async function generateLink(_prev: ActionState, formData: FormData): Prom
   const view = String(formData.get('view') ?? '') === 'funnel' ? 'funnel' : 'command_deck';
 
   const who = (await currentUser())?.name ?? 'admin';
-  const link = await createShareLink(scope, label, who, view);
+  const canEdit = formData.get('can_edit') === 'on';
+  const link = await createShareLink(scope, label, who, view, canEdit);
   if (!link) return { ok: false, error: 'Could not create the link.' };
 
   revalidatePath(ADMIN_PATH);

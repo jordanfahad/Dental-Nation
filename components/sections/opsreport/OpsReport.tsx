@@ -33,9 +33,12 @@ const str = (v: any): string => (typeof v === 'string' ? v : '');
 export async function OpsReport({
   editable,
   editorName,
+  editToken,
 }: {
   editable: boolean;
   editorName?: string | null;
+  /** Set when editing rides on an editor share link instead of a login. */
+  editToken?: string | null;
 }) {
   const [sections, last] = await Promise.all([getOpsSections(editable), getOpsLastUpdated()]);
 
@@ -79,7 +82,7 @@ export async function OpsReport({
             <div className={s.visible ? '' : 'opacity-50'}>
               <Block s={s} />
             </div>
-            {editable ? <Editor s={s} first={i === 0} last={i === sections.length - 1} /> : null}
+            {editable ? <Editor s={s} first={i === 0} last={i === sections.length - 1} editToken={editToken} /> : null}
           </section>
         ))
       )}
@@ -89,6 +92,7 @@ export async function OpsReport({
         <div className="no-print mt-8 rounded-card border border-dashed border-line bg-panel/40 px-4 py-3">
           <p className="text-[12px] font-semibold text-ink">Add a section</p>
           <form action={addOpsSection} className="mt-2 flex flex-wrap items-center gap-2">
+            {editToken ? <input type="hidden" name="edit_token" value={editToken} /> : null}
             <select
               name="kind"
               className="rounded-md border border-line bg-card px-2 py-1.5 text-[12px] text-ink"
@@ -315,8 +319,19 @@ function Stat({ value, label, note, big }: { value: string; label: string; note:
 
 /* ───────────────────────────────────────────────────────────────── editor ── */
 
-function Editor({ s, first, last }: { s: OpsSection; first: boolean; last: boolean }) {
+function Editor({
+  s,
+  first,
+  last,
+  editToken,
+}: {
+  s: OpsSection;
+  first: boolean;
+  last: boolean;
+  editToken?: string | null;
+}) {
   const fields = payloadToFields(s.kind, s.payload);
+  const tokenField = editToken ? <input type="hidden" name="edit_token" value={editToken} /> : null;
   return (
     <details className="no-print group mt-1.5 rounded-card border border-dashed border-line/80">
       <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-1.5 text-[11px] text-ink-faint hover:text-ink">
@@ -327,6 +342,7 @@ function Editor({ s, first, last }: { s: OpsSection; first: boolean; last: boole
 
       <div className="border-t border-dashed border-line/80 px-3 py-3">
         <form action={saveOpsSection}>
+          {tokenField}
           <input type="hidden" name="id" value={s.id} />
           <input type="hidden" name="kind" value={s.kind} />
 
@@ -378,6 +394,7 @@ function Editor({ s, first, last }: { s: OpsSection; first: boolean; last: boole
         <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-line/60 pt-2.5">
           {!first ? (
             <form action={moveOpsSection}>
+              {tokenField}
               <input type="hidden" name="id" value={s.id} />
               <input type="hidden" name="dir" value="up" />
               <ControlButton label="↑ Move up" />
@@ -385,16 +402,19 @@ function Editor({ s, first, last }: { s: OpsSection; first: boolean; last: boole
           ) : null}
           {!last ? (
             <form action={moveOpsSection}>
+              {tokenField}
               <input type="hidden" name="id" value={s.id} />
               <input type="hidden" name="dir" value="down" />
               <ControlButton label="↓ Move down" />
             </form>
           ) : null}
           <form action={toggleOpsSection}>
+            {tokenField}
             <input type="hidden" name="id" value={s.id} />
             <ControlButton label={s.visible ? 'Hide from shared links' : 'Show on shared links'} />
           </form>
           <form action={deleteOpsSection} className="ml-auto flex items-center gap-1.5">
+            {tokenField}
             <input type="hidden" name="id" value={s.id} />
             <label className="flex items-center gap-1 text-[10.5px] text-ink-faint">
               <input type="checkbox" name="confirm" className="h-3 w-3" /> confirm
