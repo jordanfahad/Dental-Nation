@@ -1,18 +1,23 @@
 import { C } from '@/components/board/design';
-import type { Waterfall as WaterfallData } from '@/lib/deck/commandDeck';
+import type { Waterfall as WaterfallData, WaterfallBar } from '@/lib/deck/commandDeck';
 
 /**
  * Revenue-contribution waterfall — the signature exhibit of the Command Deck.
  *
- * Measured components cascade left to right and land on the Total bar, so the
- * bars genuinely sum to billed revenue. Components whose revenue cannot yet be
- * traced are NOT given a share: they sit on the baseline as an outlined
- * "attribution pending" marker carrying whatever they can actually prove
- * (spend, leads). That gap is the honest part of this chart — a board member
- * can see exactly how much of the revenue the machine can currently explain.
+ * ONE chart, EVERY channel. Each column is split into the two things a board
+ * member must be able to tell apart at a glance:
+ *
+ *   solid — revenue traced patient by patient (bill → file → phone → route)
+ *   pale  — that channel's modelled share of the revenue nobody could trace
+ *
+ * The columns cascade left to right and land on the Total bar, so they add up
+ * to billed revenue exactly. A channel with nothing in either half still gets
+ * its place on the axis with a marker rather than being dropped, because a
+ * missing channel reads as "we forgot it" and a zero reads as "it did nothing"
+ * — the drawer underneath says which it actually is.
  *
  * Pure SVG, no client JS: it renders identically in print and on a phone,
- * where the chart scrolls horizontally under a sticky Total.
+ * where the chart scrolls horizontally.
  */
 
 const aedShort = (n: number): string => {
@@ -21,12 +26,11 @@ const aedShort = (n: number): string => {
   return String(Math.round(n));
 };
 
+const aedExact = (n: number): string => `AED ${Math.round(n).toLocaleString('en-US')}`;
+
 export function Waterfall({ data }: { data: WaterfallData }) {
-  const measured = data.bars.filter((b) => b.revenue != null && b.revenue > 0);
-  // "Pending" is a property of the component, not of this window: a traceable
-  // route that simply billed nothing here is not an attribution gap.
-  const pending = data.bars.filter((b) => b.attribution === 'pending');
-  const total = data.total ?? 0;
+  const total = data.contributionTotal || data.total || 0;
+  const alloc = data.allocation;
 
   if (total <= 0) {
     return (
@@ -36,33 +40,60 @@ export function Waterfall({ data }: { data: WaterfallData }) {
     );
   }
 
-  // Geometry. One column per measured bar, plus the Total column.
-  const cols = measured.length + 1;
-  const colW = 96;
-  const gap = 18;
+  // Every component is a column, in the configured acquisition-first order, so
+  // the eye travels from what marketing produced to what walked in anyway.
+  const bars = data.bars;
+
+  const colW = 76;
+  const gap = 11;
+  const cols = bars.length + 1;
   const chartW = cols * colW + (cols - 1) * gap;
-  const chartH = 260;
+  const chartH = 300;
   const padTop = 26;
-  const padBottom = 64;
+  const padBottom = 96;
   const plotH = chartH - padTop - padBottom;
   const scale = (v: number) => (v / total) * plotH;
 
   let cumulative = 0;
-  const steps = measured.map((b, i) => {
-    const value = b.revenue ?? 0;
+  const steps = bars.map((b, i) => {
+    const value = b.contribution;
+    const tracedPart = Math.max(0, Math.min(b.traced ?? 0, value));
     const x = i * (colW + gap);
-    const h = Math.max(scale(value), 2);
+    const h = scale(value);
     const yTop = padTop + plotH - scale(cumulative) - h;
-    const step = { bar: b, x, y: yTop, h, value, cumulativeAfter: cumulative + value };
+    const step = {
+      bar: b,
+      x,
+      y: yTop,
+      h,
+      value,
+      tracedH: scale(tracedPart),
+      empty: value <= 0,
+    };
     cumulative += value;
     return step;
   });
 
-  const totalX = measured.length * (colW + gap);
+  const totalX = bars.length * (colW + gap);
   const totalH = Math.max(scale(total), 2);
   const totalY = padTop + plotH - totalH;
+  const share = (v: number) => `${((v / total) * 100).toFixed(v / total < 0.1 ? 1 : 0)}%`;
 
-  const share = (v: number) => `${Math.round((v / total) * 100)}%`;
+  // Labels are angled: fourteen channels will not fit horizontally at a size
+  // anyone can read.
+  const axisLabel = (x: number, text: string, bold = false) => (
+    <text
+      x={x}
+      y={padTop + plotH + 12}
+      transform={`rotate(-38 ${x} ${padTop + plotH + 12})`}
+      textAnchor="end"
+      fontSize={9.5}
+      fontWeight={bold ? 600 : 400}
+      fill={bold ? C.ink : C.inkSoft}
+    >
+      {text.length > 24 ? `${text.slice(0, 23)}…` : text}
+    </text>
+  );
 
   return (
     <div>
@@ -72,158 +103,214 @@ export function Waterfall({ data }: { data: WaterfallData }) {
           width={chartW}
           height={chartH}
           role="img"
-          aria-label="Billed revenue by acquisition route, cascading to the total"
-          style={{ maxWidth: '100%', minWidth: Math.min(chartW, 560) }}
+          aria-label="Billed revenue contribution by channel, traced and modelled, cascading to the total"
+          style={{ maxWidth: '100%', minWidth: Math.min(chartW, 620) }}
         >
-          {/* baseline */}
           <line x1={0} y1={padTop + plotH} x2={chartW} y2={padTop + plotH} stroke={C.rule} strokeWidth={1} />
 
-          {steps.map((s, i) => (
-            <g key={s.bar.key}>
-              {/* connector from the top of this bar to the next bar's foot */}
-              {i < steps.length - 1 ? (
-                <line
-                  x1={s.x + colW}
-                  y1={s.y}
-                  x2={s.x + colW + gap}
-                  y2={s.y}
-                  stroke={C.navyPale}
-                  strokeWidth={1}
-                  strokeDasharray="3 3"
-                />
-              ) : (
-                <line
-                  x1={s.x + colW}
-                  y1={s.y}
-                  x2={totalX}
-                  y2={s.y}
-                  stroke={C.navyPale}
-                  strokeWidth={1}
-                  strokeDasharray="3 3"
-                />
-              )}
-              <rect
-                x={s.x}
-                y={s.y}
-                width={colW}
-                height={s.h}
-                fill={s.bar.attribution === 'residual' ? C.navySoft : C.navy}
-                rx={2}
-              />
-              {/* value above the bar */}
-              <text x={s.x + colW / 2} y={s.y - 7} textAnchor="middle" fontSize={12} fontWeight={600} fill={C.ink}>
-                {aedShort(s.value)}
-              </text>
-              {/* label under the axis */}
-              <text x={s.x + colW / 2} y={padTop + plotH + 16} textAnchor="middle" fontSize={10} fill={C.inkSoft}>
-                {s.bar.label.length > 16 ? `${s.bar.label.slice(0, 15)}…` : s.bar.label}
-              </text>
-              <text x={s.x + colW / 2} y={padTop + plotH + 30} textAnchor="middle" fontSize={9.5} fill={C.inkFaint}>
-                {share(s.value)} · {s.bar.bills ?? 0} treatments
-              </text>
-            </g>
-          ))}
+          {steps.map((s, i) => {
+            const next = steps[i + 1];
+            const connectorX2 = next ? next.x : totalX;
+            return (
+              <g key={s.bar.key}>
+                {!s.empty ? (
+                  <line
+                    x1={s.x + colW}
+                    y1={s.y}
+                    x2={connectorX2}
+                    y2={s.y}
+                    stroke={C.navyPale}
+                    strokeWidth={1}
+                    strokeDasharray="3 3"
+                  />
+                ) : null}
+
+                {s.empty ? (
+                  // Present on the axis, honestly at zero.
+                  <line
+                    x1={s.x + 8}
+                    y1={padTop + plotH}
+                    x2={s.x + colW - 8}
+                    y2={padTop + plotH}
+                    stroke={C.amberSoft}
+                    strokeWidth={2.5}
+                  />
+                ) : (
+                  <>
+                    {/* whole contribution, pale */}
+                    <rect x={s.x} y={s.y} width={colW} height={Math.max(s.h, 2)} fill={C.navyPale} rx={2} />
+                    {/* traced portion, solid, sitting at the foot of the column */}
+                    {s.tracedH > 0 ? (
+                      <rect
+                        x={s.x}
+                        y={s.y + s.h - s.tracedH}
+                        width={colW}
+                        height={Math.max(s.tracedH, 2)}
+                        fill={s.bar.attribution === 'residual' ? C.navySoft : C.navy}
+                        rx={2}
+                      />
+                    ) : null}
+                    <text x={s.x + colW / 2} y={s.y - 6} textAnchor="middle" fontSize={11} fontWeight={600} fill={C.ink}>
+                      {aedShort(s.value)}
+                    </text>
+                  </>
+                )}
+
+                {axisLabel(s.x + colW / 2, s.empty ? `${s.bar.label} — 0` : `${s.bar.label} · ${share(s.value)}`)}
+              </g>
+            );
+          })}
 
           {/* Total — the one warm bar on the chart */}
           <rect x={totalX} y={totalY} width={colW} height={totalH} fill={C.amber} rx={2} />
-          <text x={totalX + colW / 2} y={totalY - 7} textAnchor="middle" fontSize={12.5} fontWeight={700} fill={C.amber}>
+          <text x={totalX + colW / 2} y={totalY - 6} textAnchor="middle" fontSize={12} fontWeight={700} fill={C.amber}>
             {aedShort(total)}
           </text>
-          <text x={totalX + colW / 2} y={padTop + plotH + 16} textAnchor="middle" fontSize={10} fontWeight={600} fill={C.ink}>
-            Total billed
-          </text>
-          <text x={totalX + colW / 2} y={padTop + plotH + 30} textAnchor="middle" fontSize={9.5} fill={C.inkFaint}>
-            100%
-          </text>
+          {axisLabel(totalX + colW / 2, 'Total billed · 100%', true)}
         </svg>
       </div>
 
-      {/* Each component opens its own live dashboard in place. */}
-      <div className="mt-4">
-        <p className="mb-1 text-[11px] font-medium" style={{ color: C.navyMid }}>
-          ▸ Click any route below to expand its full detail — figures, method and how the revenue is traced
-        </p>
-        {measured.map((b) => (
-          <details key={b.key} className="group border-t" style={{ borderColor: C.ruleSoft }}>
-            <summary className="flex cursor-pointer list-none items-center gap-3 py-2">
-              <span className="text-[11px]" style={{ color: C.navyMid }}>
-                <span className="inline-block group-open:hidden">▸</span>
-                <span className="hidden group-open:inline-block">▾</span>
-              </span>
-              <span className="flex-1 text-[11.5px] font-medium" style={{ color: C.ink }}>
-                {b.label}
-              </span>
-              <span className="hidden text-[10.5px] sm:block" style={{ color: C.inkFaint }}>
-                {b.detail}
-              </span>
-              <span className="w-[100px] text-right text-[12px] font-semibold tabular-nums" style={{ color: C.ink }}>
-                AED {Math.round(b.revenue ?? 0).toLocaleString('en-US')}
-              </span>
-            </summary>
-            <div className="pb-3 pl-6 pr-1">
-              <p className="text-[10.5px] leading-snug" style={{ color: C.inkSoft }}>
-                <span className="font-semibold" style={{ color: C.ink }}>
-                  How this is traced:{' '}
-                </span>
-                {b.source}
-              </p>
-              <div className="mt-2 flex flex-wrap gap-x-6 gap-y-2 rounded px-3 py-2" style={{ background: C.navyWash }}>
-                {b.breakdown.map((d) => (
-                  <div key={d.label}>
-                    <p
-                      className="text-[15px] font-semibold tabular-nums leading-none"
-                      style={{ color: d.value == null ? C.inkGhost : C.ink }}
-                    >
-                      {d.value == null
-                        ? '—'
-                        : d.unit === 'aed'
-                          ? `AED ${Math.round(d.value).toLocaleString('en-US')}`
-                          : d.note === 'shown as a share on the chart'
-                            ? `${Math.round(d.value * 100)}%`
-                            : Math.round(d.value).toLocaleString('en-US')}
-                    </p>
-                    <p className="mt-1 text-[9.5px] uppercase tracking-wide" style={{ color: C.inkFaint }}>
-                      {d.label}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </details>
-        ))}
+      {/* Legend — what the two shades mean, said once and plainly. */}
+      <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1 text-[10.5px]" style={{ color: C.inkSoft }}>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block h-[10px] w-[16px] rounded-sm" style={{ background: C.navy }} />
+          Traced to a named billed patient
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block h-[10px] w-[16px] rounded-sm" style={{ background: C.navyPale }} />
+          Modelled share of untraced revenue
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block h-[10px] w-[16px] rounded-sm" style={{ background: C.navySoft }} />
+          Direct &amp; walk-in
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block h-[3px] w-[16px]" style={{ background: C.amberSoft }} />
+          On the axis, nothing attributable yet
+        </span>
       </div>
 
-      {/* Pending components — deliberately outside the bars. */}
-      {pending.length > 0 ? (
-        <div className="mt-4">
-          <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: C.inkFaint }}>
-            The other {pending.length} channels — active, revenue attribution pending
+      <p className="mt-2 max-w-[900px] rounded border-l-2 px-3 py-2 text-[10.5px] leading-snug" style={{ borderColor: C.navyPale, background: C.navyWash, color: C.inkSoft }}>
+        {alloc.method}
+      </p>
+
+      {/* ── The one table: every channel, every number, expandable ────────── */}
+      <div className="mt-4">
+        <p className="mb-1 text-[11px] font-medium" style={{ color: C.navyMid }}>
+          ▸ Click or tap any channel below to open its live detail — the figures, where each one comes from, and how
+          the revenue is traced
+        </p>
+        <div className="flex items-center gap-3 border-b pb-1 text-[9.5px] uppercase tracking-wide" style={{ borderColor: C.rule, color: C.inkFaint }}>
+          <span className="w-[11px]" />
+          <span className="flex-1">Channel</span>
+          <span className="w-[96px] text-right">Traced</span>
+          <span className="w-[96px] text-right">Modelled</span>
+          <span className="w-[104px] text-right">Contribution</span>
+          <span className="w-[44px] text-right">Share</span>
+        </div>
+        {bars.map((b) => (
+          <ChannelRow key={b.key} bar={b} total={total} />
+        ))}
+        <div className="flex items-center gap-3 border-t-2 pt-1.5 text-[11.5px] font-semibold" style={{ borderColor: C.ink, color: C.ink }}>
+          <span className="w-[11px]" />
+          <span className="flex-1">Total billed revenue</span>
+          <span className="w-[96px] text-right tabular-nums">{aedExact(data.total ?? 0)}</span>
+          <span className="w-[96px] text-right tabular-nums">{aedExact(alloc.pool)}</span>
+          <span className="w-[104px] text-right tabular-nums">{aedExact(total)}</span>
+          <span className="w-[44px] text-right tabular-nums">100%</span>
+        </div>
+        <p className="mt-1 text-[10px] leading-snug" style={{ color: C.inkFaint }}>
+          The Traced column is what the platform can prove today; the Modelled column is the {aedExact(alloc.pool)} it
+          could not trace, shared out. Only the Contribution column adds up to billed revenue — reading the Traced
+          column alone understates every advertising channel, and reading Contribution as measured overstates them.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/** One channel: summary line always visible, full dashboard on expand. */
+function ChannelRow({ bar: b, total }: { bar: WaterfallBar; total: number }) {
+  const contribution = b.contribution;
+  const dim = contribution <= 0;
+  return (
+    <details className="group border-t" style={{ borderColor: C.ruleSoft }}>
+      <summary className="flex cursor-pointer list-none items-center gap-3 py-2">
+        <span className="w-[11px] text-[11px]" style={{ color: C.navyMid }}>
+          <span className="inline-block group-open:hidden">▸</span>
+          <span className="hidden group-open:inline-block">▾</span>
+        </span>
+        <span className="flex-1 min-w-0">
+          <span className="block truncate text-[11.5px] font-medium" style={{ color: dim ? C.inkFaint : C.ink }}>
+            {b.label}
+          </span>
+          <span className="hidden truncate text-[10px] sm:block" style={{ color: C.inkFaint }}>
+            {b.detail}
+          </span>
+        </span>
+        <span className="w-[96px] text-right text-[11.5px] tabular-nums" style={{ color: b.traced ? C.ink : C.inkGhost }}>
+          {b.traced ? aedExact(b.traced) : '—'}
+        </span>
+        <span className="w-[96px] text-right text-[11.5px] tabular-nums" style={{ color: b.allocated > 0 ? C.inkSoft : C.inkGhost }}>
+          {b.allocated > 0 ? aedExact(b.allocated) : '—'}
+        </span>
+        <span className="w-[104px] text-right text-[12px] font-semibold tabular-nums" style={{ color: dim ? C.inkGhost : C.ink }}>
+          {dim ? '—' : aedExact(contribution)}
+        </span>
+        <span className="w-[44px] text-right text-[10.5px] tabular-nums" style={{ color: C.inkFaint }}>
+          {dim || total <= 0 ? '—' : `${((contribution / total) * 100).toFixed(contribution / total < 0.1 ? 1 : 0)}%`}
+        </span>
+      </summary>
+
+      <div className="pb-3 pl-[26px] pr-1">
+        <p className="text-[10.5px] leading-snug" style={{ color: C.inkSoft }}>
+          <span className="font-semibold" style={{ color: C.ink }}>
+            Traced revenue:{' '}
+          </span>
+          {b.source}
+        </p>
+        <p className="mt-1 text-[10.5px] leading-snug" style={{ color: C.inkSoft }}>
+          <span className="font-semibold" style={{ color: C.ink }}>
+            Modelled share:{' '}
+          </span>
+          {b.allocationBasis}
+        </p>
+        {b.pendingNote ? (
+          <p className="mt-1 text-[10.5px] leading-snug" style={{ color: C.amber }}>
+            <span className="font-semibold">Why revenue cannot be traced here: </span>
+            {b.pendingNote}
           </p>
-          <p className="mb-2 mt-0.5 max-w-[860px] text-[10.5px] leading-snug" style={{ color: C.inkSoft }}>
-            These are running and measured, but none of them can yet trace a specific billed patient, so none is given
-            a slice of the bars above. What each one CAN prove is shown here.
+        ) : null}
+        {b.provenLabel ? (
+          <p className="mt-1 text-[10.5px] tabular-nums" style={{ color: C.inkFaint }}>
+            What this channel can prove in this window: {b.provenLabel}
           </p>
-          <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {pending.map((b) => (
-              <div key={b.key} className="rounded border border-dashed px-3 py-2" style={{ borderColor: C.navyPale, background: C.navyWash }}>
-                <p className="text-[12px] font-semibold" style={{ color: C.ink }}>
-                  {b.label}
+        ) : null}
+
+        {b.breakdown.length > 0 ? (
+          <div className="mt-2 flex flex-wrap gap-x-6 gap-y-2 rounded px-3 py-2" style={{ background: C.navyWash }}>
+            {b.breakdown.map((d) => (
+              <div key={d.label}>
+                <p
+                  className="text-[15px] font-semibold tabular-nums leading-none"
+                  style={{ color: d.value == null ? C.inkGhost : C.ink }}
+                >
+                  {d.value == null
+                    ? '—'
+                    : d.unit === 'aed'
+                      ? aedExact(d.value)
+                      : d.note === 'shown as a share on the chart'
+                        ? `${Math.round(d.value * 100)}%`
+                        : Math.round(d.value).toLocaleString('en-US')}
                 </p>
-                {b.provenLabel ? (
-                  <p className="mt-0.5 text-[11px] tabular-nums" style={{ color: C.inkSoft }}>
-                    {b.provenLabel}
-                  </p>
-                ) : null}
-                {b.pendingNote ? (
-                  <p className="mt-1 text-[10.5px] leading-snug" style={{ color: C.inkFaint }}>
-                    {b.pendingNote}
-                  </p>
-                ) : null}
+                <p className="mt-1 text-[9.5px] uppercase tracking-wide" style={{ color: C.inkFaint }}>
+                  {d.label}
+                </p>
               </div>
             ))}
           </div>
-        </div>
-      ) : null}
-    </div>
+        ) : null}
+      </div>
+    </details>
   );
 }

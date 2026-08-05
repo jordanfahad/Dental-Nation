@@ -3,6 +3,7 @@ import { type AdminClient, getSupabaseAdmin, isSupabaseConfigured } from '@/lib/
 import { getSheetsClient, isGoogleConfigured } from './google-auth';
 import { SheetsAdapter } from './adapters/sheets-adapter';
 import { fetchGa4Summary } from './adapters/ga4-adapter';
+import { syncGa4Daily } from './adapters/ga4-daily';
 import { syncPracto, syncPractoAppointments } from './adapters/practo-adapter';
 import { isPractoConfigured } from '@/config/practo';
 import { syncMeta } from './adapters/meta-adapter';
@@ -177,6 +178,30 @@ export async function runSync(trigger: SyncTrigger): Promise<SyncSummary> {
         .from('ga4_summary')
         .upsert({ id: 1, ...ga4, computed_at: new Date().toISOString() }, { onConflict: 'id' });
       sheetsOk.push('Google Analytics (GA4)');
+
+      // Daily grain as well as the rolling snapshot: without it every board
+      // figure sourced from GA4 describes the last 28 days rather than the
+      // window a reader selected. Best-effort — never blocks the summary.
+      try {
+        const daily = await syncGa4Daily(supabase);
+        if (daily.ok) {
+          sheetsOk.push(
+            `GA4 daily — ${daily.days} rows${daily.backfilled ? ' (backfill)' : ''}, ${daily.events} event rows`,
+          );
+        } else {
+          dataGaps.push({
+            area: 'tracking',
+            detail: `GA4 daily sync failed: ${daily.error ?? 'unknown'}`,
+            owner: 'Data/Analytics',
+          });
+        }
+      } catch (e) {
+        dataGaps.push({
+          area: 'tracking',
+          detail: `GA4 daily sync failed: ${(e as Error).message}`,
+          owner: 'Data/Analytics',
+        });
+      }
     } catch (err) {
       sheetsFailed.push('Google Analytics (GA4)');
       dataGaps.push({
