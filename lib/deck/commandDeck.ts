@@ -109,6 +109,43 @@ export const getComponentRevenue = cache(async (): Promise<ComponentDayRow[]> =>
   }));
 });
 
+export interface VisibilityRow {
+  day: string;
+  channel: string;
+  metric: string;
+  value: number | null;
+}
+
+export const getDeckVisibility = cache(async (): Promise<VisibilityRow[]> => {
+  const db = getSupabaseAdmin();
+  if (!db) return [];
+  const { data, error } = await db.from('board_deck_visibility').select('*').limit(5000);
+  if (error || !data) return [];
+  return data.map((r) => ({
+    day: String(r.day),
+    channel: String(r.channel),
+    metric: String(r.metric),
+    value: num(r.value),
+  }));
+});
+
+/**
+ * Build / platform / vendor fees from the Marketing OS cost line. Returns a
+ * null total when nothing has been entered — an investment figure that quietly
+ * omits what the build cost would flatter every return number on the page.
+ */
+export const getDeckCosts = cache(async (): Promise<{ rows: number; total: number | null }> => {
+  const db = getSupabaseAdmin();
+  if (!db) return { rows: 0, total: null };
+  const { data, error } = await db.from('mos_costs').select('zavis_fee_aed, azure_cost_aed, other_aed').limit(500);
+  if (error || !data || data.length === 0) return { rows: 0, total: null };
+  const total = data.reduce(
+    (a, r) => a + (num(r.zavis_fee_aed) ?? 0) + (num(r.azure_cost_aed) ?? 0) + (num(r.other_aed) ?? 0),
+    0,
+  );
+  return { rows: data.length, total };
+});
+
 export interface UptimeDay {
   day: string;
   checks: number;
@@ -340,11 +377,52 @@ export interface ModuleCard {
   pendingNote: string | null;
 }
 
+/**
+ * The wide funnel from Mr. Akbar's sketch — nine stages from brand visibility
+ * through to revenue. Wider than the six-gauge strip because it separates the
+ * two things that behave completely differently at the top (owned audience vs
+ * paid reach) and at the lead stage (an indirect lead event vs a qualified
+ * booking request that names a treatment, clinic and date).
+ */
+export interface FunnelStage {
+  key: string;
+  label: string;
+  /** What the number literally counts. */
+  basis: string;
+  value: number | null;
+  /** 'aed' renders as currency; 'count' as an integer. */
+  unit: 'count' | 'aed';
+  /** Conversion from the previous stage, when the two are comparable. */
+  rate: string | null;
+  /** Set when the stage has no feed yet — never a zero standing in for a gap. */
+  pending: string | null;
+}
+
+export interface InvestmentSummary {
+  /** Systems delivered (the module registry) and how many are wired to a feed. */
+  projectsDelivered: number;
+  projectsLive: number;
+  revenue: number | null;
+  /** Media spend in the window — known. */
+  mediaSpend: number | null;
+  /** Build/platform/vendor fees — null until entered in Marketing OS. */
+  buildCost: number | null;
+  /** mediaSpend + buildCost, or null when buildCost is unknown. */
+  totalInvestment: number | null;
+  /** revenue ÷ total investment; null while any cost component is missing. */
+  returnMultiple: number | null;
+  /** revenue ÷ media spend — always computable, and labelled as partial. */
+  returnOnMedia: number | null;
+  costNote: string;
+}
+
 export interface DeckReport {
   from: string;
   to: string;
   window: DeckWindow;
   waterfall: Waterfall;
+  funnel: FunnelStage[];
+  investment: InvestmentSummary;
   modules: ModuleCard[];
   lastUpdated: string | null;
   liveModules: number;
@@ -361,7 +439,7 @@ export async function getCommandDeck(
   priorFrom: string | null,
   priorTo: string | null,
 ): Promise<DeckReport> {
-  const [daily, componentRows, uptimeRows, modules, crm, manual, lastUpdated] = await Promise.all([
+  const [daily, componentRows, uptimeRows, modules, crm, manual, lastUpdated, visibility, costs] = await Promise.all([
     getDeckDaily(),
     getComponentRevenue(),
     getDeckUptime(),
@@ -369,6 +447,8 @@ export async function getCommandDeck(
     getBoardCrm().catch(() => null),
     getManualMetrics().catch(() => new Map()),
     getLastIngestion().catch(() => null),
+    getDeckVisibility().catch(() => [] as VisibilityRow[]),
+    getDeckCosts().catch(() => ({ rows: 0, total: null as number | null })),
   ]);
 
   const win = windowFrom(daily, from, to, priorFrom, priorTo);
@@ -531,11 +611,142 @@ export async function getCommandDeck(
     }),
   }));
 
+  /* ── The wide funnel (Mr. Akbar's sketch) ─────────────────────────────── */
+
+  // Followers is a STOCK: take the newest day in the window, never a sum.
+  const visInWindow = visibility.filter((r) => r.day >= from && r.day <= to);
+  const latestFollowerDay = visInWindow
+    .filter((r) => r.metric === 'followers')
+    .reduce<string | null>((acc, r) => (acc == null || r.day > acc ? r.day : acc), null);
+  const followers = latestFollowerDay
+    ? visInWindow
+        .filter((r) => r.metric === 'followers' && r.day === latestFollowerDay)
+        .reduce((a, r) => a + (r.value ?? 0), 0)
+    : null;
+  const sumMetric = (metric: string): number | null => {
+    const rows = visInWindow.filter((r) => r.metric === metric);
+    return rows.length ? rows.reduce((a, r) => a + (r.value ?? 0), 0) : null;
+  };
+  const profileViews = sumMetric('profile_views');
+  const socialReach = sumMetric('reach');
+
+  const indirectLeads =
+    win.metaLeads == null && win.googleConversions == null
+      ? null
+      : (win.metaLeads ?? 0) + (win.googleConversions ?? 0);
+  const instantLeads = win.widgetEnquiries;
+
+  const rate = (a: number | null, b: number | null): string | null => {
+    if (a == null || b == null || a === 0) return null;
+    const r = b / a;
+    return `${(r * 100).toFixed(r < 0.01 ? 2 : r < 10 ? 1 : 0)}%`;
+  };
+
+  const funnel: FunnelStage[] = [
+    {
+      key: 'visibility',
+      label: 'Visibility',
+      basis: 'Brand audience — followers now, plus profile visits in the window',
+      value: followers,
+      unit: 'count',
+      rate: null,
+      pending: followers == null ? 'Social audience feed covers recent weeks only' : null,
+    },
+    {
+      key: 'reach',
+      label: 'Reach',
+      basis: 'Ad impressions across Meta and Google',
+      value: win.journey.viewed,
+      unit: 'count',
+      rate: null,
+      pending: null,
+    },
+    {
+      key: 'indirect',
+      label: 'Indirect leads',
+      basis: 'Platform-reported lead events — interest, not yet an appointment request',
+      value: indirectLeads,
+      unit: 'count',
+      rate: rate(win.journey.viewed, indirectLeads),
+      pending: null,
+    },
+    {
+      key: 'instant',
+      label: 'Instant qualified leads',
+      basis: 'Website booking requests naming a treatment, clinic and date',
+      value: instantLeads,
+      unit: 'count',
+      rate: null,
+      pending: null,
+    },
+    {
+      key: 'booked',
+      label: 'Booking',
+      basis: 'Appointments in Practo, all sources including walk-in',
+      value: win.journey.booked,
+      unit: 'count',
+      rate: rate(win.journey.inquired, win.journey.booked),
+      pending: null,
+    },
+    {
+      key: 'showed',
+      label: 'Showed up',
+      basis: 'Arrived or completed',
+      value: win.journey.showed,
+      unit: 'count',
+      rate: rate(win.journey.booked, win.journey.showed),
+      pending: null,
+    },
+    {
+      key: 'treated',
+      label: 'Treatment',
+      basis: 'Bills raised for treatment delivered',
+      value: win.journey.treated,
+      unit: 'count',
+      rate: rate(win.journey.showed, win.journey.treated),
+      pending: null,
+    },
+    {
+      key: 'revenue',
+      label: 'Revenue',
+      basis: 'Billed revenue',
+      value: win.journey.revenue,
+      unit: 'aed',
+      rate: null,
+      pending: null,
+    },
+  ];
+
+  /* ── Projects, investment and return ──────────────────────────────────── */
+
+  const mediaSpend = win.spend;
+  const buildCost = costs.total;
+  const totalInvestment = mediaSpend != null && buildCost != null ? mediaSpend + buildCost : null;
+  const revenueWin = win.journey.revenue;
+
+  const investment: InvestmentSummary = {
+    projectsDelivered: modules.length,
+    projectsLive: modules.filter((m) => m.status === 'LIVE').length,
+    revenue: revenueWin,
+    mediaSpend,
+    buildCost,
+    totalInvestment,
+    returnMultiple:
+      revenueWin != null && totalInvestment != null && totalInvestment > 0 ? revenueWin / totalInvestment : null,
+    returnOnMedia: revenueWin != null && mediaSpend != null && mediaSpend > 0 ? revenueWin / mediaSpend : null,
+    costNote:
+      buildCost == null
+        ? 'Build, platform and vendor fees have not been entered yet, so total investment and the return multiple cannot be stated. The figure shown is media spend only — a return calculated against it alone flatters the picture and is labelled as partial.'
+        : 'Total investment is media spend plus build, platform and vendor fees recorded in the Marketing OS cost line.',
+  };
+
   return {
     from,
     to,
     window: win,
     waterfall,
+    funnel,
+    investment,
     modules: cards,
     lastUpdated,
     liveModules: modules.filter((m) => m.status === 'LIVE').length,

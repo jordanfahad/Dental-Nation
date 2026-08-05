@@ -4,6 +4,7 @@ import { resolveBoardRange, rangeLabel } from '@/lib/board/range';
 import { getCommandDeck, getDeckDaily, type ModuleCard, type ModuleStat } from '@/lib/deck/commandDeck';
 import { ATTRIBUTION_NOTE, JOURNEY_STAGES, MODULE_STATUS_LABEL, type ModuleStatus } from '@/config/command-deck';
 import { Waterfall } from './Waterfall';
+import { FunnelView } from './FunnelView';
 import { PrintButton } from '@/components/board/PrintButton';
 
 /**
@@ -227,6 +228,85 @@ export async function CommandDeck({
             );
           })}
         </div>
+      </section>
+
+      {/* ── The wide funnel — visibility through to revenue ──────────────── */}
+      <section className="rounded-lg border bg-white p-4 print-avoid-break sm:p-5" style={{ borderColor: C.rule }}>
+        <h2 className="text-[15px] font-semibold">Visibility to revenue — the whole journey</h2>
+        <p className="mt-1 max-w-[880px] text-[11.5px] leading-snug" style={{ color: C.inkSoft }}>
+          The band narrows the way demand does. Two things sit at the top that behave completely differently: the
+          audience the brand owns, and the reach it buys. At the lead stage the split matters just as much — a
+          platform lead event is interest, while a website booking request already names a treatment, a clinic and a
+          date, which is why the two are counted separately rather than added together.
+        </p>
+        <div className="mt-4">
+          <FunnelView stages={deck.funnel} />
+        </div>
+      </section>
+
+      {/* ── Projects, investment and return ──────────────────────────────── */}
+      <section className="rounded-lg border bg-white p-4 print-avoid-break sm:p-5" style={{ borderColor: C.rule }}>
+        <h2 className="text-[15px] font-semibold">What was built, what it cost, what it returned</h2>
+        <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-4 sm:grid-cols-3 lg:grid-cols-5">
+          <div>
+            <p className="text-[22px] font-semibold tabular-nums leading-none">
+              {deck.investment.projectsDelivered}
+              <span className="ml-1 text-[13px] font-normal" style={{ color: C.inkFaint }}>
+                systems
+              </span>
+            </p>
+            <p className="mt-1 text-[10px] uppercase tracking-wide" style={{ color: C.inkFaint }}>
+              Delivered
+            </p>
+            <p className="mt-0.5 text-[10px]" style={{ color: C.inkFaint }}>
+              {deck.investment.projectsLive} wired to a live feed
+            </p>
+          </div>
+          <div>
+            <p className="text-[22px] font-semibold tabular-nums leading-none" style={{ color: C.amber }}>
+              {deck.investment.revenue == null ? '—' : fmt.aedExact(deck.investment.revenue)}
+            </p>
+            <p className="mt-1 text-[10px] uppercase tracking-wide" style={{ color: C.inkFaint }}>
+              Revenue billed
+            </p>
+          </div>
+          <div>
+            <p className="text-[22px] font-semibold tabular-nums leading-none">
+              {deck.investment.mediaSpend == null ? '—' : fmt.aedExact(deck.investment.mediaSpend)}
+            </p>
+            <p className="mt-1 text-[10px] uppercase tracking-wide" style={{ color: C.inkFaint }}>
+              Media spend
+            </p>
+          </div>
+          <div>
+            <p className="text-[22px] font-semibold tabular-nums leading-none" style={{ color: deck.investment.buildCost == null ? C.inkGhost : C.ink }}>
+              {deck.investment.buildCost == null ? 'Not entered' : fmt.aedExact(deck.investment.buildCost)}
+            </p>
+            <p className="mt-1 text-[10px] uppercase tracking-wide" style={{ color: C.inkFaint }}>
+              Build &amp; platform cost
+            </p>
+          </div>
+          <div>
+            <p className="text-[22px] font-semibold tabular-nums leading-none" style={{ color: deck.investment.returnMultiple == null ? C.inkGhost : C.good }}>
+              {deck.investment.returnMultiple != null
+                ? `${deck.investment.returnMultiple.toFixed(1)}×`
+                : deck.investment.returnOnMedia != null
+                  ? `${deck.investment.returnOnMedia.toFixed(1)}×`
+                  : '—'}
+            </p>
+            <p className="mt-1 text-[10px] uppercase tracking-wide" style={{ color: C.inkFaint }}>
+              {deck.investment.returnMultiple != null ? 'Return on total investment' : 'Return on media only'}
+            </p>
+            {deck.investment.returnMultiple == null && deck.investment.returnOnMedia != null ? (
+              <p className="mt-0.5 text-[10px] font-medium" style={{ color: C.amber }}>
+                Partial — build cost excluded
+              </p>
+            ) : null}
+          </div>
+        </div>
+        <p className="mt-3 rounded border-l-2 px-3 py-2 text-[11px] leading-snug" style={{ borderColor: C.amberSoft, background: C.amberWash, color: C.inkSoft }}>
+          {deck.investment.costNote}
+        </p>
       </section>
 
       {/* ── Revenue contribution waterfall ───────────────────────────────── */}
