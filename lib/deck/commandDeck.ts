@@ -722,7 +722,7 @@ export function buildWaterfall(
 
     const source =
       c.attribution === 'pending'
-        ? 'No identity chain exists from this channel to a billed patient, so no revenue is assigned. The figures shown are what the platform itself reports.'
+        ? 'Nothing can be TRACED from this channel to a named billed patient yet — the identity chain (a click or enquiry carrying a phone number the practice system can match) does not exist. That is why the Traced column shows a dash. The channel still appears on the chart through its modelled share below, and the figures here are what the platform itself reports.'
         : c.key === 'unattributed'
           ? 'Bills whose patient has no booking record in the CRM at all — shown rather than folded into another route, so the bars still add up to the total.' +
             (allocationAvailable ? HANDED_OVER : '')

@@ -22,6 +22,8 @@ export type SectionKind =
   | 'columns'
   | 'beforeafter'
   | 'list'
+  | 'bars'
+  | 'flow'
   | 'quote'
   | 'text';
 
@@ -32,6 +34,8 @@ export const KIND_LABEL: Record<SectionKind, string> = {
   columns: 'Side-by-side columns',
   beforeafter: 'Before / after',
   list: 'List',
+  bars: 'Bar chart',
+  flow: 'Step flow / journey',
   quote: 'Pull quote',
   text: 'Paragraph',
 };
@@ -201,6 +205,39 @@ export function payloadToFields(kind: SectionKind, payload: any): EditField[] {
           hint: 'yes = numbered 1, 2, 3 · no = bullet points.',
         },
       ];
+    case 'bars':
+      return [
+        {
+          name: 'bars',
+          label: 'Bars',
+          widget: 'area',
+          value: asArr(payload?.bars)
+            /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+            .map((b: any) => [asStr(b?.label), String(b?.value ?? ''), asStr(b?.note)].filter(Boolean).join(' | '))
+            .join('\n'),
+          hint: 'One bar per line: label | value | small note (note optional). Negative values are drawn in red — e.g. Feb | -177476.',
+        },
+        {
+          name: 'unit',
+          label: 'Unit',
+          widget: 'line',
+          value: asStr(payload?.unit) || 'aed',
+          hint: 'aed = dirham amounts · pct = percentages · plain = bare numbers.',
+        },
+      ];
+    case 'flow':
+      return [
+        {
+          name: 'steps',
+          label: 'Steps',
+          widget: 'area',
+          value: asArr(payload?.steps)
+            /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+            .map((st: any) => [asStr(st?.label), asStr(st?.note)].filter(Boolean).join(' | '))
+            .join('\n'),
+          hint: 'One step per line, in order: step name | short description. They render as a numbered arrow flow.',
+        },
+      ];
     case 'quote':
     case 'text':
       return [
@@ -266,6 +303,28 @@ export function fieldsToPayload(kind: SectionKind, get: (name: string) => string
         items: lines(get('items')),
         numbered: /^\s*y/i.test(get('numbered')),
       };
+    case 'bars': {
+      const unitRaw = get('unit').trim().toLowerCase();
+      return {
+        unit: unitRaw === 'pct' || unitRaw === 'plain' ? unitRaw : 'aed',
+        bars: lines(get('bars')).map((l) => {
+          const [label = '', valueRaw = '', ...rest] = l.split('|').map((p) => p.trim());
+          const value = Number(valueRaw.replace(/[^0-9.\-]/g, ''));
+          return {
+            label,
+            value: Number.isFinite(value) ? value : 0,
+            ...(rest.length ? { note: rest.join(' | ') } : {}),
+          };
+        }),
+      };
+    }
+    case 'flow':
+      return {
+        steps: lines(get('steps')).map((l) => {
+          const [label = '', ...rest] = l.split('|').map((p) => p.trim());
+          return { label, ...(rest.length ? { note: rest.join(' | ') } : {}) };
+        }),
+      };
     case 'quote':
     case 'text':
       return { text: get('text').trim() };
@@ -286,6 +345,10 @@ export function templatePayload(kind: SectionKind): object {
       return { beforeTitle: 'Before', afterTitle: 'After', before: ['…'], after: ['…'] };
     case 'list':
       return { items: ['First item'], numbered: false };
+    case 'bars':
+      return { unit: 'aed', bars: [{ label: 'First bar', value: 100 }] };
+    case 'flow':
+      return { steps: [{ label: 'Step one', note: 'What happens here' }, { label: 'Step two', note: '…' }] };
     case 'quote':
     case 'text':
       return { text: '…' };

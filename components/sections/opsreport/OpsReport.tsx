@@ -276,6 +276,89 @@ function Block({ s }: { s: OpsSection }) {
         </div>
       );
 
+    case 'bars': {
+      /* eslint-disable @typescript-eslint/no-explicit-any */
+      const bars = arr(p?.bars).map((b: any) => ({
+        label: str(b?.label),
+        value: Number(b?.value) || 0,
+        note: str(b?.note),
+      }));
+      /* eslint-enable @typescript-eslint/no-explicit-any */
+      const unit: string = p?.unit === 'pct' ? 'pct' : p?.unit === 'plain' ? 'plain' : 'aed';
+      const maxAbs = Math.max(...bars.map((b) => Math.abs(b.value)), 1);
+      const hasNegative = bars.some((b) => b.value < 0);
+      // With negatives the zero axis sits proportionally between the extremes.
+      const negSpan = hasNegative ? Math.max(...bars.map((b) => (b.value < 0 ? -b.value : 0))) : 0;
+      const posSpan = Math.max(...bars.map((b) => (b.value > 0 ? b.value : 0)), hasNegative ? 1 : maxAbs);
+      const span = negSpan + posSpan || 1;
+      const zeroPct = (negSpan / span) * 100;
+      const fmtVal = (v: number): string =>
+        unit === 'pct'
+          ? `${v.toLocaleString('en-US', { maximumFractionDigits: 1 })}%`
+          : unit === 'aed'
+            ? `${v < 0 ? '−' : ''}AED ${Math.abs(Math.round(v)).toLocaleString('en-US')}`
+            : Math.round(v).toLocaleString('en-US');
+      return (
+        <div>
+          <Heading s={s} />
+          <div className="mt-3 rounded-card border border-line bg-card px-4 py-3.5">
+            {bars.map((b, i) => (
+              <div key={i} className="flex items-center gap-3 py-[5px]">
+                <span className="w-[150px] shrink-0 text-[11.5px] font-medium leading-tight text-ink sm:w-[190px]">
+                  {b.label}
+                  {b.note ? <span className="block text-[9.5px] font-normal text-ink-faint">{b.note}</span> : null}
+                </span>
+                <span className="relative h-[16px] flex-1">
+                  {hasNegative ? (
+                    <span className="absolute bottom-[-3px] top-[-3px] w-[1.5px] bg-ink/30" style={{ left: `${zeroPct}%` }} />
+                  ) : null}
+                  <span
+                    className={`absolute top-0 h-full rounded-sm ${b.value < 0 ? 'bg-stop/75' : 'bg-accent'}`}
+                    style={
+                      b.value < 0
+                        ? { right: `${100 - zeroPct}%`, width: `${Math.max((-b.value / span) * 100, 0.6)}%` }
+                        : { left: `${zeroPct}%`, width: `${Math.max((b.value / span) * 100, 0.6)}%` }
+                    }
+                  />
+                </span>
+                <span className={`w-[104px] shrink-0 text-right text-[11.5px] font-semibold tabular-nums ${b.value < 0 ? 'text-stop' : 'text-ink'}`}>
+                  {fmtVal(b.value)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    case 'flow': {
+      /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+      const steps = arr(p?.steps).map((st: any) => ({ label: str(st?.label), note: str(st?.note) }));
+      return (
+        <div>
+          <Heading s={s} />
+          <div className="mt-3 flex flex-wrap items-stretch gap-y-3 rounded-card border border-line bg-card px-4 py-4">
+            {steps.map((st, i) => (
+              <div key={i} className="flex items-stretch">
+                <div className="w-[128px] sm:w-[148px]">
+                  <span className="flex h-[22px] w-[22px] items-center justify-center rounded-full bg-accent text-[10.5px] font-bold text-white">
+                    {i + 1}
+                  </span>
+                  <p className="mt-1.5 text-[11.5px] font-semibold leading-tight text-ink">{st.label}</p>
+                  {st.note ? <p className="mt-0.5 pr-2 text-[10px] leading-snug text-ink-soft">{st.note}</p> : null}
+                </div>
+                {i < steps.length - 1 ? (
+                  <div className="mx-1.5 flex w-[16px] items-start justify-center pt-[3px] text-[13px] text-accent-400 sm:mx-2">
+                    →
+                  </div>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
     case 'quote':
       return (
         <blockquote className="rounded-card border border-line bg-panel/50 px-6 py-5 text-center">
