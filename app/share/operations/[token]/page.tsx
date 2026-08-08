@@ -7,12 +7,12 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
 export const metadata: Metadata = {
-  title: 'Dental Nation — Head of Operations',
+  title: 'Dental Nation — Operating Platform Report',
   robots: { index: false, follow: false, nocache: true, noarchive: true },
 };
 
 /**
- * The Head of Operations report, shared by token — no login.
+ * The operations report, shared by token — no login.
  *
  * Same pattern as the board link: the uuid IS the credential, validated
  * server-side on every request and scoped to `operations`; revoking the link

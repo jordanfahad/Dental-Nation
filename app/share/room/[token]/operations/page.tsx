@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false, nocache: true, noarchive: true },
 };
 
-/** The Head of Operations report, read-only, opened from the Evidence Room. */
+/** The operations report, read-only, opened from the Evidence Room. */
 export default async function RoomOperationsPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
   const link = await resolveShareToken(token, 'room');
@@ -31,7 +31,7 @@ export default async function RoomOperationsPage({ params }: { params: Promise<{
       <h1 className="text-[20px] font-semibold text-ink">Operating Platform reports</h1>
       <p className="mb-5 mt-1 max-w-[820px] text-[12px] leading-snug text-ink-soft">
         The operating model, and the live report that proves it is running. The narrative below is the platform
-        blueprint; the Head of Operations report that follows is maintained live by the Operations Director.
+        blueprint; the report that follows is maintained live by the Operations Director.
       </p>
       <PlatformModelBlock />
 

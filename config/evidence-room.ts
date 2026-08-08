@@ -73,7 +73,7 @@ export const ROOM = {
       key: 'operations',
       title: 'Operating Platform reports',
       blurb:
-        'The Head of Operations report — the operating platform in full: branch traction, operating leverage, governance, the orchestration layer, procurement and shared services. Maintained live by the Operations Director.',
+        'The Investor Performance & Operating Platform Report — the operating platform in full: branch traction, operating leverage, governance, the orchestration layer, procurement and shared services. Maintained live by the Operations Director.',
       status: 'live' as const,
     },
     {

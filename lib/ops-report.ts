@@ -75,6 +75,28 @@ export const getOpsSections = cache(async (includeHidden: boolean): Promise<OpsS
   }));
 });
 
+/** The report's masthead — title and intro line, editable like any section. */
+export interface OpsMeta {
+  title: string;
+  intro: string;
+}
+
+const META_FALLBACK: OpsMeta = {
+  title: 'Investor Performance & Operating Platform Report',
+  intro: 'A live document, maintained by the Operations Director.',
+};
+
+export const getOpsMeta = cache(async (): Promise<OpsMeta> => {
+  const db = getSupabaseAdmin();
+  if (!db) return META_FALLBACK;
+  const { data, error } = await db.from('ops_report_meta').select('title,intro').eq('id', 1).maybeSingle();
+  if (error || !data) return META_FALLBACK;
+  return {
+    title: String(data.title ?? '').trim() || META_FALLBACK.title,
+    intro: String(data.intro ?? '').trim(),
+  };
+});
+
 export const getOpsLastUpdated = cache(async (): Promise<{ at: string; by: string | null } | null> => {
   const db = getSupabaseAdmin();
   if (!db) return null;

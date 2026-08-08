@@ -50,6 +50,23 @@ const num = (v: FormDataEntryValue | null): number | null => {
   return Number.isFinite(n) && n > 0 ? n : null;
 };
 
+/** The masthead — report title and intro line — edited behind the same gate. */
+export async function saveOpsMeta(formData: FormData): Promise<void> {
+  const who = await editor(formData);
+  const db = getSupabaseAdmin();
+  if (!who || !db) return;
+  const title = String(formData.get('title') ?? '').trim().slice(0, 200);
+  if (!title) return; // the report always carries a title
+  await db.from('ops_report_meta').upsert({
+    id: 1,
+    title,
+    intro: String(formData.get('intro') ?? '').trim().slice(0, 500),
+    updated_by: who.name,
+    updated_at: new Date().toISOString(),
+  });
+  refresh();
+}
+
 export async function saveOpsSection(formData: FormData): Promise<void> {
   const who = await editor(formData);
   const db = getSupabaseAdmin();

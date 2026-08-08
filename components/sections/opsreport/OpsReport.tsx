@@ -1,6 +1,7 @@
 import {
   getOpsSections,
   getOpsLastUpdated,
+  getOpsMeta,
   payloadToFields,
   KIND_LABEL,
   SECTION_KINDS,
@@ -10,13 +11,15 @@ import {
   addOpsSection,
   deleteOpsSection,
   moveOpsSection,
+  saveOpsMeta,
   saveOpsSection,
   toggleOpsSection,
 } from './actions';
 
 /**
- * The Head of Operations report — the operational-excellence narrative as a
- * live document.
+ * The operations report — the operational-excellence narrative as a live
+ * document. Even its masthead (title + intro) lives in the database, so the
+ * Operations Director owns the report's name as much as its content.
  *
  * One component, two audiences: the internal tab (editable for admins and the
  * Operations Director) and the tokenised share view (read-only; `editable`
@@ -40,22 +43,62 @@ export async function OpsReport({
   /** Set when editing rides on an editor share link instead of a login. */
   editToken?: string | null;
 }) {
-  const [sections, last] = await Promise.all([getOpsSections(editable), getOpsLastUpdated()]);
+  const [sections, last, meta] = await Promise.all([getOpsSections(editable), getOpsLastUpdated(), getOpsMeta()]);
 
   return (
     <div className="mx-auto max-w-[980px]">
-      {/* ── Masthead ─────────────────────────────────────────────────────── */}
+      {/* ── Masthead — title and intro come from the database, like the
+             sections, so the Operations Director can rename the report. ──── */}
       <header className="mb-6 border-b border-line pb-4">
         <p className="text-[10.5px] font-medium uppercase tracking-[0.14em] text-ink-faint">
           Dental Nation Group · Operations Office
         </p>
-        <h1 className="mt-1 text-[22px] font-semibold leading-tight text-ink">Head of Operations — the operating platform</h1>
+        <h1 className="mt-1 text-[22px] font-semibold leading-tight text-ink">{meta.title}</h1>
         <p className="mt-1 text-[12px] text-ink-soft">
-          A live document, maintained by the Operations Director.
+          {meta.intro ? `${meta.intro}` : ''}
           {last
-            ? ` Last updated ${new Date(last.at).toLocaleDateString('en-GB', { dateStyle: 'medium' })}${last.by ? ` by ${last.by}` : ''}.`
+            ? `${meta.intro ? ' ' : ''}Last updated ${new Date(last.at).toLocaleDateString('en-GB', { dateStyle: 'medium' })}${last.by ? ` by ${last.by}` : ''}.`
             : ''}
         </p>
+        {editable ? (
+          <details className="no-print group mt-2 rounded-card border border-dashed border-line/80">
+            <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-1.5 text-[11px] text-ink-faint hover:text-ink">
+              <span>✎ Edit title</span>
+              <span className="text-ink-ghost">Report title & intro line</span>
+              <span className="ml-auto hidden group-open:inline">click ✎ Edit title again to close</span>
+            </summary>
+            <div className="border-t border-dashed border-line/80 px-3 py-3">
+              <form action={saveOpsMeta}>
+                {editToken ? <input type="hidden" name="edit_token" value={editToken} /> : null}
+                <label className="block text-[10.5px] font-medium uppercase tracking-wide text-ink-faint">
+                  Report title
+                </label>
+                <input
+                  name="title"
+                  defaultValue={meta.title}
+                  className="mt-1 w-full rounded-md border border-line bg-card px-2.5 py-1.5 text-[12.5px] text-ink"
+                />
+                <label className="mt-2.5 block text-[10.5px] font-medium uppercase tracking-wide text-ink-faint">
+                  Intro line
+                </label>
+                <input
+                  name="intro"
+                  defaultValue={meta.intro}
+                  className="mt-1 w-full rounded-md border border-line bg-card px-2.5 py-1.5 text-[12.5px] text-ink"
+                />
+                <p className="mt-0.5 text-[10.5px] text-ink-faint">
+                  Shown under the title, before the last-updated note. Leave empty to show only the date.
+                </p>
+                <button
+                  type="submit"
+                  className="mt-3 rounded-md bg-ink px-3.5 py-1.5 text-[12px] font-medium text-card hover:opacity-90"
+                >
+                  Save title
+                </button>
+              </form>
+            </div>
+          </details>
+        ) : null}
         {editable ? (
           <p className="no-print mt-2 rounded-card border border-watch/50 bg-watch/5 px-3 py-2 text-[11.5px] leading-snug text-ink-soft">
             <span className="font-semibold text-ink">You are editing the live report{editorName ? `, ${editorName}` : ''}.</span>{' '}
@@ -124,7 +167,7 @@ export async function OpsReport({
       ) : null}
 
       <footer className="mt-10 border-t border-line pt-3 text-[10.5px] text-ink-faint">
-        Dental Nation Group · Confidential · Head of Operations report
+        Dental Nation Group · Confidential · {meta.title}
       </footer>
     </div>
   );
