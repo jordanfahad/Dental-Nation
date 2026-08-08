@@ -937,6 +937,9 @@ export interface InvestmentSummary {
 export interface PnlMonth {
   /** YYYY-MM. */
   month: string;
+  /** True for months before the billing feed's first recorded bill — revenue
+   *  there is MISSING, not zero, and the UI must not render it as zero. */
+  preFeed: boolean;
   revenue: number;
   mediaSpend: number;
   buildCost: number;
@@ -1513,22 +1516,28 @@ export async function getCommandDeck(
     if (!monthMap.has(m)) monthMap.set(m, { revenue: 0, media: 0, attended: 0 });
   }
 
-  const pnlMonths: PnlMonth[] = [...monthMap.entries()]
-    .sort(([a], [b]) => (a < b ? -1 : 1))
-    .map(([month, v]) => {
-      const buildCost = costs.byMonth.get(month) ?? 0;
-      const investment = v.media + buildCost;
-      return {
-        month,
-        revenue: v.revenue,
-        mediaSpend: v.media,
-        buildCost,
-        investment,
-        netAfterGrowth: v.revenue - investment,
-        costRatio: v.revenue > 0 ? investment / v.revenue : null,
-        attended: v.attended,
-      };
-    });
+  const sortedMonths = [...monthMap.entries()].sort(([a], [b]) => (a < b ? -1 : 1));
+  // Months before the first recorded bill predate the billing feed: their
+  // revenue is unknown, not zero, and a zero would read as five months of
+  // spend for nothing. They are flagged and the UI dashes them out.
+  const firstRevenueMonth = sortedMonths.find(([, v]) => v.revenue > 0)?.[0] ?? null;
+
+  const pnlMonths: PnlMonth[] = sortedMonths.map(([month, v]) => {
+    const buildCost = costs.byMonth.get(month) ?? 0;
+    const investment = v.media + buildCost;
+    const preFeed = firstRevenueMonth != null && month < firstRevenueMonth;
+    return {
+      month,
+      preFeed,
+      revenue: v.revenue,
+      mediaSpend: v.media,
+      buildCost,
+      investment,
+      netAfterGrowth: v.revenue - investment,
+      costRatio: !preFeed && v.revenue > 0 ? investment / v.revenue : null,
+      attended: v.attended,
+    };
+  });
 
   const pTot = pnlMonths.reduce(
     (a, m) => ({
@@ -1578,7 +1587,7 @@ export async function getCommandDeck(
     },
     channels: pnlChannels,
     note:
-      'This section is monthly across the full trading history and deliberately ignores the date filter — a P&L exhibit that changed with a date picker would be noise. Revenue is billed treatment from the practice system; media spend is what the ad platforms invoiced; build & platform cost is the supplier invoice register, in the month each invoice was raised (quarterly fees therefore land as lumps). Channel contribution combines revenue traced patient-by-patient with that channel\'s modelled share of untraced revenue — the split is shown, and the return multiples inherit that caveat. Clinic-side operating costs (staff, rent, materials) are not in the platform, so the net line is net of GROWTH investment only, not clinic profit.',
+      'Months marked with a dash predate the billing feed: growth spend is recorded there but billed revenue is not, so revenue is shown as missing rather than zero. This section is monthly across the full trading history and deliberately ignores the date filter — a P&L exhibit that changed with a date picker would be noise. Revenue is billed treatment from the practice system; media spend is what the ad platforms invoiced; build & platform cost is the supplier invoice register, in the month each invoice was raised (quarterly fees therefore land as lumps). Channel contribution combines revenue traced patient-by-patient with that channel\'s modelled share of untraced revenue — the split is shown, and the return multiples inherit that caveat. Clinic-side operating costs (staff, rent, materials) are not in the platform, so the net line is net of GROWTH investment only, not clinic profit.',
   };
 
   return {

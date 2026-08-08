@@ -80,32 +80,35 @@ export function PnlBridge({ pnl }: { pnl: PnlView }) {
           <span className="w-[92px] text-right">Net</span>
           <span className="hidden w-[52px] text-right md:block">Cost %</span>
         </div>
+        {/* footnote target for the pre-feed dash */}
         {pnl.months.map((m) => (
           <div key={m.month} className="flex items-center gap-3 border-b py-[6px] last:border-b-0" style={{ borderColor: C.ruleSoft }}>
             <span className="w-[52px] text-[11px] font-medium" style={{ color: C.ink }}>
               {monthLabel(m.month)}
             </span>
             <span className="relative h-[20px] flex-1">
-              <span
-                className="absolute left-0 top-0 h-[11px] rounded-r-sm"
-                style={{ width: `${Math.max((m.revenue / maxRevenue) * 100, 0.5)}%`, background: C.navy }}
-              />
+              {!m.preFeed ? (
+                <span
+                  className="absolute left-0 top-0 h-[11px] rounded-r-sm"
+                  style={{ width: `${Math.max((m.revenue / maxRevenue) * 100, 0.5)}%`, background: C.navy }}
+                />
+              ) : null}
               <span
                 className="absolute bottom-0 left-0 h-[7px] rounded-r-sm"
                 style={{ width: `${Math.max((m.investment / maxRevenue) * 100, m.investment > 0 ? 0.5 : 0)}%`, background: C.amberSoft }}
               />
             </span>
-            <span className="hidden w-[90px] text-right text-[11px] tabular-nums sm:block" style={{ color: C.ink }}>
-              {aedShort(m.revenue)}
+            <span className="hidden w-[90px] text-right text-[11px] tabular-nums sm:block" style={{ color: m.preFeed ? C.inkGhost : C.ink }}>
+              {m.preFeed ? '— *' : aedShort(m.revenue)}
             </span>
             <span className="hidden w-[86px] text-right text-[11px] tabular-nums sm:block" style={{ color: C.inkSoft }}>
               {aedShort(m.investment)}
             </span>
             <span
               className="w-[92px] text-right text-[11.5px] font-semibold tabular-nums"
-              style={{ color: m.netAfterGrowth >= 0 ? C.good : C.stop }}
+              style={{ color: m.preFeed ? C.inkGhost : m.netAfterGrowth >= 0 ? C.good : C.stop }}
             >
-              {aedShort(m.netAfterGrowth)}
+              {m.preFeed ? '—' : aedShort(m.netAfterGrowth)}
             </span>
             <span className="hidden w-[52px] text-right text-[10.5px] tabular-nums md:block" style={{ color: C.inkFaint }}>
               {m.costRatio != null ? `${Math.round(m.costRatio * 100)}%` : '—'}
@@ -113,6 +116,12 @@ export function PnlBridge({ pnl }: { pnl: PnlView }) {
           </div>
         ))}
       </div>
+      {pnl.months.some((m) => m.preFeed) ? (
+        <p className="mt-1 text-[10px] leading-snug" style={{ color: C.inkFaint }}>
+          * Months before the billing feed&apos;s first recorded bill — growth spend is recorded, billed revenue is
+          not, so revenue there is missing rather than zero and no net is claimed.
+        </p>
+      ) : null}
 
       {/* ── 3 · channel economics ────────────────────────────────────────── */}
       <p className="mb-1 mt-5 text-[11px] font-semibold uppercase tracking-wide" style={{ color: C.inkFaint }}>

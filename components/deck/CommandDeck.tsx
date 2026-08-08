@@ -272,7 +272,11 @@ export async function CommandDeck({
         <div className="mt-4 grid grid-cols-2 gap-x-3 gap-y-4 sm:grid-cols-3 lg:grid-cols-6">
           {stages.map((s, i) => {
             const next = stages[i + 1];
-            const rate = next ? conv(s.value, next.value) : null;
+            // No rate INTO 'treated' (one visit can raise several bills, so
+            // bills are not a subset of attendances and a % would exceed 100)
+            // and none INTO 'revenue' (currency over a count is a price, not
+            // a conversion). Same rule the funnel band already applies.
+            const rate = next && next.key !== 'treated' && next.key !== 'revenue' ? conv(s.value, next.value) : null;
             const dv = s.value != null && s.prior != null && s.prior !== 0 ? (s.value - s.prior) / s.prior : null;
             return (
               <div key={s.key} className="relative">
