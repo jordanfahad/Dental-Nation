@@ -71,8 +71,6 @@ export default async function RoomFinancePage({ params }: { params: Promise<{ to
           </p>
         </section>
       </div>
-
-      <p className="mt-6 text-center text-[10px] text-ink-ghost">Prepared for {link.label}</p>
     </main>
   );
 }

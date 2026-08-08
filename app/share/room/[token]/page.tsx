@@ -29,7 +29,7 @@ export default async function EvidenceRoomPage({ params }: { params: Promise<{ t
 
   return (
     <main className="mx-auto max-w-[1180px] px-4 py-7 sm:px-8 sm:py-9">
-      <EvidenceRoom base={`/share/room/${token}`} recipientLabel={link.label} />
+      <EvidenceRoom base={`/share/room/${token}`} />
     </main>
   );
 }

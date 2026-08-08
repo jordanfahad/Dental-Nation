@@ -527,17 +527,22 @@ function Heading({ s }: { s: OpsSection }) {
 }
 
 /**
- * A headline number. A value carrying a percentage under 100 becomes a donut
- * gauge — "13.8%" draws as a 13.8% arc — because a board reads a filled arc
- * faster than it reads a digit. Everything else is set in large type.
+ * A headline number, drawn to match what the number MEANS:
+ *  · a value starting with "+" is growth — it gets a rising-bars glyph, never
+ *    a gauge (a "+8%" donut reads as 8% of the way to done, which is wrong);
+ *  · a bare percentage under 100 is a share of a whole — it becomes a donut
+ *    gauge, because a board reads a filled arc faster than a digit;
+ *  · everything else is set in large type.
  */
 function BigStat({ value, label, note, dark }: { value: string; label: string; note: string; dark?: boolean }) {
+  const isGrowth = value.trim().startsWith('+');
   const pctMatch = value.replace('−', '-').match(/(-?\d+(?:\.\d+)?)\s*%/);
   const pct = pctMatch ? Number(pctMatch[1]) : null;
-  const showDonut = pct != null && pct > 0 && pct <= 100 && !value.includes('→');
+  const showDonut = !isGrowth && pct != null && pct > 0 && pct <= 100 && !value.includes('→');
 
   return (
     <div className="flex items-center gap-3">
+      {isGrowth ? <GrowthGlyph label={value} dark={dark} /> : null}
       {showDonut ? <Donut pct={pct} label={value} dark={dark} /> : null}
       <div className="min-w-0">
         {!showDonut ? (
@@ -549,6 +554,25 @@ function BigStat({ value, label, note, dark }: { value: string; label: string; n
         {note ? <p className={`mt-0.5 text-[10px] leading-snug ${dark ? 'text-white/50' : 'text-ink-soft'}`}>{note}</p> : null}
       </div>
     </div>
+  );
+}
+
+/**
+ * SVG growth glyph — rising bars under an up-and-right trend arrow, the
+ * universal "this is growing" mark. Pure markup, prints exactly as it renders.
+ */
+function GrowthGlyph({ label, dark }: { label: string; dark?: boolean }) {
+  const bar = dark ? '#34D399' : '#15803D';
+  const arrow = dark ? '#FFFFFF' : '#111111';
+  return (
+    <svg width="54" height="54" viewBox="0 0 54 54" role="img" aria-label={`${label} growth`} className="shrink-0">
+      <rect x="5" y="36" width="8" height="13" rx="1.5" fill={bar} opacity="0.55" />
+      <rect x="16" y="31" width="8" height="18" rx="1.5" fill={bar} opacity="0.7" />
+      <rect x="27" y="25" width="8" height="24" rx="1.5" fill={bar} opacity="0.85" />
+      <rect x="38" y="18" width="8" height="31" rx="1.5" fill={bar} />
+      <path d="M5 28 C 17 25, 30 18, 43 9" fill="none" stroke={arrow} strokeWidth="4" strokeLinecap="round" />
+      <path d="M33 7.5 L44 8.5 L41.5 19" fill="none" stroke={arrow} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }
 

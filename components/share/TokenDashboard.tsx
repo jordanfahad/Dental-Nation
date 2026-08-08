@@ -150,8 +150,7 @@ export async function TokenDashboard({
       </Suspense>
 
       <p className="mt-6 border-t border-line pt-3 text-center text-[10px] text-ink-ghost">
-        Prepared for {link.label} · read-only · aggregate figures only — no patient-level data is reachable from this
-        link
+        Read-only · aggregate figures only — no patient-level data is reachable from this link
       </p>
     </main>
   );

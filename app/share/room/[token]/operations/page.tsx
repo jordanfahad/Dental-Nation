@@ -38,7 +38,6 @@ export default async function RoomOperationsPage({ params }: { params: Promise<{
       <div className="my-8 border-t border-line" />
 
       <OpsReport editable={false} />
-      <p className="mt-4 text-center text-[10px] text-ink-ghost">Prepared for {link.label}</p>
     </main>
   );
 }

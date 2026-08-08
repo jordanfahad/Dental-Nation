@@ -13,7 +13,7 @@ import { PlatformModelBlock } from '@/components/room/PlatformModel';
  * business runs on — the room never carries a second copy of a figure that
  * could drift out of date.
  */
-export function EvidenceRoom({ base, recipientLabel }: { base: string; recipientLabel: string }) {
+export function EvidenceRoom({ base }: { base: string }) {
   const today = new Date().toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
 
   return (
@@ -32,7 +32,6 @@ export function EvidenceRoom({ base, recipientLabel }: { base: string; recipient
             {ROOM.cover.confidential}
           </span>
           <span>Reporting date: {today}</span>
-          <span>Prepared for {recipientLabel}</span>
         </div>
       </header>
 
@@ -81,7 +80,7 @@ export function EvidenceRoom({ base, recipientLabel }: { base: string; recipient
       <PlatformModelBlock />
 
       <footer className="border-t pt-3 text-[10.5px]" style={{ borderColor: C.rule, color: C.inkFaint }}>
-        Dental Nation Group · {ROOM.cover.confidential} · Prepared for {recipientLabel}
+        Dental Nation Group · {ROOM.cover.confidential}
       </footer>
     </div>
   );

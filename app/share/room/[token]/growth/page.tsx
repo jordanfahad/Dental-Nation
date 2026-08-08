@@ -31,12 +31,7 @@ export default async function RoomGrowthPage({
   return (
     <main className="mx-auto max-w-[1240px] px-4 py-6 sm:px-8 sm:py-8">
       <RoomSectionBar backHref={base} section="Growth Department Live Dashboard" />
-      <CommandDeck
-        searchParams={sp}
-        basePath={`${base}/growth`}
-        recipientLabel={link.label}
-        dashBasePath={`${base}/dash`}
-      />
+      <CommandDeck searchParams={sp} basePath={`${base}/growth`} dashBasePath={`${base}/dash`} />
     </main>
   );
 }
