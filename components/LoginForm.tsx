@@ -9,9 +9,11 @@ export function LoginForm({ from }: { from: string }) {
   return (
     <form action={formAction} className="w-full max-w-sm">
       <div className="card p-6">
-        <p className="eyebrow text-accent">Dental Nation · All Lanes</p>
-        <h1 className="mt-1 text-lg font-semibold tracking-tight text-ink">Performance Report</h1>
-        <p className="mt-1 text-[13px] text-ink-faint">Enter the password to continue.</p>
+        <p className="eyebrow text-accent">Dental Nation</p>
+        <h1 className="mt-1 text-lg font-semibold tracking-tight text-ink">Performance Reports</h1>
+        <p className="mt-1 text-[13px] text-ink-faint">
+          Team sign-in. If you were given a report link, open that link directly — no password is needed.
+        </p>
 
         <input type="hidden" name="from" value={from} />
         <label className="mt-5 block text-[12px] font-medium text-ink-soft" htmlFor="password">

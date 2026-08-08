@@ -9,6 +9,7 @@ export const maxDuration = 60;
 
 export const metadata: Metadata = {
   title: 'Dental Nation — Growth Department Investor Report',
+  description: 'Growth Department Investor Report — live performance dashboard.',
   robots: { index: false, follow: false, nocache: true, noarchive: true },
 };
 

@@ -10,7 +10,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: 'Dental Nation — Performance Report',
-  description: 'Dental Nation · All Lanes patient-acquisition performance report',
+  description: 'Dental Nation Group · performance reporting platform',
   robots: { index: false, follow: false },
   // Mirrors the live dentalnation.com favicon (server-side proxy with a
   // bundled tooth-and-star fallback) so the dashboard tab matches the brand.

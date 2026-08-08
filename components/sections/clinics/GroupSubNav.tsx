@@ -16,7 +16,9 @@ export function GroupSubNav({ active }: { active: GroupSubTab }) {
     const next = new URLSearchParams(params.toString());
     next.set('tab', 'group');
     next.set('gtab', sub);
-    return `/?${next.toString()}`;
+    // Relative on purpose: resolves to /?… on the dashboard and stays on the
+    // tokenised /share/…/dash path when rendered behind a share link.
+    return `?${next.toString()}`;
   };
 
   return (

@@ -8,6 +8,7 @@ export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: 'Dental Nation — Financial Reports',
+  description: 'Financial reports — status and live figures.',
   robots: { index: false, follow: false, nocache: true, noarchive: true },
 };
 

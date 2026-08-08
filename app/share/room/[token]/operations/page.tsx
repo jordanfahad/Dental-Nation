@@ -9,6 +9,7 @@ export const maxDuration = 60;
 
 export const metadata: Metadata = {
   title: 'Dental Nation — Operating Platform',
+  description: 'Operating Platform report — the Dental Nation operating model, live.',
   robots: { index: false, follow: false, nocache: true, noarchive: true },
 };
 

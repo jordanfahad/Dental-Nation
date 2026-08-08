@@ -28,7 +28,7 @@ export function PaidSearchRows({ p, traceQs, mktQs = '' }: { p: ChannelPerf; tra
           <span className="block text-[12.5px] font-medium leading-tight text-ink">
             <span className="mr-1 inline-block w-3 text-[10px] text-ink-faint">{open ? '▾' : '▸'}</span>
             <Link
-              href={`/?tab=marketing&mtab=google${mktQs}`}
+              href={`?tab=marketing&mtab=google${mktQs}`}
               className="underline-offset-2 hover:text-accent hover:underline"
               title="Open Google Ads Performance — campaigns, budgets, ad groups, ads"
               onClick={(e) => e.stopPropagation()}
@@ -85,7 +85,7 @@ export function PaidSearchRows({ p, traceQs, mktQs = '' }: { p: ChannelPerf; tra
             <td className={`px-2 ${sub} text-ink`}>{int(p.treated)}</td>
             <td className={`px-2 ${sub} text-ink`}>{p.revenue > 0 ? aedShort(p.revenue) : '—'}</td>
             <td className="py-1.5 pl-2 pr-3 text-right">
-              <Link href={`/?tab=group&gtab=growth&gchan=paid-search${traceQs}`} className="text-[10.5px] font-medium text-accent hover:underline" onClick={(e) => e.stopPropagation()}>trace →</Link>
+              <Link href={`?tab=group&gtab=growth&gchan=paid-search${traceQs}`} className="text-[10.5px] font-medium text-accent hover:underline" onClick={(e) => e.stopPropagation()}>trace →</Link>
             </td>
           </tr>
           <tr className="bg-panel/30">
@@ -97,7 +97,7 @@ export function PaidSearchRows({ p, traceQs, mktQs = '' }: { p: ChannelPerf; tra
             <td className={`px-2 ${sub} text-watch`}>{int(p.estTreated ?? 0)}</td>
             <td className={`px-2 ${sub} text-watch`}>{p.estRevenue ? aedShort(p.estRevenue) : '—'}</td>
             <td className="py-1.5 pl-2 pr-3 text-right">
-              <Link href={`/?tab=group&gtab=growth&gchan=direct-walkin${traceQs}`} className="text-[10.5px] font-medium text-accent hover:underline" onClick={(e) => e.stopPropagation()}>patients →</Link>
+              <Link href={`?tab=group&gtab=growth&gchan=direct-walkin${traceQs}`} className="text-[10.5px] font-medium text-accent hover:underline" onClick={(e) => e.stopPropagation()}>patients →</Link>
             </td>
           </tr>
         </>

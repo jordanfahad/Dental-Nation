@@ -59,6 +59,7 @@ export async function TokenDashboard({
   dashBase,
   backHref: backHrefIn,
   backLabel,
+  roomNav,
 }: {
   link: ShareLink;
   sp: DashSearchParams;
@@ -66,6 +67,8 @@ export async function TokenDashboard({
   dashBase: string;
   backHref: string;
   backLabel: string;
+  /** Rendered above the page when the dash is opened inside the Evidence Room. */
+  roomNav?: React.ReactNode;
 }) {
   const tab: DashTab = (DASH_TABS.find((t) => t.key === sp.tab)?.key as DashTab) ?? 'group';
 
@@ -92,6 +95,7 @@ export async function TokenDashboard({
 
   return (
     <main className="mx-auto max-w-[1180px] px-4 py-6 md:px-8">
+      {roomNav}
       {/* Slim masthead — this is a drill-down, not a destination. */}
       <div className="no-print mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3">
         <div>

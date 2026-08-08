@@ -8,6 +8,7 @@ export const maxDuration = 60;
 
 export const metadata: Metadata = {
   title: 'Dental Nation — Investor Evidence Room',
+  description: 'The Dental Nation Investor Evidence Room — live reports across growth, operations and finance.',
   robots: { index: false, follow: false, nocache: true, noarchive: true },
 };
 

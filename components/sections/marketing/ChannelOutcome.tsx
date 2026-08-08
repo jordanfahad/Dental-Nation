@@ -63,7 +63,7 @@ export async function ChannelOutcome({
         title={`Booked → Showed → Treated — ${label}-attributed patients only`}
         right={
           <Link
-            href={`/?tab=group&gtab=growth&gchan=${channelKey}${traceQs}`}
+            href={`?tab=group&gtab=growth&gchan=${channelKey}${traceQs}`}
             className="text-[12px] font-medium text-accent hover:underline"
           >
             trace the patients →

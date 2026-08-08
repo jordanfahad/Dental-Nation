@@ -69,7 +69,7 @@ export function EvidenceRoom({ base, recipientLabel }: { base: string; recipient
                 {sct.blurb}
               </p>
               <p className="mt-3 text-[11.5px] font-semibold" style={{ color: C.navyMid }}>
-                Open the report →
+                {sct.status === 'live' ? 'Open the report →' : 'See status & live figures →'}
               </p>
             </Link>
           ))}
@@ -79,6 +79,9 @@ export function EvidenceRoom({ base, recipientLabel }: { base: string; recipient
       {/* ── Platform overview ────────────────────────────────────────────── */}
       <section className="rounded-lg border bg-white p-5" style={{ borderColor: C.rule }}>
         <h2 className="text-[15px] font-semibold">{ROOM.overviewTitle}</h2>
+        <p className="mt-1 text-[10px] font-semibold uppercase tracking-wider" style={{ color: C.inkFaint }}>
+          A. One-page summary
+        </p>
         <p className="mt-2 max-w-[880px] text-[12.5px] leading-relaxed" style={{ color: C.inkSoft }}>
           {ROOM.overview}
         </p>
@@ -92,7 +95,10 @@ export function EvidenceRoom({ base, recipientLabel }: { base: string; recipient
 
       {/* ── Comparison ───────────────────────────────────────────────────── */}
       <section>
-        <h2 className="text-[15px] font-semibold">{ROOM.comparisonTitle}</h2>
+        <p className="text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: C.navyMid }}>
+          Platform model · comparison and implementation
+        </p>
+        <h2 className="mt-1 text-[15px] font-semibold">{ROOM.comparisonTitle}</h2>
         <p className="mt-1 max-w-[860px] text-[11.5px] leading-snug" style={{ color: C.inkSoft }}>
           {ROOM.comparisonSub}
         </p>
@@ -141,20 +147,44 @@ export function EvidenceRoom({ base, recipientLabel }: { base: string; recipient
   );
 }
 
-/** Slim bar shown at the top of every section opened from the room. */
+/**
+ * The room's persistent navigation, shown at the top of every section — the
+ * blueprint's "Primary navigation", carried with the reader (sticky) so an
+ * investor can move Growth ↔ Operations ↔ Finance without returning to the
+ * landing first.
+ */
 export function RoomSectionBar({ backHref, section }: { backHref: string; section: string }) {
+  const items = [
+    { label: 'Overview', href: backHref, key: 'overview' },
+    { label: 'Growth', href: `${backHref}/growth`, key: 'growth' },
+    { label: 'Operations', href: `${backHref}/operations`, key: 'operations' },
+    { label: 'Finance', href: `${backHref}/finance`, key: 'finance' },
+  ];
+  const activeKey = items.find((i) => i.key !== 'overview' && section.toLowerCase().includes(i.key))?.key ?? null;
   return (
-    <div className="no-print mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border px-4 py-2.5" style={{ borderColor: C.rule, background: C.panel }}>
+    <div
+      className="no-print sticky top-2 z-20 mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border px-4 py-2 shadow-sm"
+      style={{ borderColor: C.rule, background: C.panel }}
+    >
       <p className="text-[11px] font-medium uppercase tracking-wider" style={{ color: C.inkFaint }}>
         Dental Nation · Investor Evidence Room — {section}
       </p>
-      <Link
-        href={backHref}
-        className="rounded-md border bg-white px-3 py-1.5 text-[11.5px] font-semibold no-underline"
-        style={{ borderColor: C.rule, color: C.navyMid }}
-      >
-        ← Back to the Evidence Room
-      </Link>
+      <nav className="flex flex-wrap items-center gap-1.5">
+        {items.map((i) => (
+          <Link
+            key={i.key}
+            href={i.href}
+            className="rounded-md border px-2.5 py-1 text-[11px] font-semibold no-underline"
+            style={
+              i.key === activeKey
+                ? { borderColor: C.navy, background: C.navy, color: '#fff' }
+                : { borderColor: C.rule, background: '#fff', color: C.navyMid }
+            }
+          >
+            {i.label}
+          </Link>
+        ))}
+      </nav>
     </div>
   );
 }

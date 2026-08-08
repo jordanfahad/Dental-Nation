@@ -245,8 +245,8 @@ export async function CommandDeck({
               Live Performance Dashboard
             </p>
             <p className="mt-1.5 text-[12px]" style={{ color: C.navyPale }}>
-              {deck.liveModules} of {deck.totalModules} systems live · every figure below is the selected window,
-              refreshed every 15 minutes
+              {deck.liveModules} of {deck.totalModules} systems live · figures follow the selected window and refresh
+              every 15 minutes; the P&amp;L bridge is monthly over the full history and says so on the section
               {deck.lastUpdated ? ` · last updated ${new Date(deck.lastUpdated).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}` : ''}
             </p>
           </div>

@@ -33,7 +33,7 @@ export function PaidSocialRows({ p, split, traceQs, mktQs = '' }: { p: ChannelPe
           <span className="block text-[12.5px] font-medium leading-tight text-ink">
             <span className="mr-1 inline-block w-3 text-[10px] text-ink-faint">{open ? '▾' : '▸'}</span>
             <Link
-              href={`/?tab=marketing&mtab=meta${mktQs}`}
+              href={`?tab=marketing&mtab=meta${mktQs}`}
               className="underline-offset-2 hover:text-accent hover:underline"
               title="Open Meta Ads Performance — campaigns, budgets, ad sets, creatives"
               onClick={(e) => e.stopPropagation()}
@@ -128,10 +128,10 @@ export function PaidSocialRows({ p, split, traceQs, mktQs = '' }: { p: ChannelPe
           ))}
           <tr className="bg-panel/30">
             <td colSpan={8} className="py-1.5 pl-7 pr-3">
-              <Link href={`/?tab=marketing&mtab=meta${mktQs}`} className="text-[10.5px] font-medium text-accent hover:underline">
+              <Link href={`?tab=marketing&mtab=meta${mktQs}`} className="text-[10.5px] font-medium text-accent hover:underline">
                 Full campaign detail — budgets, spend, ad sets, creatives →
               </Link>
-              <Link href={`/?tab=group&gtab=growth&gchan=paid-social${traceQs}`} className="ml-4 text-[10.5px] font-medium text-accent hover:underline">
+              <Link href={`?tab=group&gtab=growth&gchan=paid-social${traceQs}`} className="ml-4 text-[10.5px] font-medium text-accent hover:underline">
                 trace patients →
               </Link>
               {!hasSplit ? (

@@ -62,7 +62,7 @@ function ChannelRow({ p, traceQs }: { p: ChannelPerf; traceQs: string }) {
     <tr className={`border-t border-line/70 ${muted ? 'opacity-60' : ''}`}>
       <td className="py-2.5 pl-3 pr-2 align-top">
         <Link
-          href={`/?tab=group&gtab=growth&gchan=${p.key}${traceQs}`}
+          href={`?tab=group&gtab=growth&gchan=${p.key}${traceQs}`}
           className="block text-[12.5px] font-medium leading-tight text-ink underline-offset-2 hover:text-accent hover:underline"
           title="See the patients behind this number"
         >
@@ -328,22 +328,22 @@ function PhonePathCard({ pp }: { pp: NonNullable<GrowthReport['phonePath']> }) {
 
 /** Where "trace the leads" lives for each channel outside this view. */
 const CROSS_LINKS: Record<string, { label: string; href: string }> = {
-  'paid-search': { label: 'Open Google Ads Performance', href: '/?tab=marketing&mtab=google' },
-  'paid-social': { label: 'Open Meta Ads Performance', href: '/?tab=marketing&mtab=meta' },
-  affiliate: { label: 'Open Marketing (ArabyAds)', href: '/?tab=marketing' },
-  website: { label: 'Open Website Bookings', href: '/?tab=bookings' },
-  gmb: { label: 'Open Social & Local', href: '/?tab=social' },
-  'social-organic': { label: 'Open Social & Local', href: '/?tab=social' },
-  whatsapp: { label: 'Open CRM — Zavis', href: '/?tab=crm' },
-  'ai-concierge': { label: 'Open CRM — Zavis', href: '/?tab=crm' },
-  retention: { label: 'Open Practo Insta', href: '/?tab=practo' },
+  'paid-search': { label: 'Open Google Ads Performance', href: '?tab=marketing&mtab=google' },
+  'paid-social': { label: 'Open Meta Ads Performance', href: '?tab=marketing&mtab=meta' },
+  affiliate: { label: 'Open Marketing (ArabyAds)', href: '?tab=marketing' },
+  website: { label: 'Open Website Bookings', href: '?tab=bookings' },
+  gmb: { label: 'Open Social & Local', href: '?tab=social' },
+  'social-organic': { label: 'Open Social & Local', href: '?tab=social' },
+  whatsapp: { label: 'Open CRM — Zavis', href: '?tab=crm' },
+  'ai-concierge': { label: 'Open CRM — Zavis', href: '?tab=crm' },
+  retention: { label: 'Open Practo Insta', href: '?tab=practo' },
 };
 
 /** Drill-down: the actual patients behind one channel's numbers. */
 async function ChannelTraceView({ channelKey, range, clinic }: { channelKey: string; range?: { from?: string; to?: string }; clinic: GrowthClinicKey }) {
   const def = CHANNEL_BY_KEY.get(channelKey);
   const trace = await getChannelTrace(channelKey, range ?? {}, clinic === 'amc' ? 'all' : clinic);
-  const back = `/?tab=group&gtab=growth${range?.from ? `&from=${range.from}` : ''}${range?.to ? `&to=${range.to}` : ''}${clinic !== 'all' ? `&gclinic=${clinic}` : ''}`;
+  const back = `?tab=group&gtab=growth${range?.from ? `&from=${range.from}` : ''}${range?.to ? `&to=${range.to}` : ''}${clinic !== 'all' ? `&gclinic=${clinic}` : ''}`;
   const cross = CROSS_LINKS[channelKey];
   return (
     <Card>
@@ -384,7 +384,7 @@ async function ChannelTraceView({ channelKey, range, clinic }: { channelKey: str
           <p className="mb-3 rounded-card border border-dashed border-watch/60 bg-watch/5 px-3 py-2 text-[11.5px] leading-snug text-ink-soft">
             This list shows only <span className="font-medium">hard-traced</span> patients. The estimated call bookings on
             the P&L row are claimed from the orphan pool — real patients with no channel trace, listed under{' '}
-            <Link href={`/?tab=group&gtab=growth&gchan=direct-walkin${range?.from ? `&from=${range.from}` : ''}${range?.to ? `&to=${range.to}` : ''}`} className="font-medium text-accent hover:underline">
+            <Link href={`?tab=group&gtab=growth&gchan=direct-walkin${range?.from ? `&from=${range.from}` : ''}${range?.to ? `&to=${range.to}` : ''}`} className="font-medium text-accent hover:underline">
               Direct / Walk-in
             </Link>
             . Their Practo outcomes are real; only which channel each came from is estimated.
@@ -462,7 +462,7 @@ export async function GrowthPlatform({ range, gchan, gclinic }: { range?: { from
               AMC (Al Maher Medical Centre) has no channel data source yet — its PMS isn&apos;t synced, it doesn&apos;t
               share the Dental Nation website, and <span className="font-medium text-ink">no paid campaigns ran for
               AMC</span> (Google Ads and Meta ran only for Dental Nation Al Wasl). Its revenue lives in the{' '}
-              <Link href="/?tab=group&gtab=al-maher" className="font-medium text-accent hover:underline">
+              <Link href="?tab=group&gtab=al-maher" className="font-medium text-accent hover:underline">
                 Group Revenue → AMC
               </Link>{' '}
               view (gross billed, ≈99.8% insurance). Connecting its PMS feed is what lights this view up.

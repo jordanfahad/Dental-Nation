@@ -16,14 +16,14 @@ export const ROOM = {
     confidential: 'Strictly confidential — approved investor recipients only',
   },
 
-  overviewTitle: 'Platform overview',
+  overviewTitle: 'Platform Overview',
   overview:
     'Dental Nation has transformed real operating experience into a centralized, technology-enabled and repeatable healthcare operating platform. Its Dubai network serves as the live validation environment where clinical standards, patient journeys, shared services, technology, performance control, demand generation and expansion playbooks are developed, tested and refined before redeployment.',
   whyTitle: 'Why this is a platform',
   why:
     'Dental Nation does not only own or coordinate clinics. It provides a shared operating backbone that can be reused across M&A clinics, de novo developments, existing-clinic transformations and specialist centers — without rebuilding governance, systems, brand, patient journeys and management control each time.',
 
-  comparisonTitle: 'Independent clinic vs. clinic chain vs. Dental Nation platform',
+  comparisonTitle: 'Independent Clinic vs. Clinic Chain vs. Dental Nation Platform',
   comparisonSub:
     'The distinction is not ownership alone; it is whether the operating system can be transferred, measured and improved across multiple clinical assets.',
   comparisonHeaders: ['Dimension', 'Independent clinic', 'Traditional clinic chain', 'Dental Nation scalable platform'],

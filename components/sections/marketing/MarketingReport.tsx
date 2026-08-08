@@ -55,8 +55,8 @@ function ScopePills({ active, sub, channelLabel, rangeQs }: { active: 'channel' 
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       <span className="mr-1 text-[11px] font-medium uppercase tracking-wide text-ink-faint">Clinic outcome scope</span>
-      <a href={`/?tab=marketing&mtab=${sub}${rangeQs}`} className={pill(active === 'channel')}>{channelLabel} only</a>
-      <a href={`/?tab=marketing&mtab=${sub}&mscope=all${rangeQs}`} className={pill(active === 'all')}>All channels</a>
+      <a href={`?tab=marketing&mtab=${sub}${rangeQs}`} className={pill(active === 'channel')}>{channelLabel} only</a>
+      <a href={`?tab=marketing&mtab=${sub}&mscope=all${rangeQs}`} className={pill(active === 'all')}>All channels</a>
     </div>
   );
 }
