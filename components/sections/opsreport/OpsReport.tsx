@@ -374,12 +374,19 @@ function Block({ s }: { s: OpsSection }) {
                       ) : null}
                     </span>
                     {widthPct <= 34 ? (
+                      // The value sits just past the bar's tip — unless the bar
+                      // ends near the container edge, in which case it flips to
+                      // the bar's other side so it can never clip out of the card.
                       <span
-                        className={`absolute top-0 flex h-full items-center text-[10.5px] font-bold tabular-nums ${b.value < 0 ? 'text-stop' : 'text-ink'}`}
+                        className={`absolute top-0 flex h-full items-center whitespace-nowrap text-[10.5px] font-bold tabular-nums ${b.value < 0 ? 'text-stop' : 'text-ink'}`}
                         style={
                           b.value < 0
-                            ? { right: `calc(${100 - zeroPct}% + ${widthPct}% + 6px)` }
-                            : { left: `calc(${zeroPct}% + ${widthPct}% + 6px)` }
+                            ? zeroPct - widthPct < 18
+                              ? { left: `calc(${zeroPct}% + 6px)` }
+                              : { right: `calc(${100 - zeroPct}% + ${widthPct}% + 6px)` }
+                            : zeroPct + widthPct > 82
+                              ? { right: `calc(${100 - zeroPct}% + 6px)` }
+                              : { left: `calc(${zeroPct}% + ${widthPct}% + 6px)` }
                         }
                       >
                         {fmtVal(b.value)}
@@ -412,9 +419,9 @@ function Block({ s }: { s: OpsSection }) {
               {steps.map((st, i) => {
                 const shade = NAVY_RAMP[Math.min(Math.round((i / Math.max(n - 1, 1)) * (NAVY_RAMP.length - 2)), NAVY_RAMP.length - 2)];
                 return (
-                  <div key={i} className="min-w-[128px] flex-1 pr-1 sm:min-w-[140px]">
+                  <div key={i} className="min-w-[128px] max-w-[260px] flex-1 pr-1 sm:min-w-[150px]">
                     <div
-                      className="flex h-[40px] items-center gap-2 pl-4 pr-2 text-white"
+                      className="flex min-h-[44px] items-center gap-2 py-1 pl-5 pr-3 text-white"
                       style={{
                         background: shade,
                         clipPath:
@@ -426,7 +433,7 @@ function Block({ s }: { s: OpsSection }) {
                       <span className="flex h-[19px] w-[19px] shrink-0 items-center justify-center rounded-full bg-white/25 text-[10px] font-bold">
                         {i + 1}
                       </span>
-                      <span className="truncate text-[11px] font-semibold leading-tight">{st.label}</span>
+                      <span className="text-[11px] font-semibold leading-[1.15]">{st.label}</span>
                     </div>
                     {st.note ? <p className="mt-1.5 pl-1 pr-2 text-[10px] leading-snug text-ink-soft">{st.note}</p> : null}
                   </div>
@@ -446,7 +453,7 @@ function Block({ s }: { s: OpsSection }) {
             “
           </span>
           <p className="relative text-[16px] font-medium italic leading-relaxed text-white sm:text-[18px]">
-            “{str(p?.text)}”
+            “{str(p?.text).replace(/^[“”"\s]+|[“”"\s]+$/g, '')}”
           </p>
         </blockquote>
       );
