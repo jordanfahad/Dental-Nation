@@ -11,8 +11,8 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false, nocache: true, noarchive: true },
 };
 
-/** The live dashboard behind a BOARD (growth) token — see TokenDashboard for the allowlist rationale. */
-export default async function GrowthDashPage({
+/** The live dashboard behind an Evidence Room token — same allowlist as the board dash. */
+export default async function RoomDashPage({
   params,
   searchParams,
 }: {
@@ -20,7 +20,7 @@ export default async function GrowthDashPage({
   searchParams: Promise<DashSearchParams>;
 }) {
   const { token } = await params;
-  const link = await resolveShareToken(token, 'growth');
+  const link = await resolveShareToken(token, 'room');
   if (!link) notFound();
   await bumpShareView(token);
   const sp = await searchParams;
@@ -28,9 +28,9 @@ export default async function GrowthDashPage({
     <TokenDashboard
       link={link}
       sp={sp}
-      dashBase={`/share/growth/${token}/dash`}
-      backHref={`/share/growth/${token}`}
-      backLabel="Back to the board report"
+      dashBase={`/share/room/${token}/dash`}
+      backHref={`/share/room/${token}/growth`}
+      backLabel="Back to the Growth report"
     />
   );
 }

@@ -134,17 +134,26 @@ export const getDeckVisibility = cache(async (): Promise<VisibilityRow[]> => {
  * null total when nothing has been entered — an investment figure that quietly
  * omits what the build cost would flatter every return number on the page.
  */
-export const getDeckCosts = cache(async (): Promise<{ rows: number; total: number | null }> => {
-  const db = getSupabaseAdmin();
-  if (!db) return { rows: 0, total: null };
-  const { data, error } = await db.from('mos_costs').select('zavis_fee_aed, azure_cost_aed, other_aed').limit(500);
-  if (error || !data || data.length === 0) return { rows: 0, total: null };
-  const total = data.reduce(
-    (a, r) => a + (num(r.zavis_fee_aed) ?? 0) + (num(r.azure_cost_aed) ?? 0) + (num(r.other_aed) ?? 0),
-    0,
-  );
-  return { rows: data.length, total };
-});
+export const getDeckCosts = cache(
+  async (): Promise<{ rows: number; total: number | null; byMonth: Map<string, number> }> => {
+    const db = getSupabaseAdmin();
+    if (!db) return { rows: 0, total: null, byMonth: new Map() };
+    const { data, error } = await db
+      .from('mos_costs')
+      .select('month, zavis_fee_aed, azure_cost_aed, other_aed')
+      .limit(500);
+    if (error || !data || data.length === 0) return { rows: 0, total: null, byMonth: new Map() };
+    const byMonth = new Map<string, number>();
+    let total = 0;
+    for (const r of data) {
+      const amount = (num(r.zavis_fee_aed) ?? 0) + (num(r.azure_cost_aed) ?? 0) + (num(r.other_aed) ?? 0);
+      total += amount;
+      const key = String(r.month ?? '').slice(0, 7);
+      if (key) byMonth.set(key, (byMonth.get(key) ?? 0) + amount);
+    }
+    return { rows: data.length, total, byMonth };
+  },
+);
 
 export interface Ga4Event {
   key: string;
@@ -913,11 +922,69 @@ export interface InvestmentSummary {
   costNote: string;
 }
 
+/**
+ * The GROWTH → P&L bridge (Mr Akbar's third ask): what growth activity does
+ * to the financial line, month by month.
+ *
+ * Everything here is the arithmetic of numbers the platform already holds —
+ * billed revenue and media spend from the daily feed, build/vendor cost from
+ * the invoice register, patients from the booking chain. Nothing is modelled
+ * EXCEPT where a channel's contribution includes its allocated share, and
+ * every such figure says so. Months are the unit because the P&L is monthly;
+ * the page's date filter deliberately does not slice this section — a
+ * forecast-adjacent exhibit that changed with a date picker would be noise.
+ */
+export interface PnlMonth {
+  /** YYYY-MM. */
+  month: string;
+  revenue: number;
+  mediaSpend: number;
+  buildCost: number;
+  /** mediaSpend + buildCost. */
+  investment: number;
+  /** revenue − investment. */
+  netAfterGrowth: number;
+  /** investment ÷ revenue, null when revenue is 0. */
+  costRatio: number | null;
+  attended: number;
+}
+
+export interface ChannelEconomics {
+  key: ComponentKey;
+  label: string;
+  /** Media spend in the window; null when the channel buys no media. */
+  spend: number | null;
+  traced: number | null;
+  allocated: number;
+  contribution: number;
+  /** contribution ÷ spend — only where spend exists. */
+  returnMultiple: number | null;
+}
+
+export interface PnlView {
+  months: PnlMonth[];
+  totals: {
+    revenue: number;
+    mediaSpend: number;
+    buildCost: number;
+    investment: number;
+    netAfterGrowth: number;
+    costRatio: number | null;
+    returnMultiple: number | null;
+    /** Revenue and acquisition cost per attended patient, full history. */
+    revenuePerPatient: number | null;
+    investmentPerPatient: number | null;
+  };
+  channels: ChannelEconomics[];
+  note: string;
+}
+
 export interface DeckReport {
   from: string;
   to: string;
   window: DeckWindow;
   waterfall: Waterfall;
+  pnl: PnlView;
   ga4: Ga4WindowView;
   funnel: FunnelStage[];
   investment: InvestmentSummary;
@@ -948,7 +1015,7 @@ export async function getCommandDeck(
     getManualMetrics().catch(() => new Map()),
     getLastIngestion().catch(() => null),
     getDeckVisibility().catch(() => [] as VisibilityRow[]),
-    getDeckCosts().catch(() => ({ rows: 0, total: null as number | null })),
+    getDeckCosts().catch(() => ({ rows: 0, total: null as number | null, byMonth: new Map<string, number>() })),
   ]);
   const [gCampaigns, gClickTypes, ga4Snapshot, ga4DailyRows, ga4EventRows] = await Promise.all([
     getGoogleCampaigns().catch(() => [] as GoogleCampaignRow[]),
@@ -1429,11 +1496,97 @@ export async function getCommandDeck(
       'Campaign type is read from the campaign naming convention (Search, Performance Max, Brand, Competitor) because the stored Google Ads export carries no channel-type field. Conversions are what Google itself counts — a conversion is not a booked patient, and one campaign records an order of magnitude more than the rest, which is a tracking-configuration difference rather than performance.',
   };
 
+  /* ── The growth → P&L bridge ──────────────────────────────────────────── */
+
+  const monthMap = new Map<string, { revenue: number; media: number; attended: number }>();
+  for (const r of daily) {
+    const m = r.day.slice(0, 7);
+    const cur = monthMap.get(m) ?? { revenue: 0, media: 0, attended: 0 };
+    cur.revenue += r.revenue ?? 0;
+    cur.media += r.spendTotal ?? 0;
+    cur.attended += r.showed ?? 0;
+    monthMap.set(m, cur);
+  }
+  // Invoice months with no trading rows (an early invoice) still get a row —
+  // dropping them would silently flatter the net line.
+  for (const m of costs.byMonth.keys()) {
+    if (!monthMap.has(m)) monthMap.set(m, { revenue: 0, media: 0, attended: 0 });
+  }
+
+  const pnlMonths: PnlMonth[] = [...monthMap.entries()]
+    .sort(([a], [b]) => (a < b ? -1 : 1))
+    .map(([month, v]) => {
+      const buildCost = costs.byMonth.get(month) ?? 0;
+      const investment = v.media + buildCost;
+      return {
+        month,
+        revenue: v.revenue,
+        mediaSpend: v.media,
+        buildCost,
+        investment,
+        netAfterGrowth: v.revenue - investment,
+        costRatio: v.revenue > 0 ? investment / v.revenue : null,
+        attended: v.attended,
+      };
+    });
+
+  const pTot = pnlMonths.reduce(
+    (a, m) => ({
+      revenue: a.revenue + m.revenue,
+      media: a.media + m.mediaSpend,
+      build: a.build + m.buildCost,
+      attended: a.attended + m.attended,
+    }),
+    { revenue: 0, media: 0, build: 0, attended: 0 },
+  );
+  const pInvestment = pTot.media + pTot.build;
+
+  // Channel economics: spend where a channel buys media, against the
+  // contribution the waterfall gives it (traced + allocated, labelled as such).
+  const spendByChannel: Partial<Record<ComponentKey, number | null>> = {
+    google_ads: win.spendGoogle,
+    meta: win.spendMeta,
+  };
+  const pnlChannels: ChannelEconomics[] = waterfall.bars
+    .filter((b) => b.contribution > 0 || spendByChannel[b.key] != null)
+    .map((b) => {
+      const spend = spendByChannel[b.key] ?? null;
+      return {
+        key: b.key,
+        label: b.label,
+        spend,
+        traced: b.traced,
+        allocated: b.allocated,
+        contribution: b.contribution,
+        returnMultiple: spend != null && spend > 0 ? b.contribution / spend : null,
+      };
+    })
+    .sort((a, b) => b.contribution - a.contribution);
+
+  const pnl: PnlView = {
+    months: pnlMonths,
+    totals: {
+      revenue: pTot.revenue,
+      mediaSpend: pTot.media,
+      buildCost: pTot.build,
+      investment: pInvestment,
+      netAfterGrowth: pTot.revenue - pInvestment,
+      costRatio: pTot.revenue > 0 ? pInvestment / pTot.revenue : null,
+      returnMultiple: pInvestment > 0 ? pTot.revenue / pInvestment : null,
+      revenuePerPatient: pTot.attended > 0 ? pTot.revenue / pTot.attended : null,
+      investmentPerPatient: pTot.attended > 0 ? pInvestment / pTot.attended : null,
+    },
+    channels: pnlChannels,
+    note:
+      'This section is monthly across the full trading history and deliberately ignores the date filter — a P&L exhibit that changed with a date picker would be noise. Revenue is billed treatment from the practice system; media spend is what the ad platforms invoiced; build & platform cost is the supplier invoice register, in the month each invoice was raised (quarterly fees therefore land as lumps). Channel contribution combines revenue traced patient-by-patient with that channel\'s modelled share of untraced revenue — the split is shown, and the return multiples inherit that caveat. Clinic-side operating costs (staff, rent, materials) are not in the platform, so the net line is net of GROWTH investment only, not clinic profit.',
+  };
+
   return {
     from,
     to,
     window: win,
     waterfall,
+    pnl,
     ga4,
     funnel,
     investment,

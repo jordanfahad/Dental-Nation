@@ -7,6 +7,7 @@ import { Waterfall } from './Waterfall';
 import { FunnelView } from './FunnelView';
 import { GoogleCascade } from './GoogleCascade';
 import { ForwardView } from './ForwardView';
+import { PnlBridge } from './PnlBridge';
 import { getPipelineView } from '@/lib/deck/pipeline';
 import { PrintButton } from '@/components/board/PrintButton';
 
@@ -86,10 +87,12 @@ const MODULE_DASH_TAB: Record<string, string> = {
   unattributed: 'group',
 };
 
-function dashHrefFor(basePath: string, key: string): string | null {
+function dashHrefFor(basePath: string, key: string, dashBasePath?: string): string | null {
   const tab = MODULE_DASH_TAB[key];
   if (!tab) return null;
-  return basePath.startsWith('/share/growth/') ? `${basePath}/dash?tab=${tab}` : `/?tab=${tab}`;
+  const dashBase =
+    dashBasePath ?? (basePath.startsWith('/share/growth/') ? `${basePath}/dash` : null);
+  return dashBase ? `${dashBase}?tab=${tab}` : `/?tab=${tab}`;
 }
 
 function DashLink({ href }: { href: string | null }) {
@@ -194,12 +197,15 @@ export async function CommandDeck({
   basePath,
   recipientLabel,
   hiddenModules = [],
+  dashBasePath,
 }: {
   searchParams: { preset?: string; from?: string; to?: string };
   basePath: string;
   recipientLabel?: string | null;
   /** Per-link module toggles (report_share_links.sections). */
   hiddenModules?: string[];
+  /** Overrides where 'open the live dashboard' links point (Evidence Room). */
+  dashBasePath?: string;
 }) {
   // Resolve the window against the data's own bounds, so "since launch" starts
   // at the first day the platform actually recorded something.
@@ -232,7 +238,12 @@ export async function CommandDeck({
             <p className="text-[10.5px] font-semibold uppercase tracking-[0.14em]" style={{ color: C.navyPale }}>
               Dental Nation · Group growth platform
             </p>
-            <h1 className="mt-1 text-[24px] font-semibold leading-tight sm:text-[28px]">Growth Command Deck</h1>
+            <h1 className="mt-1 text-[24px] font-semibold leading-tight sm:text-[28px]">
+              Growth Department Investor Report
+            </h1>
+            <p className="mt-0.5 text-[13px] font-medium tracking-wide" style={{ color: C.amberSoft }}>
+              Live Performance Dashboard
+            </p>
             <p className="mt-1.5 text-[12px]" style={{ color: C.navyPale }}>
               {deck.liveModules} of {deck.totalModules} systems live · every figure below is the selected window,
               refreshed every 15 minutes
@@ -375,7 +386,7 @@ export async function CommandDeck({
           {ATTRIBUTION_NOTE}
         </p>
         <div className="mt-4">
-          <Waterfall data={deck.waterfall} dashHrefFor={(key) => dashHrefFor(basePath, key)} />
+          <Waterfall data={deck.waterfall} dashHrefFor={(key) => dashHrefFor(basePath, key, dashBasePath)} />
         </div>
         {deck.waterfall.total != null && j.revenue != null ? (
           <p className="mt-3 text-[11px]" style={{ color: deck.waterfall.reconciles ? C.inkFaint : C.amber }}>
@@ -394,6 +405,19 @@ export async function CommandDeck({
         ) : null}
       </section>
 
+      {/* ── Growth → P&L bridge ──────────────────────────────────────────── */}
+      <section className="rounded-lg border bg-white p-4 print-avoid-break sm:p-5" style={{ borderColor: C.rule }}>
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-[15px] font-semibold">How growth lands in the P&amp;L</h2>
+          <p className="text-[11px] font-medium" style={{ color: C.navyMid }}>
+            Monthly, full trading history · channel economics follow the window above
+          </p>
+        </div>
+        <div className="mt-3">
+          <PnlBridge pnl={deck.pnl} />
+        </div>
+      </section>
+
       {/* ── Instrument grid ──────────────────────────────────────────────── */}
       <section>
         <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -408,7 +432,7 @@ export async function CommandDeck({
               key={m.key}
               m={m}
               extra={m.key === 'google_ads' ? <GoogleCascade g={deck.google} /> : undefined}
-              dashHref={dashHrefFor(basePath, m.key)}
+              dashHref={dashHrefFor(basePath, m.key, dashBasePath)}
             />
           ))}
         </div>

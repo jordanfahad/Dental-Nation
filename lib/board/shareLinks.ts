@@ -9,13 +9,15 @@ import { getSupabaseAdmin } from '@/lib/supabase/server';
  *   - `growth`     → /share/growth/[token]     — board & investors
  *   - `handover`   → /share/handover/[token]   — Mr. Akbar only, not for the board
  *   - `operations` → /share/operations/[token] — the Head of Operations report
+ *   - `room`       → /share/room/[token]       — the Investor Evidence Room: one
+ *     token opening the landing page and every section behind it
  *
  * A token is validated SERVER-SIDE on every request and is scope-checked: a
  * handover token pasted into the board URL is a 404, and vice versa. Revoking
  * one link never touches the other.
  */
 
-export type ShareScope = 'growth' | 'handover' | 'operations';
+export type ShareScope = 'growth' | 'handover' | 'operations' | 'room';
 
 /**
  * Which board-facing page a `growth` link renders. One link system, two views

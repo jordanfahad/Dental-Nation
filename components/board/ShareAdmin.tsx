@@ -51,7 +51,9 @@ export function ShareAdmin({
               ? 'e.g. Board — Q3 2026'
               : scope === 'operations'
                 ? 'e.g. Ms Shadi — leadership review'
-                : 'e.g. Mr. Akbar — Aug leave'
+                : scope === 'room'
+                  ? 'e.g. Investor — Fund name'
+                  : 'e.g. Mr. Akbar — Aug leave'
           }
           className="min-w-[200px] flex-1 rounded-md border border-line bg-card px-2.5 py-1.5 text-[12.5px] text-ink placeholder:text-ink-ghost"
         />
@@ -70,7 +72,7 @@ export function ShareAdmin({
             aria-label="Which view this link opens"
             className="min-h-[36px] rounded-md border border-line bg-card px-2.5 py-1.5 text-[12.5px] text-ink"
           >
-            <option value="command_deck">Command Deck (board &amp; investors)</option>
+            <option value="command_deck">Investor Report — Live Performance Dashboard</option>
             <option value="funnel">Growth report (story)</option>
           </select>
         ) : null}
@@ -140,7 +142,7 @@ function LinkRow({ link, url }: { link: ShareLink; url: string }) {
           <p className="tnum mt-0.5 text-[10.5px] text-ink-faint">
             {link.scope === 'growth' ? (
               <span className="font-medium text-ink-soft">
-                {link.view === 'command_deck' ? 'Command Deck' : 'Growth report'} ·{' '}
+                {link.view === 'command_deck' ? 'Investor Report' : 'Growth report'} ·{' '}
               </span>
             ) : null}
             {link.viewCount} view{link.viewCount === 1 ? '' : 's'}

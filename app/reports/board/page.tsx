@@ -26,11 +26,12 @@ export default async function BoardReportAdminPage({
   searchParams: Promise<{ preset?: string; from?: string; to?: string; view?: string }>;
 }) {
   const sp = await searchParams;
-  const [role, growthLinks, handoverLinks, opsLinks, manual, h] = await Promise.all([
+  const [role, growthLinks, handoverLinks, opsLinks, roomLinks, manual, h] = await Promise.all([
     currentRole(),
     listShareLinks('growth'),
     listShareLinks('handover'),
     listShareLinks('operations'),
+    listShareLinks('room'),
     getManualMetrics(),
     headers(),
   ]);
@@ -82,6 +83,13 @@ export default async function BoardReportAdminPage({
             origin={origin}
             title="Head of Operations dashboard links"
             blurb="Read-only, no login — the operational-excellence report maintained by the Operations Director. Edits made on the Head of Operations tab appear on these links immediately."
+          />
+          <ShareAdmin
+            scope="room"
+            links={roomLinks}
+            origin={origin}
+            title="Investor Evidence Room links"
+            blurb="THE link for investors: one landing page opening every report — the Growth Department Live Dashboard, the Operating Platform report and Financial reports — under a single token. Revoking it closes the whole room at once."
           />
           {!showHandover ? (
             <div className="lg:col-span-2">

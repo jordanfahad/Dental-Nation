@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
 export const metadata: Metadata = {
-  title: 'Dental Nation — Growth Command Deck',
+  title: 'Dental Nation — Growth Department Investor Report',
   robots: { index: false, follow: false, nocache: true, noarchive: true },
 };
 
