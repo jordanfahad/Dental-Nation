@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { C } from '@/components/board/design';
 import { ROOM } from '@/config/evidence-room';
+import { PlatformModelBlock } from '@/components/room/PlatformModel';
 
 /**
  * The Investor Evidence Room landing page (Mr Akbar's blueprint) — the front
@@ -76,69 +77,8 @@ export function EvidenceRoom({ base, recipientLabel }: { base: string; recipient
         </div>
       </section>
 
-      {/* ── Platform overview ────────────────────────────────────────────── */}
-      <section className="rounded-lg border bg-white p-5" style={{ borderColor: C.rule }}>
-        <h2 className="text-[15px] font-semibold">{ROOM.overviewTitle}</h2>
-        <p className="mt-1 text-[10px] font-semibold uppercase tracking-wider" style={{ color: C.inkFaint }}>
-          A. One-page summary
-        </p>
-        <p className="mt-2 max-w-[880px] text-[12.5px] leading-relaxed" style={{ color: C.inkSoft }}>
-          {ROOM.overview}
-        </p>
-        <p className="mt-4 text-[11px] font-bold uppercase tracking-wider" style={{ color: C.navyMid }}>
-          {ROOM.whyTitle}
-        </p>
-        <p className="mt-1.5 max-w-[880px] text-[12.5px] leading-relaxed" style={{ color: C.inkSoft }}>
-          {ROOM.why}
-        </p>
-      </section>
-
-      {/* ── Comparison ───────────────────────────────────────────────────── */}
-      <section>
-        <p className="text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: C.navyMid }}>
-          Platform model · comparison and implementation
-        </p>
-        <h2 className="mt-1 text-[15px] font-semibold">{ROOM.comparisonTitle}</h2>
-        <p className="mt-1 max-w-[860px] text-[11.5px] leading-snug" style={{ color: C.inkSoft }}>
-          {ROOM.comparisonSub}
-        </p>
-        <div className="scroll-x mt-3 overflow-x-auto rounded-lg border" style={{ borderColor: C.rule }}>
-          <table className="w-full border-collapse text-left">
-            <thead>
-              <tr style={{ background: C.navy }}>
-                {ROOM.comparisonHeaders.map((h, i) => (
-                  <th
-                    key={h}
-                    className={`px-3.5 py-2.5 text-[10.5px] font-semibold uppercase tracking-wider text-white ${i === 3 ? 'bg-white/10' : ''}`}
-                  >
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {ROOM.comparison.map((row, ri) => (
-                <tr key={row[0]} className="align-top" style={{ background: ri % 2 ? C.panel : C.paper }}>
-                  {row.map((cell, ci) => (
-                    <td
-                      key={ci}
-                      className={`px-3.5 py-3 text-[11.5px] leading-snug ${
-                        ci === 0 ? 'font-semibold' : ci === 3 ? 'font-medium' : ''
-                      }`}
-                      style={{
-                        color: ci === 0 ? C.ink : ci === 3 ? C.navyDeep : C.inkSoft,
-                        background: ci === 3 ? C.navyWash : undefined,
-                      }}
-                    >
-                      {cell}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
+      {/* ── Platform overview + platform model (A and B, shared block) ───── */}
+      <PlatformModelBlock />
 
       <footer className="border-t pt-3 text-[10.5px]" style={{ borderColor: C.rule, color: C.inkFaint }}>
         Dental Nation Group · {ROOM.cover.confidential} · Prepared for {recipientLabel}
