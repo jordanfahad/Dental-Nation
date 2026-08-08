@@ -11,7 +11,7 @@
 export const ROOM = {
   cover: {
     kicker: 'Dental Nation Platform',
-    title: 'From Independent Clinics to One Scalable Healthcare Operating Platform',
+    title: 'From Independent Clinics to One Scalable Dental Platform',
     sub: 'Built in Dubai. Structured for repeatable deployment across clinics, specialties and markets.',
     confidential: 'Strictly confidential — approved investor recipients only',
   },
