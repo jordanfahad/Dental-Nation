@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isAdmin } from '@/lib/auth/role';
+import { getSupabaseAdmin } from '@/lib/supabase/server';
+import { readGmbSecrets } from '@/config/gmb';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -15,6 +17,8 @@ export const maxDuration = 60;
  * alongside the Business Profile Performance API.
  *
  *   GET /api/gmb/locations                    (signed in as admin)
+ *   GET /api/gmb/locations?store=1            also store every discovered id
+ *                                             into app_secrets, ready to sync
  *   GET /api/gmb/locations?secret=<CRON_SECRET>
  */
 function hasSecret(req: NextRequest): boolean {
@@ -59,12 +63,13 @@ export async function GET(req: NextRequest) {
   if (!hasSecret(req) && !(await isAdmin())) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  const clientId = process.env.GMB_CLIENT_ID?.trim();
-  const clientSecret = process.env.GMB_CLIENT_SECRET?.trim();
-  const refreshToken = process.env.GMB_REFRESH_TOKEN?.trim();
+  const stored = await readGmbSecrets(getSupabaseAdmin());
+  const clientId = process.env.GMB_CLIENT_ID?.trim() || stored.get('gmb_client_id');
+  const clientSecret = process.env.GMB_CLIENT_SECRET?.trim() || stored.get('gmb_client_secret');
+  const refreshToken = process.env.GMB_REFRESH_TOKEN?.trim() || stored.get('gmb_refresh_token');
   if (!clientId || !clientSecret || !refreshToken) {
     return NextResponse.json(
-      { error: 'Set GMB_CLIENT_ID, GMB_CLIENT_SECRET and GMB_REFRESH_TOKEN first — GMB_LOCATION_IDS is what this route helps you find.' },
+      { error: 'Set gmb_client_id, gmb_client_secret and gmb_refresh_token first (env or app_secrets) — the location ids are what this route helps you find.' },
       { status: 503 },
     );
   }
@@ -112,8 +117,34 @@ export async function GET(req: NextRequest) {
     });
   }
 
+  // ?store=1 → persist every discovered location straight into app_secrets,
+  // so the next sync run picks them up with no env/manual step at all.
+  let storedNote: string | null = null;
+  if (req.nextUrl.searchParams.get('store') === '1') {
+    const found = out.flatMap((a) => a.locations).filter((l) => l.id);
+    if (found.length === 0) {
+      storedNote = 'nothing stored — no locations discovered';
+    } else {
+      const supabase = getSupabaseAdmin();
+      if (!supabase) {
+        storedNote = 'nothing stored — Supabase not configured';
+      } else {
+        const { error } = await supabase.from('app_secrets').upsert(
+          [
+            { key: 'gmb_location_ids', value: found.map((l) => l.id).join(',') },
+            { key: 'gmb_location_labels', value: found.map((l) => l.title.replace(/,/g, ' ')).join(',') },
+          ],
+          { onConflict: 'key' },
+        );
+        storedNote = error
+          ? `store failed: ${error.message}`
+          : `stored ${found.length} location(s) — next: /api/gmb/probe?from=2026-01-01 to backfill`;
+      }
+    }
+  }
+
   return NextResponse.json({
-    hint: 'Copy each locations/… id into GMB_LOCATION_IDS (comma-separated) and matching names into GMB_LOCATION_LABELS.',
+    hint: storedNote ?? 'Add ?store=1 to store these ids for the sync, or copy them into GMB_LOCATION_IDS manually.',
     accounts: out,
   });
 }

@@ -11,7 +11,7 @@ import { isMetaConfigured } from '@/config/meta';
 import { syncGoogleAds } from './adapters/google-ads-adapter';
 import { isGoogleAdsConfigured } from '@/config/google-ads';
 import { syncGmb } from './adapters/gmb-adapter';
-import { isGmbConfigured } from '@/config/gmb';
+import { resolveGmbConfig } from '@/config/gmb';
 import { syncMetaOrganic } from './adapters/meta-organic-adapter';
 import { resolveMetaOrganicConfig } from '@/config/meta-organic';
 import { runSlotsMonitor } from '@/lib/ops/slotsMonitor';
@@ -335,10 +335,12 @@ export async function runSync(trigger: SyncTrigger): Promise<SyncSummary> {
   }
 
   // ----- Google Business Profile (GMB) — organic/local daily performance
-  // (calls, directions, clicks, map views) into social_insights. Best-effort.
-  if (isGmbConfigured()) {
+  // (calls, directions, clicks, map views) into social_insights. Credentials
+  // resolve from env OR lane_e.app_secrets. Best-effort.
+  const gmbCfg = await resolveGmbConfig(supabase);
+  if (gmbCfg) {
     try {
-      const gb = await syncGmb(supabase);
+      const gb = await syncGmb(supabase, { config: gmbCfg });
       if (gb.ok) {
         sheetsOk.push(`GMB (local performance) — ${gb.stored} rows`);
         rowsIngested += gb.stored;

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
 import { isAdmin } from '@/lib/auth/role';
 import { syncGmb } from '@/lib/sync/adapters/gmb-adapter';
-import { isGmbConfigured } from '@/config/gmb';
+import { resolveGmbConfig } from '@/config/gmb';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // a multi-month backfill spans many rows.
@@ -27,19 +27,20 @@ export async function GET(req: NextRequest) {
   if (!hasSecret(req) && !(await isAdmin())) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  if (!isGmbConfigured()) {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return NextResponse.json({ error: 'Supabase not configured' }, { status: 503 });
+  const config = await resolveGmbConfig(supabase);
+  if (!config) {
     return NextResponse.json(
-      { error: 'GMB not configured — set GMB_CLIENT_ID / GMB_CLIENT_SECRET / GMB_REFRESH_TOKEN / GMB_LOCATION_IDS' },
+      { error: 'GMB not configured — set GMB_CLIENT_ID / GMB_CLIENT_SECRET / GMB_REFRESH_TOKEN / GMB_LOCATION_IDS (env or app_secrets)' },
       { status: 503 },
     );
   }
-  const supabase = getSupabaseAdmin();
-  if (!supabase) return NextResponse.json({ error: 'Supabase not configured' }, { status: 503 });
 
   const sp = req.nextUrl.searchParams;
   const from = sp.get('from') ?? undefined;
   const to = sp.get('to') ?? undefined;
   const days = sp.get('days') ? Number(sp.get('days')) : undefined;
-  const result = await syncGmb(supabase, { from, to, days });
+  const result = await syncGmb(supabase, { from, to, days, config });
   return NextResponse.json(result, { status: result.ok ? 200 : 502 });
 }

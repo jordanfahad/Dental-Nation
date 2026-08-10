@@ -1,6 +1,6 @@
 import 'server-only';
 import type { AdminClient } from '@/lib/supabase/server';
-import { getGmbConfig, GMB_METRICS, type GmbConfig } from '@/config/gmb';
+import { resolveGmbConfig, GMB_METRICS, type GmbConfig } from '@/config/gmb';
 
 /**
  * Google Business Profile (GMB) adapter — pulls DAILY local-search performance
@@ -30,6 +30,8 @@ export interface GmbSyncOpts {
   days?: number; // trailing window (default 30). GMB data lags ~2-3 days.
   from?: string;
   to?: string;
+  /** Pre-resolved config (env or app_secrets); resolved internally if absent. */
+  config?: GmbConfig;
 }
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
@@ -96,7 +98,7 @@ interface Row {
 }
 
 export async function syncGmb(supabase: AdminClient, opts: GmbSyncOpts = {}): Promise<GmbSyncResult> {
-  const cfg = getGmbConfig();
+  const cfg = opts.config ?? (await resolveGmbConfig(supabase));
   if (!cfg) return { ok: false, fetched: 0, stored: 0, locations: 0, error: 'GMB not configured' };
 
   const to = opts.to ?? iso(new Date());
