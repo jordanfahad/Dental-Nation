@@ -34,17 +34,23 @@ const empty: SearchConsoleReport = {
 };
 
 /** Pick the property this account can see (prefer a domain property). */
-async function resolveSite(sc: ReturnType<typeof getSearchConsoleClient>): Promise<string | null> {
+async function resolveSite(
+  sc: ReturnType<typeof getSearchConsoleClient>,
+): Promise<{ site: string | null; error: string | null }> {
   const override = process.env.SEARCH_CONSOLE_SITE?.trim();
-  if (override) return override;
+  if (override) return { site: override, error: null };
   try {
     const { data } = await sc.sites.list();
     const entries = (data.siteEntry ?? []).map((e) => e.siteUrl ?? '').filter(Boolean);
     const dn = entries.filter((u) => /dentalnation/i.test(u));
     // Prefer a domain property (sc-domain:), then https, then anything.
-    return dn.find((u) => u.startsWith('sc-domain:')) ?? dn.find((u) => u.startsWith('https://')) ?? dn[0] ?? entries[0] ?? null;
-  } catch {
-    return null;
+    const site =
+      dn.find((u) => u.startsWith('sc-domain:')) ?? dn.find((u) => u.startsWith('https://')) ?? dn[0] ?? entries[0] ?? null;
+    return { site, error: site ? null : 'the service account sees an empty property list — permission may still be propagating' };
+  } catch (e) {
+    // Surface the REAL reason (API disabled vs permission vs quota) instead of
+    // collapsing every failure into "add it as a user".
+    return { site: null, error: (e as Error).message };
   }
 }
 
@@ -56,8 +62,8 @@ export async function fetchSearchConsole(from: string, to: string): Promise<Sear
     return { ...empty, note: (e as Error).message };
   }
 
-  const siteUrl = await resolveSite(sc);
-  if (!siteUrl) return { ...empty, note: 'no Search Console property visible to the service account (add it as a user)' };
+  const { site: siteUrl, error: siteError } = await resolveSite(sc);
+  if (!siteUrl) return { ...empty, note: `Search Console: ${siteError ?? 'no property visible to the service account (add it as a user)'}` };
 
   try {
     const [totalsRes, queriesRes, pagesRes] = await Promise.all([
