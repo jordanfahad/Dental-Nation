@@ -11,6 +11,7 @@ import { isMetaConfigured } from '@/config/meta';
 import { syncGoogleAds } from './adapters/google-ads-adapter';
 import { isGoogleAdsConfigured } from '@/config/google-ads';
 import { syncGmb } from './adapters/gmb-adapter';
+import { syncGmbReviews } from './adapters/gmb-reviews-adapter';
 import { resolveGmbConfig } from '@/config/gmb';
 import { syncMetaOrganic } from './adapters/meta-organic-adapter';
 import { resolveMetaOrganicConfig } from '@/config/meta-organic';
@@ -352,6 +353,22 @@ export async function runSync(trigger: SyncTrigger): Promise<SyncSummary> {
     } catch (err) {
       sheetsFailed.push('GMB (local performance)');
       dataGaps.push({ area: 'channel', detail: `GMB sync failed: ${(err as Error).message}`, owner: ownerFor('channel') });
+    }
+
+    // Google reviews — full pull into gmb_reviews (upsert by review_id, so
+    // edits and late replies update in place). Same credentials. Best-effort.
+    try {
+      const rv = await syncGmbReviews(supabase, { config: gmbCfg });
+      if (rv.ok) {
+        sheetsOk.push(`Google reviews — ${rv.stored} synced${rv.totalOnGoogle != null ? ` of ${rv.totalOnGoogle}` : ''}`);
+        rowsIngested += rv.stored;
+      } else {
+        sheetsFailed.push('Google reviews');
+        dataGaps.push({ area: 'channel', detail: `Google reviews sync failed: ${rv.error ?? 'unknown'}`, owner: ownerFor('channel') });
+      }
+    } catch (err) {
+      sheetsFailed.push('Google reviews');
+      dataGaps.push({ area: 'channel', detail: `Google reviews sync failed: ${(err as Error).message}`, owner: ownerFor('channel') });
     }
   }
 

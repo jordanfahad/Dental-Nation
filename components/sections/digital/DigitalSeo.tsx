@@ -1,4 +1,5 @@
 import { getDigitalSeo } from '@/lib/analytics/digital';
+import { getGmbReviewsReport } from '@/lib/analytics/gmb-reviews';
 import { Card, SectionHeader, Takeaway } from '@/components/ui/Card';
 import { DataGapInline } from '@/components/ui/DataGap';
 import { KpiBand, type KpiItem } from '@/components/charts/KpiBand';
@@ -28,7 +29,7 @@ function Score({ label, value }: { label: string; value: number | null }) {
  * demographics live on Google Analytics — none of them are repeated here.
  */
 export async function DigitalSeo({ range }: { range?: { from?: string; to?: string } }) {
-  const d = await getDigitalSeo(range ?? {});
+  const [d, reviews] = await Promise.all([getDigitalSeo(range ?? {}), getGmbReviewsReport()]);
   const o = d.organic;
 
   const kpis: KpiItem[] = [
@@ -225,6 +226,65 @@ export async function DigitalSeo({ range }: { range?: { from?: string; to?: stri
             </>
           ) : (
             <DataGapInline detail="no emirate-level GA4 traffic" owner={ownerFor('channel')} />
+          )}
+        </div>
+      </Card>
+
+      {/* Reputation — Google reviews, full history (not range-filtered: the
+          rating is a property of the clinic, not of the week being viewed). */}
+      <Card>
+        <SectionHeader tag="D6" eyebrow="Reputation · Google Business Profile" title="Google reviews" />
+        <div className="px-5 pb-5 pt-4">
+          {reviews ? (
+            <>
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                <SearchStat label="Average rating" value={`${reviews.avg.toFixed(2)} ★`} />
+                <SearchStat label="Total reviews" value={int(reviews.total)} />
+                <SearchStat label="5-star share" value={pct1(reviews.fiveStarShare)} />
+                <SearchStat label="Response rate" value={pct1(reviews.responseRate)} />
+              </div>
+              {reviews.unanswered > 0 ? (
+                <p className="mt-3 text-[12px] font-medium text-watch">
+                  {int(reviews.unanswered)} written review{reviews.unanswered === 1 ? '' : 's'} still without a reply — responses
+                  are a local-ranking signal, and an unanswered complaint is public.
+                </p>
+              ) : null}
+              {reviews.months.length > 1 ? (
+                <div className="mt-4">
+                  <p className="mb-2 text-[10px] font-medium uppercase tracking-wide text-ink-faint">Reviews per month (avg rating)</p>
+                  <HBarChart
+                    data={reviews.months.map((m) => ({ label: `${m.month} · ${m.avg.toFixed(1)}★`, value: m.count })) as BarDatum[]}
+                    valueFormat="int"
+                  />
+                </div>
+              ) : null}
+              <div className="mt-4 space-y-2.5">
+                {reviews.latest.map((r, i) => (
+                  <div key={i} className="rounded-card border border-line p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-[12px] font-medium text-ink">
+                        {r.reviewer ?? 'Anonymous'}
+                        <span className="ml-2 text-watch">{'★'.repeat(r.rating)}</span>
+                      </p>
+                      <p className="text-[10.5px] text-ink-faint">
+                        {r.createdAt.slice(0, 10)}
+                        {r.replied ? ' · replied' : r.comment ? ' · no reply yet' : ''}
+                      </p>
+                    </div>
+                    {r.comment ? <p className="mt-1 text-[12px] leading-snug text-ink-soft">{r.comment}</p> : null}
+                  </div>
+                ))}
+              </div>
+              <Takeaway>
+                Every Google review on the profile, synced hourly — reviewer, rating, text and whether the clinic replied.
+                The calls / directions / map-view counts from the same profile live on the ⭐ Growth Platform under GMB.
+              </Takeaway>
+            </>
+          ) : (
+            <DataGapInline
+              detail="no reviews synced yet — the hourly sync fills this automatically (needs the Google My Business API enabled in the same Google Cloud project)"
+              owner={ownerFor('channel')}
+            />
           )}
         </div>
       </Card>
