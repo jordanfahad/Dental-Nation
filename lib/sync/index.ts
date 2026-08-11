@@ -12,6 +12,7 @@ import { syncGoogleAds } from './adapters/google-ads-adapter';
 import { isGoogleAdsConfigured } from '@/config/google-ads';
 import { syncGmb } from './adapters/gmb-adapter';
 import { syncGmbReviews } from './adapters/gmb-reviews-adapter';
+import { syncGmbSearchKeywords } from './adapters/gmb-keywords-adapter';
 import { resolveGmbConfig } from '@/config/gmb';
 import { syncMetaOrganic } from './adapters/meta-organic-adapter';
 import { resolveMetaOrganicConfig } from '@/config/meta-organic';
@@ -369,6 +370,22 @@ export async function runSync(trigger: SyncTrigger): Promise<SyncSummary> {
     } catch (err) {
       sheetsFailed.push('Google reviews');
       dataGaps.push({ area: 'channel', detail: `Google reviews sync failed: ${(err as Error).message}`, owner: ownerFor('channel') });
+    }
+
+    // Local search keywords — what people typed when the profile appeared,
+    // monthly (trailing months re-upserted; Google revises them). Best-effort.
+    try {
+      const kw = await syncGmbSearchKeywords(supabase, { config: gmbCfg });
+      if (kw.ok) {
+        sheetsOk.push(`GMB search keywords — ${kw.stored} rows over ${kw.months} months`);
+        rowsIngested += kw.stored;
+      } else {
+        sheetsFailed.push('GMB search keywords');
+        dataGaps.push({ area: 'channel', detail: `GMB keywords sync failed: ${kw.error ?? 'unknown'}`, owner: ownerFor('channel') });
+      }
+    } catch (err) {
+      sheetsFailed.push('GMB search keywords');
+      dataGaps.push({ area: 'channel', detail: `GMB keywords sync failed: ${(err as Error).message}`, owner: ownerFor('channel') });
     }
   }
 

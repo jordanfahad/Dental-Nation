@@ -1,5 +1,6 @@
 import { getDigitalSeo } from '@/lib/analytics/digital';
 import { getGmbReviewsReport } from '@/lib/analytics/gmb-reviews';
+import { getGmbKeywordsReport } from '@/lib/analytics/gmb-keywords';
 import { Card, SectionHeader, Takeaway } from '@/components/ui/Card';
 import { DataGapInline } from '@/components/ui/DataGap';
 import { KpiBand, type KpiItem } from '@/components/charts/KpiBand';
@@ -29,7 +30,7 @@ function Score({ label, value }: { label: string; value: number | null }) {
  * demographics live on Google Analytics — none of them are repeated here.
  */
 export async function DigitalSeo({ range }: { range?: { from?: string; to?: string } }) {
-  const [d, reviews] = await Promise.all([getDigitalSeo(range ?? {}), getGmbReviewsReport()]);
+  const [d, reviews, localKw] = await Promise.all([getDigitalSeo(range ?? {}), getGmbReviewsReport(), getGmbKeywordsReport()]);
   const o = d.organic;
 
   const kpis: KpiItem[] = [
@@ -283,6 +284,45 @@ export async function DigitalSeo({ range }: { range?: { from?: string; to?: stri
           ) : (
             <DataGapInline
               detail="no reviews synced yet — the hourly sync fills this automatically (needs the Google My Business API enabled in the same Google Cloud project)"
+              owner={ownerFor('channel')}
+            />
+          )}
+        </div>
+      </Card>
+
+      {/* Local search keywords — what people typed into Google Search/Maps when
+          the profile appeared. Latest closed month (Google revises the current
+          one); counts under Google's privacy threshold render as a ceiling. */}
+      <Card>
+        <SectionHeader tag="D7" eyebrow="Local search · Google Business Profile" title="What people searched to find the profile" />
+        <div className="px-5 pb-5 pt-4">
+          {localKw ? (
+            <>
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+                <SearchStat label="Month" value={localKw.month} />
+                <SearchStat label="Distinct search terms" value={int(localKw.totalKeywords)} />
+                <SearchStat label="Profile impressions" value={int(localKw.totalImpressions)} />
+              </div>
+              <div className="mt-4">
+                <HBarChart
+                  data={localKw.top.map((k) => ({
+                    label: k.isThreshold ? `${k.keyword} (<${k.impressions})` : k.keyword,
+                    value: k.impressions,
+                  })) as BarDatum[]}
+                  valueFormat="int"
+                />
+              </div>
+              <Takeaway>
+                The terms people typed into Google Search or Maps when the Business Profile appeared — the local-search
+                mirror of the Search Console queries above. Terms marked <strong>&lt;N</strong> are below Google&apos;s
+                privacy threshold: the profile appeared for them, but Google reports a ceiling instead of an exact count.
+                Branded terms confirm reputation; non-branded terms (&quot;dentist near me&quot;, treatment names) are the
+                growth signal to watch.
+              </Takeaway>
+            </>
+          ) : (
+            <DataGapInline
+              detail="no keyword data synced yet — fills automatically after the next hourly sync (needs a closed month of Business Profile data)"
               owner={ownerFor('channel')}
             />
           )}
