@@ -10,6 +10,7 @@ import { KpiBand, type KpiItem } from '@/components/charts/KpiBand';
 import { ChartLegend, TrendChart, TOKENS, type TrendSeries } from '@/components/charts/Charts';
 import { ownerFor } from '@/config/data-gap-owners';
 import { dubaiDateLabel } from '@/lib/dates';
+import { GoogleReviewsCard, LocalSearchCard } from '@/components/sections/gmb/GmbLocalCards';
 import { PostPerformance } from './PostPerformance';
 import { Demographics } from './Demographics';
 
@@ -65,6 +66,11 @@ export async function SocialReport({ range }: { range: { from: string; to: strin
 
       <PostPerformance posts={media.posts} stories={media.stories} />
       <Demographics demo={demo} />
+
+      {/* Google Business Profile: reputation + local search. Shared cards —
+          the same two sections render on Digital & SEO. */}
+      <GoogleReviewsCard tag="S2" />
+      <LocalSearchCard tag="S3" />
 
       {report.source === 'live' ? (
         <Takeaway>
