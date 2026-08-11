@@ -37,7 +37,24 @@ export async function DigitalSeo({ range }: { range?: { from?: string; to?: stri
     { label: 'AI-chat sessions', value: o ? int(o.aiSessions) : null, hint: 'ChatGPT · Claude · Perplexity …', gapDetail: 'GA4 source data unavailable', gapOwner: ownerFor('channel') },
     { label: 'Direct sessions', value: o ? int(o.directSessions) : null, hint: 'typed / bookmarked', gapDetail: 'GA4 source data unavailable', gapOwner: ownerFor('channel') },
     { label: 'SEO score', value: d.seo?.seo != null ? String(d.seo.seo) : null, hint: 'Lighthouse · /100', gapDetail: 'PageSpeed unavailable', gapOwner: ownerFor('tracking') },
-    { label: 'Pages indexed', value: d.pagesIndexed != null ? int(d.pagesIndexed) : null, hint: 'Search Console', gapDetail: d.search?.note ?? 'connect Google Search Console', gapOwner: ownerFor('tracking') },
+    // Exact indexed count needs a sitemap submitted in Search Console; until
+    // then the count of pages actually appearing in Google results is an
+    // honest floor — better than claiming GSC is not connected when it is.
+    {
+      label: 'Pages indexed',
+      value:
+        d.pagesIndexed != null
+          ? int(d.pagesIndexed)
+          : d.search?.available && d.search.pagesInSearch > 0
+            ? `${int(d.search.pagesInSearch)}+`
+            : null,
+      hint:
+        d.pagesIndexed != null
+          ? 'Search Console · submitted sitemaps'
+          : 'pages seen in Google results · submit a sitemap for the exact count',
+      gapDetail: d.search?.available ? 'no sitemap submitted in Search Console' : d.search?.note ?? 'connect Google Search Console',
+      gapOwner: ownerFor('tracking'),
+    },
   ];
 
   return (
