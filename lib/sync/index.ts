@@ -16,6 +16,7 @@ import { syncMetaOrganic } from './adapters/meta-organic-adapter';
 import { resolveMetaOrganicConfig } from '@/config/meta-organic';
 import { runSlotsMonitor } from '@/lib/ops/slotsMonitor';
 import { sendNewLeadAlerts } from '@/lib/ops/alerts';
+import { getSiteSpeedReport } from '@/lib/analytics/site-speed';
 import { sendWatchedTabAlerts } from '@/lib/ops/tabAlerts';
 import {
   normalizePerformance,
@@ -401,6 +402,17 @@ export async function runSync(trigger: SyncTrigger): Promise<SyncSummary> {
     if (tabAlerts.error) dataGaps.push({ area: 'clinic', detail: `Watched-tab alert failed: ${tabAlerts.error}`, owner: ownerFor('clinic') });
   } catch (err) {
     dataGaps.push({ area: 'clinic', detail: `Watched-tab alert failed: ${(err as Error).message}`, owner: ownerFor('clinic') });
+  }
+
+  // ----- Site speed (PSI) cache warm-up. A cold Lighthouse audit takes ~35s,
+  // longer than a board member should ever wait, so the hourly cron pays that
+  // cost here and page loads read the warm 6h cache. Best-effort.
+  try {
+    const speed = await getSiteSpeedReport();
+    if (speed.error) dataGaps.push({ area: 'tracking', detail: `Site speed warm-up failed: ${speed.error}`, owner: ownerFor('tracking') });
+    else sheetsOk.push('Site speed (PSI) — cache warmed');
+  } catch (err) {
+    dataGaps.push({ area: 'tracking', detail: `Site speed warm-up failed: ${(err as Error).message}`, owner: ownerFor('tracking') });
   }
 
   // ----- Silver upserts -----

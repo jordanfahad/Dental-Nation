@@ -101,7 +101,10 @@ export async function getDigitalSeo(range: { from?: string; to?: string }): Prom
   } as unknown as GaReport;
   const [ga, speed, social, search, organicRaw] = await Promise.all([
     timed('ga4', getGoogleAnalyticsReport(range), 60_000, gaFallback),
-    timed('pagespeed', getSiteSpeedReport().catch(() => null), 30_000, null),
+    // PSI runs mobile+desktop in parallel but a cold Lighthouse audit of the
+    // live site measures ~33s — a 30s budget timed out on every cold cache.
+    // The cron warms the 6h cache, so the long budget is only ever felt once.
+    timed('pagespeed', getSiteSpeedReport().catch(() => null), 75_000, null),
     timed('social', getSocialReport({ from, to }).catch(() => null), 25_000, null),
     timed('search-console', getSearchConsoleReport(range).catch(() => null), 25_000, null),
     timed('organic-detail', cachedOrganicDigital(from, to).catch(() => null), 30_000, null),
