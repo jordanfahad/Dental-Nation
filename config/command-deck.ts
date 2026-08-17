@@ -59,7 +59,7 @@ export const DECK_COMPONENTS: ComponentDef[] = [
     detail: 'Search engines finding the clinic without paid media.',
     attribution: 'pending',
     pendingNote:
-      'Search Console access is still pending, and an organic visitor who later phones or walks in leaves no identifier to match. Impressions and clicks arrive with the Search Console feed.',
+      'Search Console is live (impressions, clicks, queries now feed the deck), but an organic visitor who later phones or walks in leaves no identifier to match — so this route still takes no share of billed revenue.',
   },
   {
     key: 'ai_seo',

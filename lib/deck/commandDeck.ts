@@ -3,6 +3,9 @@ import { cache } from 'react';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
 import { getBoardCrm, getManualMetrics, getLastIngestion, delta } from '@/lib/board/metrics';
 import { DECK_COMPONENTS, type ComponentKey, type ModuleStatus } from '@/config/command-deck';
+import { getSearchConsoleReport } from '@/lib/analytics/search-console';
+import { getGmbReviewsReport } from '@/lib/analytics/gmb-reviews';
+import { getGmbKeywordsReport } from '@/lib/analytics/gmb-keywords';
 
 /**
  * Command Deck read layer.
@@ -127,6 +130,25 @@ export const getDeckVisibility = cache(async (): Promise<VisibilityRow[]> => {
     metric: String(r.metric),
     value: num(r.value),
   }));
+});
+
+/** Daily Business Profile metrics (calls, directions, clicks, map views) —
+    straight from social_insights channel='gmb', windowed by the caller. */
+interface GmbDayRow {
+  day: string;
+  metric: string;
+  value: number | null;
+}
+const getDeckGmbDays = cache(async (): Promise<GmbDayRow[]> => {
+  const db = getSupabaseAdmin();
+  if (!db) return [];
+  const { data, error } = await db
+    .from('social_insights')
+    .select('day, metric, value')
+    .eq('channel', 'gmb')
+    .limit(5000);
+  if (error || !data) return [];
+  return data.map((r) => ({ day: String(r.day), metric: String(r.metric), value: num(r.value) }));
 });
 
 /**
@@ -1020,13 +1042,31 @@ export async function getCommandDeck(
     getDeckVisibility().catch(() => [] as VisibilityRow[]),
     getDeckCosts().catch(() => ({ rows: 0, total: null as number | null, byMonth: new Map<string, number>() })),
   ]);
-  const [gCampaigns, gClickTypes, ga4Snapshot, ga4DailyRows, ga4EventRows] = await Promise.all([
+  const [gCampaigns, gClickTypes, ga4Snapshot, ga4DailyRows, ga4EventRows, search, gmbDays, gmbReviews, gmbKeywords] = await Promise.all([
     getGoogleCampaigns().catch(() => [] as GoogleCampaignRow[]),
     getGoogleClickTypes().catch(() => [] as ClickTypeRow[]),
     getDeckGa4().catch(() => null),
     getGa4Daily().catch(() => [] as Ga4DailyRow[]),
     getGa4DailyEvents().catch(() => [] as { day: string; event: string; count: number | null }[]),
+    getSearchConsoleReport({ from, to }).catch(() => null),
+    getDeckGmbDays().catch(() => [] as GmbDayRow[]),
+    getGmbReviewsReport().catch(() => null),
+    getGmbKeywordsReport().catch(() => null),
   ]);
+
+  // Business Profile sums for the selected window (calls = Call-button taps).
+  const gmbInWindow = gmbDays.filter((r) => r.day >= from && r.day <= to);
+  const gmbSum = (metric: string): number | null => {
+    const rows = gmbInWindow.filter((r) => r.metric === metric);
+    return rows.length ? rows.reduce((a, r) => a + (r.value ?? 0), 0) : null;
+  };
+  const gmbCalls = gmbSum('calls');
+  const gmbDirections = gmbSum('directions');
+  const gmbSiteClicks = gmbSum('website_clicks');
+  const gmbMapViews =
+    gmbSum('map_views_mobile') == null && gmbSum('map_views_desktop') == null
+      ? null
+      : (gmbSum('map_views_mobile') ?? 0) + (gmbSum('map_views_desktop') ?? 0);
 
   // Analytics for the window the reader actually selected, falling back to the
   // rolling snapshot only while the daily backfill has not landed.
@@ -1116,15 +1156,53 @@ export async function getCommandDeck(
     },
     seo: {
       stats: [
-        { label: 'Search impressions', value: num(manual.get('gsc_impressions')?.value ?? null), format: 'int' },
-        { label: 'Search clicks', value: num(manual.get('gsc_clicks')?.value ?? null), format: 'int' },
+        { label: 'Search impressions', value: search?.available ? search.impressions : null, format: 'int' },
+        { label: 'Search clicks', value: search?.available ? search.clicks : null, format: 'int' },
       ],
       contribution: 'Revenue attribution pending — no identity chain from an organic visit to a bill',
       detail: [
-        { label: 'Search Console access', value: 'Pending from the vendor' },
+        ...(search?.available
+          ? [
+              { label: 'Click-through rate', value: `${(search.ctr * 100).toFixed(1)}%` },
+              { label: 'Average position', value: search.position != null ? search.position.toFixed(1) : '—' },
+              { label: 'Pages appearing in Google', value: int(search.pagesInSearch) },
+              ...search.topQueries.slice(0, 5).map((q) => ({
+                label: `Query · ${q.query}`,
+                value: `${int(q.clicks)} clicks · ${int(q.impressions)} impressions`,
+              })),
+            ]
+          : [{ label: 'Search Console', value: 'Connected — first figures arrive with the next refresh' }]),
         { label: 'Why revenue is not shown', value: 'An organic visitor who later phones or walks in leaves no identifier to match against billing.' },
       ],
-      pendingNote: 'Search Console access is the single dependency; impressions, clicks, position and indexed pages all arrive with it.',
+      pendingNote: search?.available
+        ? null
+        : 'Search Console is connected; this window has no recorded impressions yet (data lags ~2–3 days).',
+    },
+    gmb: {
+      stats: [
+        { label: 'Calls tapped', value: gmbCalls, format: 'int' },
+        { label: 'Direction requests', value: gmbDirections, format: 'int' },
+        { label: 'Website clicks', value: gmbSiteClicks, format: 'int' },
+      ],
+      contribution: 'Maps visitors arrive on the website as organic or direct traffic — the revenue effect sits inside those routes',
+      detail: [
+        { label: 'Map views in window', value: int(gmbMapViews) },
+        {
+          label: 'Google rating',
+          value: gmbReviews ? `${gmbReviews.avg.toFixed(2)} ★ across ${int(gmbReviews.total)} reviews` : 'first sync pending',
+        },
+        {
+          label: 'Review response rate',
+          value: gmbReviews ? `${(gmbReviews.responseRate * 100).toFixed(0)}% — ${int(gmbReviews.unanswered)} written reviews unanswered` : 'first sync pending',
+        },
+        ...(gmbKeywords
+          ? gmbKeywords.top.slice(0, 3).map((k) => ({
+              label: `Local search · ${k.keyword}`,
+              value: k.isThreshold ? `<${int(k.impressions)} impressions (${gmbKeywords.month})` : `${int(k.impressions)} impressions (${gmbKeywords.month})`,
+            }))
+          : []),
+      ],
+      pendingNote: null,
     },
     google_ads: {
       stats: [

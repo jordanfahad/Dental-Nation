@@ -53,10 +53,10 @@ export const INTEGRITY_FLAGS: IntegrityFlag[] = [
   },
   {
     key: 'gsc-unavailable',
-    title: 'Search Console access pending',
+    title: 'Search Console access — landed',
     detail:
-      'No GSC property access yet (standing ask #1) — Motion 1 top-of-funnel (impressions, CTR, position, indexation) is blind until it lands. Affected rows already show "unavailable" rather than numbers.',
-    status: 'open',
+      'GSC property access landed 17 Aug (service account added, API enabled) — impressions, CTR, position and queries now feed the Digital tab and the investor deck. Remaining gap: no sitemap submitted, so the indexed-pages count is a floor, not exact.',
+    status: 'fixed',
     owner: 'Zavis',
     affects: [],
   },
