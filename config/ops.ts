@@ -9,10 +9,14 @@
  * alerts are safely skipped (the Clinical Operations tab still works — it
  * reads the same lead forms live).
  */
-/** Fahad receives EVERY alert, irrespective of route or env override —
+/** These two receive EVERY alert, irrespective of route or env override —
  *  withOwner() is applied to every recipient list this file exports. */
 const FAHAD = ['fa.siddiqui@dentalnation.com']; // confirmed by Fahad, 1 Aug
-const withOwner = (emails: string[]): string[] => [...new Set([...emails, ...FAHAD])];
+const ALWAYS = [
+  ...FAHAD,
+  'mj.torreta@dentalnation.com', // requested by Fahad, 17 Aug
+];
+const withOwner = (emails: string[]): string[] => [...new Set([...emails, ...ALWAYS])];
 
 export const OPS_ALERT_EMAILS: string[] = withOwner(
   (
