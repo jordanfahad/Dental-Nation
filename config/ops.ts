@@ -132,4 +132,5 @@ export interface WatchedTab {
 export const OPS_WATCHED_TABS: WatchedTab[] = [
   { spreadsheetId: '1CtfSiGONthczH6YVOLfAZvOdmFfGP26uVBZJoYjxRQQ', gid: 119899925 },
   { spreadsheetId: '1CtfSiGONthczH6YVOLfAZvOdmFfGP26uVBZJoYjxRQQ', gid: 1172371132 },
+  { spreadsheetId: '1CtfSiGONthczH6YVOLfAZvOdmFfGP26uVBZJoYjxRQQ', gid: 1349774279 }, // added by Fahad, 21 Aug
 ];

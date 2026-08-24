@@ -83,7 +83,7 @@ export async function WidgetHealth({ compact = false }: { compact?: boolean } = 
   return (
     <Card>
       <SectionHeader
-        tag="OPS4"
+        tag="OPS5"
         eyebrow="Booking widget"
         title="Website & booking availability"
         right={

@@ -20,6 +20,7 @@ import { runSlotsMonitor } from '@/lib/ops/slotsMonitor';
 import { sendNewLeadAlerts } from '@/lib/ops/alerts';
 import { getSiteSpeedReport } from '@/lib/analytics/site-speed';
 import { sendWatchedTabAlerts } from '@/lib/ops/tabAlerts';
+import { syncOpsForms } from './adapters/ops-forms-adapter';
 import {
   normalizePerformance,
   normalizeBlockers,
@@ -436,6 +437,24 @@ export async function runSync(trigger: SyncTrigger): Promise<SyncSummary> {
     if (tabAlerts.error) dataGaps.push({ area: 'clinic', detail: `Watched-tab alert failed: ${tabAlerts.error}`, owner: ownerFor('clinic') });
   } catch (err) {
     dataGaps.push({ area: 'clinic', detail: `Watched-tab alert failed: ${(err as Error).message}`, owner: ownerFor('clinic') });
+  }
+
+  // ----- Watched-form ingestion: the same OPS_WATCHED_TABS rows mirrored into
+  // ops_form_entries (upsert by stable id — re-syncs never duplicate), so the
+  // Clinical Operations tab can work the entries and the ArabyAds views can
+  // count them per lane. Best-effort.
+  try {
+    const forms = await syncOpsForms(supabase, sheets);
+    if (forms.ok) {
+      sheetsOk.push(`Watched forms — ${forms.stored} entries across ${forms.tabs} tabs`);
+      rowsIngested += forms.stored;
+    } else {
+      sheetsFailed.push('Watched forms');
+      dataGaps.push({ area: 'clinic', detail: `Watched-form ingest failed: ${forms.error ?? 'unknown'}`, owner: ownerFor('clinic') });
+    }
+  } catch (err) {
+    sheetsFailed.push('Watched forms');
+    dataGaps.push({ area: 'clinic', detail: `Watched-form ingest failed: ${(err as Error).message}`, owner: ownerFor('clinic') });
   }
 
   // ----- Site speed (PSI) cache warm-up. A cold Lighthouse audit takes ~35s,
