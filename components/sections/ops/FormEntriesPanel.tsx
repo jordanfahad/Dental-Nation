@@ -35,7 +35,7 @@ export async function FormEntriesPanel({ range }: { range?: { from?: string; to?
   return (
     <Card>
       <SectionHeader
-        tag="OPS4"
+        tag="OPS3"
         eyebrow="Inbox · watched form tabs"
         title="Campaign & site form entries"
         right={<span className="text-[11px] text-ink-faint">live · synced every 15 min</span>}

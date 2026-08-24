@@ -151,11 +151,12 @@ export async function ClinicalOps({ range }: { range?: { from?: string; to?: str
         </div>
       </Card>
 
-      <UnverifiedLeads range={range} />
-
       {/* Entries from the watched campaign/site form tabs — the rows behind the
-          "New entry" alert emails, deduped per person and lane-tagged. */}
+          "New entry" alert emails, deduped per person and lane-tagged. Sits
+          right under the widget inbox: these are the freshest leads to call. */}
       <FormEntriesPanel range={range} />
+
+      <UnverifiedLeads range={range} />
 
       {/* Is the booking widget actually usable right now? Reception needs to know
           to fall back to phone bookings the moment it stops serving slots. */}

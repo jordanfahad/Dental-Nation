@@ -3,6 +3,7 @@ import { getBookingEventsReport } from '@/lib/bookings/events';
 import { ArabyLeadStatus } from '@/components/sections/arabyads/ArabyLeadStatus';
 import { ArabyPractoOutcome } from '@/components/sections/arabyads/ArabyPractoOutcome';
 import { ArabyDropOff } from '@/components/sections/arabyads/ArabyDropOff';
+import { ArabyOfferFormLeads } from '@/components/sections/arabyads/ArabyOfferFormLeads';
 import { BookingEventsByOffer } from '@/components/sections/bookings/BookingEventsByOffer';
 import { Card, SectionHeader, Takeaway } from '@/components/ui/Card';
 import { DataGapInline } from '@/components/ui/DataGap';
@@ -429,6 +430,9 @@ export async function ArabyAdsReport({ range }: { range: { from: string; to: str
           )}
         </div>
       </Card>
+
+      {/* ── Live offer-form leads (campaign landing pages) ── */}
+      <ArabyOfferFormLeads range={range} />
 
       {/* ── On-site booking funnel & events by offer (GA4) ── */}
       <BookingEventsByOffer data={events} tag="A6" eyebrow="On-site funnel · GA4" />
