@@ -154,8 +154,13 @@ export async function syncOpsForms(supabase: AdminClient, sheets: sheets_v4.Shee
         const phone = byRe(header, row, /phone|mobile|contact/i, /email/i);
         const email = byRe(header, row, /e-?mail/i);
         const treatment = byRe(header, row, /treatment|service|condition|interest|procedure/i);
-        const source = byRe(header, row, /source|campaign|utm|referr/i);
-        const submitted = parseWhen(byRe(header, row, /timestamp|submitted|created|^date/i));
+        // Source and Campaign are separate cells on the offer forms ("ArabyAds"
+        // + "dental_nation_sos") — anchored patterns, because /referr/ once
+        // matched "P-referr-ed Date" and stored appointment dates as sources.
+        const sourceCell = byRe(header, row, /^source\b|utm[ _]?source|^referr(er|al)/i);
+        const campaignCell = byRe(header, row, /^campaign\b|utm[ _]?campaign/i, /label/i);
+        const source = [sourceCell, campaignCell].filter(Boolean).join(' / ');
+        const submitted = parseWhen(byRe(header, row, /timestamp|submitted|created|^date\b/i));
         const p9 = phone9(phone);
 
         const data: Record<string, string> = {};
@@ -177,7 +182,10 @@ export async function syncOpsForms(supabase: AdminClient, sheets: sheets_v4.Shee
           email: email || null,
           treatment: treatment || null,
           source: source || null,
-          lane_key: laneKeyOf(source, title),
+          // Lane match sees source + campaign + landing page + tab title, so
+          // "ArabyAds" + "dental_nation_sos" resolves through the canonical
+          // parser even though they live in separate cells.
+          lane_key: laneKeyOf(`${source} ${byRe(header, row, /landing|page url|^url\b/i)}`, title),
           data,
           synced_at: new Date().toISOString(),
         });
