@@ -410,9 +410,12 @@ const fetchBranchDemand = unstable_cache(
         const task = json.tasks?.[0];
         if (json.status_code !== 20000 || task?.status_code !== 20000) return [];
         // Keep only listings that are plausibly this brand's branches.
-        const brandStem = keyword.toLowerCase().split(' ').slice(0, 2).join(' ');
+        // Punctuation-normalised: "Dr. Michael's" on Maps must match the
+        // "Dr Michael's" keyword — a literal compare dropped every branch.
+        const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
+        const brandStem = norm(keyword).split(' ').slice(0, 2).join(' ');
         return (task.result?.[0]?.items ?? [])
-          .filter((i) => (i.title ?? '').toLowerCase().includes(brandStem))
+          .filter((i) => norm(i.title ?? '').includes(brandStem))
           .map((i) => ({
             title: i.title ?? '',
             address: i.address ?? null,
@@ -434,7 +437,7 @@ const fetchBranchDemand = unstable_cache(
       })),
     );
   },
-  ['branch-demand-v1'],
+  ['branch-demand-v2'],
   { revalidate: 604800 }, // 7 days — Labs + Maps tasks per refresh
 );
 
