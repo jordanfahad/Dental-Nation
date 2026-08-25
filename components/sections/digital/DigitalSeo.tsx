@@ -400,15 +400,64 @@ export async function DigitalSeo({ range }: { range?: { from?: string; to?: stri
                 />
               </div>
               {authority.competitors.length > 0 ? (
-                <div className="mt-4">
-                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-ink-faint">Authority vs competitors</p>
+                <div className="mt-5">
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-ink-faint">
+                    Competitor benchmarking — referring domains (the metric that ranks)
+                  </p>
                   <HBarChart
                     data={[
-                      { label: 'dentalnation.com', value: authority.site.score },
-                      ...authority.competitors.filter((c) => c.score != null).map((c) => ({ label: c.domain, value: c.score! })),
+                      { label: 'dentalnation.com', value: authority.site.referringDomains ?? 0 },
+                      ...authority.competitors
+                        .filter((c) => c.referringDomains != null)
+                        .map((c) => ({ label: c.domain, value: c.referringDomains! })),
                     ] as BarDatum[]}
                     valueFormat="int"
                   />
+                  <div className="mt-4 overflow-x-auto">
+                    <table className="w-full min-w-[560px] text-[12.5px]">
+                      <thead>
+                        <tr className="border-b border-line text-left text-[10px] uppercase tracking-wide text-ink-faint">
+                          <th className="py-2 pr-3">Domain</th>
+                          <th className="py-2 pr-3 text-right">Domain rank (0–{int(authority.site.scale)})</th>
+                          <th className="py-2 pr-3 text-right">Referring domains</th>
+                          <th className="py-2 pr-3 text-right">Backlinks</th>
+                          <th className="py-2 pl-3 text-right">Links / domain</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {[authority.site, ...authority.competitors].map((c) => (
+                          <tr key={c.domain} className={`border-b border-line/60 ${c.domain === 'dentalnation.com' ? 'font-medium' : ''}`}>
+                            <td className="py-2 pr-3 text-ink">{c.domain}{c.domain === 'dentalnation.com' ? ' (us)' : ''}</td>
+                            <td className="py-2 pr-3 text-right tabular-nums text-ink">{c.score != null ? int(c.score) : '—'}</td>
+                            <td className="py-2 pr-3 text-right tabular-nums text-ink">{c.referringDomains != null ? int(c.referringDomains) : '—'}</td>
+                            <td className="py-2 pr-3 text-right tabular-nums text-ink-soft">{c.backlinks != null ? int(c.backlinks) : '—'}</td>
+                            <td className="py-2 pl-3 text-right tabular-nums text-ink-soft">
+                              {c.backlinks != null && c.referringDomains ? (c.backlinks / c.referringDomains).toFixed(1) : '—'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {(() => {
+                    const ours = authority.site.referringDomains;
+                    const theirs = authority.competitors
+                      .map((c) => c.referringDomains)
+                      .filter((v): v is number => v != null)
+                      .sort((a, b) => a - b);
+                    if (ours == null || theirs.length === 0) return null;
+                    const median = theirs[Math.floor(theirs.length / 2)];
+                    const gap = ours > 0 ? median / ours : null;
+                    return (
+                      <p className="mt-3 rounded-md bg-watch/10 px-3 py-2 text-[12px] leading-snug text-watch">
+                        <span className="font-semibold">The gap:</span> the median competitor has{' '}
+                        <span className="font-semibold">{int(median)}</span> referring domains vs our{' '}
+                        <span className="font-semibold">{int(ours)}</span>
+                        {gap != null && gap > 1 ? <> — a {gap >= 10 ? Math.round(gap) : gap.toFixed(1)}× authority gap</> : null}. Every
+                        quality UAE link closes it; this table refreshes weekly, so link-building progress is measurable here.
+                      </p>
+                    );
+                  })()}
                 </div>
               ) : null}
               {authority.note ? <p className="mt-3 text-[11.5px] text-ink-faint">{authority.note}</p> : null}
