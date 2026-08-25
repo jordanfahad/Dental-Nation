@@ -68,7 +68,7 @@ export async function fetchSearchConsole(from: string, to: string): Promise<Sear
   try {
     const [totalsRes, queriesRes, pagesRes] = await Promise.all([
       sc.searchanalytics.query({ siteUrl, requestBody: { startDate: from, endDate: to, dimensions: [], rowLimit: 1 } }),
-      sc.searchanalytics.query({ siteUrl, requestBody: { startDate: from, endDate: to, dimensions: ['query'], rowLimit: 10 } }),
+      sc.searchanalytics.query({ siteUrl, requestBody: { startDate: from, endDate: to, dimensions: ['query'], rowLimit: 250 } }),
       sc.searchanalytics.query({ siteUrl, requestBody: { startDate: from, endDate: to, dimensions: ['page'], rowLimit: 1000 } }),
     ]);
 
