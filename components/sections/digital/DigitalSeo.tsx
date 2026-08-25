@@ -1,4 +1,5 @@
 import { getDigitalSeo } from '@/lib/analytics/digital';
+import { getManualMetrics } from '@/lib/board/metrics';
 import { GoogleReviewsCard, LocalSearchCard } from '@/components/sections/gmb/GmbLocalCards';
 import { Card, SectionHeader, Takeaway } from '@/components/ui/Card';
 import { DataGapInline } from '@/components/ui/DataGap';
@@ -29,8 +30,11 @@ function Score({ label, value }: { label: string; value: number | null }) {
  * demographics live on Google Analytics — none of them are repeated here.
  */
 export async function DigitalSeo({ range }: { range?: { from?: string; to?: string } }) {
-  const d = await getDigitalSeo(range ?? {});
+  const [d, manual] = await Promise.all([getDigitalSeo(range ?? {}), getManualMetrics().catch(() => new Map())]);
   const o = d.organic;
+  // Google's API exposes only sitemap-based indexed counts; the Page-indexing
+  // report total (the "19K" in the Search Console UI) is entered manually.
+  const manualIndexed = manual.get('gsc_indexed_pages');
 
   const kpis: KpiItem[] = [
     { label: 'Site sessions', value: d.traffic ? int(d.traffic.sessions) : null, hint: 'GA4 · whole site, all traffic (context)', gapDetail: d.ga4Note ?? 'no GA4 data', gapOwner: ownerFor('channel') },
@@ -46,13 +50,17 @@ export async function DigitalSeo({ range }: { range?: { from?: string; to?: stri
       value:
         d.pagesIndexed != null
           ? int(d.pagesIndexed)
-          : d.search?.available && d.search.pagesInSearch > 0
-            ? `${int(d.search.pagesInSearch)}+`
-            : null,
+          : manualIndexed?.value != null
+            ? `~${int(manualIndexed.value)}`
+            : d.search?.available && d.search.pagesInSearch > 0
+              ? `${int(d.search.pagesInSearch)}+`
+              : null,
       hint:
         d.pagesIndexed != null
           ? 'Search Console · submitted sitemaps'
-          : 'pages seen in Google results · submit a sitemap for the exact count',
+          : manualIndexed?.value != null
+            ? `Search Console page-indexing report · manual reading, ${manualIndexed.periodEnd}`
+            : 'pages seen in Google results · submit a sitemap for the exact count',
       gapDetail: d.search?.available ? 'no sitemap submitted in Search Console' : d.search?.note ?? 'connect Google Search Console',
       gapOwner: ownerFor('tracking'),
     },
