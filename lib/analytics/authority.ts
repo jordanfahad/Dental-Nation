@@ -86,39 +86,40 @@ interface DfsResponse {
 }
 
 const fetchDataForSeo = unstable_cache(
+  // ONE request per domain: the live endpoints process a single task per call
+  // (a batched array silently returns results only for the first task, which
+  // rendered every competitor row as dashes on the first deploy).
   async (login: string, password: string, domains: string[]): Promise<DomainAuthority[]> => {
-    const res = await fetch('https://api.dataforseo.com/v3/backlinks/summary/live', {
-      method: 'POST',
-      headers: {
-        Authorization: `Basic ${Buffer.from(`${login}:${password}`).toString('base64')}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(domains.map((d) => ({ target: d, include_subdomains: true }))),
-      cache: 'no-store',
-    });
-    if (!res.ok) throw new Error(`DataForSEO ${res.status}`);
-    const json = (await res.json()) as DfsResponse;
-    if (json.status_code !== 20000) throw new Error(`DataForSEO: ${json.status_message ?? `code ${json.status_code}`}`);
-    const out: DomainAuthority[] = [];
-    for (let i = 0; i < (json.tasks ?? []).length; i++) {
-      const task = json.tasks![i];
-      const r = task.result?.[0];
-      const domain = r?.target ?? domains[i] ?? '';
-      if (task.status_code !== 20000 || !r) {
-        out.push({ domain, score: null, scale: 1000, backlinks: null, referringDomains: null });
-        continue;
-      }
-      out.push({
-        domain,
-        score: r.rank ?? null,
-        scale: 1000,
-        backlinks: r.backlinks ?? null,
-        referringDomains: r.referring_main_domains ?? r.referring_domains ?? null,
-      });
-    }
-    return out;
+    const auth = `Basic ${Buffer.from(`${login}:${password}`).toString('base64')}`;
+    return Promise.all(
+      domains.map(async (domain): Promise<DomainAuthority> => {
+        const none: DomainAuthority = { domain, score: null, scale: 1000, backlinks: null, referringDomains: null };
+        try {
+          const res = await fetch('https://api.dataforseo.com/v3/backlinks/summary/live', {
+            method: 'POST',
+            headers: { Authorization: auth, 'Content-Type': 'application/json' },
+            body: JSON.stringify([{ target: domain, include_subdomains: true }]),
+            cache: 'no-store',
+          });
+          if (!res.ok) return none;
+          const json = (await res.json()) as DfsResponse;
+          const task = json.tasks?.[0];
+          const r = task?.result?.[0];
+          if (json.status_code !== 20000 || task?.status_code !== 20000 || !r) return none;
+          return {
+            domain,
+            score: r.rank ?? null,
+            scale: 1000,
+            backlinks: r.backlinks ?? null,
+            referringDomains: r.referring_main_domains ?? r.referring_domains ?? null,
+          };
+        } catch {
+          return none;
+        }
+      }),
+    );
   },
-  ['authority-dataforseo-v1'],
+  ['authority-dataforseo-v2'],
   { revalidate: 604800 }, // 7 days — each refresh spends API credits
 );
 
