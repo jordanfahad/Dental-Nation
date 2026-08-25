@@ -231,6 +231,21 @@ async function readMarkets(): Promise<{ label: string; code: number }[]> {
   }
 }
 
+/**
+ * Physical clinic footprint per domain — researched Aug 2026 from each
+ * group's own locations page (counts rounded where sources disagree; Dr Joy
+ * lists 11–13 branches depending on source). Static and editable: update
+ * here when a group opens or closes clinics. Every group in the set operates
+ * in Dubai; none list Abu Dhabi or Sharjah branches, which makes the
+ * demand-per-clinic normalisation a like-for-like Dubai comparison.
+ */
+export const CLINIC_FOOTPRINT: Record<string, { clinics: number; footprint: string }> = {
+  'dentalnation.com': { clinics: 3, footprint: 'Al Wasl · Dr Tosun · Al Maher' },
+  'thedentalstudio.ae': { clinics: 4, footprint: 'Jumeirah · Jumeirah Park · Umm Al Sheif · Science Park' },
+  'drjoydentalclinic.com': { clinics: 12, footprint: '~12 branches, all Dubai (Palm, Marina, Mirdif, Hills…)' },
+  'drmichaels.com': { clinics: 4, footprint: 'Jumeirah · Umm Suqeim, all Dubai' },
+};
+
 export interface MarketCell {
   market: string;
   visits: number | null;

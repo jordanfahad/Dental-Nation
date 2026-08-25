@@ -1,7 +1,7 @@
 import { getDigitalSeo } from '@/lib/analytics/digital';
 import { getManualMetrics } from '@/lib/board/metrics';
 import { getAuthorityReport, getBacklinkDetail } from '@/lib/analytics/authority';
-import { getTechBenchmark, getCommercialBenchmark, getMarketDemand } from '@/lib/analytics/benchmark';
+import { getTechBenchmark, getCommercialBenchmark, getMarketDemand, CLINIC_FOOTPRINT } from '@/lib/analytics/benchmark';
 import { TrendChart, TOKENS, type TrendSeries } from '@/components/charts/Charts';
 import { QueryTable } from './QueryTable';
 import { GoogleReviewsCard, LocalSearchCard } from '@/components/sections/gmb/GmbLocalCards';
@@ -666,34 +666,55 @@ export async function DigitalSeo({ range }: { range?: { from?: string; to?: stri
                   <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-ink-faint">
                     Organic demand by market — est. monthly visits (keywords ranked)
                   </p>
-                  <table className="w-full min-w-[620px] text-[12.5px]">
+                  <table className="w-full min-w-[760px] text-[12.5px]">
                     <thead>
                       <tr className="border-b border-line text-left text-[10px] uppercase tracking-wide text-ink-faint">
                         <th className="py-2 pr-3">Domain</th>
+                        <th className="py-2 pr-3">Clinics</th>
                         {marketDemand.markets.map((m) => (
                           <th key={m} className="py-2 pr-3 text-right">{m}</th>
                         ))}
+                        <th className="py-2 pl-3 text-right">Est. visits / clinic*</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {marketDemand.rows.map((r) => (
-                        <tr key={r.domain} className={`border-b border-line/60 ${r.domain === 'dentalnation.com' ? 'font-medium' : ''}`}>
-                          <td className="py-2 pr-3 text-ink">{r.domain}{r.domain === 'dentalnation.com' ? ' (us)' : ''}</td>
-                          {r.cells.map((c) => (
-                            <td key={c.market} className="py-2 pr-3 text-right tabular-nums text-ink">
-                              {c.visits != null ? int(c.visits) : '—'}
-                              {c.keywords != null ? <span className="text-[10.5px] text-ink-faint"> ({int(c.keywords)})</span> : null}
+                      {marketDemand.rows.map((r) => {
+                        const fp = CLINIC_FOOTPRINT[r.domain];
+                        // Prefer a Dubai market column if the provider ever adds one;
+                        // otherwise the first market with data (UAE-wide — and every
+                        // group in this set is Dubai-based, so UAE ≈ Dubai here).
+                        const dubai =
+                          r.cells.find((c) => c.market === 'Dubai')?.visits ??
+                          r.cells.find((c) => c.visits != null)?.visits ??
+                          null;
+                        return (
+                          <tr key={r.domain} className={`border-b border-line/60 ${r.domain === 'dentalnation.com' ? 'font-medium' : ''}`}>
+                            <td className="py-2 pr-3 text-ink">{r.domain}{r.domain === 'dentalnation.com' ? ' (us)' : ''}</td>
+                            <td className="py-2 pr-3">
+                              <span className="tabular-nums text-ink">{fp ? int(fp.clinics) : '—'}</span>
+                              {fp ? <span className="block max-w-[220px] truncate text-[10.5px] text-ink-faint" title={fp.footprint}>{fp.footprint}</span> : null}
                             </td>
-                          ))}
-                        </tr>
-                      ))}
+                            {r.cells.map((c) => (
+                              <td key={c.market} className="py-2 pr-3 text-right tabular-nums text-ink">
+                                {c.visits != null ? int(c.visits) : '—'}
+                                {c.keywords != null ? <span className="text-[10.5px] text-ink-faint"> ({int(c.keywords)})</span> : null}
+                              </td>
+                            ))}
+                            <td className="py-2 pl-3 text-right tabular-nums text-ink">
+                              {fp && dubai != null ? int(dubai / fp.clinics) : '—'}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                   <p className="mt-1.5 text-[11px] text-ink-faint">
-                    Search Console reports only country-level data, so emirate granularity is DataForSEO Labs&apos; market
-                    estimate per Google geotarget region. GA4&apos;s measured sessions by emirate are in the Geography
-                    section below (D5) — estimates here, measured visits there. More markets can be added without a
-                    deploy (app_secrets key seo_market_codes).
+                    Emirate-level estimates are a hard provider limit: Search Console reports only country-level data,
+                    and DataForSEO Labs&apos; UAE database is country-level too (Dubai/Abu Dhabi market codes return no
+                    data — verified, not assumed). Every group in this set is Dubai-based, so the UAE-wide estimate
+                    effectively IS the Dubai picture; GA4&apos;s MEASURED sessions by emirate (our own traffic) are in
+                    the Geography section below (D5). *Visits / clinic divides each group&apos;s estimate by its clinic
+                    count (footprints from their own location pages, Aug 2026) — a like-for-like efficiency read.
                   </p>
                 </div>
               ) : null}
