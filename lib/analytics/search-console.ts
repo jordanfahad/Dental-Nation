@@ -14,6 +14,6 @@ export function getSearchConsoleReport(range: { from?: string; to?: string } = {
 
 const cached = unstable_cache(
   async (from: string, to: string): Promise<SearchConsoleReport> => fetchSearchConsole(from, to),
-  ['search-console-v2'],
+  ['search-console-v3'],
   { revalidate: 1800 },
 );

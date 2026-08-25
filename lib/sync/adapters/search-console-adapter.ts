@@ -14,6 +14,9 @@ import { getSearchConsoleClient } from '../google-auth';
 
 export interface ScQuery { query: string; clicks: number; impressions: number; ctr: number; position: number }
 export interface ScPage { page: string; clicks: number; impressions: number }
+export interface ScCountry { country: string; clicks: number; impressions: number; ctr: number }
+export interface ScDevice { device: string; clicks: number; impressions: number; ctr: number }
+export interface ScDaily { date: string; clicks: number; impressions: number }
 export interface SearchConsoleReport {
   available: boolean;
   note: string | null;
@@ -26,12 +29,25 @@ export interface SearchConsoleReport {
   pagesInSearch: number; // distinct pages with impressions (a floor for "indexed")
   topQueries: ScQuery[];
   topPages: ScPage[];
+  countries: ScCountry[]; // top countries by impressions
+  devices: ScDevice[];
+  daily: ScDaily[]; // clicks/impressions per day for the window
+  uaeQueries: ScQuery[]; // query report filtered to UAE searchers only
 }
 
 const empty: SearchConsoleReport = {
   available: false, note: null, siteUrl: null, clicks: 0, impressions: 0, ctr: 0, position: null,
-  pagesIndexed: null, pagesInSearch: 0, topQueries: [], topPages: [],
+  pagesIndexed: null, pagesInSearch: 0, topQueries: [], topPages: [], countries: [], devices: [], daily: [], uaeQueries: [],
 };
+
+/** ISO-3166-1 alpha-3 (as GSC returns) → display name, for the markets that matter here. */
+const COUNTRY_NAMES: Record<string, string> = {
+  are: 'United Arab Emirates', sau: 'Saudi Arabia', ind: 'India', phl: 'Philippines', pak: 'Pakistan',
+  egy: 'Egypt', gbr: 'United Kingdom', usa: 'United States', omn: 'Oman', qat: 'Qatar', kwt: 'Kuwait',
+  bhr: 'Bahrain', jor: 'Jordan', zaf: 'South Africa', idn: 'Indonesia', mys: 'Malaysia', nga: 'Nigeria',
+  bgd: 'Bangladesh', lka: 'Sri Lanka', ken: 'Kenya', irq: 'Iraq', irn: 'Iran', dza: 'Algeria', mar: 'Morocco',
+};
+const countryName = (code: string): string => COUNTRY_NAMES[code.toLowerCase()] ?? code.toUpperCase();
 
 /** Pick the property this account can see (prefer a domain property). */
 async function resolveSite(
@@ -66,10 +82,22 @@ export async function fetchSearchConsole(from: string, to: string): Promise<Sear
   if (!siteUrl) return { ...empty, note: `Search Console: ${siteError ?? 'no property visible to the service account (add it as a user)'}` };
 
   try {
-    const [totalsRes, queriesRes, pagesRes] = await Promise.all([
+    const [totalsRes, queriesRes, pagesRes, countryRes, deviceRes, dailyRes, uaeRes] = await Promise.all([
       sc.searchanalytics.query({ siteUrl, requestBody: { startDate: from, endDate: to, dimensions: [], rowLimit: 1 } }),
       sc.searchanalytics.query({ siteUrl, requestBody: { startDate: from, endDate: to, dimensions: ['query'], rowLimit: 250 } }),
       sc.searchanalytics.query({ siteUrl, requestBody: { startDate: from, endDate: to, dimensions: ['page'], rowLimit: 1000 } }),
+      sc.searchanalytics.query({ siteUrl, requestBody: { startDate: from, endDate: to, dimensions: ['country'], rowLimit: 25 } }),
+      sc.searchanalytics.query({ siteUrl, requestBody: { startDate: from, endDate: to, dimensions: ['device'], rowLimit: 5 } }),
+      sc.searchanalytics.query({ siteUrl, requestBody: { startDate: from, endDate: to, dimensions: ['date'], rowLimit: 1000 } }),
+      // The UAE-only query report — the demand that can actually walk into a
+      // Dubai clinic, cleaned of the international long tail.
+      sc.searchanalytics.query({
+        siteUrl,
+        requestBody: {
+          startDate: from, endDate: to, dimensions: ['query'], rowLimit: 250,
+          dimensionFilterGroups: [{ filters: [{ dimension: 'country', operator: 'equals', expression: 'are' }] }],
+        },
+      }),
     ]);
 
     const t = totalsRes.data.rows?.[0];
@@ -104,6 +132,14 @@ export async function fetchSearchConsole(from: string, to: string): Promise<Sear
       pagesIndexed = null;
     }
 
+    const asQuery = (r: { keys?: string[] | null; clicks?: number | null; impressions?: number | null; ctr?: number | null; position?: number | null }): ScQuery => ({
+      query: r.keys?.[0] ?? '(unknown)',
+      clicks: r.clicks ?? 0,
+      impressions: r.impressions ?? 0,
+      ctr: r.ctr ?? 0,
+      position: r.position ?? 0,
+    });
+
     return {
       available: (t?.impressions ?? 0) > 0 || (t?.clicks ?? 0) > 0,
       note: null,
@@ -116,6 +152,23 @@ export async function fetchSearchConsole(from: string, to: string): Promise<Sear
       pagesInSearch: pageRows.length,
       topQueries,
       topPages,
+      countries: (countryRes.data.rows ?? []).map((r) => ({
+        country: countryName(r.keys?.[0] ?? ''),
+        clicks: r.clicks ?? 0,
+        impressions: r.impressions ?? 0,
+        ctr: r.ctr ?? 0,
+      })),
+      devices: (deviceRes.data.rows ?? []).map((r) => ({
+        device: (r.keys?.[0] ?? '').toLowerCase(),
+        clicks: r.clicks ?? 0,
+        impressions: r.impressions ?? 0,
+        ctr: r.ctr ?? 0,
+      })),
+      daily: (dailyRes.data.rows ?? [])
+        .map((r) => ({ date: r.keys?.[0] ?? '', clicks: r.clicks ?? 0, impressions: r.impressions ?? 0 }))
+        .filter((r) => r.date)
+        .sort((a, b) => a.date.localeCompare(b.date)),
+      uaeQueries: (uaeRes.data.rows ?? []).map(asQuery),
     };
   } catch (e) {
     return { ...empty, siteUrl, note: (e as Error).message };

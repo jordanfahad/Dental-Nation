@@ -35,6 +35,8 @@ export const MANUAL_METRIC_KEYS: { key: string; label: string; unit: string; hin
   { key: 'gsc_indexed_pages', label: 'Pages in sitemap', unit: 'count', hint: 'Search Console sitemap — discovered pages' },
   { key: 'gsc_impressions', label: 'Search impressions', unit: 'count', hint: 'Search Console — impressions' },
   { key: 'gsc_clicks', label: 'Search clicks', unit: 'count', hint: 'Search Console — clicks' },
+  { key: 'referring_domains', label: 'Referring domains', unit: 'count', hint: 'Ahrefs/Moz free checker — distinct linking sites' },
+  { key: 'backlinks_total', label: 'Backlinks (total)', unit: 'count', hint: 'Ahrefs/Moz free checker — total links' },
   { key: 'smile_club_members', label: 'Smile Club members', unit: 'count', hint: 'Smile Club — owner: Gautam' },
   { key: 'smile_club_revenue', label: 'Smile Club revenue', unit: 'aed', hint: 'Membership revenue to date' },
   { key: 'creative_monthly_output', label: 'Creative assets / month', unit: 'count', hint: 'Dental Nation Creative Platform output' },

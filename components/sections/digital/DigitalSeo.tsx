@@ -1,5 +1,7 @@
 import { getDigitalSeo } from '@/lib/analytics/digital';
 import { getManualMetrics } from '@/lib/board/metrics';
+import { getAuthorityReport } from '@/lib/analytics/authority';
+import { TrendChart, TOKENS, type TrendSeries } from '@/components/charts/Charts';
 import { GoogleReviewsCard, LocalSearchCard } from '@/components/sections/gmb/GmbLocalCards';
 import { Card, SectionHeader, Takeaway } from '@/components/ui/Card';
 import { DataGapInline } from '@/components/ui/DataGap';
@@ -30,7 +32,11 @@ function Score({ label, value }: { label: string; value: number | null }) {
  * demographics live on Google Analytics — none of them are repeated here.
  */
 export async function DigitalSeo({ range }: { range?: { from?: string; to?: string } }) {
-  const [d, manual] = await Promise.all([getDigitalSeo(range ?? {}), getManualMetrics().catch(() => new Map())]);
+  const [d, manual, authority] = await Promise.all([
+    getDigitalSeo(range ?? {}),
+    getManualMetrics().catch(() => new Map()),
+    getAuthorityReport().catch(() => null),
+  ]);
   const o = d.organic;
   // Google's API exposes only sitemap-based indexed counts; the Page-indexing
   // report total (the "19K" in the Search Console UI) is entered manually.
@@ -57,12 +63,34 @@ export async function DigitalSeo({ range }: { range?: { from?: string; to?: stri
     label: b.label,
     value: sumBy(sq.filter((q) => b.test(q.position)), (q) => q.impressions),
   }));
-  // Striking distance: non-branded demand ranking just off the top — the
-  // highest-leverage SEO work list.
-  const opportunities = sq
-    .filter((q) => !BRANDED.test(q.query) && q.impressions >= 15 && q.position > 3.5 && q.position <= 20.5)
+  // Striking distance: non-branded demand ranking just off the top — computed
+  // on UAE searchers when the country-filtered report has data, so the list is
+  // demand that can actually walk into a Dubai clinic (not the global tail).
+  const uaeQ = d.search?.available ? d.search.uaeQueries : [];
+  const oppSource = uaeQ.length > 0 ? uaeQ : sq;
+  const oppScope = uaeQ.length > 0 ? 'UAE searchers only' : 'all countries';
+  const opportunities = oppSource
+    .filter((q) => !BRANDED.test(q.query) && q.impressions >= 10 && q.position > 3.5 && q.position <= 20.5)
     .sort((a, b) => b.impressions - a.impressions)
-    .slice(0, 8);
+    .slice(0, 10);
+
+  // UAE vs international — the relevance lens over the big impression numbers.
+  const uae = d.search?.available ? d.search.countries.find((c) => /United Arab Emirates/i.test(c.country)) ?? null : null;
+  const totImpr = d.search?.available ? d.search.impressions : 0;
+  const totClicks = d.search?.available ? d.search.clicks : 0;
+  const topCountries = d.search?.available
+    ? d.search.countries.slice().sort((a, b) => b.impressions - a.impressions).slice(0, 8)
+    : [];
+  const daily = d.search?.available ? d.search.daily : [];
+  const trendData = daily.map((r) => ({ date: r.date, clicks: r.clicks, impressions: r.impressions }));
+  const trendSeries: TrendSeries[] = [
+    { key: 'impressions', label: 'Impressions', color: TOKENS.accent400, kind: 'area', axis: 'right', valueFormat: 'int' },
+    { key: 'clicks', label: 'Clicks', color: TOKENS.accent, kind: 'line', axis: 'left', valueFormat: 'int' },
+  ];
+  const topPagesList = d.search?.available
+    ? d.search.topPages.slice(0, 10).map((p) => ({ ...p, path: p.page.replace(/^https?:\/\/[^/]+/, '') || '/' }))
+    : [];
+  const devices = d.search?.available ? d.search.devices : [];
   const topQueries = sq
     .slice()
     .sort((a, b) => b.clicks - a.clicks || b.impressions - a.impressions)
@@ -188,6 +216,60 @@ export async function DigitalSeo({ range }: { range?: { from?: string; to?: stri
                 </div>
               ) : null}
 
+              {/* The relevance lens: how much of the visibility is UAE demand. */}
+              {uae ? (
+                <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
+                  <SearchStat label="UAE impressions" value={`${int(uae.impressions)} · ${totImpr ? Math.round((uae.impressions / totImpr) * 100) : 0}%`} />
+                  <SearchStat label="UAE clicks" value={`${int(uae.clicks)} · ${totClicks ? Math.round((uae.clicks / totClicks) * 100) : 0}%`} />
+                  <SearchStat label="UAE CTR" value={pct1(uae.ctr)} />
+                  <SearchStat label="Rest of world CTR" value={totImpr - uae.impressions > 0 ? pct1((totClicks - uae.clicks) / (totImpr - uae.impressions)) : '—'} />
+                </div>
+              ) : null}
+
+              {/* Daily trend — spikes and slumps are visible, not anecdotal. */}
+              {trendData.length > 1 ? (
+                <div className="mt-5">
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-ink-faint">Clicks & impressions per day</p>
+                  <TrendChart data={trendData} series={trendSeries} leftFormat="int" />
+                </div>
+              ) : null}
+
+              {/* Where searchers are, and what they search on. */}
+              {topCountries.length > 1 ? (
+                <div className="mt-5 grid gap-6 lg:grid-cols-2">
+                  <div>
+                    <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-ink-faint">Impressions by country</p>
+                    <HBarChart data={topCountries.map((c) => ({ label: c.country, value: c.impressions })) as BarDatum[]} valueFormat="int" />
+                  </div>
+                  <div>
+                    <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-ink-faint">By device</p>
+                    <div className="space-y-2">
+                      {devices.map((dev) => (
+                        <div key={dev.device} className="flex items-center justify-between rounded-card border border-line px-3 py-2 text-[12.5px]">
+                          <span className="capitalize text-ink">{dev.device}</span>
+                          <span className="tabular-nums text-ink-soft">
+                            {int(dev.clicks)} clicks · {int(dev.impressions)} impr · {pct1(dev.ctr)} CTR
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    {topPagesList.length > 0 ? (
+                      <div className="mt-4">
+                        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-ink-faint">Top pages in search</p>
+                        <div className="space-y-1.5">
+                          {topPagesList.map((p) => (
+                            <div key={p.page} className="flex items-center justify-between gap-3 text-[12px]">
+                              <span className="truncate text-ink" title={p.page}>{p.path}</span>
+                              <span className="shrink-0 tabular-nums text-ink-soft">{int(p.clicks)} clicks · {int(p.impressions)} impr</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
+
               {/* Where the visibility sits — impressions by ranking position. */}
               {posBuckets.some((b) => b.value > 0) ? (
                 <div className="mt-5">
@@ -202,7 +284,7 @@ export async function DigitalSeo({ range }: { range?: { from?: string; to?: stri
               {opportunities.length > 0 ? (
                 <div className="mt-5 overflow-x-auto">
                   <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-ink-faint">
-                    Striking-distance opportunities (non-branded · positions 4–20 · sorted by demand)
+                    Striking-distance opportunities ({oppScope} · non-branded · positions 4–20 · sorted by demand)
                   </p>
                   <table className="w-full min-w-[520px] text-[12.5px]">
                     <thead>
@@ -285,6 +367,62 @@ export async function DigitalSeo({ range }: { range?: { from?: string; to?: stri
           ) : (
             <DataGapInline
               detail={d.search?.note ?? 'Search Console not returning data yet — access may still be propagating (allow a few minutes), or the property has no recent search data.'}
+              owner={ownerFor('tracking')}
+            />
+          )}
+        </div>
+      </Card>
+
+      {/* Authority & backlinks — the off-page half of SEO. Google's Links
+          report has no API; authority comes from Open PageRank, raw backlink
+          counts from manual free-checker readings. */}
+      <Card>
+        <SectionHeader
+          tag="D3b"
+          eyebrow="Off-page SEO"
+          title="Domain authority & backlinks"
+          right={<span className="text-[11px] text-ink-faint">Open PageRank · refreshed daily</span>}
+        />
+        <div className="px-5 pb-5 pt-4">
+          {authority?.site?.score != null ? (
+            <>
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                <SearchStat label="Authority score" value={`${authority.site.score.toFixed(1)} / 10`} />
+                <SearchStat label="Global domain rank" value={authority.site.rank != null ? `#${int(authority.site.rank)}` : '—'} />
+                <SearchStat
+                  label="Referring domains"
+                  value={manual.get('referring_domains')?.value != null ? int(manual.get('referring_domains')!.value!) : '—'}
+                />
+                <SearchStat
+                  label="Total backlinks"
+                  value={manual.get('backlinks_total')?.value != null ? int(manual.get('backlinks_total')!.value!) : '—'}
+                />
+              </div>
+              {authority.competitors.length > 0 ? (
+                <div className="mt-4">
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-ink-faint">Authority vs competitors</p>
+                  <HBarChart
+                    data={[
+                      { label: 'dentalnation.com', value: authority.site.score },
+                      ...authority.competitors.filter((c) => c.score != null).map((c) => ({ label: c.domain, value: c.score! })),
+                    ] as BarDatum[]}
+                    valueFormat="int"
+                  />
+                </div>
+              ) : null}
+              {authority.note ? <p className="mt-3 text-[11.5px] text-ink-faint">{authority.note}</p> : null}
+              <Takeaway>
+                <strong>How many backlinks are needed?</strong> Authority is log-scale, so the honest answer is a target,
+                not a count: reach the median authority of the clinics ranking top-3 for the striking-distance terms
+                above. Quality dominates quantity — a handful of links from established UAE health, news and directory
+                domains (Practo profile, insurer partner pages, Dubai media, dental association listings) move this score
+                more than hundreds of low-grade directory links, which Google discounts. Track referring domains monthly
+                (free Ahrefs/Moz checker → Board Report → manual metrics) and treat the authority gap above as the KPI.
+              </Takeaway>
+            </>
+          ) : (
+            <DataGapInline
+              detail={authority?.note ?? 'Authority lookup unavailable.'}
               owner={ownerFor('tracking')}
             />
           )}
