@@ -1,7 +1,7 @@
 import { getDigitalSeo } from '@/lib/analytics/digital';
 import { getManualMetrics } from '@/lib/board/metrics';
 import { getAuthorityReport, getBacklinkDetail } from '@/lib/analytics/authority';
-import { getTechBenchmark, getCommercialBenchmark } from '@/lib/analytics/benchmark';
+import { getTechBenchmark, getCommercialBenchmark, getMarketDemand } from '@/lib/analytics/benchmark';
 import { TrendChart, TOKENS, type TrendSeries } from '@/components/charts/Charts';
 import { QueryTable } from './QueryTable';
 import { GoogleReviewsCard, LocalSearchCard } from '@/components/sections/gmb/GmbLocalCards';
@@ -34,13 +34,14 @@ function Score({ label, value }: { label: string; value: number | null }) {
  * demographics live on Google Analytics — none of them are repeated here.
  */
 export async function DigitalSeo({ range }: { range?: { from?: string; to?: string } }) {
-  const [d, manual, authority, backlinks, tech, commercial] = await Promise.all([
+  const [d, manual, authority, backlinks, tech, commercial, marketDemand] = await Promise.all([
     getDigitalSeo(range ?? {}),
     getManualMetrics().catch(() => new Map()),
     getAuthorityReport().catch(() => null),
     getBacklinkDetail().catch(() => null),
     getTechBenchmark().catch(() => null),
     getCommercialBenchmark().catch(() => null),
+    getMarketDemand().catch(() => null),
   ]);
   const dofollowShare =
     backlinks && backlinks.links.length > 0 ? backlinks.links.filter((l) => l.dofollow).length / backlinks.links.length : null;
@@ -660,6 +661,43 @@ export async function DigitalSeo({ range }: { range?: { from?: string; to?: stri
                 *Estimated at a 1–3% visit-to-lead industry conversion — competitor lead counts are private, so this is a
                 modelled range, never a measurement. Traffic estimates: DataForSEO Labs, UAE, Google organic.
               </p>
+              {marketDemand?.available ? (
+                <div className="mt-6 overflow-x-auto">
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-ink-faint">
+                    Organic demand by market — est. monthly visits (keywords ranked)
+                  </p>
+                  <table className="w-full min-w-[620px] text-[12.5px]">
+                    <thead>
+                      <tr className="border-b border-line text-left text-[10px] uppercase tracking-wide text-ink-faint">
+                        <th className="py-2 pr-3">Domain</th>
+                        {marketDemand.markets.map((m) => (
+                          <th key={m} className="py-2 pr-3 text-right">{m}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {marketDemand.rows.map((r) => (
+                        <tr key={r.domain} className={`border-b border-line/60 ${r.domain === 'dentalnation.com' ? 'font-medium' : ''}`}>
+                          <td className="py-2 pr-3 text-ink">{r.domain}{r.domain === 'dentalnation.com' ? ' (us)' : ''}</td>
+                          {r.cells.map((c) => (
+                            <td key={c.market} className="py-2 pr-3 text-right tabular-nums text-ink">
+                              {c.visits != null ? int(c.visits) : '—'}
+                              {c.keywords != null ? <span className="text-[10.5px] text-ink-faint"> ({int(c.keywords)})</span> : null}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <p className="mt-1.5 text-[11px] text-ink-faint">
+                    Search Console reports only country-level data, so emirate granularity is DataForSEO Labs&apos; market
+                    estimate per Google geotarget region. GA4&apos;s measured sessions by emirate are in the Geography
+                    section below (D5) — estimates here, measured visits there. More markets can be added without a
+                    deploy (app_secrets key seo_market_codes).
+                  </p>
+                </div>
+              ) : null}
+
               <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
                 <SearchStat
                   label="OUR real website leads (30d)"

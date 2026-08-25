@@ -197,6 +197,108 @@ async function getOwnActuals(): Promise<OwnActuals> {
   }
 }
 
+/* ── Market granularity: organic demand per emirate (DataForSEO Labs) ──
+ * Search Console only reports at COUNTRY level, so emirate-level visibility
+ * comes from the Labs estimates instead — per Google Ads geotarget region.
+ * Dubai (9041083) and Abu Dhabi (9041082) are verified against Google's
+ * geotarget data; more markets can be added via app_secrets seo_market_codes
+ * ("Label:code,Label:code") without a deploy. UAE-wide (2784) anchors scale.
+ */
+
+const DEFAULT_MARKETS: { label: string; code: number }[] = [
+  { label: 'Dubai', code: 9041083 },
+  { label: 'Abu Dhabi', code: 9041082 },
+  { label: 'UAE-wide', code: 2784 },
+];
+
+async function readMarkets(): Promise<{ label: string; code: number }[]> {
+  const db = getSupabaseAdmin();
+  if (!db) return DEFAULT_MARKETS;
+  try {
+    const { data } = await db.from('app_secrets').select('value').eq('key', 'seo_market_codes').maybeSingle();
+    const raw = String((data as { value?: string } | null)?.value ?? '').trim();
+    if (!raw) return DEFAULT_MARKETS;
+    const parsed = raw
+      .split(',')
+      .map((pair) => {
+        const [label, code] = pair.split(':').map((s) => s.trim());
+        return label && Number.isFinite(Number(code)) ? { label, code: Number(code) } : null;
+      })
+      .filter((m): m is { label: string; code: number } => m !== null);
+    return parsed.length > 0 ? parsed : DEFAULT_MARKETS;
+  } catch {
+    return DEFAULT_MARKETS;
+  }
+}
+
+export interface MarketCell {
+  market: string;
+  visits: number | null;
+  keywords: number | null;
+}
+export interface MarketDemandRow {
+  domain: string;
+  cells: MarketCell[];
+}
+export interface MarketDemand {
+  available: boolean;
+  note: string | null;
+  markets: string[];
+  rows: MarketDemandRow[];
+}
+
+const fetchMarketDemand = unstable_cache(
+  async (login: string, password: string, domains: string[], markets: { label: string; code: number }[]): Promise<MarketDemandRow[]> => {
+    const auth = `Basic ${Buffer.from(`${login}:${password}`).toString('base64')}`;
+    const one = async (domain: string, code: number): Promise<{ visits: number | null; keywords: number | null }> => {
+      try {
+        const res = await fetch('https://api.dataforseo.com/v3/dataforseo_labs/google/domain_rank_overview/live', {
+          method: 'POST',
+          headers: { Authorization: auth, 'Content-Type': 'application/json' },
+          body: JSON.stringify([{ target: domain, location_code: code, language_code: 'en' }]),
+          cache: 'no-store',
+        });
+        if (!res.ok) return { visits: null, keywords: null };
+        const json = (await res.json()) as LabsResponse;
+        const task = json.tasks?.[0];
+        const organic = task?.result?.[0]?.items?.[0]?.metrics?.organic;
+        if (json.status_code !== 20000 || task?.status_code !== 20000 || !organic) return { visits: null, keywords: null };
+        return { visits: organic.etv != null ? Math.round(organic.etv) : null, keywords: organic.count ?? null };
+      } catch {
+        return { visits: null, keywords: null };
+      }
+    };
+    return Promise.all(
+      domains.map(async (domain) => ({
+        domain,
+        cells: await Promise.all(markets.map(async (m) => ({ market: m.label, ...(await one(domain, m.code)) }))),
+      })),
+    );
+  },
+  ['market-demand-v1'],
+  { revalidate: 604800 }, // 7 days — domains × markets tasks per refresh
+);
+
+export async function getMarketDemand(): Promise<MarketDemand> {
+  const { dfsLogin, dfsPassword, competitors } = await readConfig();
+  const markets = await readMarkets();
+  if (!dfsLogin || !dfsPassword) {
+    return { available: false, note: 'DataForSEO credentials not configured.', markets: markets.map((m) => m.label), rows: [] };
+  }
+  const domains = [SITE_DOMAIN, ...competitors.filter((c) => c !== SITE_DOMAIN)];
+  try {
+    const rows = await fetchMarketDemand(dfsLogin, dfsPassword, domains, markets);
+    return {
+      available: rows.some((r) => r.cells.some((c) => c.visits != null)),
+      note: null,
+      markets: markets.map((m) => m.label),
+      rows,
+    };
+  } catch (err) {
+    return { available: false, note: `Market demand lookup failed: ${(err as Error).message}`, markets: markets.map((m) => m.label), rows: [] };
+  }
+}
+
 export interface CommercialBenchmark {
   available: boolean;
   note: string | null;
