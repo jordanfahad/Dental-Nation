@@ -1,6 +1,6 @@
 import { getDigitalSeo } from '@/lib/analytics/digital';
 import { getManualMetrics } from '@/lib/board/metrics';
-import { getAuthorityReport } from '@/lib/analytics/authority';
+import { getAuthorityReport, getBacklinkDetail } from '@/lib/analytics/authority';
 import { TrendChart, TOKENS, type TrendSeries } from '@/components/charts/Charts';
 import { QueryTable } from './QueryTable';
 import { GoogleReviewsCard, LocalSearchCard } from '@/components/sections/gmb/GmbLocalCards';
@@ -33,11 +33,20 @@ function Score({ label, value }: { label: string; value: number | null }) {
  * demographics live on Google Analytics — none of them are repeated here.
  */
 export async function DigitalSeo({ range }: { range?: { from?: string; to?: string } }) {
-  const [d, manual, authority] = await Promise.all([
+  const [d, manual, authority, backlinks] = await Promise.all([
     getDigitalSeo(range ?? {}),
     getManualMetrics().catch(() => new Map()),
     getAuthorityReport().catch(() => null),
+    getBacklinkDetail().catch(() => null),
   ]);
+  const dofollowShare =
+    backlinks && backlinks.links.length > 0 ? backlinks.links.filter((l) => l.dofollow).length / backlinks.links.length : null;
+  const spamFlagged = backlinks ? backlinks.links.filter((l) => (l.spamScore ?? 0) >= 50).length : 0;
+  const qualityChip = (rank: number | null) =>
+    rank == null ? { label: 'unrated', cls: 'bg-panel text-ink-faint' }
+    : rank >= 200 ? { label: 'strong', cls: 'bg-good/10 text-good' }
+    : rank >= 50 ? { label: 'moderate', cls: 'bg-panel text-ink-soft' }
+    : { label: 'weak', cls: 'bg-watch/10 text-watch' };
   const o = d.organic;
   // Google's API exposes only sitemap-based indexed counts; the Page-indexing
   // report total (the "19K" in the Search Console UI) is entered manually.
@@ -475,6 +484,100 @@ export async function DigitalSeo({ range }: { range?: { from?: string; to?: stri
               detail={authority?.note ?? 'Authority lookup unavailable.'}
               owner={ownerFor('tracking')}
             />
+          )}
+        </div>
+      </Card>
+
+      {/* Backlink profile — who links, to which pages, and how good the links are. */}
+      <Card>
+        <SectionHeader
+          tag="D3c"
+          eyebrow="Off-page SEO · link profile"
+          title="Referring domains & linked pages"
+          right={<span className="text-[11px] text-ink-faint">DataForSEO · refreshed weekly</span>}
+        />
+        <div className="px-5 pb-5 pt-4">
+          {backlinks?.available ? (
+            <>
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                <SearchStat label="Strong domains (rank ≥200)" value={int(backlinks.quality.strong)} />
+                <SearchStat label="Moderate (50–199)" value={int(backlinks.quality.moderate)} />
+                <SearchStat label="Weak (<50)" value={int(backlinks.quality.weak)} />
+                <SearchStat label="Dofollow share" value={dofollowShare != null ? pct1(dofollowShare) : '—'} />
+              </div>
+              {spamFlagged > 0 ? (
+                <p className="mt-3 text-[12px] font-medium text-watch">
+                  {int(spamFlagged)} link{spamFlagged === 1 ? '' : 's'} carry a spam score ≥50 — worth reviewing before they
+                  accumulate; a handful is normal, a pattern is not.
+                </p>
+              ) : null}
+              <div className="mt-5 grid gap-6 lg:grid-cols-2">
+                <div className="overflow-x-auto">
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-ink-faint">
+                    Referring domains (best first)
+                  </p>
+                  <table className="w-full min-w-[380px] text-[12.5px]">
+                    <thead>
+                      <tr className="border-b border-line text-left text-[10px] uppercase tracking-wide text-ink-faint">
+                        <th className="py-2 pr-3">Domain</th>
+                        <th className="py-2 pr-3 text-right">Rank</th>
+                        <th className="py-2 pr-3 text-right">Links</th>
+                        <th className="py-2 pr-3">First seen</th>
+                        <th className="py-2 pl-3">Quality</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {backlinks.referringDomains.map((r) => {
+                        const q = qualityChip(r.rank);
+                        return (
+                          <tr key={r.domain} className="border-b border-line/60">
+                            <td className="py-2 pr-3 text-ink">{r.domain}</td>
+                            <td className="py-2 pr-3 text-right tabular-nums text-ink-soft">{r.rank != null ? int(r.rank) : '—'}</td>
+                            <td className="py-2 pr-3 text-right tabular-nums text-ink-soft">{int(r.backlinks)}</td>
+                            <td className="py-2 pr-3 whitespace-nowrap text-[11px] text-ink-faint">{r.firstSeen ?? '—'}</td>
+                            <td className="py-2 pl-3">
+                              <span className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-medium ${q.cls}`}>{q.label}</span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="overflow-x-auto">
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-ink-faint">
+                    Our pages that receive links
+                  </p>
+                  <table className="w-full min-w-[320px] text-[12.5px]">
+                    <thead>
+                      <tr className="border-b border-line text-left text-[10px] uppercase tracking-wide text-ink-faint">
+                        <th className="py-2 pr-3">Page</th>
+                        <th className="py-2 pr-3 text-right">Backlinks</th>
+                        <th className="py-2 pl-3 text-right">Referring domains</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {backlinks.linkedPages.map((p) => (
+                        <tr key={p.path} className="border-b border-line/60">
+                          <td className="py-2 pr-3 text-ink" title={p.path}>{p.path.length > 46 ? `${p.path.slice(0, 45)}…` : p.path}</td>
+                          <td className="py-2 pr-3 text-right tabular-nums text-ink-soft">{int(p.backlinks)}</td>
+                          <td className="py-2 pl-3 text-right tabular-nums text-ink-soft">{int(p.referringDomains)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <Takeaway>
+                Quality over quantity, made visible: <strong>rank</strong> is DataForSEO&apos;s 0–1000 authority of the
+                LINKING domain — links from <strong>strong</strong> domains move rankings, weak ones barely register, and
+                spam-scored ones can hurt. &ldquo;Our pages that receive links&rdquo; shows where the authority lands: if
+                it all points at the homepage, the treatment pages competing for the striking-distance terms above are
+                fighting without link support.
+              </Takeaway>
+            </>
+          ) : (
+            <DataGapInline detail={backlinks?.note ?? 'Backlink detail unavailable.'} owner={ownerFor('tracking')} />
           )}
         </div>
       </Card>
