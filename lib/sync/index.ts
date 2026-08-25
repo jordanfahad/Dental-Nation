@@ -19,6 +19,7 @@ import { resolveMetaOrganicConfig } from '@/config/meta-organic';
 import { runSlotsMonitor } from '@/lib/ops/slotsMonitor';
 import { sendNewLeadAlerts } from '@/lib/ops/alerts';
 import { getSiteSpeedReport } from '@/lib/analytics/site-speed';
+import { getTechBenchmark } from '@/lib/analytics/benchmark';
 import { sendWatchedTabAlerts } from '@/lib/ops/tabAlerts';
 import { syncOpsForms } from './adapters/ops-forms-adapter';
 import {
@@ -466,6 +467,14 @@ export async function runSync(trigger: SyncTrigger): Promise<SyncSummary> {
     else sheetsOk.push('Site speed (PSI) — cache warmed');
   } catch (err) {
     dataGaps.push({ area: 'tracking', detail: `Site speed warm-up failed: ${(err as Error).message}`, owner: ownerFor('tracking') });
+  }
+
+  // ----- Competitor tech-benchmark warm-up: four Lighthouse runs, weekly
+  // cache — paid for here so the Digital tab never renders cold. Best-effort.
+  try {
+    await getTechBenchmark();
+  } catch {
+    /* the card shows its own gap note */
   }
 
   // ----- Silver upserts -----

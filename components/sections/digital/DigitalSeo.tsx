@@ -1,6 +1,7 @@
 import { getDigitalSeo } from '@/lib/analytics/digital';
 import { getManualMetrics } from '@/lib/board/metrics';
 import { getAuthorityReport, getBacklinkDetail } from '@/lib/analytics/authority';
+import { getTechBenchmark, getCommercialBenchmark } from '@/lib/analytics/benchmark';
 import { TrendChart, TOKENS, type TrendSeries } from '@/components/charts/Charts';
 import { QueryTable } from './QueryTable';
 import { GoogleReviewsCard, LocalSearchCard } from '@/components/sections/gmb/GmbLocalCards';
@@ -33,11 +34,13 @@ function Score({ label, value }: { label: string; value: number | null }) {
  * demographics live on Google Analytics — none of them are repeated here.
  */
 export async function DigitalSeo({ range }: { range?: { from?: string; to?: string } }) {
-  const [d, manual, authority, backlinks] = await Promise.all([
+  const [d, manual, authority, backlinks, tech, commercial] = await Promise.all([
     getDigitalSeo(range ?? {}),
     getManualMetrics().catch(() => new Map()),
     getAuthorityReport().catch(() => null),
     getBacklinkDetail().catch(() => null),
+    getTechBenchmark().catch(() => null),
+    getCommercialBenchmark().catch(() => null),
   ]);
   const dofollowShare =
     backlinks && backlinks.links.length > 0 ? backlinks.links.filter((l) => l.dofollow).length / backlinks.links.length : null;
@@ -578,6 +581,116 @@ export async function DigitalSeo({ range }: { range?: { from?: string; to?: stri
             </>
           ) : (
             <DataGapInline detail={backlinks?.note ?? 'Backlink detail unavailable.'} owner={ownerFor('tracking')} />
+          )}
+        </div>
+      </Card>
+
+      {/* Technical & commercial benchmark vs the competitor set. */}
+      <Card>
+        <SectionHeader
+          tag="D3d"
+          eyebrow="Benchmark · technical & commercial"
+          title="How the site competes on tech and demand"
+          right={<span className="text-[11px] text-ink-faint">Lighthouse + DataForSEO Labs · weekly</span>}
+        />
+        <div className="px-5 pb-5 pt-4">
+          {tech?.some((t) => t.seo != null) ? (
+            <div className="overflow-x-auto">
+              <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-ink-faint">
+                Technical / on-page (Lighthouse, mobile homepage)
+              </p>
+              <table className="w-full min-w-[560px] text-[12.5px]">
+                <thead>
+                  <tr className="border-b border-line text-left text-[10px] uppercase tracking-wide text-ink-faint">
+                    <th className="py-2 pr-3">Domain</th>
+                    <th className="py-2 pr-3 text-right">Performance</th>
+                    <th className="py-2 pr-3 text-right">SEO</th>
+                    <th className="py-2 pr-3 text-right">Accessibility</th>
+                    <th className="py-2 pl-3 text-right">Best practices</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tech.map((t) => (
+                    <tr key={t.domain} className={`border-b border-line/60 ${t.domain === 'dentalnation.com' ? 'font-medium' : ''}`}>
+                      <td className="py-2 pr-3 text-ink">{t.domain}{t.domain === 'dentalnation.com' ? ' (us)' : ''}</td>
+                      {[t.performance, t.seo, t.accessibility, t.bestPractices].map((v, i) => (
+                        <td key={i} className={`py-2 ${i === 3 ? 'pl-3' : 'pr-3'} text-right tabular-nums ${v == null ? 'text-ink-faint' : scoreTone(v)}`}>
+                          {v ?? '—'}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <DataGapInline detail="Technical benchmark not warmed yet — fills on the next sync run (four Lighthouse audits, cached weekly)." owner={ownerFor('tracking')} />
+          )}
+
+          {commercial?.available ? (
+            <div className="mt-6 overflow-x-auto">
+              <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-ink-faint">
+                Commercial — organic demand captured (UAE market)
+              </p>
+              <table className="w-full min-w-[620px] text-[12.5px]">
+                <thead>
+                  <tr className="border-b border-line text-left text-[10px] uppercase tracking-wide text-ink-faint">
+                    <th className="py-2 pr-3">Domain</th>
+                    <th className="py-2 pr-3 text-right">Keywords ranked</th>
+                    <th className="py-2 pr-3 text-right">Est. monthly organic visits</th>
+                    <th className="py-2 pl-3 text-right">Est. website leads / month*</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {commercial.rows.map((r) => (
+                    <tr key={r.domain} className={`border-b border-line/60 ${r.domain === 'dentalnation.com' ? 'font-medium' : ''}`}>
+                      <td className="py-2 pr-3 text-ink">{r.domain}{r.domain === 'dentalnation.com' ? ' (us)' : ''}</td>
+                      <td className="py-2 pr-3 text-right tabular-nums text-ink-soft">{r.keywordsRanked != null ? int(r.keywordsRanked) : '—'}</td>
+                      <td className="py-2 pr-3 text-right tabular-nums text-ink">{r.estMonthlyOrganicVisits != null ? int(r.estMonthlyOrganicVisits) : '—'}</td>
+                      <td className="py-2 pl-3 text-right tabular-nums text-ink-soft">
+                        {r.estMonthlyOrganicVisits != null
+                          ? `${int(r.estMonthlyOrganicVisits * 0.01)}–${int(r.estMonthlyOrganicVisits * 0.03)}`
+                          : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <p className="mt-1.5 text-[11px] text-ink-faint">
+                *Estimated at a 1–3% visit-to-lead industry conversion — competitor lead counts are private, so this is a
+                modelled range, never a measurement. Traffic estimates: DataForSEO Labs, UAE, Google organic.
+              </p>
+              <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
+                <SearchStat
+                  label="OUR real website leads (30d)"
+                  value={
+                    commercial.actuals.widgetLeads30d != null || commercial.actuals.formLeads30d != null
+                      ? int((commercial.actuals.widgetLeads30d ?? 0) + (commercial.actuals.formLeads30d ?? 0))
+                      : '—'
+                  }
+                />
+                <SearchStat
+                  label="of which verified widget forms"
+                  value={commercial.actuals.widgetLeads30d != null ? int(commercial.actuals.widgetLeads30d) : '—'}
+                />
+                <SearchStat
+                  label="GMB Call-button taps (30d)"
+                  value={commercial.actuals.gmbCallTaps30d != null ? int(commercial.actuals.gmbCallTaps30d) : '—'}
+                />
+              </div>
+              <Takeaway>
+                The technical table is measured identically for every domain — a like-for-like Lighthouse audit of each
+                homepage. The commercial table is the honest version of &ldquo;how many leads do they get&rdquo;:
+                competitor leads are private, so their column is a modelled range from estimated organic traffic, while
+                OUR row is backed by the real 30-day numbers below it — verified widget forms, campaign form entries and
+                Business Profile call taps. Competitor call-tap counts do not exist outside their own Google profiles;
+                nothing here pretends otherwise.
+              </Takeaway>
+            </div>
+          ) : (
+            <div className="mt-4">
+              <DataGapInline detail={commercial?.note ?? 'Commercial benchmark unavailable.'} owner={ownerFor('tracking')} />
+            </div>
           )}
         </div>
       </Card>
