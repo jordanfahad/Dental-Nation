@@ -356,21 +356,47 @@ export async function DigitalSeo({ range }: { range?: { from?: string; to?: stri
           tag="D3b"
           eyebrow="Off-page SEO"
           title="Domain authority & backlinks"
-          right={<span className="text-[11px] text-ink-faint">Open PageRank · refreshed daily</span>}
+          right={
+            <span className="text-[11px] text-ink-faint">
+              {authority?.provider === 'dataforseo' ? 'DataForSEO · refreshed weekly' : 'Open PageRank · refreshed daily'}
+            </span>
+          }
         />
         <div className="px-5 pb-5 pt-4">
           {authority?.site?.score != null ? (
             <>
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-                <SearchStat label="Authority score" value={`${authority.site.score.toFixed(1)} / 10`} />
-                <SearchStat label="Global domain rank" value={authority.site.rank != null ? `#${int(authority.site.rank)}` : '—'} />
+                <SearchStat
+                  label={`Domain rank (0–${int(authority.site.scale)})`}
+                  value={authority.site.scale === 10 ? authority.site.score.toFixed(1) : int(authority.site.score)}
+                />
                 <SearchStat
                   label="Referring domains"
-                  value={manual.get('referring_domains')?.value != null ? int(manual.get('referring_domains')!.value!) : '—'}
+                  value={
+                    authority.site.referringDomains != null
+                      ? int(authority.site.referringDomains)
+                      : manual.get('referring_domains')?.value != null
+                        ? int(manual.get('referring_domains')!.value!)
+                        : '—'
+                  }
                 />
                 <SearchStat
                   label="Total backlinks"
-                  value={manual.get('backlinks_total')?.value != null ? int(manual.get('backlinks_total')!.value!) : '—'}
+                  value={
+                    authority.site.backlinks != null
+                      ? int(authority.site.backlinks)
+                      : manual.get('backlinks_total')?.value != null
+                        ? int(manual.get('backlinks_total')!.value!)
+                        : '—'
+                  }
+                />
+                <SearchStat
+                  label="Links per referring domain"
+                  value={
+                    authority.site.backlinks != null && authority.site.referringDomains
+                      ? (authority.site.backlinks / authority.site.referringDomains).toFixed(1)
+                      : '—'
+                  }
                 />
               </div>
               {authority.competitors.length > 0 ? (
