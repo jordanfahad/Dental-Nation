@@ -314,6 +314,146 @@ export async function getMarketDemand(): Promise<MarketDemand> {
   }
 }
 
+/* ── Branch-level demand (acquisition lens) ──
+ * Per-branch financials are private; two PUBLIC signals map demand to
+ * individual branches, each labelled for what it is:
+ *   · the branch's location PAGE on the group's own site — DataForSEO Labs
+ *     estimates organic visits per page, so a branch page's traffic is a
+ *     proxy for the digital demand that branch generates;
+ *   · the branch's own Google Maps listing — rating and LIFETIME review
+ *     count, the classic footfall proxy (a stock, not a monthly rate).
+ * A screening tool for "which branches are strong", never diligence.
+ */
+
+const BRAND_KEYWORDS: Record<string, string> = {
+  'dentalnation.com': 'Dental Nation Dubai',
+  'thedentalstudio.ae': 'The Dental Studio Dubai',
+  'drjoydentalclinic.com': 'Dr Joy Dental Clinic',
+  'drmichaels.com': "Dr Michael's Dental Clinic",
+};
+
+export interface BranchPage {
+  page: string;
+  estVisits: number | null;
+  keywords: number | null;
+}
+export interface BranchListing {
+  title: string;
+  address: string | null;
+  rating: number | null;
+  reviews: number | null;
+}
+export interface BranchDemandGroup {
+  domain: string;
+  pages: BranchPage[];
+  listings: BranchListing[];
+}
+export interface BranchDemand {
+  available: boolean;
+  note: string | null;
+  groups: BranchDemandGroup[];
+}
+
+interface LabsPagesResponse {
+  status_code?: number;
+  tasks?: {
+    status_code?: number;
+    result?: { items?: { page_address?: string; metrics?: { organic?: { etv?: number; count?: number } } }[] | null }[] | null;
+  }[];
+}
+interface MapsResponse {
+  status_code?: number;
+  tasks?: {
+    status_code?: number;
+    result?: { items?: { type?: string; title?: string; address?: string; rating?: { value?: number; votes_count?: number } }[] | null }[] | null;
+  }[];
+}
+
+const fetchBranchDemand = unstable_cache(
+  async (login: string, password: string, domains: string[]): Promise<BranchDemandGroup[]> => {
+    const auth = `Basic ${Buffer.from(`${login}:${password}`).toString('base64')}`;
+
+    const pagesFor = async (domain: string): Promise<BranchPage[]> => {
+      try {
+        const res = await fetch('https://api.dataforseo.com/v3/dataforseo_labs/google/relevant_pages/live', {
+          method: 'POST',
+          headers: { Authorization: auth, 'Content-Type': 'application/json' },
+          body: JSON.stringify([{ target: domain, location_code: 2784, language_code: 'en', limit: 12, order_by: ['metrics.organic.etv,desc'] }]),
+          cache: 'no-store',
+        });
+        if (!res.ok) return [];
+        const json = (await res.json()) as LabsPagesResponse;
+        const task = json.tasks?.[0];
+        if (json.status_code !== 20000 || task?.status_code !== 20000) return [];
+        return (task.result?.[0]?.items ?? []).map((i) => ({
+          page: (i.page_address ?? '').replace(/^https?:\/\/[^/]+/, '') || '/',
+          estVisits: i.metrics?.organic?.etv != null ? Math.round(i.metrics.organic.etv) : null,
+          keywords: i.metrics?.organic?.count ?? null,
+        }));
+      } catch {
+        return [];
+      }
+    };
+
+    const listingsFor = async (domain: string): Promise<BranchListing[]> => {
+      const keyword = BRAND_KEYWORDS[domain];
+      if (!keyword) return [];
+      try {
+        const res = await fetch('https://api.dataforseo.com/v3/serp/google/maps/live/advanced', {
+          method: 'POST',
+          headers: { Authorization: auth, 'Content-Type': 'application/json' },
+          body: JSON.stringify([{ keyword, location_code: 2784, language_code: 'en', depth: 20 }]),
+          cache: 'no-store',
+        });
+        if (!res.ok) return [];
+        const json = (await res.json()) as MapsResponse;
+        const task = json.tasks?.[0];
+        if (json.status_code !== 20000 || task?.status_code !== 20000) return [];
+        // Keep only listings that are plausibly this brand's branches.
+        const brandStem = keyword.toLowerCase().split(' ').slice(0, 2).join(' ');
+        return (task.result?.[0]?.items ?? [])
+          .filter((i) => (i.title ?? '').toLowerCase().includes(brandStem))
+          .map((i) => ({
+            title: i.title ?? '',
+            address: i.address ?? null,
+            rating: i.rating?.value ?? null,
+            reviews: i.rating?.votes_count ?? null,
+          }))
+          .sort((a, b) => (b.reviews ?? 0) - (a.reviews ?? 0))
+          .slice(0, 15);
+      } catch {
+        return [];
+      }
+    };
+
+    return Promise.all(
+      domains.map(async (domain) => ({
+        domain,
+        pages: await pagesFor(domain),
+        listings: await listingsFor(domain),
+      })),
+    );
+  },
+  ['branch-demand-v1'],
+  { revalidate: 604800 }, // 7 days — Labs + Maps tasks per refresh
+);
+
+export async function getBranchDemand(): Promise<BranchDemand> {
+  const { dfsLogin, dfsPassword, competitors } = await readConfig();
+  if (!dfsLogin || !dfsPassword) return { available: false, note: 'DataForSEO credentials not configured.', groups: [] };
+  const domains = [SITE_DOMAIN, ...competitors.filter((c) => c !== SITE_DOMAIN)];
+  try {
+    const groups = await fetchBranchDemand(dfsLogin, dfsPassword, domains);
+    return {
+      available: groups.some((g) => g.pages.length > 0 || g.listings.length > 0),
+      note: null,
+      groups,
+    };
+  } catch (err) {
+    return { available: false, note: `Branch demand lookup failed: ${(err as Error).message}`, groups: [] };
+  }
+}
+
 export interface CommercialBenchmark {
   available: boolean;
   note: string | null;

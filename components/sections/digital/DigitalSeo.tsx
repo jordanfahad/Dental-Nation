@@ -1,7 +1,7 @@
 import { getDigitalSeo } from '@/lib/analytics/digital';
 import { getManualMetrics } from '@/lib/board/metrics';
 import { getAuthorityReport, getBacklinkDetail } from '@/lib/analytics/authority';
-import { getTechBenchmark, getCommercialBenchmark, getMarketDemand, CLINIC_FOOTPRINT } from '@/lib/analytics/benchmark';
+import { getTechBenchmark, getCommercialBenchmark, getMarketDemand, getBranchDemand, CLINIC_FOOTPRINT } from '@/lib/analytics/benchmark';
 import { TrendChart, TOKENS, type TrendSeries } from '@/components/charts/Charts';
 import { QueryTable } from './QueryTable';
 import { GoogleReviewsCard, LocalSearchCard } from '@/components/sections/gmb/GmbLocalCards';
@@ -34,7 +34,7 @@ function Score({ label, value }: { label: string; value: number | null }) {
  * demographics live on Google Analytics — none of them are repeated here.
  */
 export async function DigitalSeo({ range }: { range?: { from?: string; to?: string } }) {
-  const [d, manual, authority, backlinks, tech, commercial, marketDemand] = await Promise.all([
+  const [d, manual, authority, backlinks, tech, commercial, marketDemand, branches] = await Promise.all([
     getDigitalSeo(range ?? {}),
     getManualMetrics().catch(() => new Map()),
     getAuthorityReport().catch(() => null),
@@ -42,6 +42,7 @@ export async function DigitalSeo({ range }: { range?: { from?: string; to?: stri
     getTechBenchmark().catch(() => null),
     getCommercialBenchmark().catch(() => null),
     getMarketDemand().catch(() => null),
+    getBranchDemand().catch(() => null),
   ]);
   const dofollowShare =
     backlinks && backlinks.links.length > 0 ? backlinks.links.filter((l) => l.dofollow).length / backlinks.links.length : null;
@@ -750,6 +751,102 @@ export async function DigitalSeo({ range }: { range?: { from?: string; to?: stri
             <div className="mt-4">
               <DataGapInline detail={commercial?.note ?? 'Commercial benchmark unavailable.'} owner={ownerFor('tracking')} />
             </div>
+          )}
+        </div>
+      </Card>
+
+      {/* Branch-level demand — the acquisition-scouting lens. */}
+      <Card>
+        <SectionHeader
+          tag="D3e"
+          eyebrow="Benchmark · branch level"
+          title="Which branches carry the demand"
+          right={<span className="text-[11px] text-ink-faint">Labs pages + Google Maps · weekly</span>}
+        />
+        <div className="px-5 pb-5 pt-4">
+          {branches?.available ? (
+            <>
+              <p className="text-[12.5px] leading-snug text-ink-soft">
+                Two public signals, per branch: the branch&apos;s own <span className="font-medium">Google Maps listing</span>{' '}
+                (rating and lifetime review count — the classic footfall proxy) and, where a group gives each branch its own
+                page, that page&apos;s <span className="font-medium">estimated organic visits</span>. A screening lens for
+                which locations are strong or weak — never a substitute for diligence on an actual acquisition.
+              </p>
+              <div className="mt-4 space-y-6">
+                {branches.groups.map((g) => (
+                  <div key={g.domain}>
+                    <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-ink-faint">
+                      {g.domain}{g.domain === 'dentalnation.com' ? ' (us)' : ''}
+                    </p>
+                    <div className="grid gap-6 lg:grid-cols-2">
+                      <div className="overflow-x-auto">
+                        <p className="mb-1.5 text-[10.5px] uppercase tracking-wide text-ink-faint">Branch listings on Google Maps</p>
+                        {g.listings.length === 0 ? (
+                          <p className="text-[12px] text-ink-faint">No brand listings matched on Maps.</p>
+                        ) : (
+                          <table className="w-full min-w-[360px] text-[12px]">
+                            <thead>
+                              <tr className="border-b border-line text-left text-[10px] uppercase tracking-wide text-ink-faint">
+                                <th className="py-1.5 pr-3">Branch</th>
+                                <th className="py-1.5 pr-3 text-right">Rating</th>
+                                <th className="py-1.5 pl-3 text-right">Reviews (lifetime)</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {g.listings.map((l, i) => (
+                                <tr key={i} className="border-b border-line/60 align-top">
+                                  <td className="py-1.5 pr-3">
+                                    <span className="block text-ink">{l.title}</span>
+                                    {l.address ? <span className="block text-[10.5px] text-ink-faint">{l.address}</span> : null}
+                                  </td>
+                                  <td className="py-1.5 pr-3 text-right tabular-nums text-ink-soft">{l.rating != null ? l.rating.toFixed(1) : '—'}</td>
+                                  <td className="py-1.5 pl-3 text-right tabular-nums text-ink">{l.reviews != null ? int(l.reviews) : '—'}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        )}
+                      </div>
+                      <div className="overflow-x-auto">
+                        <p className="mb-1.5 text-[10.5px] uppercase tracking-wide text-ink-faint">Top pages by est. organic visits / month</p>
+                        {g.pages.length === 0 ? (
+                          <p className="text-[12px] text-ink-faint">No page-level estimates available.</p>
+                        ) : (
+                          <table className="w-full min-w-[320px] text-[12px]">
+                            <thead>
+                              <tr className="border-b border-line text-left text-[10px] uppercase tracking-wide text-ink-faint">
+                                <th className="py-1.5 pr-3">Page</th>
+                                <th className="py-1.5 pl-3 text-right">Est. visits (keywords)</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {g.pages.map((p) => (
+                                <tr key={p.page} className="border-b border-line/60">
+                                  <td className="py-1.5 pr-3 text-ink" title={p.page}>{p.page.length > 42 ? `${p.page.slice(0, 41)}…` : p.page}</td>
+                                  <td className="py-1.5 pl-3 text-right tabular-nums text-ink">
+                                    {p.estVisits != null ? int(p.estVisits) : '—'}
+                                    {p.keywords != null ? <span className="text-[10.5px] text-ink-faint"> ({int(p.keywords)})</span> : null}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <Takeaway>
+                Reading it as an acquirer: a branch with a <strong>large lifetime review count and strong rating</strong>{' '}
+                has proven, durable footfall; a branch whose <strong>location page carries real organic traffic</strong>{' '}
+                generates its own digital demand rather than borrowing the brand&apos;s. Branches strong on both are the
+                expensive ones; strong footfall with weak digital presence is where an acquirer with a better digital
+                machine — the thesis this platform demonstrates — adds the most value fastest.
+              </Takeaway>
+            </>
+          ) : (
+            <DataGapInline detail={branches?.note ?? 'Branch-level lookup unavailable.'} owner={ownerFor('tracking')} />
           )}
         </div>
       </Card>
