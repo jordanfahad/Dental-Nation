@@ -2,6 +2,7 @@ import { getDigitalSeo } from '@/lib/analytics/digital';
 import { getManualMetrics } from '@/lib/board/metrics';
 import { getAuthorityReport } from '@/lib/analytics/authority';
 import { TrendChart, TOKENS, type TrendSeries } from '@/components/charts/Charts';
+import { QueryTable } from './QueryTable';
 import { GoogleReviewsCard, LocalSearchCard } from '@/components/sections/gmb/GmbLocalCards';
 import { Card, SectionHeader, Takeaway } from '@/components/ui/Card';
 import { DataGapInline } from '@/components/ui/DataGap';
@@ -91,10 +92,6 @@ export async function DigitalSeo({ range }: { range?: { from?: string; to?: stri
     ? d.search.topPages.slice(0, 10).map((p) => ({ ...p, path: p.page.replace(/^https?:\/\/[^/]+/, '') || '/' }))
     : [];
   const devices = d.search?.available ? d.search.devices : [];
-  const topQueries = sq
-    .slice()
-    .sort((a, b) => b.clicks - a.clicks || b.impressions - a.impressions)
-    .slice(0, 100);
   const isUrlPrefix = Boolean(d.search?.siteUrl?.startsWith('http'));
 
   const kpis: KpiItem[] = [
@@ -315,44 +312,22 @@ export async function DigitalSeo({ range }: { range?: { from?: string; to?: stri
                 </div>
               ) : null}
 
-              {/* The full keyword report — top 100 by clicks, then impressions. */}
-              {topQueries.length ? (
+              {/* The full keyword report — every reported query, searchable and sortable. */}
+              {sq.length ? (
                 <div className="mt-5">
                   <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-ink-faint">
-                    Top {topQueries.length} search queries (of {sq.length} reported)
+                    Search queries ({sq.length} reported) — click a column to sort, type to filter
                   </p>
-                  <div className="max-h-[460px] overflow-auto rounded-card border border-line">
-                    <table className="w-full min-w-[560px] text-[12.5px]">
-                      <thead className="sticky top-0 bg-card">
-                        <tr className="border-b border-line text-left text-[10px] uppercase tracking-wide text-ink-faint">
-                          <th className="py-2 pl-3 pr-3">#</th>
-                          <th className="py-2 pr-3">Query</th>
-                          <th className="py-2 pr-3 text-right">Clicks</th>
-                          <th className="py-2 pr-3 text-right">Impressions</th>
-                          <th className="py-2 pr-3 text-right">CTR</th>
-                          <th className="py-2 pr-3 text-right">Avg pos</th>
-                          <th className="py-2 pl-3">Type</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {topQueries.map((q, i) => (
-                          <tr key={q.query} className="border-b border-line/60">
-                            <td className="py-2 pl-3 pr-3 tabular-nums text-ink-faint">{i + 1}</td>
-                            <td className="py-2 pr-3 text-ink">{q.query}</td>
-                            <td className="py-2 pr-3 text-right tabular-nums text-ink">{int(q.clicks)}</td>
-                            <td className="py-2 pr-3 text-right tabular-nums text-ink-soft">{int(q.impressions)}</td>
-                            <td className="py-2 pr-3 text-right tabular-nums text-ink-soft">{pct1(q.ctr)}</td>
-                            <td className="py-2 pr-3 text-right tabular-nums text-ink-soft">{pos(q.position)}</td>
-                            <td className="py-2 pl-3">
-                              <span className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-medium ${BRANDED.test(q.query) ? 'bg-panel text-ink-soft' : 'bg-good/10 text-good'}`}>
-                                {BRANDED.test(q.query) ? 'branded' : 'non-branded'}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                  <QueryTable
+                    rows={sq.map((q) => ({
+                      query: q.query,
+                      clicks: q.clicks,
+                      impressions: q.impressions,
+                      ctr: q.ctr,
+                      position: q.position,
+                      branded: BRANDED.test(q.query),
+                    }))}
+                  />
                 </div>
               ) : null}
 
