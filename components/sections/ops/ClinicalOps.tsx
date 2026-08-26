@@ -1,4 +1,6 @@
 import { getLeadForms, type LeadOutcome } from '@/lib/ops/leadForms';
+import { getFormEntries } from '@/lib/ops/formEntries';
+import { getUnverifiedLeads } from '@/lib/ops/unverifiedLeads';
 import { UnverifiedLeads } from './UnverifiedLeads';
 import { FormEntriesPanel } from './FormEntriesPanel';
 import { WidgetHealth } from './WidgetHealth';
@@ -44,14 +46,23 @@ function dateTime(iso: string | null): string {
  * an email alert to the ops inbox (see the notice below).
  */
 export async function ClinicalOps({ range }: { range?: { from?: string; to?: string } }) {
-  const data = await getLeadForms(range ?? {});
+  const [data, formEntries, unverified] = await Promise.all([
+    getLeadForms(range ?? {}),
+    getFormEntries(range ?? {}).catch(() => null),
+    getUnverifiedLeads(range ?? {}).catch(() => null),
+  ]);
 
+  // One at-a-glance band for EVERY lead population, each card linking to the
+  // table it summarises — verified widget forms, campaign/offer forms, and
+  // unverified enquiries stay separate lists (different intent, different
+  // follow-up), but the totals sit side by side.
   const kpis: KpiItem[] = [
     { label: 'New today', value: int(data.today), hint: 'last 24 hours' },
-    { label: 'Last 7 days', value: int(data.last7d) },
-    { label: 'Total (range)', value: int(data.total), hint: 'non-test lead forms' },
-    { label: 'Reached Practo', value: int(data.reachedPracto), hint: 'matched by phone' },
-    { label: 'Needs follow-up', value: int(data.notInPracto), hint: 'not in Practo yet' },
+    { label: 'Verified widget forms', value: int(data.total), hint: 'in range · table below', href: '#ops-widget-forms' },
+    { label: 'Campaign & offer leads', value: formEntries ? int(formEntries.total) : null, hint: 'deduped people · table below', href: '#ops-form-entries', gapDetail: 'no form entries synced yet', gapOwner: 'Clinic ops' },
+    { label: 'Unverified enquiries', value: unverified ? int(unverified.total) : null, hint: 'call-centre worklist below', href: '#ops-unverified', gapDetail: 'no unverified enquiries in range', gapOwner: 'Clinic ops' },
+    { label: 'Reached Practo', value: int(data.reachedPracto), hint: 'verified forms matched by phone' },
+    { label: 'Needs follow-up', value: int(data.notInPracto), hint: 'verified, not in Practo yet' },
   ];
 
   return (
@@ -86,7 +97,7 @@ export async function ClinicalOps({ range }: { range?: { from?: string; to?: str
         </div>
       </Card>
 
-      <Card>
+      <Card id="ops-widget-forms">
         <SectionHeader tag="OPS2" eyebrow="Inbox" title="Lead forms to action" />
         <div className="px-5 pb-5 pt-4">
           {data.source === 'empty' ? (

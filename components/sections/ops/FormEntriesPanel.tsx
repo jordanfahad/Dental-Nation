@@ -33,7 +33,7 @@ export async function FormEntriesPanel({ range }: { range?: { from?: string; to?
   ];
 
   return (
-    <Card>
+    <Card id="ops-form-entries">
       <SectionHeader
         tag="OPS3"
         eyebrow="Inbox · watched form tabs"

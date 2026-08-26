@@ -273,7 +273,11 @@ export const sheetMapping: Record<string, SourceMapping> = {
     key: 'bookingLeads',
     label: 'Website Booking Widget — Leads (unverified)',
     spreadsheetId: '1CtfSiGONthczH6YVOLfAZvOdmFfGP26uVBZJoYjxRQQ',
-    tabs: ['Leads'],
+    // The widget's unverified-lead tab was RENAMED "Leads from Incomplete
+    // Bookings" — which silently emptied this truncate-and-reload source (the
+    // sync found no tab called "Leads") and with it the call-centre worklist.
+    // Both names are listed: a missing tab is only a warning.
+    tabs: ['Leads', 'Leads from Incomplete Bookings'],
     headerRow: 1,
     target: 'none',
     rawTable: 'raw_dn_leads',

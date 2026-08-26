@@ -24,6 +24,8 @@ export interface KpiItem {
   gapOwner?: string;
   /** A small caption under the value (e.g. a denominator note). */
   hint?: string;
+  /** Makes the card a link (e.g. an anchor to the table it summarises). */
+  href?: string;
 }
 
 function DeltaChip({ deltaPct, goodWhenUp = true }: { deltaPct: number; goodWhenUp?: boolean }) {
@@ -41,8 +43,8 @@ function DeltaChip({ deltaPct, goodWhenUp = true }: { deltaPct: number; goodWhen
 
 function Card({ item }: { item: KpiItem }) {
   const isGap = item.value == null;
-  return (
-    <div className="rounded-card border border-line bg-card p-3.5">
+  const body = (
+    <>
       <p className="text-[10.5px] font-medium uppercase tracking-wide text-ink-faint">{item.label}</p>
       {isGap ? (
         <div className="mt-1.5">
@@ -72,7 +74,15 @@ function Card({ item }: { item: KpiItem }) {
           </div>
         </>
       )}
-    </div>
+    </>
+  );
+  const cls = 'rounded-card border border-line bg-card p-3.5';
+  return item.href ? (
+    <a href={item.href} className={`${cls} block no-underline transition-colors hover:border-ink/25`}>
+      {body}
+    </a>
+  ) : (
+    <div className={cls}>{body}</div>
   );
 }
 

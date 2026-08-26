@@ -8,13 +8,17 @@ export function Card({
   children,
   className = '',
   highlight = false,
+  id,
 }: {
   children: ReactNode;
   className?: string;
   highlight?: boolean;
+  /** Anchor target, so scorecards can deep-link to the card they summarise. */
+  id?: string;
 }) {
   return (
     <section
+      id={id}
       className={`card print-avoid-break ${
         highlight ? 'border-watch ring-1 ring-watch/30' : ''
       } ${className}`}
