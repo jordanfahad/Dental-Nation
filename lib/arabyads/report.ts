@@ -273,26 +273,82 @@ export async function getArabyAdsReport(range: { from: string; to: string }): Pr
   };
 
   // ── Lead / enquiry trend across all channels (surge detection) ──
+  // "All channels" is a UNION of the three places an enquiry can land: the
+  // Inhouse Lead Tracker (which the team stopped filling mid-Aug 2026 when the
+  // flow moved to the campaign forms — as a single source it left this chart
+  // flatlining), the campaign/offer lead forms, and the widget's
+  // incomplete-booking leads. Deduped by phone + day so an enquiry logged in
+  // two places counts once; tracker rows are added first so their richer
+  // channel labels (WhatsApp / Instagram / …) win the dedupe.
   const byChannel = new Map<string, number>();
   const social = new Map<string, number>();
   const dailyEnq = new Map<string, number>();
   let enqTotal = 0;
-  try {
-    let q = supabase.from('leads').select('inquiry_date, channel_source');
-    if (from) q = q.gte('inquiry_date', from);
-    if (to) q = q.lte('inquiry_date', to);
-    const { data } = await q;
-    const rows = (data as { inquiry_date: string | null; channel_source: string | null }[] | null) ?? [];
-    for (const r of rows) {
-      const date = (r.inquiry_date ?? '').slice(0, 10);
-      const ch = (r.channel_source ?? '').trim() || 'Unknown';
+  {
+    const seenEnq = new Set<string>();
+    const p9 = (v: string) => {
+      const d = v.replace(/\D/g, '');
+      return d.length >= 9 ? d.slice(-9) : d;
+    };
+    const inRange = (date: string) => !date || ((!from || date >= from) && (!to || date <= to));
+    const isTestEnq = (hay: string) => /test|zavis|sagar/i.test(hay);
+    const addEnq = (date: string, phone: string, channel: string) => {
+      const p = p9(phone);
+      if (p) {
+        const key = `${p}|${date}`;
+        if (seenEnq.has(key)) return;
+        seenEnq.add(key);
+      }
       enqTotal += 1;
-      byChannel.set(ch, (byChannel.get(ch) ?? 0) + 1);
-      if (SOCIAL_CHANNELS.has(ch.toLowerCase())) social.set(ch, (social.get(ch) ?? 0) + 1);
+      byChannel.set(channel, (byChannel.get(channel) ?? 0) + 1);
+      if (SOCIAL_CHANNELS.has(channel.toLowerCase())) social.set(channel, (social.get(channel) ?? 0) + 1);
       if (date) dailyEnq.set(date, (dailyEnq.get(date) ?? 0) + 1);
+    };
+    // 1) Inhouse Lead Tracker (manual log — WhatsApp / Instagram / calls / …)
+    try {
+      let q = supabase.from('leads').select('inquiry_date, channel_source, raw_row');
+      if (from) q = q.gte('inquiry_date', from);
+      if (to) q = q.lte('inquiry_date', to);
+      const { data } = await q;
+      const rows = (data as { inquiry_date: string | null; channel_source: string | null; raw_row: Record<string, string> | null }[] | null) ?? [];
+      for (const r of rows) {
+        addEnq(
+          (r.inquiry_date ?? '').slice(0, 10),
+          String(r.raw_row?.['Contact Number'] ?? ''),
+          (r.channel_source ?? '').trim() || 'Unknown',
+        );
+      }
+    } catch {
+      /* tracker unavailable — the union continues on the other sources */
     }
-  } catch {
-    /* leave enquiry rollups empty */
+    // 2) Campaign / offer lead forms (the flow that replaced the tracker)
+    try {
+      const { data } = await supabase.from('ops_form_entries').select('submitted_at, phone, name, email');
+      const rows = (data as { submitted_at: string | null; phone: string | null; name: string | null; email: string | null }[] | null) ?? [];
+      for (const r of rows) {
+        if (isTestEnq(`${r.name ?? ''} ${r.email ?? ''}`)) continue;
+        const date = (r.submitted_at ?? '').slice(0, 10);
+        if (!inRange(date)) continue;
+        addEnq(date, r.phone ?? '', 'Website form');
+      }
+    } catch {
+      /* forms mirror optional */
+    }
+    // 3) Widget incomplete-booking leads (started a booking, didn't finish)
+    try {
+      const { data } = await supabase.from('raw_dn_leads').select('data');
+      const rows = (data as { data: Record<string, unknown> }[] | null) ?? [];
+      for (const r of rows) {
+        const d = r.data ?? {};
+        if (isTestEnq(`${String(d['Full Name'] ?? d['Name'] ?? '')} ${String(d['Email'] ?? '')}`)) continue;
+        const ms = Date.parse(String(d['Timestamp'] ?? ''));
+        const date = Number.isNaN(ms) ? '' : new Date(ms).toISOString().slice(0, 10);
+        if (!inRange(date)) continue;
+        addEnq(date, String(d['Phone'] ?? d['Phone Number'] ?? ''), 'Booking widget');
+      }
+    } catch {
+      /* widget-leads mirror optional */
+    }
   }
 
   // ── Practo / clinic-side reference (scoped to the same window) ──

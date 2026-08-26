@@ -397,13 +397,18 @@ export async function ArabyAdsReport({ range }: { range: { from: string; to: str
         <SectionHeader tag="A5" eyebrow="Enquiries" title="Are enquiries surging? (all channels)" />
         <div className="px-5 pb-5 pt-4">
           {e.total === 0 ? (
-            <DataGapInline detail="no enquiries (lead-tracker rows) in range" owner={ownerFor('tracking')} />
+            <DataGapInline detail="no enquiries in range (lead tracker, lead forms, booking widget)" owner={ownerFor('tracking')} />
           ) : (
             <div className="space-y-5">
               {enqTrend.length > 0 ? (
                 <div>
                   <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-ink-faint">Enquiries per day</p>
                   <TrendChart data={enqTrend} series={enqSeries} leftFormat="int" />
+                  <p className="mt-1.5 text-[10.5px] leading-snug text-ink-faint">
+                    Union of every enquiry source — the Inhouse Lead Tracker (WhatsApp / Instagram / calls), campaign
+                    lead forms, and incomplete booking-widget leads — deduped by phone number per day, test entries
+                    excluded. The tracker alone stopped being updated mid-Aug 2026 when intake moved to the lead forms.
+                  </p>
                 </div>
               ) : null}
               <div className="grid gap-6 lg:grid-cols-2">
