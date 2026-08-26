@@ -111,8 +111,12 @@ function buildColumnMap(header: string[]): Record<string, number> {
     time: find(/^time$/i),
     clinic: find(/clinic/i),
     additional: find(/additional/i),
-    bookingRef: find(/booking\s*ref/i),
-    source: find(/source/i),
+    // Revised sheet (Aug 2026): "Notes / Appointment Date" replaces the old
+    // Date/Additional pair, "Lead ID" (DN-####) replaces Booking Reference,
+    // and "Interested Lane / Service" replaces the raw Source string.
+    notes: find(/notes|appointment\s*date/i),
+    bookingRef: find(/booking\s*ref|lead\s*id/i),
+    source: find(/interested|lane\s*\/?\s*service/i) >= 0 ? find(/interested|lane\s*\/?\s*service/i) : find(/source/i),
   };
 }
 
@@ -233,7 +237,7 @@ const loadLeadStatus = unstable_cache(
         continue; // Araby report → only their campaign lanes
       }
       const apptDate = at(row, col.date);
-      const notes = apptDate || at(row, col.additional);
+      const notes = at(row, col.notes) || apptDate || at(row, col.additional);
       leads.push({
         leadId: ref || '—',
         dateTime: at(row, col.timestamp),
@@ -245,7 +249,9 @@ const loadLeadStatus = unstable_cache(
         status: normStatus(statusRaw),
         reason: at(row, col.reason),
         notes,
-        booked: normStatus(statusRaw) === 'Valid' && hasBooking(ref),
+        // "Booked" now also reads the Notes column ("Booked for July 22") —
+        // the revised sheet's Lead ID (DN-####) is not a PMS booking ref.
+        booked: normStatus(statusRaw) === 'Valid' && (hasBooking(ref) || /booked/i.test(notes)),
       });
     }
 

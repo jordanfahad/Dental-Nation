@@ -14,6 +14,11 @@ export const ARABY_LEADS_SHEET = {
   sheetGid: process.env.ARABY_LEADS_SHEET_GID ? Number(process.env.ARABY_LEADS_SHEET_GID) : 1596657498,
 };
 
+/** The workbook's `all_lead_info` tab — the sync APPENDS every new form lead
+ *  here (columns A–F; Lead Status / Reason / Notes stay the team's). Needs
+ *  the service account upgraded from Viewer to EDITOR on this workbook. */
+export const ALL_LEAD_INFO_GID = 1661630790;
+
 /**
  * The campaign lanes shown in the summary (in order). The lead sheet carries the
  * campaign in its `Source` column (e.g. "ArabyAds / dental_nation_scan (PID:…)"),

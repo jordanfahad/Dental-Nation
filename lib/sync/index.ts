@@ -22,6 +22,7 @@ import { getSiteSpeedReport } from '@/lib/analytics/site-speed';
 import { getTechBenchmark } from '@/lib/analytics/benchmark';
 import { sendWatchedTabAlerts } from '@/lib/ops/tabAlerts';
 import { syncOpsForms } from './adapters/ops-forms-adapter';
+import { syncLeadMirror } from './leadMirror';
 import {
   normalizePerformance,
   normalizeBlockers,
@@ -456,6 +457,22 @@ export async function runSync(trigger: SyncTrigger): Promise<SyncSummary> {
   } catch (err) {
     sheetsFailed.push('Watched forms');
     dataGaps.push({ area: 'clinic', detail: `Watched-form ingest failed: ${(err as Error).message}`, owner: ownerFor('clinic') });
+  }
+
+  // ----- Lead mirror: every new form lead (offer forms, incomplete bookings,
+  // watched tabs) appended to the Araby workbook's all_lead_info tab in the
+  // feedback-sheet format, DN-#### ids continuing the sheet's own sequence.
+  // Fails with a data gap (not a crash) until the service account has EDITOR
+  // on that workbook. Best-effort.
+  try {
+    const mirror = await syncLeadMirror(supabase, sheets);
+    if (mirror.ok) {
+      if (mirror.appended > 0) sheetsOk.push(`Lead mirror — ${mirror.appended} appended to all_lead_info`);
+    } else {
+      dataGaps.push({ area: 'clinic', detail: `Lead mirror failed: ${mirror.error ?? 'unknown'} (service account needs Editor on the Araby workbook)`, owner: ownerFor('clinic') });
+    }
+  } catch (err) {
+    dataGaps.push({ area: 'clinic', detail: `Lead mirror failed: ${(err as Error).message}`, owner: ownerFor('clinic') });
   }
 
   // ----- Site speed (PSI) cache warm-up. A cold Lighthouse audit takes ~35s,
