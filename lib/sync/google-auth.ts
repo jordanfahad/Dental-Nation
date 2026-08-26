@@ -39,6 +39,25 @@ export function getSheetsClient(): sheets_v4.Sheets {
   return google.sheets({ version: 'v4', auth });
 }
 
+/** Read-WRITE spreadsheets scope — used ONLY by the lead mirror's append into
+ *  all_lead_info. Every other sheet touch stays on the read-only client, so a
+ *  bug elsewhere can never write to a source sheet. */
+export const SHEETS_RW_SCOPE = 'https://www.googleapis.com/auth/spreadsheets';
+
+export function getSheetsWriteClient(): sheets_v4.Sheets {
+  if (!isGoogleConfigured()) {
+    throw new Error(
+      'Google service account not configured. Set GOOGLE_SERVICE_ACCOUNT_EMAIL and GOOGLE_PRIVATE_KEY.',
+    );
+  }
+  const auth = new google.auth.JWT({
+    email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+    key: privateKey(),
+    scopes: [SHEETS_RW_SCOPE],
+  });
+  return google.sheets({ version: 'v4', auth });
+}
+
 /**
  * GA4 Data API client. Same service account / private key as Sheets, but with
  * the read-only Analytics scope. The service account must have at least Viewer

@@ -1,6 +1,7 @@
 import 'server-only';
 import type { sheets_v4 } from 'googleapis';
 import type { AdminClient } from '@/lib/supabase/server';
+import { getSheetsWriteClient } from '@/lib/sync/google-auth';
 import { ARABY_LEADS_SHEET, ALL_LEAD_INFO_GID } from '@/config/arabyads-leads';
 import { ARABY_LANES } from '@/lib/arabyads/report';
 
@@ -61,8 +62,12 @@ interface Candidate {
   service: string;
 }
 
-export async function syncLeadMirror(supabase: AdminClient, sheets: sheets_v4.Sheets): Promise<LeadMirrorResult> {
+export async function syncLeadMirror(supabase: AdminClient, _readOnly?: sheets_v4.Sheets): Promise<LeadMirrorResult> {
   try {
+    // The default sync client is READ-ONLY scoped — appending needs its own
+    // write-scoped client (the first run failed with Insufficient Permission
+    // even with Editor granted, because the token itself was read-only).
+    const sheets = getSheetsWriteClient();
     // ── Resolve the target tab title by gid (rename-proof). ──
     const meta = await sheets.spreadsheets.get({
       spreadsheetId: ARABY_LEADS_SHEET.spreadsheetId,
