@@ -24,6 +24,7 @@ function SummaryRow({ s, strong }: { s: LaneSummary; strong?: boolean }) {
       <td className="py-2 pr-3 text-right tabular-nums">{int(s.total)}</td>
       <td className="py-2 pr-3 text-right tabular-nums text-good">{int(s.valid)}</td>
       <td className="py-2 pr-3 text-right tabular-nums text-stop">{int(s.invalid)}</td>
+      <td className="py-2 pr-3 text-right tabular-nums text-watch">{int(s.pending)}</td>
       <td className="py-2 pr-3 text-right tabular-nums">{pct(s.validationRate)}</td>
       <td className="py-2 pr-3 text-right tabular-nums">{int(s.booked)}</td>
     </tr>
@@ -64,6 +65,7 @@ export async function ArabyLeadStatus() {
                   <th className="py-2 pr-3 text-right font-medium">Total Leads</th>
                   <th className="py-2 pr-3 text-right font-medium">Valid</th>
                   <th className="py-2 pr-3 text-right font-medium">Invalid</th>
+                  <th className="py-2 pr-3 text-right font-medium">In Follow-up</th>
                   <th className="py-2 pr-3 text-right font-medium">Validation Rate</th>
                   <th className="py-2 pr-3 text-right font-medium">Booked</th>
                 </tr>
@@ -78,12 +80,56 @@ export async function ArabyLeadStatus() {
           </div>
           <p className="mt-2 text-[10.5px] leading-snug text-ink-faint">
             <span className="font-medium text-ink-soft">Valid</span> = accurate, reachable patient data, based on lead
-            submission — regardless of the final booking status by reception. Validation Rate = Valid ÷ (Valid + Invalid),
-            Pending excluded. <span className="font-medium text-ink-soft">Booked</span> = a valid lead carrying a confirmed
-            booking reference. ArabyAds leads only; test leads excluded. Status is maintained by the Dental Nation team.
+            submission — regardless of the final booking status by reception.{' '}
+            <span className="font-medium text-ink-soft">In Follow-up</span> = pending — still inside the 3-touch
+            follow-up cycle (FU 1–3), not yet a final verdict. Validation Rate = Valid ÷ (Valid + Invalid), leads in
+            follow-up excluded. <span className="font-medium text-ink-soft">Booked</span> = a valid lead carrying a
+            confirmed booking reference. ArabyAds leads only; test leads excluded. Status is maintained by the Dental
+            Nation team.
           </p>
         </div>
       </Card>
+
+      {/* Why leads are rejected / stuck — the revised sheet's reason taxonomy */}
+      {data.reasons.length > 0 ? (
+        <Card>
+          <SectionHeader
+            eyebrow="Leads"
+            title="Rejection &amp; follow-up reasons"
+            right={<span className="text-[11px] text-ink-faint">recorded from FU 1</span>}
+          />
+          <div className="px-5 pb-5 pt-4">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[480px] border-collapse text-[12.5px]">
+                <thead>
+                  <tr className="border-b border-line text-[10.5px] uppercase tracking-wide text-ink-faint">
+                    <th className="py-2 pr-3 text-left font-medium">Reason</th>
+                    <th className="py-2 pr-3 text-right font-medium">Invalid (final)</th>
+                    <th className="py-2 pr-3 text-right font-medium">In Follow-up</th>
+                    <th className="py-2 pr-3 text-right font-medium">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.reasons.map((r) => (
+                    <tr key={r.reason} className="border-b border-line/60">
+                      <td className="py-2 pr-3 text-left text-ink-soft">{r.reason}</td>
+                      <td className="py-2 pr-3 text-right tabular-nums text-stop">{int(r.invalid)}</td>
+                      <td className="py-2 pr-3 text-right tabular-nums text-watch">{int(r.pending)}</td>
+                      <td className="py-2 pr-3 text-right font-medium tabular-nums text-ink">{int(r.total)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="mt-2 text-[10.5px] leading-snug text-ink-faint">
+              The reason is set at the first follow-up (FU 1) and refined over up to three touches. Leads still{' '}
+              <span className="font-medium text-ink-soft">In Follow-up</span> (e.g. unresponsive, international number
+              pending re-check) can still convert — only <span className="font-medium text-ink-soft">Invalid</span> is a
+              final verdict.
+            </p>
+          </div>
+        </Card>
+      ) : null}
 
       {/* Detail */}
       <Card>
@@ -94,7 +140,7 @@ export async function ArabyLeadStatus() {
         />
         <div className="px-5 pb-5 pt-4">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[860px] border-collapse text-[12px]">
+            <table className="w-full min-w-[1000px] border-collapse text-[12px]">
               <thead>
                 <tr className="border-b border-line text-[10.5px] uppercase tracking-wide text-ink-faint">
                   <th className="py-2 pr-3 text-left font-medium">Lead ID</th>
@@ -104,7 +150,8 @@ export async function ArabyLeadStatus() {
                   <th className="py-2 pr-3 text-left font-medium">Clinic</th>
                   <th className="py-2 pr-3 text-left font-medium">Lane / Service</th>
                   <th className="py-2 pr-3 text-left font-medium">Status</th>
-                  <th className="py-2 pr-3 text-left font-medium">Reason (if invalid)</th>
+                  <th className="py-2 pr-3 text-left font-medium">Reason (FU 1)</th>
+                  <th className="py-2 pr-3 text-left font-medium">Follow-up Trail</th>
                   <th className="py-2 pr-3 text-left font-medium">Notes / Appt.</th>
                 </tr>
               </thead>
@@ -123,6 +170,18 @@ export async function ArabyLeadStatus() {
                       </span>
                     </td>
                     <td className="py-2 pr-3 text-ink-soft">{l.reason || (l.status === 'Invalid' ? '—' : '')}</td>
+                    <td className="py-2 pr-3 text-ink-soft">
+                      {l.followUps.some(Boolean)
+                        ? l.followUps.map((fu, n) =>
+                            fu ? (
+                              <div key={n} className="whitespace-nowrap">
+                                <span className="mr-1 text-[10px] font-medium text-ink-faint">FU{n + 1}</span>
+                                {fu}
+                              </div>
+                            ) : null,
+                          )
+                        : '—'}
+                    </td>
                     <td className="py-2 pr-3 text-ink-soft">
                       {l.notes || '—'}
                       {l.booked ? <span className="ml-1 rounded bg-accent/10 px-1 py-0.5 text-[10px] text-accent">booked</span> : null}

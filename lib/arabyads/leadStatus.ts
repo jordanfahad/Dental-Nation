@@ -9,20 +9,28 @@ import { ARABY_LEADS_SHEET, ARABY_LANES } from '@/config/arabyads-leads';
  * it into the two tables the ads team asked for: a per-lead detail list, and a
  * lane summary (total / valid / invalid / validation rate / booked).
  *
- * The sheet's real columns are: Timestamp, Full Name, Email, Phone, Title,
- * Lead Status, Reason for Rejection, Condition, Treatment, Type, Date, Time,
- * Clinic Name, Price, Insurance, Additional Details, Doctor, Booking Reference,
- * Payment Method, Source. We map:
+ * The sheet's real columns (revised 26 Aug 2026): Timestamp, Full Name, Email,
+ * Phone Number, Title, Lead Status, "Reason for Rejection (If Invalid) - FU 1",
+ * FU 1 Remarks, FU 2 Remarks, FU 3 Remarks, Treatment, Type of Treatment, Date,
+ * Time, Clinic Name, Price, Insurance Number, Additional Details, Doctor Name,
+ * Booking Reference, Condition, Payment Method, Source. We map:
  *   - Lead ID          ← Booking Reference
  *   - Date & Time      ← Timestamp (submission)
- *   - Lane / Service   ← parsed from Source (dental_nation_sos/scan/glowup)
+ *   - Lane / Service   ← parsed from Source ("arabyads_sos" new style, or the
+ *                        legacy "ArabyAds / dental_nation_sos (PID:…)")
  *   - Notes / Appt.    ← the requested appointment Date (+ Time)
+ *   - Follow-ups       ← FU 1 / FU 2 / FU 3 Remarks (the call-centre's 3-touch
+ *                        follow-up trail; the Reason column records the verdict
+ *                        from the FIRST follow-up)
  *
  * Definitions (agreed with the client):
  *   - Valid  = accurate, reachable patient data (regardless of whether reception
  *     finally booked it); the team sets Lead Status by hand.
+ *   - Pending = still in the follow-up cycle (e.g. "Unresponsive" after FU 1) —
+ *     the Reason column is filled for these too, it is NOT an invalid verdict yet.
  *   - Validation Rate = Valid / (Valid + Invalid)  — Pending excluded.
- *   - Booked = a Valid lead that carries a real PMS booking reference (BK…).
+ *   - Booked = a Valid lead that carries a real PMS booking reference (BK…) or a
+ *     "booked" note in Notes / FU remarks.
  *   - Test leads (status "Test Lead", or test/zavis/sagar/owner emails) excluded.
  *   - Only ArabyAds-sourced leads (a recognised lane) are included.
  *
@@ -42,7 +50,17 @@ export interface LeadRow {
   status: LeadStatus;
   reason: string;
   notes: string;
+  /** FU 1 / FU 2 / FU 3 Remarks — the call-centre's follow-up trail, in order. */
+  followUps: [string, string, string];
   booked: boolean;
+}
+
+/** One row of the rejection / follow-up reason breakdown. */
+export interface ReasonCount {
+  reason: string;
+  invalid: number;
+  pending: number;
+  total: number;
 }
 
 export interface LaneSummary {
@@ -62,6 +80,11 @@ export interface LeadStatusReport {
   leads: LeadRow[];
   lanes: LaneSummary[];
   totals: LaneSummary;
+  /** Why leads are rejected / stuck — counts by the sheet's reason taxonomy
+   *  (Wrong Contact, Unresponsive, International Number, Duplicate Lead,
+   *  Out of Target Location, …), split by whether the verdict is final
+   *  (Invalid) or the lead is still in follow-up (Pending). */
+  reasons: ReasonCount[];
 }
 
 const s = (v: unknown): string => String(v ?? '').trim();
@@ -91,11 +114,14 @@ const laneLabel = (key: string | null): string => ARABY_LANES.find((l) => l.key 
 /** A real PMS booking reference (BK…) — distinguishes a genuine booking. */
 const hasBooking = (ref: string): boolean => /^bk/i.test(ref);
 
-/** "07/17/2026, 11:06:52" → epoch ms for sorting (newest first); 0 if unparseable. */
+/** "07/17/2026, 11:06:52" OR "2026-08-21 21:07" (both appear in the revised
+ *  sheet) → epoch ms for sorting (newest first); 0 if unparseable. */
 function tsMs(v: string): number {
   const m = v.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})[,\s]+(\d{1,2}):(\d{2})(?::(\d{2}))?/);
-  if (!m) return 0;
-  return Date.UTC(+m[3], +m[1] - 1, +m[2], +m[4], +m[5], m[6] ? +m[6] : 0);
+  if (m) return Date.UTC(+m[3], +m[1] - 1, +m[2], +m[4], +m[5], m[6] ? +m[6] : 0);
+  const iso = v.match(/(\d{4})-(\d{2})-(\d{2})[T\s]+(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+  if (iso) return Date.UTC(+iso[1], +iso[2] - 1, +iso[3], +iso[4], +iso[5], iso[6] ? +iso[6] : 0);
+  return 0;
 }
 
 function buildColumnMap(header: string[]): Record<string, number> {
@@ -117,6 +143,12 @@ function buildColumnMap(header: string[]): Record<string, number> {
     notes: find(/notes|appointment\s*date/i),
     bookingRef: find(/booking\s*ref|lead\s*id/i),
     source: find(/interested|lane\s*\/?\s*service/i) >= 0 ? find(/interested|lane\s*\/?\s*service/i) : find(/source/i),
+    // Revised feedback sheet (26 Aug 2026): the call-centre's 3-touch trail.
+    // /fu\s*1\s*remarks/ deliberately requires "remarks" so it can never grab
+    // "Reason for Rejection (If Invalid) - FU 1", which also contains "FU 1".
+    fu1: find(/fu\s*1\s*remarks/i),
+    fu2: find(/fu\s*2\s*remarks/i),
+    fu3: find(/fu\s*3\s*remarks/i),
   };
 }
 
@@ -143,6 +175,25 @@ const emptySummary = (key: string, label: string): LaneSummary => ({
   validationRate: null,
   booked: 0,
 });
+
+/** The sheet's reason taxonomy varies in casing/spelling ("international
+ *  number" vs "International Number") — fold to a canonical display label. */
+function reasonBreakdown(rows: LeadRow[]): ReasonCount[] {
+  const byKey = new Map<string, ReasonCount>();
+  for (const r of rows) {
+    if (!r.reason || r.status === 'Valid') continue;
+    const key = r.reason.toLowerCase().replace(/\s+/g, ' ');
+    let entry = byKey.get(key);
+    if (!entry) {
+      entry = { reason: r.reason, invalid: 0, pending: 0, total: 0 };
+      byKey.set(key, entry);
+    }
+    if (r.status === 'Invalid') entry.invalid += 1;
+    else entry.pending += 1;
+    entry.total += 1;
+  }
+  return [...byKey.values()].sort((a, b) => b.total - a.total);
+}
 
 function summarise(rows: LeadRow[]): { lanes: LaneSummary[]; totals: LaneSummary } {
   const known = new Map(ARABY_LANES.map((l) => [l.key, emptySummary(l.key, l.label)]));
@@ -187,6 +238,7 @@ const loadLeadStatus = unstable_cache(
     leads: [],
     lanes: ARABY_LANES.map((l) => emptySummary(l.key, l.label)),
     totals: emptySummary('total', 'Total'),
+    reasons: [],
   });
 
   if (!ARABY_LEADS_SHEET.spreadsheetId) return empty('Lead sheet not configured.');
@@ -238,6 +290,7 @@ const loadLeadStatus = unstable_cache(
       }
       const apptDate = at(row, col.date);
       const notes = at(row, col.notes) || apptDate || at(row, col.additional);
+      const followUps: [string, string, string] = [at(row, col.fu1), at(row, col.fu2), at(row, col.fu3)];
       leads.push({
         leadId: ref || '—',
         dateTime: at(row, col.timestamp),
@@ -249,9 +302,12 @@ const loadLeadStatus = unstable_cache(
         status: normStatus(statusRaw),
         reason: at(row, col.reason),
         notes,
-        // "Booked" now also reads the Notes column ("Booked for July 22") —
-        // the revised sheet's Lead ID (DN-####) is not a PMS booking ref.
-        booked: normStatus(statusRaw) === 'Valid' && (hasBooking(ref) || /booked/i.test(notes)),
+        followUps,
+        // "Booked" also reads the Notes + FU-remark columns ("Booked for
+        // July 22") — the revised sheet's Lead ID (DN-####) is not a PMS ref.
+        booked:
+          normStatus(statusRaw) === 'Valid' &&
+          (hasBooking(ref) || /booked/i.test(`${notes} ${followUps.join(' ')}`)),
       });
     }
 
@@ -265,7 +321,7 @@ const loadLeadStatus = unstable_cache(
 
     leads.sort((a, b) => tsMs(b.dateTime) - tsMs(a.dateTime));
     const { lanes, totals } = summarise(leads);
-    return { available: true, note: null, leads, lanes, totals };
+    return { available: true, note: null, leads, lanes, totals, reasons: reasonBreakdown(leads) };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     if (/permission|not found|403|404/i.test(msg)) {
@@ -274,7 +330,8 @@ const loadLeadStatus = unstable_cache(
     return empty('Could not read the lead sheet.');
   }
   },
-  ['araby-lead-status-v1'],
+  // v2: revised feedback sheet (FU 1–3 remarks, Pending, reason breakdown).
+  ['araby-lead-status-v2'],
   { revalidate: 300 },
 );
 
