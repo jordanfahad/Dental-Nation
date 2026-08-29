@@ -679,8 +679,8 @@ export async function DigitalSeo({ range }: { range?: { from?: string; to?: stri
                   public sitemap.xml — what the site has PUBLISHED, not what Google has indexed (our indexed count sits in
                   the Search Console card above). ≥ marks a capped walk (very large sitemap set — the count is a floor).{' '}
                   <span className="font-medium text-ink-soft">~ marks an estimate</span>: when a site blocks or lacks a
-                  public sitemap, the figure is the count of the site's pages known to DataForSEO's web crawler — every crawled
-                  page necessarily exists, so the estimate is a reliable floor, never an inflated guess. Refreshed weekly
+                  public sitemap, the figure is Google's own site: index count for the domain (falling back to pages known to
+                  DataForSEO's web crawler) — an estimate from Google's index, never an invented number. Refreshed weekly
                   with the other benchmarks; authority &amp; demand from DataForSEO, on-page from Lighthouse.
                 </p>
               </div>

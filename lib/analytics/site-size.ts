@@ -111,12 +111,43 @@ async function dfsTotalCount(url: string, body: Record<string, unknown>, login: 
   }
 }
 
+/** Google's own `site:` result count — how many pages of the domain Google
+ *  reports having, via a live SERP query. The strongest public estimate when
+ *  the site itself blocks its sitemap. */
+async function googleSiteCount(domain: string, login: string, password: string): Promise<number | null> {
+  try {
+    const res = await fetch('https://api.dataforseo.com/v3/serp/google/organic/live/regular', {
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${Buffer.from(`${login}:${password}`).toString('base64')}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify([{ keyword: `site:${domain}`, location_code: 2784, language_code: 'en', depth: 10 }]),
+      cache: 'no-store',
+      signal: AbortSignal.timeout(30_000), // a live SERP task runs longer than a REST read
+    });
+    if (!res.ok) return null;
+    const json = (await res.json()) as {
+      status_code?: number;
+      tasks?: { status_code?: number; result?: { se_results_count?: number }[] | null }[];
+    };
+    const task = json.tasks?.[0];
+    if (json.status_code !== 20000 || task?.status_code !== 20000) return null;
+    const n = task.result?.[0]?.se_results_count;
+    return typeof n === 'number' && n > 0 ? n : null;
+  } catch {
+    return null;
+  }
+}
+
 async function rankedPagesEstimate(domain: string, login: string, password: string): Promise<number | null> {
-  // Best proxy first: every page DataForSEO's web crawler has seen on the
-  // domain (Backlinks domain_pages) — close to true site size. The first live
-  // run proved the UAE ranked-pages count alone badly undercounts (Dr Joy,
-  // ~12 branches, came back as 76), so that stays only as the last fallback.
+  // Preference order, most authoritative public source first:
+  //  1. Google's own site: index count — Google says how many pages it has;
+  //  2. pages DataForSEO's web crawler has seen (Backlinks domain_pages);
+  //  3. UAE ranked-pages count — proven to badly undercount (Dr Joy came back
+  //     76 on it), kept only as the last resort.
   return (
+    (await googleSiteCount(domain, login, password)) ??
     (await dfsTotalCount('https://api.dataforseo.com/v3/backlinks/domain_pages/live', { target: domain, limit: 1 }, login, password)) ??
     (await dfsTotalCount(
       'https://api.dataforseo.com/v3/dataforseo_labs/google/relevant_pages/live',
@@ -277,7 +308,7 @@ const loadSiteSize = unstable_cache(
             row.note =
               (row.note?.startsWith('Sitemap declared')
                 ? 'Sitemap blocked by the site — '
-                : 'No public sitemap — ') + 'estimated from pages known to the web crawler (a floor).';
+                : 'No public sitemap — ') + "estimated from Google's own site: index count.";
           }
         }),
       );
@@ -289,8 +320,8 @@ const loadSiteSize = unstable_cache(
       note: any ? null : 'No sitemaps were reachable from any domain in the set.',
     };
   },
-  // v4: crawler-known-pages estimate (domain_pages) — ranked-pages undercounted.
-  ['site-size-v4'],
+  // v5: Google site: index count preferred over crawler-known pages.
+  ['site-size-v5'],
   { revalidate: 7 * 24 * 60 * 60 },
 );
 
