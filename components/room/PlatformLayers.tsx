@@ -1,4 +1,6 @@
 import Link from 'next/link';
+import { TrendChart } from '@/components/charts/Charts';
+import { getLayerVisuals, type LayerKpi } from '@/lib/room/layerKpis';
 import { C } from '@/components/board/design';
 import {
   PLATFORM_LAYERS,
@@ -222,8 +224,46 @@ export function PlatformHome({ base }: { base: string }) {
   );
 }
 
-/** A layer page — overview header + its capability pages, one after another. */
-export function LayerPage({ base, layer }: { base: string; layer: PlatformLayer }) {
+/** The four status chips as a proportional readiness bar — the schematic
+ *  read of how built-out a layer is, straight from its capability statuses. */
+function ReadinessBar({ layer }: { layer: PlatformLayer }) {
+  const order: CapabilityStatus[] = ['built', 'demonstrated', 'in-implementation', 'validate'];
+  const total = layer.capabilities.length;
+  if (total === 0) return null;
+  const counts = order
+    .map((st) => ({ st, n: layer.capabilities.filter((c) => c.status === st).length }))
+    .filter((x) => x.n > 0);
+  const SEG: Record<CapabilityStatus, string> = {
+    built: C.good,
+    demonstrated: C.navyMid,
+    'in-implementation': C.amberSoft,
+    validate: C.rule,
+  };
+  return (
+    <div>
+      <div className="flex h-[10px] w-full overflow-hidden rounded" style={{ background: C.ruleSoft }}>
+        {counts.map(({ st, n }) => (
+          <div key={st} style={{ width: `${(n / total) * 100}%`, background: SEG[st] }} />
+        ))}
+      </div>
+      <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1">
+        {counts.map(({ st, n }) => (
+          <span key={st} className="flex items-center gap-1 text-[10.5px]" style={{ color: C.inkSoft }}>
+            <span className="h-[8px] w-[8px] rounded-sm" style={{ background: SEG[st] }} />
+            {n} {STATUS_LABEL[st].toLowerCase()}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** A layer page — numbers first (Mr Akbar's feedback), then the capability
+ *  pages: header → live KPI band → trend where the layer has one → readiness
+ *  schematic → live reports → capabilities. */
+export async function LayerPage({ base, layer }: { base: string; layer: PlatformLayer }) {
+  const visuals = await getLayerVisuals(layer.slug).catch(() => ({ kpis: [] as LayerKpi[], trend: undefined }));
+  const trend = 'trend' in visuals ? visuals.trend : undefined;
   return (
     <div className="space-y-4">
       <header className="rounded-lg px-5 py-5 text-white sm:px-6" style={{ background: C.navyDeep }}>
@@ -234,6 +274,43 @@ export function LayerPage({ base, layer }: { base: string; layer: PlatformLayer 
         <p className="mt-1.5 text-[12px]" style={{ color: C.navyPale }}>{layer.tagline}</p>
         <p className="mt-3 text-[11px]" style={{ color: C.navyPale }}>Report owner: {layer.owner}</p>
       </header>
+
+      {visuals.kpis.length > 0 ? (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          {visuals.kpis.map((k) => (
+            <div key={k.label} className="rounded-lg border bg-white p-3.5" style={{ borderColor: C.rule }}>
+              <p className="text-[10px] font-bold uppercase tracking-wide" style={{ color: C.inkFaint }}>{k.label}</p>
+              <p className="mt-1 text-[22px] font-semibold leading-none tracking-tight tabular-nums" style={{ color: C.ink }}>
+                {k.value}
+              </p>
+              {k.hint ? <p className="mt-1 text-[10px]" style={{ color: C.inkFaint }}>{k.hint}</p> : null}
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {trend && trend.length > 0 ? (
+        <div className="rounded-lg border bg-white p-4" style={{ borderColor: C.rule }}>
+          <p className="mb-2 text-[10.5px] font-bold uppercase tracking-wide" style={{ color: C.inkFaint }}>
+            Organic search demand — clicks &amp; impressions per day (last 28 days, Google)
+          </p>
+          <TrendChart
+            data={trend}
+            series={[
+              { key: 'impressions', label: 'Impressions', color: C.navyPale, kind: 'area', axis: 'right', valueFormat: 'int' },
+              { key: 'clicks', label: 'Clicks', color: C.navy, kind: 'line', axis: 'left', valueFormat: 'int' },
+            ]}
+            leftFormat="int"
+          />
+        </div>
+      ) : null}
+
+      <div className="rounded-lg border bg-white p-4" style={{ borderColor: C.rule }}>
+        <p className="mb-2 text-[10.5px] font-bold uppercase tracking-wide" style={{ color: C.inkFaint }}>
+          Capability readiness — {layer.capabilities.length} capabilities in this layer
+        </p>
+        <ReadinessBar layer={layer} />
+      </div>
 
       {layer.reports.length > 0 ? (
         <section className="rounded-lg border p-4" style={{ borderColor: C.navyPale, background: C.navyWash }}>
