@@ -76,6 +76,29 @@ export function EvidenceRoom({ base }: { base: string }) {
         </div>
       </section>
 
+      {/* ── The six-layer platform (Mr Akbar's link-page blueprint) ──────── */}
+      <section>
+        <Link
+          href={`${base}/platform`}
+          className="group flex flex-col gap-2 rounded-lg border p-5 no-underline transition hover:shadow-md sm:flex-row sm:items-center sm:justify-between"
+          style={{ borderColor: C.navyPale, background: C.navyWash }}
+        >
+          <div>
+            <p className="text-[14.5px] font-semibold" style={{ color: C.ink }}>
+              The Operating Platform — six layers
+            </p>
+            <p className="mt-1 max-w-[720px] text-[11.5px] leading-snug" style={{ color: C.inkSoft }}>
+              Clinical Capacity &amp; Supply · Patient Demand &amp; Brand Growth · Patient Coordination Hub ·
+              Standardized Clinical Delivery · Centralized Support &amp; Technology · Repeatable Expansion Model — each
+              layer opens to capability pages with owner, status and live evidence.
+            </p>
+          </div>
+          <p className="shrink-0 text-[12px] font-semibold" style={{ color: C.navyMid }}>
+            Open the platform →
+          </p>
+        </Link>
+      </section>
+
       {/* ── Platform overview + platform model (A and B, shared block) ───── */}
       <PlatformModelBlock />
 
@@ -92,14 +115,19 @@ export function EvidenceRoom({ base }: { base: string }) {
  * investor can move Growth ↔ Operations ↔ Finance without returning to the
  * landing first.
  */
-export function RoomSectionBar({ backHref, section }: { backHref: string; section: string }) {
+export function RoomSectionBar({ backHref, section, active }: { backHref: string; section: string; active?: string }) {
   const items = [
     { label: 'Overview', href: backHref, key: 'overview' },
+    { label: 'Platform', href: `${backHref}/platform`, key: 'platform' },
     { label: 'Growth', href: `${backHref}/growth`, key: 'growth' },
     { label: 'Operations', href: `${backHref}/operations`, key: 'operations' },
     { label: 'Finance', href: `${backHref}/finance`, key: 'finance' },
   ];
-  const activeKey = items.find((i) => i.key !== 'overview' && section.toLowerCase().includes(i.key))?.key ?? null;
+  // "platform" is never inferred from the section label — the Operations
+  // section is titled "Operating Platform reports" and must not match it.
+  const activeKey =
+    active ??
+    (items.find((i) => i.key !== 'overview' && i.key !== 'platform' && section.toLowerCase().includes(i.key))?.key ?? null);
   return (
     <div
       className="no-print sticky top-2 z-20 mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border px-4 py-2 shadow-sm"
