@@ -153,6 +153,49 @@ function statusSummary(layer: PlatformLayer): string {
     .join(' · ');
 }
 
+/**
+ * The six layer cards — THE primary navigation of the room (Ms Shadi's
+ * direction: the platform is the overarching structure; every report lives
+ * under a layer). Shared by the room landing and the /platform page so the
+ * two can never drift.
+ */
+export function LayerCardsGrid({ base }: { base: string }) {
+  return (
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {PLATFORM_LAYERS.map((layer) => (
+        <Link
+          key={layer.slug}
+          href={`${base}/platform/${layer.slug}`}
+          className="group flex flex-col rounded-lg border bg-white p-4 no-underline transition hover:shadow-md"
+          style={{ borderColor: C.rule }}
+        >
+          <p className="text-[11px] font-bold tabular-nums" style={{ color: C.navySoft }}>{layer.n}</p>
+          <p className="mt-1 text-[14px] font-semibold leading-tight" style={{ color: C.ink }}>{layer.title}</p>
+          <p className="mt-1 text-[11px]" style={{ color: C.inkFaint }}>{layer.tagline}</p>
+          <p className="mt-2 text-[11.5px] font-medium" style={{ color: C.navyMid }}>{layer.promise}</p>
+          {layer.reports.length > 0 ? (
+            <div className="mt-2.5 flex flex-1 flex-wrap content-start gap-1">
+              {layer.reports.map((rep) => (
+                <span
+                  key={rep.label}
+                  className="rounded px-1.5 py-[2px] text-[9.5px] font-medium"
+                  style={{ background: C.navyWash, color: C.navyMid }}
+                >
+                  {rep.label}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <div className="flex-1" />
+          )}
+          <p className="mt-3 text-[10.5px]" style={{ color: C.inkFaint }}>{statusSummary(layer)}</p>
+          <p className="mt-2 text-[11.5px] font-semibold" style={{ color: C.navyMid }}>Open layer →</p>
+        </Link>
+      ))}
+    </div>
+  );
+}
+
 /** Platform Home — the six layer cards (blueprint page 3). */
 export function PlatformHome({ base }: { base: string }) {
   return (
@@ -160,29 +203,14 @@ export function PlatformHome({ base }: { base: string }) {
       <header>
         <h1 className="text-[20px] font-semibold" style={{ color: C.ink }}>The Operating Platform — six layers</h1>
         <p className="mt-1 max-w-[840px] text-[12px] leading-snug" style={{ color: C.inkSoft }}>
-          The platform in six layers, each opening to its capability pages. Every capability answers the same seven
-          questions in the same order, shows its owner, status and refresh cadence, and resolves its claims to a live
-          system, a KPI or an evidence document — or shows the gap openly until the owner provides it.
+          The platform in six layers, each opening to its capability pages and the live reports that belong to it.
+          Every capability answers the same seven questions in the same order, shows its owner, status and refresh
+          cadence, and resolves its claims to a live system, a KPI or an evidence document — or shows the gap openly
+          until the owner provides it.
         </p>
       </header>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {PLATFORM_LAYERS.map((layer) => (
-          <Link
-            key={layer.slug}
-            href={`${base}/platform/${layer.slug}`}
-            className="group flex flex-col rounded-lg border bg-white p-4 no-underline transition hover:shadow-md"
-            style={{ borderColor: C.rule }}
-          >
-            <p className="text-[11px] font-bold tabular-nums" style={{ color: C.navySoft }}>{layer.n}</p>
-            <p className="mt-1 text-[14px] font-semibold leading-tight" style={{ color: C.ink }}>{layer.title}</p>
-            <p className="mt-1 text-[11px]" style={{ color: C.inkFaint }}>{layer.tagline}</p>
-            <p className="mt-2 flex-1 text-[11.5px] font-medium" style={{ color: C.navyMid }}>{layer.promise}</p>
-            <p className="mt-3 text-[10.5px]" style={{ color: C.inkFaint }}>{statusSummary(layer)}</p>
-            <p className="mt-2 text-[11.5px] font-semibold" style={{ color: C.navyMid }}>Open layer →</p>
-          </Link>
-        ))}
-      </div>
+      <LayerCardsGrid base={base} />
 
       <p className="rounded-lg border px-4 py-3 text-[11px] leading-snug" style={{ borderColor: C.rule, background: C.panel, color: C.inkSoft }}>
         <span className="font-semibold" style={{ color: C.ink }}>One data backbone, two views.</span> This investor view
@@ -206,6 +234,26 @@ export function LayerPage({ base, layer }: { base: string; layer: PlatformLayer 
         <p className="mt-1.5 text-[12px]" style={{ color: C.navyPale }}>{layer.tagline}</p>
         <p className="mt-3 text-[11px]" style={{ color: C.navyPale }}>Report owner: {layer.owner}</p>
       </header>
+
+      {layer.reports.length > 0 ? (
+        <section className="rounded-lg border p-4" style={{ borderColor: C.navyPale, background: C.navyWash }}>
+          <p className="text-[10.5px] font-bold uppercase tracking-wide" style={{ color: C.navyMid }}>
+            Live reports in this layer
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {layer.reports.map((rep) => (
+              <Link
+                key={rep.label}
+                href={`${base}${rep.href}`}
+                className="rounded-md border bg-white px-2.5 py-1.5 text-[11.5px] font-semibold no-underline transition hover:shadow-sm"
+                style={{ borderColor: C.navyPale, color: C.navyMid }}
+              >
+                {rep.label} →
+              </Link>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <nav className="flex flex-wrap gap-1.5">
         {layer.capabilities.map((c) => (

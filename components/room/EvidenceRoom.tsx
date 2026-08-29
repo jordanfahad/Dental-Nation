@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { C } from '@/components/board/design';
 import { ROOM } from '@/config/evidence-room';
 import { PlatformModelBlock } from '@/components/room/PlatformModel';
+import { LayerCardsGrid } from '@/components/room/PlatformLayers';
 
 /**
  * The Investor Evidence Room landing page (Mr Akbar's blueprint) — the front
@@ -35,69 +36,39 @@ export function EvidenceRoom({ base }: { base: string }) {
         </div>
       </header>
 
-      {/* ── Primary navigation ───────────────────────────────────────────── */}
+      {/* ── The platform IS the structure (Ms Shadi's direction): after the
+          cover, introduce the platform, then the six layers as the PRIMARY
+          navigation. Operations, Growth, Finance and Branding contribute
+          their reports INTO the layers — they are not parallel categories. */}
       <section>
-        <h2 className="text-[15px] font-semibold">The reports</h2>
-        <p className="mt-1 text-[11.5px]" style={{ color: C.inkSoft }}>
-          Each section is a live report, not a document — the figures update as the business trades. Open a section and
-          use your browser&apos;s Back button to return here.
+        <h2 className="text-[15px] font-semibold">{ROOM.overviewTitle}</h2>
+        <p className="mt-1 max-w-[860px] text-[12px] leading-snug" style={{ color: C.inkSoft }}>
+          {ROOM.overview}
         </p>
-        <div className="mt-3 grid gap-3 lg:grid-cols-3">
-          {ROOM.sections.map((sct) => (
-            <Link
-              key={sct.key}
-              href={`${base}/${sct.key}`}
-              className="group flex flex-col rounded-lg border bg-white p-4 no-underline transition hover:shadow-md"
-              style={{ borderColor: C.rule }}
-            >
-              <div className="flex items-start justify-between gap-2">
-                <p className="text-[14px] font-semibold leading-tight" style={{ color: C.ink }}>
-                  {sct.title}
-                </p>
-                {sct.status === 'live' ? (
-                  <span className="mt-[1px] flex shrink-0 items-center gap-1 rounded px-1.5 py-[2px] text-[9px] font-bold uppercase tracking-wide" style={{ background: C.goodWash, color: C.good }}>
-                    <span className="h-[6px] w-[6px] rounded-full" style={{ background: C.good }} />
-                    Live
-                  </span>
-                ) : (
-                  <span className="mt-[1px] shrink-0 rounded px-1.5 py-[2px] text-[9px] font-bold uppercase tracking-wide" style={{ background: C.amberWash, color: C.amber }}>
-                    In preparation
-                  </span>
-                )}
-              </div>
-              <p className="mt-2 flex-1 text-[11.5px] leading-snug" style={{ color: C.inkSoft }}>
-                {sct.blurb}
-              </p>
-              <p className="mt-3 text-[11.5px] font-semibold" style={{ color: C.navyMid }}>
-                {sct.status === 'live' ? 'Open the report →' : 'See status & live figures →'}
-              </p>
-            </Link>
-          ))}
-        </div>
+        <p className="mt-2 max-w-[860px] text-[12px] leading-snug" style={{ color: C.inkSoft }}>
+          The platform is built from <span className="font-semibold" style={{ color: C.ink }}>six layers</span>. Every
+          report and capability in this room lives inside one of them — open a layer to see what has been built, its
+          owners, its live reports and its evidence. Everything is live: figures update as the business trades.
+        </p>
       </section>
 
-      {/* ── The six-layer platform (Mr Akbar's link-page blueprint) ──────── */}
-      <section>
-        <Link
-          href={`${base}/platform`}
-          className="group flex flex-col gap-2 rounded-lg border p-5 no-underline transition hover:shadow-md sm:flex-row sm:items-center sm:justify-between"
-          style={{ borderColor: C.navyPale, background: C.navyWash }}
-        >
-          <div>
-            <p className="text-[14.5px] font-semibold" style={{ color: C.ink }}>
-              The Operating Platform — six layers
-            </p>
-            <p className="mt-1 max-w-[720px] text-[11.5px] leading-snug" style={{ color: C.inkSoft }}>
-              Clinical Capacity &amp; Supply · Patient Demand &amp; Brand Growth · Patient Coordination Hub ·
-              Standardized Clinical Delivery · Centralized Support &amp; Technology · Repeatable Expansion Model — each
-              layer opens to capability pages with owner, status and live evidence.
-            </p>
-          </div>
-          <p className="shrink-0 text-[12px] font-semibold" style={{ color: C.navyMid }}>
-            Open the platform →
-          </p>
+      <LayerCardsGrid base={`${base}`} />
+
+      <p className="text-[11px]" style={{ color: C.inkFaint }}>
+        Direct report access:{' '}
+        {ROOM.sections.map((sct, i) => (
+          <span key={sct.key}>
+            {i > 0 ? ' · ' : ''}
+            <Link href={`${base}/${sct.key}`} className="font-medium no-underline" style={{ color: C.navyMid }}>
+              {sct.title}
+            </Link>
+          </span>
+        ))}
+        {' · '}
+        <Link href={`${base}/platform`} className="font-medium no-underline" style={{ color: C.navyMid }}>
+          All capability pages
         </Link>
-      </section>
+      </p>
 
       {/* ── Platform overview + platform model (A and B, shared block) ───── */}
       <PlatformModelBlock />

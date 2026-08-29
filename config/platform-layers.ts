@@ -64,6 +64,11 @@ export interface PlatformLayer {
   /** One-line value promise from the blueprint's layer cards. */
   promise: string;
   owner: string;
+  /** The LIVE reports that belong to this layer (Ms Shadi's direction: the
+   *  platform is the overarching structure — Operations, Growth, Finance and
+   *  Branding contribute their reports INTO layers, they are not parallel
+   *  categories). Room-relative paths, rendered under the room token. */
+  reports: { label: string; href: string }[];
   capabilities: Capability[];
 }
 
@@ -87,6 +92,10 @@ export const PLATFORM_LAYERS: PlatformLayer[] = [
     tagline: 'Clinics · chairs · clinicians · specialties',
     promise: 'Reliable capacity',
     owner: 'Dr Luvi Kaprani · Mr Jawad Shafiq (finance inputs)',
+    reports: [
+      { label: 'Group Revenue — three clinics', href: GROUP },
+      { label: 'Operating Platform report', href: OPS },
+    ],
     capabilities: [
       {
         id: '1.1',
@@ -143,6 +152,12 @@ export const PLATFORM_LAYERS: PlatformLayer[] = [
     tagline: 'Brand · website · marketing · acquisition',
     promise: 'Predictable patient flow',
     owner: 'Mr Fahad Siddiqui (layer) · Shadi (2.1) · Mr Gautam (2.5)',
+    reports: [
+      { label: 'Growth Department Live Dashboard', href: GROWTH },
+      { label: 'Digital & SEO', href: DIGITAL },
+      { label: 'Social & Local', href: SOCIAL },
+      { label: 'Marketing — paid media', href: MARKETING },
+    ],
     capabilities: [
       {
         id: '2.1',
@@ -235,6 +250,10 @@ export const PLATFORM_LAYERS: PlatformLayer[] = [
     tagline: 'Booking · conversion · journey · retention',
     promise: 'Retention & lifetime value',
     owner: 'Mr Fahad Siddiqui (layer) · Dr Luvi Kaprani (3.2)',
+    reports: [
+      { label: 'Clinical Operations (worklists & alerts)', href: CLINOPS },
+      { label: 'Growth report — patient journey funnel', href: GROWTH },
+    ],
     capabilities: [
       {
         id: '3.1',
@@ -308,6 +327,9 @@ export const PLATFORM_LAYERS: PlatformLayer[] = [
     tagline: 'Governance · protocols · quality · safety',
     promise: 'Clinical excellence',
     owner: 'Dr Luvi Kaprani',
+    reports: [
+      { label: 'Operating Platform report — clinical governance', href: OPS },
+    ],
     capabilities: [
       {
         id: '4.1',
@@ -374,6 +396,12 @@ export const PLATFORM_LAYERS: PlatformLayer[] = [
     tagline: 'Shared services · systems · data · KPIs',
     promise: 'Efficiency at scale',
     owner: 'Dr Luvi Kaprani · Mr Fahad Siddiqui · Mr Jawad Shafiq',
+    reports: [
+      { label: 'Finance section', href: FINANCE },
+      { label: 'Operating Platform report — shared services', href: OPS },
+      { label: 'Google Analytics', href: '/dash?tab=analytics' },
+      { label: 'Growth Platform & Group Revenue', href: GROUP },
+    ],
     capabilities: [
       {
         id: '5.1',
@@ -448,6 +476,9 @@ export const PLATFORM_LAYERS: PlatformLayer[] = [
     tagline: 'M&A · de novo · transformation · commissioning',
     promise: 'Replicate & grow',
     owner: 'Shadi',
+    reports: [
+      { label: 'Operating Platform report — integration & expansion', href: OPS },
+    ],
     capabilities: [
       {
         id: '6.1',
