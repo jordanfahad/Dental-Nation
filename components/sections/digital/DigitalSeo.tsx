@@ -652,7 +652,9 @@ export async function DigitalSeo({ range }: { range?: { from?: string; to?: stri
                             {r.pages != null ? `${r.approx ? '≥' : ''}${int(r.pages)}` : '—'}
                           </td>
                           <td className="py-2 pr-3 text-right tabular-nums text-ink-soft">
-                            {us ? '—' : ratio != null ? `${ratio >= 10 ? Math.round(ratio) : Math.round(ratio * 10) / 10}×` : '—'}
+                            {/* Precision follows magnitude: 27× · 1.4× · 0.01× — never a
+                                rounded-to-zero "0×" for a site we dwarf. */}
+                            {us ? '—' : ratio == null ? '—' : `${ratio >= 10 ? Math.round(ratio) : ratio >= 1 ? ratio.toFixed(1) : ratio.toFixed(2)}×`}
                           </td>
                           <td className="py-2 pr-3 text-right tabular-nums text-ink-soft">
                             {a?.referringDomains != null ? int(a.referringDomains) : '—'}
