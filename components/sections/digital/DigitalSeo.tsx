@@ -649,7 +649,7 @@ export async function DigitalSeo({ range }: { range?: { from?: string; to?: stri
                             {r.note ? <span className="block text-[10.5px] font-normal text-ink-faint">{r.note}</span> : null}
                           </td>
                           <td className="py-2 pr-3 text-right tabular-nums text-ink">
-                            {r.pages != null ? `${r.approx ? '≥' : ''}${int(r.pages)}` : '—'}
+                            {r.pages != null ? `${r.estimated ? '~' : r.approx ? '≥' : ''}${int(r.pages)}` : '—'}
                           </td>
                           <td className="py-2 pr-3 text-right tabular-nums text-ink-soft">
                             {/* Precision follows magnitude: 27× · 1.4× · 0.01× — never a
@@ -677,9 +677,11 @@ export async function DigitalSeo({ range }: { range?: { from?: string; to?: stri
                 <p className="mt-1.5 text-[11px] leading-snug text-ink-faint">
                   <span className="font-medium text-ink-soft">Total pages</span> = every URL each site declares in its own
                   public sitemap.xml — what the site has PUBLISHED, not what Google has indexed (our indexed count sits in
-                  the Search Console card above). ≥ marks a capped walk (very large sitemap set — the count is a floor). A
-                  site with no reachable public sitemap shows a note instead of a guess. Refreshed weekly with the other
-                  benchmarks; authority &amp; demand from DataForSEO, on-page from Lighthouse.
+                  the Search Console card above). ≥ marks a capped walk (very large sitemap set — the count is a floor).{' '}
+                  <span className="font-medium text-ink-soft">~ marks an estimate</span>: when a site blocks or lacks a
+                  public sitemap, the figure is the count of its pages RANKING in Google (DataForSEO) — every ranking
+                  page necessarily exists, so the estimate is a reliable floor, never an inflated guess. Refreshed weekly
+                  with the other benchmarks; authority &amp; demand from DataForSEO, on-page from Lighthouse.
                 </p>
               </div>
             );

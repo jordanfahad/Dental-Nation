@@ -29,6 +29,11 @@ export interface SiteSizeRow {
   source: string | null;
   /** True when the walk hit a fetch/time cap — the count is a floor. */
   approx: boolean;
+  /** True when `pages` is NOT a sitemap count but the DataForSEO fallback —
+   *  the number of the site's pages ranking in Google (a floor for total
+   *  published pages). Used when a site blocks or lacks a public sitemap, so
+   *  the comparison never shows a blank (Mr Akbar's instruction). */
+  estimated: boolean;
   note: string | null;
 }
 
@@ -46,17 +51,63 @@ const FETCH_TIMEOUT_MS = 10_000;
 const DOMAIN_BUDGET_MS = 40_000;
 const MAX_BYTES = 15 * 1024 * 1024; // one huge sitemap file cap
 
-async function competitorDomains(): Promise<string[]> {
+interface SiteSizeConfig {
+  competitors: string[];
+  dfsLogin: string | null;
+  dfsPassword: string | null;
+}
+
+async function readConfig(): Promise<SiteSizeConfig> {
   const db = getSupabaseAdmin();
-  if (!db) return [];
+  if (!db) return { competitors: [], dfsLogin: null, dfsPassword: null };
   try {
-    const { data } = await db.from('app_secrets').select('value').eq('key', 'seo_competitor_domains').maybeSingle();
-    return String((data as { value?: string } | null)?.value ?? '')
-      .split(',')
-      .map((s) => s.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, ''))
-      .filter(Boolean);
+    const { data } = await db
+      .from('app_secrets')
+      .select('key, value')
+      .in('key', ['seo_competitor_domains', 'dataforseo_login', 'dataforseo_password']);
+    const map = new Map((data ?? []).map((r: { key: string; value: string }) => [r.key, String(r.value ?? '').trim()]));
+    return {
+      competitors: (map.get('seo_competitor_domains') ?? '')
+        .split(',')
+        .map((s) => s.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, ''))
+        .filter(Boolean),
+      dfsLogin: (process.env.DATAFORSEO_LOGIN ?? '').trim() || map.get('dataforseo_login') || null,
+      dfsPassword: (process.env.DATAFORSEO_PASSWORD ?? '').trim() || map.get('dataforseo_password') || null,
+    };
   } catch {
-    return [];
+    return { competitors: [], dfsLogin: null, dfsPassword: null };
+  }
+}
+
+/**
+ * Fallback estimate when a site blocks or lacks a public sitemap: the number
+ * of its pages that RANK in Google (DataForSEO Labs relevant_pages
+ * total_count) — every ranking page necessarily exists, so this is an honest
+ * floor for total published pages, labelled as an estimate on the card.
+ */
+async function rankedPagesEstimate(domain: string, login: string, password: string): Promise<number | null> {
+  try {
+    const res = await fetch('https://api.dataforseo.com/v3/dataforseo_labs/google/relevant_pages/live', {
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${Buffer.from(`${login}:${password}`).toString('base64')}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify([{ target: domain, location_code: 2784, language_code: 'en', limit: 1 }]),
+      cache: 'no-store',
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+    if (!res.ok) return null;
+    const json = (await res.json()) as {
+      status_code?: number;
+      tasks?: { status_code?: number; result?: { total_count?: number }[] | null }[];
+    };
+    const task = json.tasks?.[0];
+    if (json.status_code !== 20000 || task?.status_code !== 20000) return null;
+    const n = task.result?.[0]?.total_count;
+    return typeof n === 'number' && n > 0 ? n : null;
+  } catch {
+    return null;
   }
 }
 
@@ -149,7 +200,7 @@ async function walk(entries: string[], started: number): Promise<{ pages: number
 
 async function measureDomain(domain: string): Promise<SiteSizeRow> {
   const started = Date.now();
-  const row: SiteSizeRow = { domain, pages: null, sitemapFiles: 0, source: null, approx: false, note: null };
+  const row: SiteSizeRow = { domain, pages: null, sitemapFiles: 0, source: null, approx: false, estimated: false, note: null };
 
   // 1) robots.txt-declared sitemaps first — but if their walk yields nothing
   // (declared URL dead, children blocked), fall THROUGH to the conventional
@@ -193,9 +244,28 @@ async function measureDomain(domain: string): Promise<SiteSizeRow> {
 }
 
 const loadSiteSize = unstable_cache(
-  async (domains: string[]): Promise<SiteSizeReport> => {
+  async (domains: string[], dfsLogin: string | null, dfsPassword: string | null): Promise<SiteSizeReport> => {
     if (domains.length === 0) return { available: false, rows: [], note: 'No competitor domains configured.' };
     const rows = await Promise.all(domains.map(measureDomain));
+    // No blanks: a blocked/missing sitemap falls back to the ranked-pages
+    // estimate, clearly labelled — the comparison column always has a number
+    // when the provider knows the site at all.
+    if (dfsLogin && dfsPassword) {
+      await Promise.all(
+        rows.map(async (row) => {
+          if (row.pages != null) return;
+          const est = await rankedPagesEstimate(row.domain, dfsLogin, dfsPassword);
+          if (est != null) {
+            row.pages = est;
+            row.estimated = true;
+            row.note =
+              (row.note?.startsWith('Sitemap declared')
+                ? 'Sitemap blocked by the site — '
+                : 'No public sitemap — ') + 'estimated from pages ranking in Google (a floor).';
+          }
+        }),
+      );
+    }
     const any = rows.some((r) => r.pages != null);
     return {
       available: any,
@@ -203,12 +273,16 @@ const loadSiteSize = unstable_cache(
       note: any ? null : 'No sitemaps were reachable from any domain in the set.',
     };
   },
-  // v2: browser UA, www/bare host probing, robots->conventional fallback.
-  ['site-size-v2'],
+  // v3: DataForSEO ranked-pages fallback estimate for blocked/missing sitemaps.
+  ['site-size-v3'],
   { revalidate: 7 * 24 * 60 * 60 },
 );
 
 export async function getSiteSizeReport(): Promise<SiteSizeReport> {
-  const competitors = await competitorDomains();
-  return loadSiteSize([SITE_DOMAIN, ...competitors.filter((c) => c !== SITE_DOMAIN)]);
+  const cfg = await readConfig();
+  return loadSiteSize(
+    [SITE_DOMAIN, ...cfg.competitors.filter((c) => c !== SITE_DOMAIN)],
+    cfg.dfsLogin,
+    cfg.dfsPassword,
+  );
 }
