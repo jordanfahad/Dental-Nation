@@ -20,6 +20,7 @@ import { runSlotsMonitor } from '@/lib/ops/slotsMonitor';
 import { sendNewLeadAlerts } from '@/lib/ops/alerts';
 import { getSiteSpeedReport } from '@/lib/analytics/site-speed';
 import { getTechBenchmark } from '@/lib/analytics/benchmark';
+import { getSiteSizeReport } from '@/lib/analytics/site-size';
 import { sendWatchedTabAlerts } from '@/lib/ops/tabAlerts';
 import { syncOpsForms } from './adapters/ops-forms-adapter';
 import { syncLeadMirror } from './leadMirror';
@@ -490,6 +491,14 @@ export async function runSync(trigger: SyncTrigger): Promise<SyncSummary> {
   // cache — paid for here so the Digital tab never renders cold. Best-effort.
   try {
     await getTechBenchmark();
+  } catch {
+    /* the card shows its own gap note */
+  }
+
+  // ----- Site-size (sitemap walk) warm-up: dozens of sitemap fetches per
+  // domain, weekly cache — same reasoning as the tech benchmark. Best-effort.
+  try {
+    await getSiteSizeReport();
   } catch {
     /* the card shows its own gap note */
   }

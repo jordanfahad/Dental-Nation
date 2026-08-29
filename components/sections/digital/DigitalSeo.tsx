@@ -2,6 +2,7 @@ import { getDigitalSeo } from '@/lib/analytics/digital';
 import { getManualMetrics } from '@/lib/board/metrics';
 import { getAuthorityReport, getBacklinkDetail } from '@/lib/analytics/authority';
 import { getTechBenchmark, getCommercialBenchmark, getMarketDemand, getBranchDemand, CLINIC_FOOTPRINT } from '@/lib/analytics/benchmark';
+import { getSiteSizeReport } from '@/lib/analytics/site-size';
 import { TrendChart, TOKENS, type TrendSeries } from '@/components/charts/Charts';
 import { QueryTable } from './QueryTable';
 import { GoogleReviewsCard, LocalSearchCard } from '@/components/sections/gmb/GmbLocalCards';
@@ -34,7 +35,7 @@ function Score({ label, value }: { label: string; value: number | null }) {
  * demographics live on Google Analytics — none of them are repeated here.
  */
 export async function DigitalSeo({ range }: { range?: { from?: string; to?: string } }) {
-  const [d, manual, authority, backlinks, tech, commercial, marketDemand, branches] = await Promise.all([
+  const [d, manual, authority, backlinks, tech, commercial, marketDemand, branches, siteSize] = await Promise.all([
     getDigitalSeo(range ?? {}),
     getManualMetrics().catch(() => new Map()),
     getAuthorityReport().catch(() => null),
@@ -43,6 +44,7 @@ export async function DigitalSeo({ range }: { range?: { from?: string; to?: stri
     getCommercialBenchmark().catch(() => null),
     getMarketDemand().catch(() => null),
     getBranchDemand().catch(() => null),
+    getSiteSizeReport().catch(() => null),
   ]);
   const dofollowShare =
     backlinks && backlinks.links.length > 0 ? backlinks.links.filter((l) => l.dofollow).length / backlinks.links.length : null;
@@ -596,8 +598,93 @@ export async function DigitalSeo({ range }: { range?: { from?: string; to?: stri
           right={<span className="text-[11px] text-ink-faint">Lighthouse + DataForSEO Labs · weekly</span>}
         />
         <div className="px-5 pb-5 pt-4">
+          {(() => {
+            // ── SEO benchmark at a glance — one comparison table (Mr Akbar's ask):
+            // total pages each site PUBLISHES (its own sitemap.xml — availability,
+            // not indexing) beside the benchmarks the card already tracks.
+            const authRows = authority ? [authority.site, ...authority.competitors].filter(Boolean) : [];
+            const authBy = new Map(authRows.map((a) => [a!.domain, a!]));
+            const commBy = new Map((commercial?.rows ?? []).map((r) => [r.domain, r]));
+            const techBy = new Map((tech ?? []).map((t) => [t.domain, t]));
+            const domains = siteSize?.rows.map((r) => r.domain) ?? [];
+            if (!siteSize || domains.length === 0) {
+              return (
+                <DataGapInline
+                  detail={siteSize?.note ?? 'Site-size benchmark not warmed yet — fills on the next sync run (sitemap walk, cached weekly).'}
+                  owner={ownerFor('tracking')}
+                />
+              );
+            }
+            const ours = siteSize.rows.find((r) => r.domain === 'dentalnation.com')?.pages ?? null;
+            return (
+              <div className="overflow-x-auto">
+                <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-ink-faint">
+                  SEO benchmark at a glance — site size &amp; strength
+                </p>
+                <table className="w-full min-w-[760px] text-[12.5px]">
+                  <thead>
+                    <tr className="border-b border-line text-left text-[10px] uppercase tracking-wide text-ink-faint">
+                      <th className="py-2 pr-3">Domain</th>
+                      <th className="py-2 pr-3 text-right">Total pages (sitemap)</th>
+                      <th className="py-2 pr-3 text-right">vs us</th>
+                      <th className="py-2 pr-3 text-right">Referring domains</th>
+                      <th className="py-2 pr-3 text-right">Authority (/1000)</th>
+                      <th className="py-2 pr-3 text-right">Keywords ranked</th>
+                      <th className="py-2 pr-3 text-right">Est. visits / mo</th>
+                      <th className="py-2 pl-3 text-right">Lighthouse SEO</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {siteSize.rows.map((r) => {
+                      const a = authBy.get(r.domain);
+                      const c = commBy.get(r.domain);
+                      const t = techBy.get(r.domain);
+                      const us = r.domain === 'dentalnation.com';
+                      const ratio = !us && r.pages != null && ours != null && ours > 0 ? r.pages / ours : null;
+                      return (
+                        <tr key={r.domain} className={`border-b border-line/60 ${us ? 'font-medium' : ''}`}>
+                          <td className="py-2 pr-3 text-ink">
+                            {r.domain}
+                            {us ? ' (us)' : ''}
+                            {r.note ? <span className="block text-[10.5px] font-normal text-ink-faint">{r.note}</span> : null}
+                          </td>
+                          <td className="py-2 pr-3 text-right tabular-nums text-ink">
+                            {r.pages != null ? `${r.approx ? '≥' : ''}${int(r.pages)}` : '—'}
+                          </td>
+                          <td className="py-2 pr-3 text-right tabular-nums text-ink-soft">
+                            {us ? '—' : ratio != null ? `${ratio >= 10 ? Math.round(ratio) : Math.round(ratio * 10) / 10}×` : '—'}
+                          </td>
+                          <td className="py-2 pr-3 text-right tabular-nums text-ink-soft">
+                            {a?.referringDomains != null ? int(a.referringDomains) : '—'}
+                          </td>
+                          <td className="py-2 pr-3 text-right tabular-nums text-ink-soft">{a?.score != null ? int(a.score) : '—'}</td>
+                          <td className="py-2 pr-3 text-right tabular-nums text-ink-soft">
+                            {c?.keywordsRanked != null ? int(c.keywordsRanked) : '—'}
+                          </td>
+                          <td className="py-2 pr-3 text-right tabular-nums text-ink-soft">
+                            {c?.estMonthlyOrganicVisits != null ? int(c.estMonthlyOrganicVisits) : '—'}
+                          </td>
+                          <td className={`py-2 pl-3 text-right tabular-nums ${t?.seo == null ? 'text-ink-faint' : scoreTone(t.seo)}`}>
+                            {t?.seo ?? '—'}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+                <p className="mt-1.5 text-[11px] leading-snug text-ink-faint">
+                  <span className="font-medium text-ink-soft">Total pages</span> = every URL each site declares in its own
+                  public sitemap.xml — what the site has PUBLISHED, not what Google has indexed (our indexed count sits in
+                  the Search Console card above). ≥ marks a capped walk (very large sitemap set — the count is a floor). A
+                  site with no reachable public sitemap shows a note instead of a guess. Refreshed weekly with the other
+                  benchmarks; authority &amp; demand from DataForSEO, on-page from Lighthouse.
+                </p>
+              </div>
+            );
+          })()}
+
           {tech?.some((t) => t.seo != null) ? (
-            <div className="overflow-x-auto">
+            <div className="mt-6 overflow-x-auto">
               <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-ink-faint">
                 Technical / on-page (Lighthouse, mobile homepage)
               </p>
