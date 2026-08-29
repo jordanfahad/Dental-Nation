@@ -34,6 +34,10 @@ export interface SiteSizeRow {
    *  published pages). Used when a site blocks or lacks a public sitemap, so
    *  the comparison never shows a blank (Mr Akbar's instruction). */
   estimated: boolean;
+  /** Google's own site: index count — how many of the domain's pages Google
+   *  reports holding. A DIFFERENT facet from `pages` (published): indexed is
+   *  typically a subset of published (ours: ~19K indexed of 28K published). */
+  indexedPages: number | null;
   note: string | null;
 }
 
@@ -141,13 +145,12 @@ async function googleSiteCount(domain: string, login: string, password: string):
 }
 
 async function rankedPagesEstimate(domain: string, login: string, password: string): Promise<number | null> {
-  // Preference order, most authoritative public source first:
-  //  1. Google's own site: index count — Google says how many pages it has;
-  //  2. pages DataForSEO's web crawler has seen (Backlinks domain_pages);
-  //  3. UAE ranked-pages count — proven to badly undercount (Dr Joy came back
-  //     76 on it), kept only as the last resort.
+  // TOTAL-pages estimate = pages that exist, indexed or not. The crawler-known
+  // count (Backlinks domain_pages) measures existence; Google's site: count
+  // measures the INDEX and is surfaced separately as indexedPages — Fahad's
+  // point: indexed is typically only a fraction of published, so the index
+  // count must never masquerade as the total. UAE ranked pages stay last.
   return (
-    (await googleSiteCount(domain, login, password)) ??
     (await dfsTotalCount('https://api.dataforseo.com/v3/backlinks/domain_pages/live', { target: domain, limit: 1 }, login, password)) ??
     (await dfsTotalCount(
       'https://api.dataforseo.com/v3/dataforseo_labs/google/relevant_pages/live',
@@ -247,7 +250,7 @@ async function walk(entries: string[], started: number): Promise<{ pages: number
 
 async function measureDomain(domain: string): Promise<SiteSizeRow> {
   const started = Date.now();
-  const row: SiteSizeRow = { domain, pages: null, sitemapFiles: 0, source: null, approx: false, estimated: false, note: null };
+  const row: SiteSizeRow = { domain, pages: null, sitemapFiles: 0, source: null, approx: false, estimated: false, indexedPages: null, note: null };
 
   // 1) robots.txt-declared sitemaps first — but if their walk yields nothing
   // (declared URL dead, children blocked), fall THROUGH to the conventional
@@ -294,21 +297,28 @@ const loadSiteSize = unstable_cache(
   async (domains: string[], dfsLogin: string | null, dfsPassword: string | null): Promise<SiteSizeReport> => {
     if (domains.length === 0) return { available: false, rows: [], note: 'No competitor domains configured.' };
     const rows = await Promise.all(domains.map(measureDomain));
-    // No blanks: a blocked/missing sitemap falls back to the ranked-pages
-    // estimate, clearly labelled — the comparison column always has a number
-    // when the provider knows the site at all.
     if (dfsLogin && dfsPassword) {
       await Promise.all(
         rows.map(async (row) => {
-          if (row.pages != null) return;
-          const est = await rankedPagesEstimate(row.domain, dfsLogin, dfsPassword);
-          if (est != null) {
-            row.pages = est;
-            row.estimated = true;
-            row.note =
-              (row.note?.startsWith('Sitemap declared')
-                ? 'Sitemap blocked by the site — '
-                : 'No public sitemap — ') + "estimated from Google's own site: index count.";
+          // Both facets, side by side: Google's index count for EVERY domain…
+          row.indexedPages = await googleSiteCount(row.domain, dfsLogin, dfsPassword);
+          // …and, when the sitemap is blocked, the crawler-known TOTAL as the
+          // labelled estimate (index count only if the crawler knows nothing).
+          if (row.pages == null) {
+            const est = await rankedPagesEstimate(row.domain, dfsLogin, dfsPassword);
+            if (est != null) {
+              row.pages = est;
+              row.estimated = true;
+              row.note =
+                (row.note?.startsWith('Sitemap declared') ? 'Sitemap blocked by the site — ' : 'No public sitemap — ') +
+                'estimated from pages known to the web crawler (a floor).';
+            } else if (row.indexedPages != null) {
+              row.pages = row.indexedPages;
+              row.estimated = true;
+              row.note =
+                (row.note?.startsWith('Sitemap declared') ? 'Sitemap blocked by the site — ' : 'No public sitemap — ') +
+                "estimated from Google's own site: index count.";
+            }
           }
         }),
       );
@@ -320,8 +330,9 @@ const loadSiteSize = unstable_cache(
       note: any ? null : 'No sitemaps were reachable from any domain in the set.',
     };
   },
-  // v5: Google site: index count preferred over crawler-known pages.
-  ['site-size-v5'],
+  // v6: published vs indexed as separate facets — crawler total + per-domain
+  // Google site: index count column.
+  ['site-size-v6'],
   { revalidate: 7 * 24 * 60 * 60 },
 );
 

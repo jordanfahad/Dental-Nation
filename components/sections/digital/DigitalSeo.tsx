@@ -621,11 +621,12 @@ export async function DigitalSeo({ range }: { range?: { from?: string; to?: stri
                 <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-ink-faint">
                   SEO benchmark at a glance — site size &amp; strength
                 </p>
-                <table className="w-full min-w-[760px] text-[12.5px]">
+                <table className="w-full min-w-[860px] text-[12.5px]">
                   <thead>
                     <tr className="border-b border-line text-left text-[10px] uppercase tracking-wide text-ink-faint">
                       <th className="py-2 pr-3">Domain</th>
-                      <th className="py-2 pr-3 text-right">Total pages (sitemap)</th>
+                      <th className="py-2 pr-3 text-right">Total pages (published)</th>
+                      <th className="py-2 pr-3 text-right">Indexed (Google)</th>
                       <th className="py-2 pr-3 text-right">vs us</th>
                       <th className="py-2 pr-3 text-right">Referring domains</th>
                       <th className="py-2 pr-3 text-right">Authority (/1000)</th>
@@ -652,6 +653,9 @@ export async function DigitalSeo({ range }: { range?: { from?: string; to?: stri
                             {r.pages != null ? `${r.estimated ? '~' : r.approx ? '≥' : ''}${int(r.pages)}` : '—'}
                           </td>
                           <td className="py-2 pr-3 text-right tabular-nums text-ink-soft">
+                            {r.indexedPages != null ? `~${int(r.indexedPages)}` : '—'}
+                          </td>
+                          <td className="py-2 pr-3 text-right tabular-nums text-ink-soft">
                             {/* Precision follows magnitude: 27× · 1.4× · 0.01× — never a
                                 rounded-to-zero "0×" for a site we dwarf. */}
                             {us ? '—' : ratio == null ? '—' : ratio < 0.01 ? '<0.01×' : `${ratio >= 10 ? Math.round(ratio) : ratio >= 1 ? ratio.toFixed(1) : ratio.toFixed(2)}×`}
@@ -675,13 +679,12 @@ export async function DigitalSeo({ range }: { range?: { from?: string; to?: stri
                   </tbody>
                 </table>
                 <p className="mt-1.5 text-[11px] leading-snug text-ink-faint">
-                  <span className="font-medium text-ink-soft">Total pages</span> = every URL each site declares in its own
-                  public sitemap.xml — what the site has PUBLISHED, not what Google has indexed (our indexed count sits in
-                  the Search Console card above). ≥ marks a capped walk (very large sitemap set — the count is a floor).{' '}
-                  <span className="font-medium text-ink-soft">~ marks an estimate</span>: when a site blocks or lacks a
-                  public sitemap, the figure is Google's own site: index count for the domain (falling back to pages known to
-                  DataForSEO's web crawler) — an estimate from Google's index, never an invented number. Refreshed weekly
-                  with the other benchmarks; authority &amp; demand from DataForSEO, on-page from Lighthouse.
+                  <span className="font-medium text-ink-soft">Total pages (published)</span> = every URL the site declares
+                  in its own public sitemap.xml (≥ = capped walk; ~ = sitemap blocked, estimated from pages known to
+                  DataForSEO&apos;s web crawler — a floor). <span className="font-medium text-ink-soft">Indexed
+                  (Google)</span> = Google&apos;s own site: result count — a different facet: Google typically indexes
+                  only part of what a site publishes, so the two columns are expected to differ (ours: ~19K indexed of
+                  28K published). Refreshed weekly; authority &amp; demand from DataForSEO, on-page from Lighthouse.
                 </p>
               </div>
             );
