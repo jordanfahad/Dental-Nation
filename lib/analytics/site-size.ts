@@ -66,7 +66,13 @@ async function fetchText(url: string): Promise<string | null> {
     const res = await fetch(url, {
       cache: 'no-store',
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-      headers: { 'user-agent': 'Mozilla/5.0 (compatible; DentalNationReports/1.0)' },
+      headers: {
+        // A real browser UA — WAFs on the competitor sites 403 anything that
+        // self-identifies as a bot, and this is a public file read.
+        'user-agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+        accept: 'text/xml,application/xml,text/plain;q=0.9,*/*;q=0.8',
+      },
     });
     if (!res.ok) return null;
     const buf = Buffer.from(await res.arrayBuffer());
@@ -80,14 +86,23 @@ async function fetchText(url: string): Promise<string | null> {
   }
 }
 
-/** Sitemap URLs declared in robots.txt, if it is reachable. */
-async function sitemapsFromRobots(domain: string): Promise<string[]> {
-  const robots = await fetchText(`https://${domain}/robots.txt`);
-  if (!robots) return [];
-  return [...robots.matchAll(/^\s*sitemap:\s*(\S+)/gim)].map((m) => m[1].trim()).filter((u) => /^https?:\/\//i.test(u));
+/** Host variants to probe: some sites answer only on www., some only bare. */
+function hostsOf(domain: string): string[] {
+  return domain.startsWith('www.') ? [domain, domain.slice(4)] : [domain, `www.${domain}`];
 }
 
-const CONVENTIONAL = ['/sitemap.xml', '/sitemap_index.xml', '/sitemap-index.xml', '/wp-sitemap.xml'];
+/** Sitemap URLs declared in robots.txt, probing both host variants. */
+async function sitemapsFromRobots(domain: string): Promise<string[]> {
+  for (const host of hostsOf(domain)) {
+    const robots = await fetchText(`https://${host}/robots.txt`);
+    if (!robots) continue;
+    const urls = [...robots.matchAll(/^\s*sitemap:\s*(\S+)/gim)].map((m) => m[1].trim()).filter((u) => /^https?:\/\//i.test(u));
+    if (urls.length > 0) return urls;
+  }
+  return [];
+}
+
+const CONVENTIONAL = ['/sitemap.xml', '/sitemap_index.xml', '/sitemap-index.xml', '/wp-sitemap.xml', '/sitemap1.xml'];
 
 function isIndex(xml: string): boolean {
   return /<sitemapindex[\s>]/i.test(xml);
@@ -100,36 +115,17 @@ function countUrls(xml: string): number {
   return (xml.match(/<url[\s>]/gi) ?? []).length;
 }
 
-async function measureDomain(domain: string): Promise<SiteSizeRow> {
-  const started = Date.now();
-  const row: SiteSizeRow = { domain, pages: null, sitemapFiles: 0, source: null, approx: false, note: null };
-
-  // Discover the entry point: robots.txt first, then the conventional paths.
-  let queue: string[] = await sitemapsFromRobots(domain);
-  let source = queue.length > 0 ? 'robots.txt' : null;
-  if (queue.length === 0) {
-    for (const path of CONVENTIONAL) {
-      const url = `https://${domain}${path}`;
-      const xml = await fetchText(url);
-      if (xml && (isIndex(xml) || countUrls(xml) > 0)) {
-        queue = [url];
-        source = path;
-        break;
-      }
-    }
-  }
-  if (queue.length === 0) {
-    row.note = 'No public sitemap found (robots.txt and conventional paths).';
-    return row;
-  }
-  row.source = source;
-
+/** Walk a set of entry sitemap URLs; returns pages counted + files read. */
+async function walk(entries: string[], started: number): Promise<{ pages: number; files: number; capped: boolean }> {
+  const queue = [...entries];
   const seen = new Set<string>();
   let fetches = 0;
   let pages = 0;
+  let files = 0;
+  let capped = false;
   while (queue.length > 0) {
     if (fetches >= MAX_FETCHES_PER_DOMAIN || Date.now() - started > DOMAIN_BUDGET_MS) {
-      row.approx = true; // count is a floor — the walk was capped
+      capped = true; // count is a floor — the walk was capped
       break;
     }
     const url = queue.shift()!;
@@ -145,11 +141,54 @@ async function measureDomain(domain: string): Promise<SiteSizeRow> {
     const n = countUrls(xml);
     if (n > 0) {
       pages += n;
-      row.sitemapFiles += 1;
+      files += 1;
     }
   }
-  row.pages = row.sitemapFiles > 0 ? pages : null;
-  if (row.pages == null) row.note = 'Sitemap found but no page entries could be read.';
+  return { pages, files, capped };
+}
+
+async function measureDomain(domain: string): Promise<SiteSizeRow> {
+  const started = Date.now();
+  const row: SiteSizeRow = { domain, pages: null, sitemapFiles: 0, source: null, approx: false, note: null };
+
+  // 1) robots.txt-declared sitemaps first — but if their walk yields nothing
+  // (declared URL dead, children blocked), fall THROUGH to the conventional
+  // paths rather than giving up: a stale robots line must not hide a live
+  // /sitemap.xml.
+  const fromRobots = await sitemapsFromRobots(domain);
+  if (fromRobots.length > 0) {
+    const r = await walk(fromRobots, started);
+    if (r.files > 0) {
+      row.pages = r.pages;
+      row.sitemapFiles = r.files;
+      row.approx = r.capped;
+      row.source = 'robots.txt';
+      return row;
+    }
+  }
+
+  // 2) Conventional paths, on both host variants (bare + www).
+  for (const host of hostsOf(domain)) {
+    for (const path of CONVENTIONAL) {
+      if (Date.now() - started > DOMAIN_BUDGET_MS) break;
+      const url = `https://${host}${path}`;
+      const xml = await fetchText(url);
+      if (!xml || (!isIndex(xml) && countUrls(xml) === 0)) continue;
+      const r = await walk([url], started);
+      if (r.files > 0) {
+        row.pages = r.pages;
+        row.sitemapFiles = r.files;
+        row.approx = r.capped;
+        row.source = path;
+        return row;
+      }
+    }
+  }
+
+  row.note =
+    fromRobots.length > 0
+      ? 'Sitemap declared in robots.txt but its files could not be read.'
+      : 'No public sitemap found (robots.txt and conventional paths, both hosts).';
   return row;
 }
 
@@ -164,7 +203,8 @@ const loadSiteSize = unstable_cache(
       note: any ? null : 'No sitemaps were reachable from any domain in the set.',
     };
   },
-  ['site-size-v1'],
+  // v2: browser UA, www/bare host probing, robots->conventional fallback.
+  ['site-size-v2'],
   { revalidate: 7 * 24 * 60 * 60 },
 );
 
