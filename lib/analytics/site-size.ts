@@ -85,15 +85,15 @@ async function readConfig(): Promise<SiteSizeConfig> {
  * total_count) — every ranking page necessarily exists, so this is an honest
  * floor for total published pages, labelled as an estimate on the card.
  */
-async function rankedPagesEstimate(domain: string, login: string, password: string): Promise<number | null> {
+async function dfsTotalCount(url: string, body: Record<string, unknown>, login: string, password: string): Promise<number | null> {
   try {
-    const res = await fetch('https://api.dataforseo.com/v3/dataforseo_labs/google/relevant_pages/live', {
+    const res = await fetch(url, {
       method: 'POST',
       headers: {
         Authorization: `Basic ${Buffer.from(`${login}:${password}`).toString('base64')}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify([{ target: domain, location_code: 2784, language_code: 'en', limit: 1 }]),
+      body: JSON.stringify([body]),
       cache: 'no-store',
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
@@ -109,6 +109,22 @@ async function rankedPagesEstimate(domain: string, login: string, password: stri
   } catch {
     return null;
   }
+}
+
+async function rankedPagesEstimate(domain: string, login: string, password: string): Promise<number | null> {
+  // Best proxy first: every page DataForSEO's web crawler has seen on the
+  // domain (Backlinks domain_pages) — close to true site size. The first live
+  // run proved the UAE ranked-pages count alone badly undercounts (Dr Joy,
+  // ~12 branches, came back as 76), so that stays only as the last fallback.
+  return (
+    (await dfsTotalCount('https://api.dataforseo.com/v3/backlinks/domain_pages/live', { target: domain, limit: 1 }, login, password)) ??
+    (await dfsTotalCount(
+      'https://api.dataforseo.com/v3/dataforseo_labs/google/relevant_pages/live',
+      { target: domain, location_code: 2784, language_code: 'en', limit: 1 },
+      login,
+      password,
+    ))
+  );
 }
 
 /** Fetch a URL as text, transparently gunzipping .gz payloads. */
@@ -261,7 +277,7 @@ const loadSiteSize = unstable_cache(
             row.note =
               (row.note?.startsWith('Sitemap declared')
                 ? 'Sitemap blocked by the site — '
-                : 'No public sitemap — ') + 'estimated from pages ranking in Google (a floor).';
+                : 'No public sitemap — ') + 'estimated from pages known to the web crawler (a floor).';
           }
         }),
       );
@@ -273,8 +289,8 @@ const loadSiteSize = unstable_cache(
       note: any ? null : 'No sitemaps were reachable from any domain in the set.',
     };
   },
-  // v3: DataForSEO ranked-pages fallback estimate for blocked/missing sitemaps.
-  ['site-size-v3'],
+  // v4: crawler-known-pages estimate (domain_pages) — ranked-pages undercounted.
+  ['site-size-v4'],
   { revalidate: 7 * 24 * 60 * 60 },
 );
 

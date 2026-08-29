@@ -654,7 +654,7 @@ export async function DigitalSeo({ range }: { range?: { from?: string; to?: stri
                           <td className="py-2 pr-3 text-right tabular-nums text-ink-soft">
                             {/* Precision follows magnitude: 27× · 1.4× · 0.01× — never a
                                 rounded-to-zero "0×" for a site we dwarf. */}
-                            {us ? '—' : ratio == null ? '—' : `${ratio >= 10 ? Math.round(ratio) : ratio >= 1 ? ratio.toFixed(1) : ratio.toFixed(2)}×`}
+                            {us ? '—' : ratio == null ? '—' : ratio < 0.01 ? '<0.01×' : `${ratio >= 10 ? Math.round(ratio) : ratio >= 1 ? ratio.toFixed(1) : ratio.toFixed(2)}×`}
                           </td>
                           <td className="py-2 pr-3 text-right tabular-nums text-ink-soft">
                             {a?.referringDomains != null ? int(a.referringDomains) : '—'}
@@ -679,7 +679,7 @@ export async function DigitalSeo({ range }: { range?: { from?: string; to?: stri
                   public sitemap.xml — what the site has PUBLISHED, not what Google has indexed (our indexed count sits in
                   the Search Console card above). ≥ marks a capped walk (very large sitemap set — the count is a floor).{' '}
                   <span className="font-medium text-ink-soft">~ marks an estimate</span>: when a site blocks or lacks a
-                  public sitemap, the figure is the count of its pages RANKING in Google (DataForSEO) — every ranking
+                  public sitemap, the figure is the count of the site's pages known to DataForSEO's web crawler — every crawled
                   page necessarily exists, so the estimate is a reliable floor, never an inflated guess. Refreshed weekly
                   with the other benchmarks; authority &amp; demand from DataForSEO, on-page from Lighthouse.
                 </p>
