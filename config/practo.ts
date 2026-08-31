@@ -7,8 +7,12 @@ import 'server-only';
  *
  * Required env (set in Vercel):
  *   PRACTO_BASE_URL   e.g. https://api.instahealthsolutions.com
- *   PRACTO_HOSPITAL   e.g. dentalnation
- *   PRACTO_AUTH       e.g. APIPatient:APIPatient@2026   (user:password)
+ *   PRACTO_HOSPITAL   the schema / hospital name
+ *   PRACTO_AUTH       <user>:<password>  — REAL VALUES LIVE ONLY IN VERCEL.
+ *
+ * This repository is public: never write an actual credential here, not even
+ * as an "example". (A real password appeared in this comment before 31 Aug
+ * 2026 — scrubbed; the credential must be rotated with Practo.)
  */
 export interface PractoConfig {
   baseUrl: string;

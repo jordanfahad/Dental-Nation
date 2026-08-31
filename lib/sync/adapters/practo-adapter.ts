@@ -456,10 +456,18 @@ async function getJsonReq(url: string, headers: Record<string, string>): Promise
   }
 }
 
+/** The vendor's spec (Practo email, 31 Aug 2026): `to_date` is EXCLUSIVE —
+ *  to pull Sep 1–7 you must send to_date=Sep 8. Our windows are inclusive
+ *  [from, to], so the request sends to+1 day; without this, today's
+ *  appointments were never pulled and every chunk boundary dropped a day. */
+function plusOneDay(iso: string): string {
+  return new Date(new Date(`${iso}T00:00:00Z`).getTime() + 86400_000).toISOString().slice(0, 10);
+}
+
 function apptUrl(cfg: PractoConfig, from: string, to: string): string {
   return (
     `${cfg.baseUrl}/${cfg.hospital}/Customer/doctorscheduler.do?_method=getPatientAppointments` +
-    `&from_date=${from}&to_date=${to}&search_by_patient=N&filter_by_appointment_date=Y`
+    `&from_date=${from}&to_date=${plusOneDay(to)}&search_by_patient=N&filter_by_appointment_date=Y`
   );
 }
 
@@ -555,7 +563,25 @@ async function fetchApptWindow(
     tokenRef.token = await practoLogin(supabase);
     body = await getJsonReq(apptUrl(cfg, from, to), { request_handler_key: tokenRef.token });
   }
+  assertApptSuccess(body);
   return extractAppointments(body);
+}
+
+/** The vendor's spec: success is `return_code === "2001"`, never the HTTP
+ *  status alone. A non-2001 envelope must FAIL the window — an error response
+ *  with no appointments array must never pass as "0 appointments". Errors
+ *  carry only the code + message, never the payload (it can contain PHI). */
+function assertApptSuccess(body: unknown): void {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return; // bare array = data
+  const obj = body as Record<string, unknown>;
+  const code = obj.return_code != null ? String(obj.return_code) : null;
+  if (code != null && code !== '2001') {
+    const msg = String(obj.return_message ?? '').slice(0, 160);
+    throw new Error(`Practo appointments return_code ${code}${msg ? `: ${msg}` : ''}`);
+  }
+  if (code == null && (obj as { _nonJson?: boolean })._nonJson) {
+    throw new Error(`Practo appointments returned non-JSON (HTTP ${String((obj as { status?: unknown }).status ?? '?')})`);
+  }
 }
 
 /** Sync Practo Insta appointments into the bronze table. Trailing `days` window
