@@ -64,6 +64,12 @@ export interface PlatformLayer {
   /** One-line value promise from the blueprint's layer cards. */
   promise: string;
   owner: string;
+  /** "Capability built" — the investor teaser's concise bullets for the
+   *  Level-1 overview cards (executive summary, not the capability detail). */
+  builtSummary: string[];
+  /** Executive proof points for the overview cards (investor teaser, H1-2026
+   *  unless a live figure supersedes them on the layer page). */
+  highlights: string[];
   /** The LIVE reports that belong to this layer (Ms Shadi's direction: the
    *  platform is the overarching structure — Operations, Growth, Finance and
    *  Branding contribute their reports INTO layers, they are not parallel
@@ -73,6 +79,7 @@ export interface PlatformLayer {
 }
 
 const SEEDED = '2026-08-26';
+const SHADI_DATE = '2026-08-31'; // Ms Shadi's content package
 
 /** Live report paths (rendered under the room token by the platform pages). */
 const GROWTH = '/growth';
@@ -92,6 +99,12 @@ export const PLATFORM_LAYERS: PlatformLayer[] = [
     tagline: 'Clinics · chairs · clinicians · specialties',
     promise: 'Reliable capacity',
     owner: 'Dr Luvi Kaprani · Mr Jawad Shafiq (finance inputs)',
+    builtSummary: [
+      'Coordinated clinics, chairs, clinician and specialty network',
+      'Hub-and-spoke referral model',
+      'Specialty strategy across 6 priority areas (ortho, implants, pediatrics, cosmetic, prevention, oral surgery)',
+    ],
+    highlights: ['3 operating clinics + 1 flagship (DIFC) under development', '6 priority specialty areas', '4.85★ Google rating'],
     reports: [
       { label: 'Group Revenue — three clinics', href: GROUP },
       { label: 'Operating Platform report', href: OPS },
@@ -152,6 +165,11 @@ export const PLATFORM_LAYERS: PlatformLayer[] = [
     tagline: 'Brand · website · marketing · acquisition',
     promise: 'Predictable patient flow',
     owner: 'Mr Fahad Siddiqui (layer) · Shadi (2.1) · Mr Gautam (2.5)',
+    builtSummary: [
+      'Premium affordable-luxury brand identity & patient-experience doctrine',
+      'Structured growth & conversion stack across patient-acquisition channels',
+    ],
+    highlights: ['3.68M ad impressions in H1-2026', '48% enquiry-to-booking', '28,210 pages published · ~19.4K indexed'],
     reports: [
       { label: 'Growth Department Live Dashboard', href: GROWTH },
       { label: 'Digital & SEO', href: DIGITAL },
@@ -163,15 +181,23 @@ export const PLATFORM_LAYERS: PlatformLayer[] = [
         id: '2.1',
         title: 'Brand Platform',
         overview:
-          'Brand strategy, identity, experience doctrine, governed standards and reusable brand assets across clinics and markets.',
-        built: '',
-        coverage: '',
-        evidence: [],
-        pnl: '',
-        owner: 'Shadi',
-        status: 'validate',
-        refresh: 'Pending: brand book & governed assets from Shadi',
-        updated: SEEDED,
+          'A value-based, premium dental-health brand built around accessible, affordable, high-quality care and a shift from reactive treatment to proactive lifelong dental health — patient-centric, one-stop-shop, lifestyle-integrated, affordable luxury, supported by a scalable DSO and IPU operating model.',
+        built:
+          'Full brand platform, governed: strategy & positioning with a GCC ambition; the "Beyond Smiles" brand story; values (transparency, patient centricity, empathy, community, lifetime partnerships, holistic well-being, global standards / local relevance); brand architecture (Dental Nation master brand with Smile Club, DSO, IPU, De Novo and M&A capabilities); a 120-page Brand Identity & Design Standards system covering logo, spark icon, colour, typography, illustration, iconography, photography and tone of voice; and an experience direction — calm, welcoming, modern, stress-free.',
+        coverage:
+          'Dental Nation master brand + Dental Nation Orto; three (+1) clinic locations operating under Dental Nation trademarks, with branch branding transitioning onto the brand system; structured for replication across additional UAE locations and GCC markets.',
+        evidence: [
+          { label: 'Brand Book — overview (2024)', href: '/evidence/brand/brand-book-overview.jpg', kind: 'doc' },
+          { label: 'Visual identity system', href: '/evidence/brand/visual-identity-system.jpg', kind: 'doc' },
+          { label: 'Visual expression', href: '/evidence/brand/visual-expression.jpg', kind: 'doc' },
+          { label: 'MOE trademark (Dr Tosun)', href: '/evidence/brand/moe-trademark.pdf', kind: 'doc' },
+        ],
+        pnl:
+          'The brand supports a multi-layer revenue model: higher acquisition & conversion, retention and lifetime value, preventive-care frequency, Smile Club recurring membership revenue, clinic occupancy, cross-service utilisation, De Novo expansion, M&A consolidation and future partner deployment. (Finance validation: Mr Jawad Shafiq.)',
+        owner: 'Shadi — Head of Brand',
+        status: 'built',
+        refresh: 'Manual — Brand Book 2024; updated on change',
+        updated: SHADI_DATE,
       },
       {
         id: '2.2',
@@ -250,6 +276,12 @@ export const PLATFORM_LAYERS: PlatformLayer[] = [
     tagline: 'Booking · conversion · journey · retention',
     promise: 'Retention & lifetime value',
     owner: 'Mr Fahad Siddiqui (layer) · Dr Luvi Kaprani (3.2)',
+    builtSummary: [
+      'Centralised CRM and AI-enabled contact centre',
+      'Centralised booking channels & lead management',
+      'Patient-journey, treatment-coordination, follow-up and recall workflows',
+    ],
+    highlights: ['885 appointments booked in H1-2026', '3,521 conversations centralised (WhatsApp & Instagram)', '46% booking-to-attendance'],
     reports: [
       { label: 'Clinical Operations (worklists & alerts)', href: CLINOPS },
       { label: 'Growth report — patient journey funnel', href: GROWTH },
@@ -327,6 +359,12 @@ export const PLATFORM_LAYERS: PlatformLayer[] = [
     tagline: 'Governance · protocols · quality · safety',
     promise: 'Clinical excellence',
     owner: 'Dr Luvi Kaprani',
+    builtSummary: [
+      'Organisational structure, relationships & communication',
+      'Roles, responsibilities & accountability framework',
+      'Clinical protocols, care pathways, safety and audit systems standardised across the platform',
+    ],
+    highlights: ['5 functional policy manuals', '22-chapter SOP manual', '3 end-to-end journeys — patient · regulatory · clinician'],
     reports: [
       { label: 'Operating Platform report — clinical governance', href: OPS },
     ],
@@ -396,6 +434,10 @@ export const PLATFORM_LAYERS: PlatformLayer[] = [
     tagline: 'Shared services · systems · data · KPIs',
     promise: 'Efficiency at scale',
     owner: 'Dr Luvi Kaprani · Mr Fahad Siddiqui · Mr Jawad Shafiq',
+    builtSummary: [
+      'One orchestration layer connecting growth, finance, procurement, IT & tech, governance, HR and clinical support',
+    ],
+    highlights: ['10 systems built & operating within 9 months', '23% procurement-cost reduction', '3× net-margin uplift in mature clinic'],
     reports: [
       { label: 'Finance section', href: FINANCE },
       { label: 'Operating Platform report — shared services', href: OPS },
@@ -476,6 +518,11 @@ export const PLATFORM_LAYERS: PlatformLayer[] = [
     tagline: 'M&A · de novo · transformation · commissioning',
     promise: 'Replicate & grow',
     owner: 'Shadi',
+    builtSummary: [
+      'End-to-end capability from site selection and clinic design through build, launch and ramp-up',
+      'Disciplined acquisition and integration, with performance & economics tracked through a KPI-driven cadence',
+    ],
+    highlights: ['AMC profitable within 4 months of acquisition', '3-month integration vs 9-month global benchmark', '7-step integration & commissioning playbook'],
     reports: [
       { label: 'Operating Platform report — integration & expansion', href: OPS },
     ],
@@ -484,58 +531,89 @@ export const PLATFORM_LAYERS: PlatformLayer[] = [
         id: '6.1',
         title: 'M&A Clinic Integration',
         overview:
-          'Acquisition-diligence handoff, Day-1 integration, migration onto DN systems, governance, operating cadence and economics tracking.',
+          'Disciplined acquisition integration covering diligence handover, Day-1 control, legal and licence transfer, migration onto DN systems, brand transition, governance, operating cadence and economics tracking.',
         built:
-          'AMC integration in progress — soft-renamed "AMC by Dental Nation", formal transition pending signage; reporting migrated onto the group platform.',
-        coverage: 'One integration in flight (AMC).',
-        evidence: [{ label: 'Operating Platform report', href: OPS, kind: 'live' }],
-        pnl: '',
-        owner: 'Shadi',
-        status: 'in-implementation',
+          'Structured M&A integration pathway from acquisition close through platform certification: Day-1 financial and governance controls; PMS/EMR, CRM, reporting and contact-centre migration; DN branding, procurement and shared-service deployment; clinic-level scorecards and monthly P&L monitoring; founder and key-doctor retention as an integration gate. AMC integration in progress — soft-renamed "AMC by Dental Nation", reporting on the group platform, final signage pending.',
+        coverage:
+          'Two live acquisition integrations — AMC (acquired Feb 2026) and Dr Tosun (Apr 2025); additional M&A target pipeline in progress. Proof: AMC reached its first profitable month within 4 months (monthly net result −AED 61,445 in March → +AED 14,586 in June 2026).',
+        evidence: [
+          { label: 'M&A integration playbook — SOP library', href: '/evidence/expansion/sop-library.jpg', kind: 'doc' },
+          { label: 'Corporate policy manual', href: '/evidence/expansion/corporate-policy-manual.jpg', kind: 'doc' },
+          { label: 'End-to-end patient journey', href: '/evidence/expansion/end-to-end-patient-journey.jpg', kind: 'doc' },
+          { label: 'AMC handover tracker', href: '/evidence/expansion/amc-handover.jpg', kind: 'doc' },
+          { label: 'Merger integration tracker', href: '/evidence/expansion/merger-integration.jpg', kind: 'doc' },
+          { label: 'Dentalcorp report (benchmark)', href: '/evidence/expansion/dentalcorp-benchmark.pdf', kind: 'doc' },
+          { label: 'AMC turnaround — Operating Platform report', href: OPS, kind: 'live' },
+        ],
+        pnl:
+          'Acquisition baseline → transition and integration costs → revenue stabilisation → shared-service and procurement migration → demand-channel activation → monthly break-even → EBITDA target and platform certification. (Finance validation: Mr Jawad Shafiq.)',
+        owner: 'Integration Manager · Shadi (expansion)',
+        status: 'demonstrated',
         refresh: 'Manual — milestone updates from the integration team',
-        updated: SEEDED,
+        updated: SHADI_DATE,
       },
       {
         id: '6.2',
         title: 'De Novo Clinic Development',
         overview:
-          'Site selection, concept, design, build, licensing, recruitment, pre-opening, launch and ramp-up of new clinics.',
-        built: '',
-        coverage: '',
-        evidence: [],
-        pnl: '',
-        owner: 'Shadi',
-        status: 'validate',
-        refresh: 'Pending: development pipeline from expansion team',
-        updated: SEEDED,
+          'End-to-end development of new clinics and specialist centres: site selection, concept, design, build, licensing, equipment specification, recruitment, commissioning, pre-opening, launch and ramp-up.',
+        built:
+          'End-to-end de novo framework: site-selection and investment-assessment process; clinic concept, design and build coordination; equipment planning and procurement; regulatory and licensing pathway; workforce planning and recruitment; pre-opening readiness and commissioning gates; DN brand, EMR, CRM, contact-centre, procurement and reporting deployment; launch and post-opening performance controls.',
+        coverage:
+          'DN Al Wasl is the live validation — rebuilt from scratch, launched June 2025, first full operating year completed FY2025, gross margin 11.3% (FY2025) → 18.8% (H1 2026), a 66% relative uplift during ramp-up. Three clinics on the shared platform; one flagship under development.',
+        evidence: [
+          { label: 'Equipment supplier intelligence register', href: '/evidence/expansion/equipment-supplier-register.jpg', kind: 'doc' },
+          { label: 'Clinic expansion phasing plan', href: '/evidence/expansion/clinic-expansion-phasing.jpg', kind: 'doc' },
+          { label: 'Healthcare renovation & licensing guide', href: '/evidence/expansion/renovation-licensing-guide.jpg', kind: 'doc' },
+          { label: 'Dental clinic design guideline', href: '/evidence/expansion/clinic-design-guideline.jpg', kind: 'doc' },
+          { label: 'Project staging plan', href: '/evidence/expansion/project-staging-plan.jpg', kind: 'doc' },
+          { label: 'DN Al Wasl — Operating Platform report', href: OPS, kind: 'live' },
+        ],
+        pnl:
+          'Approved business case → CapEx and pre-opening investment → clinic launch → patient and chair-utilisation ramp-up → specialty-mix optimisation → gross-margin progression → operating break-even → target EBITDA. (Finance validation: Mr Jawad Shafiq.)',
+        owner: 'De Novo Manager · Shadi (expansion)',
+        status: 'demonstrated',
+        refresh: 'Manual — development pipeline updates',
+        updated: SHADI_DATE,
       },
       {
         id: '6.3',
         title: 'Existing-Clinic Transformation',
         overview:
-          'Standardised transformation of an acquired / legacy clinic into the DN operating model — systems, brand, roles and performance controls.',
-        built: '',
-        coverage: '',
-        evidence: [],
-        pnl: '',
-        owner: 'Shadi',
-        status: 'validate',
-        refresh: 'Pending: transformation playbook evidence',
-        updated: SEEDED,
+          'Standardised transformation of acquired or legacy clinics into the DN operating model — governance, systems, brand, workforce roles, patient journeys, commercial controls and performance management.',
+        built:
+          'Standard transformation pathway (diagnostic → migration → activation → stabilisation): seven shared enterprise systems across the group; five functional policy manuals; a 22-chapter standardised SOP framework; group-wide clinical, nursing and patient-experience standards; centralised finance, procurement, HR, IT and reporting; governed pricing, discounts and clinician compensation; branch and doctor-level scorecards; DN brand and patient-journey deployment.',
+        coverage:
+          'Dr Tosun & AMC operating under the DN platform model; DN Al Wasl rebuilt to DN standards; common governance and shared services across the network. Outcomes: strong profitability improvement, meaningful gross-margin expansion, significant laboratory-cost reduction, lower administrative overheads.',
+        evidence: [
+          { label: 'Operating-model implementation plan', href: '/evidence/expansion/operating-model-implementation.jpg', kind: 'doc' },
+          { label: 'SOP library (22 chapters)', href: '/evidence/expansion/sop-library.jpg', kind: 'doc' },
+          { label: 'Corporate policy manual', href: '/evidence/expansion/corporate-policy-manual.jpg', kind: 'doc' },
+          { label: 'Before/after operating assessment — Operations report', href: OPS, kind: 'live' },
+        ],
+        pnl:
+          'Baseline operational and financial diagnostic → Day-1 controls → systems and shared-service migration → procurement and laboratory savings → pricing and productivity improvement → margin stabilisation → target branch profitability. (Finance validation: Mr Jawad Shafiq.)',
+        owner: 'CEO · Shadi (expansion)',
+        status: 'demonstrated',
+        refresh: 'Manual — transformation milestones',
+        updated: SHADI_DATE,
       },
       {
         id: '6.5',
         title: 'Replication & Commissioning Playbook',
         overview:
-          'The reusable launch / integration sequence: readiness gates, commissioning checklist, deployment standards and post-launch stabilisation.',
-        built: '',
-        coverage: '',
-        evidence: [],
-        pnl: '',
-        owner: 'Shadi',
-        status: 'validate',
-        refresh: 'Pending: playbook documents for the evidence library',
-        updated: SEEDED,
+          'A reusable 12-month launch and integration system combining readiness gates, deployment standards, commissioning controls and post-launch stabilisation.',
+        built:
+          'Months 1–3, Foundation: legal & licence transfer, financial controls, DN branding, PMS/EMR migration initiated, founder and key-doctor retention secured. Months 4–9, Activation & integration: SOP adoption, CRM and contact centre connected, demand channels activated, procurement on group terms, clinic scorecard live. Months 10–12, Performance: weekly chair-utilisation tracking, specialty-mix optimisation, EBITDA target set, integration scorecard completed, platform transition certified.',
+        coverage:
+          'Applies to M&A integrations, de novo clinics, existing-clinic transformations and specialist centres; validated live through AMC (profitable in 4 months), Dr Tosun (significant net-margin uplift) and DN Al Wasl (strong gross-margin improvement); ready for the flagship under development.',
+        evidence: [{ label: 'Live validation — Operating Platform report', href: OPS, kind: 'live' }],
+        pnl:
+          'Foundation investment and transition cost → integration and revenue activation → central-cost and procurement leverage → utilisation and specialty optimisation → EBITDA target → certification for stable platform operation. (Finance validation: Mr Jawad Shafiq.)',
+        owner: 'CEO · Shadi (expansion)',
+        status: 'built',
+        refresh: 'Manual — playbook version-controlled',
+        updated: SHADI_DATE,
       },
     ],
   },

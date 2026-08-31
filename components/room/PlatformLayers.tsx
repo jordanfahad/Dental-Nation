@@ -56,8 +56,11 @@ function EvidenceButtons({ base, links }: { base: string; links: EvidenceLink[] 
   return (
     <div className="flex flex-wrap gap-2">
       {links.map((l) => {
-        const href = l.href.startsWith('http') ? l.href : `${base}${l.href}`;
-        const external = l.href.startsWith('http');
+        // /evidence/* are static files shipped with the app (Ms Shadi's
+        // screenshots & documents) — site-absolute, never token-prefixed.
+        const isAsset = l.href.startsWith('/evidence/');
+        const href = l.href.startsWith('http') || isAsset ? l.href : `${base}${l.href}`;
+        const external = l.href.startsWith('http') || isAsset;
         return (
           <a
             key={`${l.kind}-${l.label}`}
@@ -171,26 +174,39 @@ export function LayerCardsGrid({ base }: { base: string }) {
           className="group flex flex-col rounded-lg border bg-white p-4 no-underline transition hover:shadow-md"
           style={{ borderColor: C.rule }}
         >
+          {/* A — layer identity */}
           <p className="text-[11px] font-bold tabular-nums" style={{ color: C.navySoft }}>{layer.n}</p>
           <p className="mt-1 text-[14px] font-semibold leading-tight" style={{ color: C.ink }}>{layer.title}</p>
-          <p className="mt-1 text-[11px]" style={{ color: C.inkFaint }}>{layer.tagline}</p>
-          <p className="mt-2 text-[11.5px] font-medium" style={{ color: C.navyMid }}>{layer.promise}</p>
-          {layer.reports.length > 0 ? (
-            <div className="mt-2.5 flex flex-1 flex-wrap content-start gap-1">
-              {layer.reports.map((rep) => (
-                <span
-                  key={rep.label}
-                  className="rounded px-1.5 py-[2px] text-[9.5px] font-medium"
-                  style={{ background: C.navyWash, color: C.navyMid }}
-                >
-                  {rep.label}
-                </span>
-              ))}
-            </div>
-          ) : (
-            <div className="flex-1" />
-          )}
+          <p className="mt-0.5 text-[11.5px] font-medium" style={{ color: C.navyMid }}>{layer.promise}</p>
+
+          {/* B — capability built (executive summary) */}
+          <p className="mt-2.5 text-[9.5px] font-bold uppercase tracking-wide" style={{ color: C.inkFaint }}>
+            Capability built
+          </p>
+          <ul className="mt-1 space-y-0.5">
+            {layer.builtSummary.slice(0, 3).map((b) => (
+              <li key={b} className="flex gap-1.5 text-[11px] leading-snug" style={{ color: C.inkSoft }}>
+                <span aria-hidden="true" style={{ color: C.navySoft }}>‣</span>
+                {b}
+              </li>
+            ))}
+          </ul>
+
+          {/* C — evidence / key data (proof points) */}
+          <div className="mt-2.5 flex flex-1 flex-wrap content-start gap-1">
+            {layer.highlights.map((h) => (
+              <span
+                key={h}
+                className="rounded px-1.5 py-[2px] text-[10px] font-semibold"
+                style={{ background: C.navyWash, color: C.navyMid }}
+              >
+                {h}
+              </span>
+            ))}
+          </div>
+
           <p className="mt-3 text-[10.5px]" style={{ color: C.inkFaint }}>{statusSummary(layer)}</p>
+          {/* D — CTA into the layer's live reporting */}
           <p className="mt-2 text-[11.5px] font-semibold" style={{ color: C.navyMid }}>Open layer →</p>
         </Link>
       ))}
@@ -329,6 +345,19 @@ export async function LayerPage({ base, layer }: { base: string; layer: Platform
               </Link>
             ))}
           </div>
+          {/* LEVEL 3 — target vs actual. The link is public; the PAGE is not:
+              it sits behind the dashboard login and a leadership-role check,
+              so no comparison data ever reaches an unauthorised client. */}
+          <p className="mt-3 border-t pt-2.5 text-[11px]" style={{ borderColor: C.navyPale, color: C.inkFaint }}>
+            <a
+              href={`/kpi?layer=${layer.slug}`}
+              className="font-semibold no-underline"
+              style={{ color: C.navyMid }}
+            >
+              View KPI performance — target vs actual →
+            </a>{' '}
+            restricted · authorised sign-in required
+          </p>
         </section>
       ) : null}
 
