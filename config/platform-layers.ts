@@ -44,6 +44,9 @@ export interface Capability {
   coverage: string;
   /** Block 4/6 — proof: links into live systems / KPIs / evidence docs. */
   evidence: EvidenceLink[];
+  /** Optional note under Block 06 — e.g. a cross-reference when a capability's
+   *  evidence deliberately lives under sibling sections (never a gap). */
+  evidenceNote?: string;
   /** Block 5 — P&L pathway (Mr Jawad's input; blank = pending). */
   pnl: string;
   /** Block 7 — accountability. */
@@ -608,6 +611,8 @@ export const PLATFORM_LAYERS: PlatformLayer[] = [
         coverage:
           'Applies to M&A integrations, de novo clinics, existing-clinic transformations and specialist centres; validated live through AMC (profitable in 4 months), Dr Tosun (significant net-margin uplift) and DN Al Wasl (strong gross-margin improvement); ready for the flagship under development.',
         evidence: [{ label: 'Live validation — Operating Platform report', href: OPS, kind: 'live' }],
+        evidenceNote:
+          'Per Ms Shadi (31 Aug): the playbook\u2019s evidence is already shared under 6.1\u20136.3 (integration playbook, SOP library, policy manuals, trackers) and is deliberately not duplicated here.',
         pnl:
           'Foundation investment and transition cost → integration and revenue activation → central-cost and procurement leverage → utilisation and specialty optimisation → EBITDA target → certification for stable platform operation. (Finance validation: Mr Jawad Shafiq.)',
         owner: 'CEO · Shadi (expansion)',

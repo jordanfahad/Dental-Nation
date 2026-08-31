@@ -2,6 +2,12 @@ import Link from 'next/link';
 import { TrendChart } from '@/components/charts/Charts';
 import { getLayerVisuals, type LayerKpi } from '@/lib/room/layerKpis';
 import { C } from '@/components/board/design';
+
+/** The investor teaser's identity — gold + cream over the board navy (the
+ *  same values the platform-model infographic already uses), applied to the
+ *  layer cards per Ms Shadi's "sharper, like the deck" pass. */
+const GOLD = '#B99145';
+const CREAM = '#FAF5ED';
 import {
   PLATFORM_LAYERS,
   STATUS_LABEL,
@@ -132,7 +138,12 @@ export function CapabilityCard({ base, cap }: { base: string; cap: Capability })
           {cap.pnl ? <p>{cap.pnl}</p> : undefined}
         </Block>
         <Block n="06" label="Evidence links" pending={cap.owner}>
-          {cap.evidence.length > 0 ? <EvidenceButtons base={base} links={cap.evidence} /> : undefined}
+          {cap.evidence.length > 0 || cap.evidenceNote ? (
+            <div className="space-y-2">
+              {cap.evidence.length > 0 ? <EvidenceButtons base={base} links={cap.evidence} /> : null}
+              {cap.evidenceNote ? <p className="text-[11.5px]" style={{ color: C.inkFaint }}>{cap.evidenceNote}</p> : null}
+            </div>
+          ) : undefined}
         </Block>
         <Block n="07" label="Accountability">
           <p>
@@ -171,43 +182,65 @@ export function LayerCardsGrid({ base }: { base: string }) {
         <Link
           key={layer.slug}
           href={`${base}/platform/${layer.slug}`}
-          className="group flex flex-col rounded-lg border bg-white p-4 no-underline transition hover:shadow-md"
-          style={{ borderColor: C.rule }}
+          className="group flex flex-col overflow-hidden rounded-lg border bg-white no-underline transition hover:shadow-lg"
+          style={{ borderColor: C.rule, borderTop: `3px solid ${GOLD}` }}
         >
-          {/* A — layer identity */}
-          <p className="text-[11px] font-bold tabular-nums" style={{ color: C.navySoft }}>{layer.n}</p>
-          <p className="mt-1 text-[14px] font-semibold leading-tight" style={{ color: C.ink }}>{layer.title}</p>
-          <p className="mt-0.5 text-[11.5px] font-medium" style={{ color: C.navyMid }}>{layer.promise}</p>
+          {/* A — layer identity, deck-style: navy number block + outcome */}
+          <div className="flex items-start gap-3 px-4 pt-4">
+            <span
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded text-[15px] font-bold tabular-nums text-white"
+              style={{ background: C.navyDeep }}
+            >
+              {layer.n}
+            </span>
+            <span>
+              <span className="block text-[14px] font-bold leading-tight" style={{ color: C.navyDeep }}>
+                {layer.title}
+              </span>
+              <span className="mt-0.5 block text-[11px] font-semibold uppercase tracking-wide" style={{ color: GOLD }}>
+                {layer.promise}
+              </span>
+            </span>
+          </div>
 
-          {/* B — capability built (executive summary) */}
-          <p className="mt-2.5 text-[9.5px] font-bold uppercase tracking-wide" style={{ color: C.inkFaint }}>
-            Capability built
-          </p>
-          <ul className="mt-1 space-y-0.5">
-            {layer.builtSummary.slice(0, 3).map((b) => (
-              <li key={b} className="flex gap-1.5 text-[11px] leading-snug" style={{ color: C.inkSoft }}>
-                <span aria-hidden="true" style={{ color: C.navySoft }}>‣</span>
-                {b}
-              </li>
-            ))}
-          </ul>
+          {/* B — capability built */}
+          <div className="px-4 pt-3">
+            <p className="text-[9.5px] font-bold uppercase tracking-[0.14em]" style={{ color: GOLD }}>
+              Capability built
+            </p>
+            <ul className="mt-1 space-y-0.5">
+              {layer.builtSummary.slice(0, 3).map((b) => (
+                <li key={b} className="flex gap-1.5 text-[11px] leading-snug" style={{ color: C.inkSoft }}>
+                  <span aria-hidden="true" className="font-bold" style={{ color: GOLD }}>‣</span>
+                  {b}
+                </li>
+              ))}
+            </ul>
+          </div>
 
-          {/* C — evidence / key data (proof points) */}
-          <div className="mt-2.5 flex flex-1 flex-wrap content-start gap-1">
+          {/* C — evidence / key data */}
+          <div className="mt-3 flex flex-1 flex-wrap content-start gap-1.5 px-4">
             {layer.highlights.map((h) => (
               <span
                 key={h}
-                className="rounded px-1.5 py-[2px] text-[10px] font-semibold"
-                style={{ background: C.navyWash, color: C.navyMid }}
+                className="rounded px-2 py-1 text-[10.5px] font-bold leading-tight"
+                style={{ background: CREAM, color: C.navyDeep, border: `1px solid ${GOLD}33` }}
               >
                 {h}
               </span>
             ))}
           </div>
 
-          <p className="mt-3 text-[10.5px]" style={{ color: C.inkFaint }}>{statusSummary(layer)}</p>
-          {/* D — CTA into the layer's live reporting */}
-          <p className="mt-2 text-[11.5px] font-semibold" style={{ color: C.navyMid }}>Open layer →</p>
+          {/* D — CTA */}
+          <div className="mt-3 flex items-center justify-between gap-2 border-t px-4 py-2.5" style={{ borderColor: C.ruleSoft, background: C.panel }}>
+            <span className="text-[10px]" style={{ color: C.inkFaint }}>{statusSummary(layer)}</span>
+            <span
+              className="shrink-0 rounded px-2.5 py-1 text-[11px] font-bold text-white transition group-hover:opacity-90"
+              style={{ background: C.navyDeep }}
+            >
+              Open layer →
+            </span>
+          </div>
         </Link>
       ))}
     </div>

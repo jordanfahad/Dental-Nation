@@ -40,13 +40,15 @@ export function EvidenceRoom({ base }: { base: string }) {
           cover, introduce the platform, then the six layers as the PRIMARY
           navigation. Operations, Growth, Finance and Branding contribute
           their reports INTO the layers — they are not parallel categories. */}
-      <section>
-        <h2 className="text-[15px] font-semibold">{ROOM.overviewTitle}</h2>
-        <p className="mt-1 max-w-[860px] text-[12px] leading-snug" style={{ color: C.inkSoft }}>
+      <section className="rounded-lg px-5 py-4 sm:px-6" style={{ background: '#FAF5ED' }}>
+        <p className="text-[11px] font-bold uppercase tracking-[0.14em]" style={{ color: '#B99145' }}>
+          {ROOM.overviewTitle}
+        </p>
+        <p className="mt-1.5 max-w-[880px] text-[12.5px] leading-snug" style={{ color: C.inkSoft }}>
           {ROOM.overview}
         </p>
-        <p className="mt-2 max-w-[860px] text-[12px] leading-snug" style={{ color: C.inkSoft }}>
-          The platform is built from <span className="font-semibold" style={{ color: C.ink }}>six layers</span>. Every
+        <p className="mt-2 max-w-[880px] text-[12.5px] leading-snug" style={{ color: C.inkSoft }}>
+          The platform is built from <span className="font-bold" style={{ color: C.navyDeep }}>six layers</span>. Every
           report and capability in this room lives inside one of them — open a layer to see what has been built, its
           owners, its live reports and its evidence. Everything is live: figures update as the business trades.
         </p>
