@@ -52,6 +52,9 @@ export interface LeadRow {
   notes: string;
   /** FU 1 / FU 2 / FU 3 Remarks — the call-centre's follow-up trail, in order. */
   followUps: [string, string, string];
+  /** Closed by the 24-hour rule: still pending a day after submission, so the
+   *  last recorded feedback became the final (Invalid) verdict. */
+  autoClosed: boolean;
   booked: boolean;
 }
 
@@ -113,6 +116,23 @@ function laneKeyOf(source: string): string | null {
   return null;
 }
 const laneLabel = (key: string | null): string => ARABY_LANES.find((l) => l.key === key)?.label ?? '—';
+
+/** Fahad's 24-hour close rule (2 Sep): a lead still marked pending more than
+ *  24 hours after submission, WITH feedback recorded (a reason or follow-up
+ *  remark), is closed — the last feedback stands as the final verdict
+ *  (Invalid; Valid was already final). Leads with no feedback at all stay
+ *  Pending: there is no "last feedback" to finalise. */
+const DAY_MS = 24 * 60 * 60 * 1000;
+function finalizeStatus(
+  status: LeadStatus,
+  hasFeedback: boolean,
+  tsRaw: string,
+): { status: LeadStatus; autoClosed: boolean } {
+  if (status !== 'Pending' || !hasFeedback) return { status, autoClosed: false };
+  const ms = tsMs(tsRaw);
+  if (ms > 0 && Date.now() - ms > DAY_MS) return { status: 'Invalid', autoClosed: true };
+  return { status, autoClosed: false };
+}
 
 /** A real PMS booking reference (BK…) — distinguishes a genuine booking. */
 const hasBooking = (ref: string): boolean => /^bk/i.test(ref);
@@ -299,6 +319,11 @@ const loadLeadStatus = unstable_cache(
       const apptDate = at(row, col.date);
       const notes = at(row, col.notes) || apptDate || at(row, col.additional);
       const followUps: [string, string, string] = [at(row, col.fu1), at(row, col.fu2), at(row, col.fu3)];
+      const fin = finalizeStatus(
+        normStatus(statusRaw),
+        Boolean(at(row, col.reason) || followUps.some(Boolean)),
+        at(row, col.timestamp),
+      );
       leads.push({
         leadId: ref || '—',
         dateTime: at(row, col.timestamp),
@@ -307,10 +332,11 @@ const loadLeadStatus = unstable_cache(
         clinic: at(row, col.clinic),
         service: laneLabel(laneKey),
         laneKey,
-        status: normStatus(statusRaw),
+        status: fin.status,
         reason: at(row, col.reason),
         notes,
         followUps,
+        autoClosed: fin.autoClosed,
         // "Booked" also reads the Notes + FU-remark columns ("Booked for
         // July 22") — the revised sheet's Lead ID (DN-####) is not a PMS ref.
         booked:
@@ -346,8 +372,8 @@ const loadLeadStatus = unstable_cache(
     return empty('Could not read the lead sheet.');
   }
   },
-  // v3: lane from Treatment when Source is blank; exclusion counts surfaced.
-  ['araby-lead-status-v3'],
+  // v4: 24-hour close rule — stale pending finalises as Invalid.
+  ['araby-lead-status-v4'],
   { revalidate: 300 },
 );
 
@@ -429,9 +455,10 @@ const loadVerdictEntries = unstable_cache(
           .map((v, n) => (v ? `FU${n + 1}: ${v}` : ''))
           .filter(Boolean)
           .join(' · ');
+        const finV = finalizeStatus(normStatus(statusRaw), Boolean(at(row, col.reason) || fu), at(row, col.timestamp));
         out.set(digits.slice(-9), {
           test: isTestLead(at(row, col.fullName), at(row, col.email), statusRaw),
-          status: normStatus(statusRaw),
+          status: finV.status,
           reason: at(row, col.reason),
           followUp: fu,
         });
@@ -442,6 +469,6 @@ const loadVerdictEntries = unstable_cache(
     }
   },
   // v2: verdicts carry the FU 1–3 trail for the mirror's Notes column.
-  ['araby-lead-verdicts-v2'],
+  ['araby-lead-verdicts-v3'],
   { revalidate: 300 },
 );

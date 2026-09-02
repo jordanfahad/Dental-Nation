@@ -81,8 +81,9 @@ export async function ArabyLeadStatus() {
           <p className="mt-2 text-[10.5px] leading-snug text-ink-faint">
             <span className="font-medium text-ink-soft">Valid</span> = accurate, reachable patient data, based on lead
             submission — regardless of the final booking status by reception.{' '}
-            <span className="font-medium text-ink-soft">In Follow-up</span> = pending — still inside the 3-touch
-            follow-up cycle (FU 1–3), not yet a final verdict. Validation Rate = Valid ÷ (Valid + Invalid), leads in
+            <span className="font-medium text-ink-soft">In Follow-up</span> = pending and less than 24 hours old — a
+            lead still pending 24 hours after submission is closed with its last recorded feedback as the final
+            verdict. Validation Rate = Valid ÷ (Valid + Invalid), leads in
             follow-up excluded. <span className="font-medium text-ink-soft">Booked</span> = a valid lead carrying a
             confirmed booking reference. ArabyAds leads only; test leads excluded. Status is maintained by the Dental
             Nation team.
@@ -176,7 +177,12 @@ export async function ArabyLeadStatus() {
                         {l.status}
                       </span>
                     </td>
-                    <td className="py-2 pr-3 text-ink-soft">{l.reason || (l.status === 'Invalid' ? '—' : '')}</td>
+                    <td className="py-2 pr-3 text-ink-soft">
+                      {l.reason || (l.status === 'Invalid' ? '—' : '')}
+                      {l.autoClosed ? (
+                        <span className="ml-1 rounded bg-panel px-1 py-0.5 text-[9.5px] text-ink-faint">closed after 24h</span>
+                      ) : null}
+                    </td>
                     <td className="py-2 pr-3 text-ink-soft">
                       {l.followUps.some(Boolean)
                         ? l.followUps.map((fu, n) =>
