@@ -468,7 +468,10 @@ export async function runSync(trigger: SyncTrigger): Promise<SyncSummary> {
   try {
     const mirror = await syncLeadMirror(supabase, sheets);
     if (mirror.ok) {
-      if (mirror.appended > 0) sheetsOk.push(`Lead mirror — ${mirror.appended} appended to all_lead_info`);
+      const bits: string[] = [];
+      if (mirror.appended > 0) bits.push(`${mirror.appended} appended`);
+      if (mirror.verdictsFilled > 0) bits.push(`${mirror.verdictsFilled} verdicts filled`);
+      if (bits.length > 0) sheetsOk.push(`Lead mirror — ${bits.join(', ')} in all_lead_info${mirror.summaryTab ? ' · summary tab live' : ''}`);
     } else {
       dataGaps.push({ area: 'clinic', detail: `Lead mirror failed: ${mirror.error ?? 'unknown'} (service account needs Editor on the Araby workbook)`, owner: ownerFor('clinic') });
     }

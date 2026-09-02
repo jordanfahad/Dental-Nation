@@ -4,6 +4,7 @@ import type { AdminClient } from '@/lib/supabase/server';
 import { getSheetsWriteClient } from '@/lib/sync/google-auth';
 import { ARABY_LEADS_SHEET, ALL_LEAD_INFO_GID } from '@/config/arabyads-leads';
 import { ARABY_LANES } from '@/lib/arabyads/report';
+import { getLeadVerdictsByPhone } from '@/lib/arabyads/leadStatus';
 
 /**
  * Lead mirror — every lead that lands in the widget workbook's form tabs
@@ -29,6 +30,10 @@ export interface LeadMirrorResult {
   ok: boolean;
   appended: number;
   skippedExisting: number;
+  /** Lead Status / Reason / Notes cells filled from the feedback sheet. */
+  verdictsFilled: number;
+  /** True when the formula-driven Lead Summary tab exists (created if absent). */
+  summaryTab: boolean;
   error?: string;
 }
 
@@ -74,7 +79,7 @@ export async function syncLeadMirror(supabase: AdminClient, _readOnly?: sheets_v
       fields: 'sheets(properties(sheetId,title))',
     });
     const tab = (meta.data.sheets ?? []).find((sh) => sh.properties?.sheetId === ALL_LEAD_INFO_GID)?.properties?.title;
-    if (!tab) return { ok: false, appended: 0, skippedExisting: 0, error: `all_lead_info tab (gid ${ALL_LEAD_INFO_GID}) not found` };
+    if (!tab) return { ok: false, appended: 0, skippedExisting: 0, verdictsFilled: 0, summaryTab: false, error: `all_lead_info tab (gid ${ALL_LEAD_INFO_GID}) not found` };
     const range = `'${tab.replace(/'/g, "''")}'!A1:I5000`;
 
     // ── What the sheet already holds: seen keys + the running DN-#### id. ──
@@ -146,7 +151,7 @@ export async function syncLeadMirror(supabase: AdminClient, _readOnly?: sheets_v
       seen.add(key);
       fresh.push(c);
     }
-    if (fresh.length === 0) return { ok: true, appended: 0, skippedExisting };
+    if (fresh.length === 0) return finishMirror(sheets, tab, meta.data.sheets ?? [], 0, skippedExisting);
 
     // ── Header if the tab is empty, then append (A–F only; G–I are theirs). ──
     const rows: string[][] = [];
@@ -164,8 +169,116 @@ export async function syncLeadMirror(supabase: AdminClient, _readOnly?: sheets_v
       insertDataOption: 'INSERT_ROWS',
       requestBody: { values: rows },
     });
-    return { ok: true, appended: Math.min(fresh.length, 200), skippedExisting };
+    return finishMirror(sheets, tab, meta.data.sheets ?? [], Math.min(fresh.length, 200), skippedExisting);
   } catch (err) {
-    return { ok: false, appended: 0, skippedExisting: 0, error: (err as Error).message };
+    return { ok: false, appended: 0, skippedExisting: 0, verdictsFilled: 0, summaryTab: false, error: (err as Error).message };
   }
+}
+
+/* ── Verdict backfill + the formula-driven Lead Summary tab ─────────────────
+ * Fahad (31 Aug): fill Lead Status / Reason / Notes in all_lead_info from the
+ * call-centre's own feedback sheet so ArabyAds can read outcomes here, and
+ * keep a summary tab (his table) that computes itself as leads arrive.
+ *
+ * Fill policy: ONLY blank status cells are written — a value someone typed
+ * into all_lead_info by hand is never overwritten. Blank feedback rows (no
+ * verdict, no reason, no follow-up) are skipped rather than stamped Pending.
+ */
+async function finishMirror(
+  sheets: sheets_v4.Sheets,
+  tab: string,
+  allSheets: sheets_v4.Schema$Sheet[],
+  appended: number,
+  skippedExisting: number,
+): Promise<LeadMirrorResult> {
+  const quoted = `'${tab.replace(/'/g, "''")}'`;
+  let verdictsFilled = 0;
+  let summaryTab = false;
+
+  // ── 1) Verdicts: feedback sheet → blank G:I cells, matched by phone. ──
+  try {
+    const verdicts = await getLeadVerdictsByPhone();
+    if (verdicts.size > 0) {
+      const res = await sheets.spreadsheets.values.get({
+        spreadsheetId: ARABY_LEADS_SHEET.spreadsheetId,
+        range: `${quoted}!A1:I5000`,
+      });
+      const grid = (res.data.values ?? []) as string[][];
+      const data: { range: string; values: string[][] }[] = [];
+      for (let i = 1; i < grid.length; i++) {
+        const row = grid[i];
+        if (!/^DN-\d+$/i.test(s(row[0]))) continue;
+        if (s(row[6])) continue; // hand-entered status — never overwritten
+        const p = phone9(s(row[3]));
+        const v = p ? verdicts.get(p) : undefined;
+        if (!v) continue;
+        // A blank feedback row normalises to Pending with nothing else — skip.
+        if (v.status === 'Pending' && !v.test && !v.reason && !v.followUp) continue;
+        const status = v.test ? 'Invalid' : v.status;
+        const reason = v.test && !v.reason ? 'Test Lead' : v.reason;
+        data.push({ range: `${quoted}!G${i + 1}:I${i + 1}`, values: [[status, reason, v.followUp]] });
+        if (data.length >= 300) break; // per-run cap
+      }
+      if (data.length > 0) {
+        await sheets.spreadsheets.values.batchUpdate({
+          spreadsheetId: ARABY_LEADS_SHEET.spreadsheetId,
+          requestBody: { valueInputOption: 'USER_ENTERED', data },
+        });
+        verdictsFilled = data.length;
+      }
+    }
+  } catch {
+    /* best-effort — the mirror append result stands on its own */
+  }
+
+  // ── 2) Lead Summary tab: created once, formulas rewritten every run so the
+  //      block stays canonical; COUNT formulas read all_lead_info live, so the
+  //      table extends itself as leads and verdicts arrive. ──
+  try {
+    const SUMMARY = 'Lead Summary';
+    if (!allSheets.some((sh) => (sh.properties?.title ?? '').toLowerCase() === SUMMARY.toLowerCase())) {
+      await sheets.spreadsheets.batchUpdate({
+        spreadsheetId: ARABY_LEADS_SHEET.spreadsheetId,
+        requestBody: { requests: [{ addSheet: { properties: { title: SUMMARY } } }] },
+      });
+    }
+    const lane = (kw: string) => {
+      const hit = `--ISNUMBER(SEARCH("${kw}",${quoted}!$F$2:$F))`;
+      return {
+        total: `=SUMPRODUCT(${hit})`,
+        valid: `=SUMPRODUCT(${hit},--(${quoted}!$G$2:$G="Valid"))`,
+        invalid: `=SUMPRODUCT(${hit},--(${quoted}!$G$2:$G="Invalid"))`,
+        booked: `=SUMPRODUCT(${hit},--ISNUMBER(SEARCH("booked",${quoted}!$I$2:$I)))`,
+      };
+    };
+    const rate = (r: number) => `=IF(C${r}+D${r}=0,"0%",TEXT(C${r}/(C${r}+D${r}),"0%"))`;
+    const rows: string[][] = [
+      ['Campaign Lane / Offer', 'Total Leads', 'Valid Leads', 'Invalid Leads', 'Validation Rate (%)', 'Booked Appointments'],
+      ...[
+        ['Lane D – SOS', 'SOS'],
+        ['Lane J – Scan', 'Scan'],
+        ['Lane E – Glow Up', 'Glow'],
+      ].map(([label, kw], idx) => {
+        const f = lane(kw);
+        return [label, f.total, f.valid, f.invalid, rate(idx + 2), f.booked];
+      }),
+      ['Total', '=SUM(B2:B4)', '=SUM(C2:C4)', '=SUM(D2:D4)', rate(5), '=SUM(F2:F4)'],
+      ['', '', '', '', '', ''],
+      [
+        'All leads containing accurate and reachable patient data are counted as Valid. Qualification is based on accurate lead submission, regardless of final booking status by reception. Status and reasons flow automatically from the Dental Nation feedback sheet; this table updates itself as new leads arrive.',
+        '', '', '', '', '',
+      ],
+    ];
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: ARABY_LEADS_SHEET.spreadsheetId,
+      range: `'${SUMMARY}'!A1:F7`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: rows },
+    });
+    summaryTab = true;
+  } catch {
+    /* best-effort */
+  }
+
+  return { ok: true, appended, skippedExisting, verdictsFilled, summaryTab };
 }

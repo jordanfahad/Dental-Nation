@@ -342,6 +342,9 @@ export interface SheetVerdict {
   status: LeadStatus;
   /** "Wrong Contact", "Not Interested", … — blank when not filled in. */
   reason: string;
+  /** The FU 1–3 remark trail, joined ("FU1: Called N/A · FU2: …"); blank when
+   *  no follow-up has been recorded. Feeds the mirror's Notes column. */
+  followUp: string;
 }
 
 /**
@@ -406,10 +409,15 @@ const loadVerdictEntries = unstable_cache(
         const statusRaw = at(row, col.status);
         // Later rows win: the sheet is append-ordered, so the newest review of a
         // repeat caller is the one that counts.
+        const fu = [at(row, col.fu1), at(row, col.fu2), at(row, col.fu3)]
+          .map((v, n) => (v ? `FU${n + 1}: ${v}` : ''))
+          .filter(Boolean)
+          .join(' · ');
         out.set(digits.slice(-9), {
           test: isTestLead(at(row, col.fullName), at(row, col.email), statusRaw),
           status: normStatus(statusRaw),
           reason: at(row, col.reason),
+          followUp: fu,
         });
       }
       return [...out.entries()];
@@ -417,6 +425,7 @@ const loadVerdictEntries = unstable_cache(
       return [];
     }
   },
-  ['araby-lead-verdicts-v1'],
+  // v2: verdicts carry the FU 1–3 trail for the mirror's Notes column.
+  ['araby-lead-verdicts-v2'],
   { revalidate: 300 },
 );
