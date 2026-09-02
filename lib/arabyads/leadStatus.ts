@@ -121,7 +121,10 @@ const laneLabel = (key: string | null): string => ARABY_LANES.find((l) => l.key 
  *  24 hours after submission, WITH feedback recorded (a reason or follow-up
  *  remark), is closed — the last feedback stands as the final verdict
  *  (Invalid; Valid was already final). Leads with no feedback at all stay
- *  Pending: there is no "last feedback" to finalise. */
+ *  Pending: there is no "last feedback" to finalise.
+ *  SCOPE (Fahad, 2 Sep): the rule applies to the DASHBOARD REPORT ONLY —
+ *  the all_lead_info verdict fill (loadVerdictEntries) writes the team's
+ *  recorded status untouched. */
 const DAY_MS = 24 * 60 * 60 * 1000;
 function finalizeStatus(
   status: LeadStatus,
@@ -455,10 +458,12 @@ const loadVerdictEntries = unstable_cache(
           .map((v, n) => (v ? `FU${n + 1}: ${v}` : ''))
           .filter(Boolean)
           .join(' · ');
-        const finV = finalizeStatus(normStatus(statusRaw), Boolean(at(row, col.reason) || fu), at(row, col.timestamp));
+        // NO 24-hour close here (Fahad, 2 Sep): the rule is a dashboard
+        // reporting view only — what lands in all_lead_info is the team's own
+        // recorded status, never a machine-generated verdict.
         out.set(digits.slice(-9), {
           test: isTestLead(at(row, col.fullName), at(row, col.email), statusRaw),
-          status: finV.status,
+          status: normStatus(statusRaw),
           reason: at(row, col.reason),
           followUp: fu,
         });
@@ -469,6 +474,6 @@ const loadVerdictEntries = unstable_cache(
     }
   },
   // v2: verdicts carry the FU 1–3 trail for the mirror's Notes column.
-  ['araby-lead-verdicts-v3'],
+  ['araby-lead-verdicts-v4'],
   { revalidate: 300 },
 );
