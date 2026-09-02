@@ -72,88 +72,94 @@ export function ActionLog() {
 /* Landing-page plan                                                   */
 /* ------------------------------------------------------------------ */
 
-interface LpSpec {
+interface LaneSpec {
   tag: string;
   name: string;
   route: string;
+  offer: string;
   audience: string;
   sections: string[];
 }
 
-const LPS: LpSpec[] = [
+/** The lane → landing-page map. These pages EXIST on dentalnation.com — the job
+ *  is pointing paid traffic at the right lane and sharpening each page for it. */
+const LANES: LaneSpec[] = [
   {
-    tag: 'L1',
-    name: 'Call-first service template',
-    route: '/lp/{service} — the master template every other LP inherits',
-    audience: 'High-intent search: "dental clinic near me / dubai", checkup, cleaning',
+    tag: 'B',
+    name: 'Lane B — The DN First Look',
+    route: 'dentalnation.com/en/first-look',
+    offer: 'Welcome visit AED 799 all-inclusive (exam + digital X-ray + clean, saves AED 531)',
+    audience: 'New-patient search: "dental clinic near me / dubai", checkup, cleaning → the Calls & Bookings campaign',
     sections: [
-      'Hero: one promise ("Same-day dental care in Dubai"), one CTA pair — Call + WhatsApp — with Book Online as secondary',
-      'Trust strip: DHA-licensed, Google rating, years in practice, insurance partner logos',
-      'Price-from anchors for the 3 entry services (checkup / cleaning / x-ray) — no hidden-price anxiety',
-      '3-step "your first visit" strip (book → assess → plan) with real clinic photography',
-      'Dentist cards with names and photos (people book people, not clinics)',
-      'FAQ accordion (insurance, cost, pain, Arabic-speaking staff) + closing CTA block',
+      'This replaces the homepage as the destination for the general search campaign — a transparent priced offer beats a brochure',
+      'Sharpen: sticky mobile Call/WhatsApp bar; keyword-matched headline variant ("Looking for a dental clinic in Dubai?")',
     ],
   },
   {
-    tag: 'L2',
-    name: 'DN Ortho — braces & aligners',
-    route: '/lp/ortho (interim: dentalnation.com/en/care-journeys/align)',
-    audience: 'Ortho searches + Meta prospecting: braces, Invisalign, clear aligners',
+    tag: 'J',
+    name: 'Lane J — The DN Scan',
+    route: 'dentalnation.com/en/scan',
+    offer: 'Aligner & braces planning AED 499 — 3D scan + specialist consult + written plan, fully deducted if treatment proceeds',
+    audience: 'Ortho search: braces, Invisalign, aligners, orthodontist → the DN Ortho campaign (Dr. Luvi)',
     sections: [
-      'Hero: outcome-first ("Straight teeth, invisibly") with free ortho consultation + scan offer',
-      'Aligners vs braces comparison table (visibility, comfort, duration, price-from)',
-      'Monthly-instalment price framing via DN Pay ("from AED xxx/month") — ortho is an instalment purchase',
-      'Before/after smile gallery (real cases, consented) — the single highest-converting ortho element',
-      'Dr. Luvi profile block: credentials, photo, cases completed',
-      'FAQ: treatment length, pain, age limits, retainers; sticky mobile bar: Call / WhatsApp / Free consult',
+      'Ad copy must sell the AED 499-credited scan (NOT a "free consultation") — the no-pressure, brand-neutral positioning is the differentiator',
+      'Sharpen: before/after gallery + Dr. Luvi profile + DN Pay instalment framing for the treatment itself',
     ],
   },
   {
-    tag: 'L3',
-    name: 'Emergency dentistry',
-    route: '/lp/emergency (interim: dentalnation.com/en/care-journeys/sos)',
-    audience: '"emergency dentist", "toothache", same-day queries — call-dominant',
+    tag: 'D',
+    name: 'Lane D — DN SOS',
+    route: 'dentalnation.com/en/sos',
+    offer: 'Emergency: seen in 60 minutes, AED 699 all-inclusive (AED 200 deposit counts toward fee), AMC clinic',
+    audience: '"emergency dentist", "toothache", same-day queries — call-dominant campaign (next to launch)',
     sections: [
-      'Hero: "In pain? Seen today." with tap-to-call as the ONLY primary CTA',
-      'Open-now signal with today\'s hours per branch; nearest-branch map row (Al Wasl / AMC / Dr Tosun)',
-      'What counts as an emergency checklist (broken tooth, swelling, knocked-out tooth…)',
-      'Short reassurance strip: pain-relief first, transparent pricing after assessment',
+      'Campaign: exact-match emergency keywords, call-first ads, ad schedule matched to clinic hours',
+      'Sharpen: tap-to-call as the single primary CTA; open-now hours signal',
     ],
   },
   {
-    tag: 'L4',
-    name: 'Location pages',
-    route: '/lp/al-wasl · /lp/jumeirah (interim: /en/clinics/*)',
-    audience: '"dentist al wasl", "dental clinic jumeirah" — area intent',
+    tag: 'E',
+    name: 'Lane E — The DN Glow Up',
+    route: 'dentalnation.com/en/glow-up',
+    offer: 'Zoom laser whitening AED 1,699 all-inclusive, dentist-supervised, 1 hour',
+    audience: 'Whitening search + Meta/IG prospecting (pre-event, post-aligner) — visual-first lane',
     sections: [
-      'Hero anchored to the area name + map with parking note',
-      'Branch team, opening hours, drive-time from nearby districts',
-      'Reviews specific to that branch; standard CTA pair',
+      'Google: [teeth whitening dubai], [zoom whitening dubai], [laser teeth whitening] exact/phrase',
+      'Meta: before/after reels + carousel — the natural first Meta campaign once creative is ready',
+    ],
+  },
+  {
+    tag: 'C',
+    name: 'Lane C — Restore (implants)',
+    route: 'dentalnation.com/en/care-journeys/restore',
+    offer: 'Implants: consult from AED 1,000, single tooth AED 12,500, full-arch AED 40–60k',
+    audience: 'Highest-ticket lane: [dental implants dubai], [all on 4 dubai], [implant cost dubai]',
+    sections: [
+      'Worth its own campaign at higher CPCs — one implant case pays for months of ad spend',
+      'Sharpen: financing/DN Pay block and consultation-first CTA (nobody buys a full arch from an ad)',
     ],
   },
 ];
 
 const LP_RULES = [
-  'One page, one goal: every LP optimises a single action (call/WhatsApp/booking) — no top navigation to leak visitors back into the main site.',
-  'Sticky mobile CTA bar (Call · WhatsApp · Book) on every LP — ~90% of paid clinic traffic is mobile.',
-  'Design language: the dentalnation.com "Beyond Smiles" identity (navy/cream, serif display) so paid visitors land on-brand, but stripped to conversion essentials.',
-  'Bilingual: every LP ships EN + AR mirrored (campaigns already target both languages).',
-  'Speed: static Next.js pages, hero image optimised, < 2s LCP on 4G.',
-  'Measurement: gtag events call_click / whatsapp_click / booking_submit wired as Google Ads + Meta conversions — this also fixes the misconfigured "Submit lead form" action.',
+  'One lane, one campaign, one page: every campaign\'s final URL is its lane page — never the homepage, never auto-selected pages (AI Max / URL expansion stay off).',
+  'Sticky mobile CTA bar (Call · WhatsApp · Book) on every lane page — ~90% of paid clinic traffic is mobile.',
+  'Price honesty is the brand: every lane leads with its all-inclusive AED price. Ad copy must match the page (no "free" claims where the offer is paid-and-credited).',
+  'Bilingual: EN + AR mirrors for every lane page (campaigns target both languages).',
+  'Measurement: gtag events call_click / whatsapp_click / booking_submit per lane, wired as Google Ads + Meta conversions — also fixes the misconfigured "Submit lead form" action.',
 ];
 
 export function LandingPagePlan() {
   return (
     <Card>
-      <SectionHeader tag="P1" eyebrow="Playbook" title="Landing-page plan" />
+      <SectionHeader tag="P1" eyebrow="Playbook" title="Lanes & landing pages" />
       <div className="px-5 pb-5 pt-4">
         <p className="text-[12.5px] leading-snug text-ink-soft">
-          Today every ad lands on the homepage (or a page Google auto-picks). The plan: four
-          conversion-first landing pages, one per intent, each inheriting the same template rules.
+          Each business lane has a productised offer page on dentalnation.com. Paid traffic maps one
+          campaign to one lane page — the fix for ads historically dumping on the homepage.
         </p>
         <div className="mt-4 grid gap-3 lg:grid-cols-2">
-          {LPS.map((lp) => (
+          {LANES.map((lp) => (
             <div key={lp.tag} className="rounded-card border border-line p-4">
               <div className="flex items-start gap-3">
                 <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-accent/5 text-[11px] font-semibold text-accent">
@@ -162,8 +168,9 @@ export function LandingPagePlan() {
                 <div>
                   <h3 className="text-[13.5px] font-semibold tracking-tight text-ink">{lp.name}</h3>
                   <p className="mt-0.5 text-[11px] text-ink-faint">{lp.route}</p>
+                  <p className="mt-1 text-[11.5px] text-ink"><span className="font-medium">Offer:</span> {lp.offer}</p>
                   <p className="mt-1 text-[11.5px] text-ink-soft">
-                    <span className="font-medium text-ink">For:</span> {lp.audience}
+                    <span className="font-medium text-ink">Traffic:</span> {lp.audience}
                   </p>
                 </div>
               </div>
@@ -180,7 +187,7 @@ export function LandingPagePlan() {
         </div>
         <div className="mt-4 rounded-card border border-dashed border-line bg-panel/40 p-4">
           <p className="text-[10.5px] font-medium uppercase tracking-wide text-ink-faint">
-            Template rules (apply to all four)
+            Rules (apply to every lane)
           </p>
           <ul className="mt-2 space-y-1.5">
             {LP_RULES.map((r, i) => (
@@ -192,9 +199,9 @@ export function LandingPagePlan() {
           </ul>
         </div>
         <Takeaway>
-          Build order: L2 DN Ortho first (new campaign waiting on it), then L1 as the template it
-          generalises into, then L3/L4. Until each ships, campaigns point at the closest existing
-          dentalnation.com page — noted per card above.
+          Rollout: Lane B (repoint the live Calls &amp; Bookings campaign to /en/first-look) → Lane J
+          (DN Ortho campaign lands on /en/scan) → Lane D emergency campaign → Lane E whitening
+          (Google, then Meta with creative) → Lane C implants.
         </Takeaway>
       </div>
     </Card>
@@ -240,8 +247,8 @@ export function OrthoPlan() {
               <li>Campaign: <span className="font-medium text-ink">Search | DN Ortho | Braces &amp; Aligners | Dubai</span></li>
               <li>Budget: AED 70/day to start · Maximise conversions · goals = calls + bookings only</li>
               <li>Dubai presence-only · EN + AR · no Search Partners / Display · AI Max off</li>
-              <li>Landing page: /en/care-journeys/align until /lp/ortho ships</li>
-              <li>Ads lead with the free ortho consultation + instalment framing (DN Pay)</li>
+              <li>Landing page: <span className="font-medium text-ink">/en/scan — The DN Scan (Lane J)</span></li>
+              <li>Ads sell the AED 499 scan, fully credited against treatment — no &ldquo;free consult&rdquo; claims; instalments via DN Pay for the treatment itself</li>
             </ul>
             <p className="mt-3 text-[10.5px] font-medium uppercase tracking-wide text-ink-faint">Keyword set (exact/phrase only)</p>
             <div className="mt-1.5 flex flex-wrap gap-1">
@@ -259,8 +266,8 @@ export function OrthoPlan() {
               <li>Objective: Leads — WhatsApp-first (the channel patients actually use), Instant Form as B-test</li>
               <li>Audience: Dubai 18–45 + parents (kids braces); Advantage+ off to start, interests: teeth straightening, Invisalign, cosmetic dentistry</li>
               <li>Creative: before/after smile carousel, aligner close-up reels, Dr. Luvi talking-head — stills produced with the ChatGPT Pro image workflow, cases must be real &amp; consented</li>
-              <li>Offer: free ortho consultation + scan, instalments from AED —/month (price to confirm with Dr. Luvi)</li>
-              <li>Gate before launch: /lp/ortho live + WhatsApp response SLA agreed with reception</li>
+              <li>Offer: The DN Scan (AED 499, credited to treatment) as the hook; treatment instalments from AED —/month (to confirm with Dr. Luvi)</li>
+              <li>Gate before launch: consented before/after set + WhatsApp response SLA agreed with reception</li>
             </ul>
             <p className="mt-3 rounded-card border border-dashed border-watch/50 bg-watch/5 px-3 py-2 text-[11.5px] leading-snug text-ink-soft">
               <span className="font-medium text-ink">Needed from Dr. Luvi:</span> ortho price list +
