@@ -80,6 +80,9 @@ export interface LeadStatusReport {
   leads: LeadRow[];
   lanes: LaneSummary[];
   totals: LaneSummary;
+  /** Rows scanned vs shown, so "sheet has 111, report shows N" explains
+   *  itself: excluded = test entries + rows with no campaign source/offer. */
+  excluded: { test: number; noCampaign: number };
   /** Why leads are rejected / stuck — counts by the sheet's reason taxonomy
    *  (Wrong Contact, Unresponsive, International Number, Duplicate Lead,
    *  Out of Target Location, …), split by whether the verdict is final
@@ -143,6 +146,10 @@ function buildColumnMap(header: string[]): Record<string, number> {
     notes: find(/notes|appointment\s*date/i),
     bookingRef: find(/booking\s*ref|lead\s*id/i),
     source: find(/interested|lane\s*\/?\s*service/i) >= 0 ? find(/interested|lane\s*\/?\s*service/i) : find(/source/i),
+    // The offer name ("DN SOS – Same-Day Emergency", "The DN Scan – AED 499")
+    // carries the lane too — the fallback when the call-centre adds a row by
+    // hand and leaves Source blank (found live 2 Sep: Valid rows vanishing).
+    treatment: find(/^treatment$/i) >= 0 ? find(/^treatment$/i) : find(/treatment/i),
     // Revised feedback sheet (26 Aug 2026): the call-centre's 3-touch trail.
     // /fu\s*1\s*remarks/ deliberately requires "remarks" so it can never grab
     // "Reason for Rejection (If Invalid) - FU 1", which also contains "FU 1".
@@ -238,6 +245,7 @@ const loadLeadStatus = unstable_cache(
     leads: [],
     lanes: ARABY_LANES.map((l) => emptySummary(l.key, l.label)),
     totals: emptySummary('total', 'Total'),
+    excluded: { test: 0, noCampaign: 0 },
     reasons: [],
   });
 
@@ -283,10 +291,10 @@ const loadLeadStatus = unstable_cache(
         continue;
       }
       const source = at(row, col.source);
-      const laneKey = laneKeyOf(source);
+      const laneKey = laneKeyOf(source) ?? laneKeyOf(at(row, col.treatment));
       if (!laneKey) {
         excludedNonAraby += 1;
-        continue; // Araby report → only their campaign lanes
+        continue; // Araby report → only rows tied to a campaign lane
       }
       const apptDate = at(row, col.date);
       const notes = at(row, col.notes) || apptDate || at(row, col.additional);
@@ -321,7 +329,15 @@ const loadLeadStatus = unstable_cache(
 
     leads.sort((a, b) => tsMs(b.dateTime) - tsMs(a.dateTime));
     const { lanes, totals } = summarise(leads);
-    return { available: true, note: null, leads, lanes, totals, reasons: reasonBreakdown(leads) };
+    return {
+      available: true,
+      note: null,
+      leads,
+      lanes,
+      totals,
+      excluded: { test: excludedTest, noCampaign: excludedNonAraby },
+      reasons: reasonBreakdown(leads),
+    };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     if (/permission|not found|403|404/i.test(msg)) {
@@ -330,8 +346,8 @@ const loadLeadStatus = unstable_cache(
     return empty('Could not read the lead sheet.');
   }
   },
-  // v2: revised feedback sheet (FU 1–3 remarks, Pending, reason breakdown).
-  ['araby-lead-status-v2'],
+  // v3: lane from Treatment when Source is blank; exclusion counts surfaced.
+  ['araby-lead-status-v3'],
   { revalidate: 300 },
 );
 

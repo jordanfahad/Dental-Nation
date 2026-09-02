@@ -86,6 +86,13 @@ export async function ArabyLeadStatus() {
             follow-up excluded. <span className="font-medium text-ink-soft">Booked</span> = a valid lead carrying a
             confirmed booking reference. ArabyAds leads only; test leads excluded. Status is maintained by the Dental
             Nation team.
+            {data.excluded.test + data.excluded.noCampaign > 0 ? (
+              <>
+                {' '}Sheet reconciliation: {int(data.totals.total + data.excluded.test + data.excluded.noCampaign)} rows
+                scanned — {int(data.totals.total)} campaign leads shown, {int(data.excluded.test)} test entries and{' '}
+                {int(data.excluded.noCampaign)} rows without a campaign source/offer excluded.
+              </>
+            ) : null}
           </p>
         </div>
       </Card>
