@@ -30,6 +30,8 @@ export interface LeadMirrorResult {
   ok: boolean;
   appended: number;
   skippedExisting: number;
+  /** Duplicate machine-appended rows removed (the 1–2 Sep incident). */
+  cleaned: number;
   /** Lead Status / Reason / Notes cells filled from the feedback sheet. */
   verdictsFilled: number;
   /** True when the formula-driven Lead Summary tab exists (created if absent). */
@@ -79,19 +81,30 @@ export async function syncLeadMirror(supabase: AdminClient, _readOnly?: sheets_v
       fields: 'sheets(properties(sheetId,title))',
     });
     const tab = (meta.data.sheets ?? []).find((sh) => sh.properties?.sheetId === ALL_LEAD_INFO_GID)?.properties?.title;
-    if (!tab) return { ok: false, appended: 0, skippedExisting: 0, verdictsFilled: 0, summaryTab: false, error: `all_lead_info tab (gid ${ALL_LEAD_INFO_GID}) not found` };
-    const range = `'${tab.replace(/'/g, "''")}'!A1:I5000`;
+    if (!tab) return { ok: false, appended: 0, skippedExisting: 0, cleaned: 0, verdictsFilled: 0, summaryTab: false, error: `all_lead_info tab (gid ${ALL_LEAD_INFO_GID}) not found` };
+    const range = `'${tab.replace(/'/g, "''")}'!A1:I40000`;
 
     // ── What the sheet already holds: seen keys + the running DN-#### id. ──
     const existing = await sheets.spreadsheets.values.get({ spreadsheetId: ARABY_LEADS_SHEET.spreadsheetId, range });
     const grid = (existing.data.values ?? []) as string[][];
+    // DEDUPE BY IDENTITY, NOT TIMESTAMP. The original key included the
+    // timestamp as read back from the sheet — but Sheets re-formats datetime
+    // cells per locale, the round-trip stopped matching (1 Sep), and 55 rows
+    // re-appended every 15 minutes until the tab overflowed the old 5,000-row
+    // read window. all_lead_info is a lead REGISTRY: one row per phone (name
+    // as the fallback for phoneless rows) is the correct grain, and it cannot
+    // break on formatting.
     const seen = new Set<string>();
     let maxId = 1000; // sheet starts at DN-1001
+    const identityKey = (phone: string, name: string): string => {
+      const p = phone9(phone);
+      return p ? `p:${p}` : `n:${name.trim().toLowerCase()}`;
+    };
     for (const row of grid) {
       const idM = s(row[0]).match(/^DN-(\d+)$/i);
       if (idM) maxId = Math.max(maxId, Number(idM[1]));
-      const p = phone9(s(row[3]));
-      if (p) seen.add(`${p}|${minuteKey(null, s(row[1]))}`);
+      const k = identityKey(s(row[3]), s(row[2]));
+      if (k !== 'n:') seen.add(k);
     }
 
     // ── Candidates from the already-synced mirrors. ──
@@ -141,9 +154,8 @@ export async function syncLeadMirror(supabase: AdminClient, _readOnly?: sheets_v
     let skippedExisting = 0;
     candidates.sort((a, b) => (a.tsIso ?? '').localeCompare(b.tsIso ?? ''));
     for (const c of candidates) {
-      const p = phone9(c.phone);
-      if (!p && !c.name) continue;
-      const key = `${p}|${minuteKey(c.tsIso, c.tsDisplay)}`;
+      if (!phone9(c.phone) && !c.name) continue;
+      const key = identityKey(c.phone, c.name);
       if (seen.has(key)) {
         skippedExisting += 1;
         continue;
@@ -151,7 +163,7 @@ export async function syncLeadMirror(supabase: AdminClient, _readOnly?: sheets_v
       seen.add(key);
       fresh.push(c);
     }
-    if (fresh.length === 0) return finishMirror(sheets, tab, meta.data.sheets ?? [], 0, skippedExisting);
+    if (fresh.length === 0) return finishMirror(sheets, tab, meta.data.sheets ?? [], 0, skippedExisting, grid);
 
     // ── Header if the tab is empty, then append (A–F only; G–I are theirs). ──
     const rows: string[][] = [];
@@ -169,9 +181,9 @@ export async function syncLeadMirror(supabase: AdminClient, _readOnly?: sheets_v
       insertDataOption: 'INSERT_ROWS',
       requestBody: { values: rows },
     });
-    return finishMirror(sheets, tab, meta.data.sheets ?? [], Math.min(fresh.length, 200), skippedExisting);
+    return finishMirror(sheets, tab, meta.data.sheets ?? [], Math.min(fresh.length, 200), skippedExisting, grid);
   } catch (err) {
-    return { ok: false, appended: 0, skippedExisting: 0, verdictsFilled: 0, summaryTab: false, error: (err as Error).message };
+    return { ok: false, appended: 0, skippedExisting: 0, cleaned: 0, verdictsFilled: 0, summaryTab: false, error: (err as Error).message };
   }
 }
 
@@ -190,13 +202,65 @@ async function finishMirror(
   allSheets: sheets_v4.Schema$Sheet[],
   appended: number,
   skippedExisting: number,
+  grid: string[][],
 ): Promise<LeadMirrorResult> {
   const quoted = `'${tab.replace(/'/g, "''")}'`;
   let verdictsFilled = 0;
   let summaryTab = false;
 
+  // ── 0) CLEANUP of the 1–2 Sep duplication incident: the timestamp-keyed
+  // dedupe broke on Sheets' locale re-formatting and re-appended a block of
+  // rows every 15 minutes. Delete machine-appended duplicates: a DN- row whose
+  // identity (phone, else name) already appeared in an earlier row AND whose
+  // G:I cells are all empty (a hand-marked row is never deleted). Batched,
+  // capped per run; verdict fill is skipped on a cleanup run because deletes
+  // shift row numbers — the next run (15 min) fills on the clean sheet.
+  let cleaned = 0;
+  try {
+    const firstSeen = new Set<string>();
+    const toDelete: number[] = []; // 0-based grid indices
+    for (let i = 0; i < grid.length; i++) {
+      const row = grid[i];
+      const isDn = /^DN-\d+$/i.test(s(row[0]));
+      const p = phone9(s(row[3]));
+      const key = p ? `p:${p}` : `n:${s(row[2]).toLowerCase()}`;
+      if (key === 'n:') continue;
+      if (firstSeen.has(key)) {
+        if (isDn && !s(row[6]) && !s(row[7]) && !s(row[8])) toDelete.push(i);
+      } else {
+        firstSeen.add(key);
+      }
+    }
+    if (toDelete.length > 0) {
+      // Descending, coalesced into contiguous ranges, ≤500 requests per call.
+      toDelete.sort((a, b) => b - a);
+      const ranges: { start: number; end: number }[] = [];
+      for (const idx of toDelete.slice(0, 4000)) {
+        const last = ranges[ranges.length - 1];
+        if (last && last.start === idx + 1) last.start = idx;
+        else ranges.push({ start: idx, end: idx + 1 });
+      }
+      for (let i = 0; i < ranges.length; i += 500) {
+        await sheets.spreadsheets.batchUpdate({
+          spreadsheetId: ARABY_LEADS_SHEET.spreadsheetId,
+          requestBody: {
+            requests: ranges.slice(i, i + 500).map((r) => ({
+              deleteDimension: {
+                range: { sheetId: ALL_LEAD_INFO_GID, dimension: 'ROWS', startIndex: r.start, endIndex: r.end },
+              },
+            })),
+          },
+        });
+      }
+      cleaned = Math.min(toDelete.length, 4000);
+    }
+  } catch {
+    /* best-effort — a failed cleanup never blocks the rest */
+  }
+
   // ── 1) Verdicts: feedback sheet → blank G:I cells, matched by phone. ──
   try {
+    if (cleaned > 0) throw new Error('skip-after-cleanup');
     const verdicts = await getLeadVerdictsByPhone();
     if (verdicts.size > 0) {
       const res = await sheets.spreadsheets.values.get({
@@ -280,5 +344,5 @@ async function finishMirror(
     /* best-effort */
   }
 
-  return { ok: true, appended, skippedExisting, verdictsFilled, summaryTab };
+  return { ok: true, appended, skippedExisting, cleaned, verdictsFilled, summaryTab };
 }

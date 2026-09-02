@@ -470,6 +470,7 @@ export async function runSync(trigger: SyncTrigger): Promise<SyncSummary> {
     if (mirror.ok) {
       const bits: string[] = [];
       if (mirror.appended > 0) bits.push(`${mirror.appended} appended`);
+      if (mirror.cleaned > 0) bits.push(`${mirror.cleaned} duplicates removed`);
       if (mirror.verdictsFilled > 0) bits.push(`${mirror.verdictsFilled} verdicts filled`);
       if (bits.length > 0) sheetsOk.push(`Lead mirror — ${bits.join(', ')} in all_lead_info${mirror.summaryTab ? ' · summary tab live' : ''}`);
     } else {
