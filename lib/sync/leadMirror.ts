@@ -85,8 +85,16 @@ export async function syncLeadMirror(supabase: AdminClient, _readOnly?: sheets_v
     const range = `'${tab.replace(/'/g, "''")}'!A1:I40000`;
 
     // ── What the sheet already holds: seen keys + the running DN-#### id. ──
-    const existing = await sheets.spreadsheets.values.get({ spreadsheetId: ARABY_LEADS_SHEET.spreadsheetId, range });
-    const grid = (existing.data.values ?? []) as string[][];
+    // UNFORMATTED read: Sheets coerces typed values (a "+971…" phone becomes a
+    // number displayed as 9.71547E+11; datetimes re-render per locale), and the
+    // FORMATTED read of those cells broke dedupe keys. Unformatted returns the
+    // underlying value — full phone digits — immune to display formatting.
+    const existing = await sheets.spreadsheets.values.get({
+      spreadsheetId: ARABY_LEADS_SHEET.spreadsheetId,
+      range,
+      valueRenderOption: 'UNFORMATTED_VALUE',
+    });
+    const grid = ((existing.data.values ?? []) as unknown[][]).map((r) => r.map((c) => s(c)));
     // DEDUPE BY IDENTITY, NOT TIMESTAMP. The original key included the
     // timestamp as read back from the sheet — but Sheets re-formats datetime
     // cells per locale, the round-trip stopped matching (1 Sep), and 55 rows
@@ -177,7 +185,9 @@ export async function syncLeadMirror(supabase: AdminClient, _readOnly?: sheets_v
     await sheets.spreadsheets.values.append({
       spreadsheetId: ARABY_LEADS_SHEET.spreadsheetId,
       range,
-      valueInputOption: 'USER_ENTERED',
+      // RAW: never let Sheets coerce a phone into a number or a timestamp into
+      // a locale-formatted date — plain text in, plain text back out.
+      valueInputOption: 'RAW',
       insertDataOption: 'INSERT_ROWS',
       requestBody: { values: rows },
     });
@@ -265,9 +275,10 @@ async function finishMirror(
     if (verdicts.size > 0) {
       const res = await sheets.spreadsheets.values.get({
         spreadsheetId: ARABY_LEADS_SHEET.spreadsheetId,
-        range: `${quoted}!A1:I5000`,
+        range: `${quoted}!A1:I40000`,
+        valueRenderOption: 'UNFORMATTED_VALUE',
       });
-      const grid = (res.data.values ?? []) as string[][];
+      const grid = ((res.data.values ?? []) as unknown[][]).map((r) => r.map((c) => s(c)));
       const data: { range: string; values: string[][] }[] = [];
       for (let i = 1; i < grid.length; i++) {
         const row = grid[i];
