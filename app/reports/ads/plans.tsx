@@ -23,6 +23,13 @@ const LOG: LogEntry[] = [
     date: '2026-09-03',
     platform: 'Google',
     action:
+      'Launched "Search | SOS Emergency | Dubai | Sep 2026" (Lane D) — AED 70/day, 16 exact/phrase emergency keywords (emergency dentist, toothache, broken tooth, 24 hour dentist), ad sells the Dental SOS visit (AED 699, seen fast), landing page /en/sos. Built with the same copy-and-convert recipe as DN Ortho. Also discarded all four dead campaign drafts cluttering the campaigns list.',
+    why: 'Fahad approved Lane D as the next launch: emergency searches are the highest-intent dental queries and the AED 699/60-minute promise is a sharp, honest hook. Enabled spend is now AED 300/day (PMax 90 + Calls & Bookings 70 + DN Ortho 70 + SOS 70).',
+  },
+  {
+    date: '2026-09-03',
+    platform: 'Google',
+    action:
       'Launched "Search | DN Ortho | Braces & Aligners | Dubai | Sep 2026" — AED 70/day, 16 exact/phrase ortho keywords (braces, Invisalign, clear aligners, orthodontist), ad sells The DN Scan (AED 499, credited to treatment), landing page /en/scan. Built by copying the proven Calls & Bookings campaign (the new-campaign wizard was erroring server-side), then swapping keywords, ad and name.',
     why: "Dr. Luvi asked for DN Ortho ads. Ortho searches were previously unserved; the AED-499-credited scan is the honest hook (never advertised as a free consultation). Health-policy exception requested on the flagged keywords, same as the parent campaign.",
   },
@@ -131,7 +138,7 @@ const LANES: LaneSpec[] = [
     name: 'Lane D — DN SOS',
     route: 'dentalnation.com/en/sos',
     offer: 'Emergency: seen in 60 minutes, AED 699 all-inclusive (AED 200 deposit counts toward fee), AMC clinic',
-    audience: '"emergency dentist", "toothache", same-day queries — call-dominant campaign (next to launch)',
+    audience: '"emergency dentist", "toothache", same-day queries — call-dominant campaign (LIVE 3 Sep 2026)',
     sections: [
       'Campaign: exact-match emergency keywords, call-first ads, ad schedule matched to clinic hours',
       'Sharpen: tap-to-call as the single primary CTA; open-now hours signal',
