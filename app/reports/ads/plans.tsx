@@ -21,6 +21,13 @@ interface LogEntry {
 const LOG: LogEntry[] = [
   {
     date: '2026-09-03',
+    platform: 'Meta',
+    action:
+      'Built the retargeting foundation: engagement custom audiences "DN | IG Engagers | 365d" (people who engaged with @dentalnations) and "DN | FB Page Engagers | 365d" (Dental Nation page engagers). Both populate automatically from here on. Also prepared the weekly booked-patients feedback loop: upload template + instructions saved next to the patient database (Performance-ads folder, README-conversion-feedback-loop.md).',
+    why: 'These pools are the raw material for a warm-audience campaign (recall offers, whitening, First Look) that typically converts at half the cost of cold traffic — created now so they are full when the retargeting campaign launches. Lane E (whitening) and Lane C (implants) Search campaigns remain the next builds; blocked this session by tooling limits, not by strategy.',
+  },
+  {
+    date: '2026-09-03',
     platform: 'Google',
     action:
       'Account-level conversion-goal cleanup (the "road to 10/10" pass): Engagements and YouTube follow-on views REMOVED from account-default goals and all their actions demoted to secondary/observe-only (GA4 user_engagement, whatsapp_click, YouTube subscriptions & follow-on views); Phone call lead PROMOTED to account-default alongside Book appointment; the Misconfigured "Submit lead forms" goal’s stale reference to a deleted campaign removed. Also created the offline-import conversion action under the "Converted lead" goal (AED 500 default value, count One, data-driven attribution, data source to be connected later).',
