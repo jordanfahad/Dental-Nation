@@ -21,6 +21,13 @@ interface LogEntry {
 const LOG: LogEntry[] = [
   {
     date: '2026-09-03',
+    platform: 'Meta',
+    action:
+      'Published "Leads | WhatsApp | DN Ortho | Dubai | Sep 2026" — click-to-WhatsApp (+971 55 277 2311), AED 50/day, open audience Al Wasl/Jumeirah +8mi, two static ads from the Masoud lane-J creative set ("See your smile before you commit" / "What is a digital smile scan?"). Copy sells The DN Scan (AED 499, credited). Replaced the inherited Ramadan AED 2,199 WhatsApp auto-reply with a DN Ortho welcome + pre-filled booking message. In Meta ad review; benchmark AED 18/conversation from the account’s prior WhatsApp winner.',
+    why: 'Meta lead gen restarted on the only historically-proven format (243 conversations @ AED 18), refreshed from seasonal to evergreen ortho creative. DN Ortho focus per Dr. Luvi; budget per Fahad. Three old third-party drafts in the account were left untouched.',
+  },
+  {
+    date: '2026-09-03',
     platform: 'Google',
     action:
       'Launched "Search | SOS Emergency | Dubai | Sep 2026" (Lane D) — AED 70/day, 16 exact/phrase emergency keywords (emergency dentist, toothache, broken tooth, 24 hour dentist), ad sells the Dental SOS visit (AED 699, seen fast), landing page /en/sos. Built with the same copy-and-convert recipe as DN Ortho. Also discarded all four dead campaign drafts cluttering the campaigns list.',
@@ -469,8 +476,16 @@ export function OrthoPlan() {
 
           <div className="rounded-card border border-line p-4">
             <h3 className="text-[13.5px] font-semibold tracking-tight text-ink">
-              Phase 2 — Meta (after LP + creative)
+              Phase 2 — Meta{' '}
+              <span className="rounded bg-good/10 px-1.5 py-0.5 text-[10px] font-medium text-good align-middle">
+                CTWA LIVE 3 Sep 2026
+              </span>
             </h3>
+            <p className="mt-1 text-[11.5px] leading-snug text-ink-soft">
+              First wave live: click-to-WhatsApp statics at AED 50/day (campaign &ldquo;Leads | WhatsApp |
+              DN Ortho&rdquo;). The items below are the second wave — video/before-after creative still
+              gated on Dr. Luvi&rsquo;s inputs.
+            </p>
             <ul className="mt-2 space-y-1.5 text-[12px] leading-snug text-ink-soft">
               <li>Objective: Leads — WhatsApp-first (the channel patients actually use), Instant Form as B-test</li>
               <li>Audience: Dubai 18–45 + parents (kids braces); Advantage+ off to start, interests: teeth straightening, Invisalign, cosmetic dentistry</li>
