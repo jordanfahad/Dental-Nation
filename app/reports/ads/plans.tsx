@@ -20,6 +20,26 @@ interface LogEntry {
 /** Newest first. Append here whenever a meaningful account change is made. */
 const LOG: LogEntry[] = [
   {
+    date: '2026-09-03',
+    platform: 'Google',
+    action:
+      'Launched "Search | DN Ortho | Braces & Aligners | Dubai | Sep 2026" — AED 70/day, 16 exact/phrase ortho keywords (braces, Invisalign, clear aligners, orthodontist), ad sells The DN Scan (AED 499, credited to treatment), landing page /en/scan. Built by copying the proven Calls & Bookings campaign (the new-campaign wizard was erroring server-side), then swapping keywords, ad and name.',
+    why: "Dr. Luvi asked for DN Ortho ads. Ortho searches were previously unserved; the AED-499-credited scan is the honest hook (never advertised as a free consultation). Health-policy exception requested on the flagged keywords, same as the parent campaign.",
+  },
+  {
+    date: '2026-09-03',
+    platform: 'Google',
+    action: 'Paused "Search | Phone call leads | 9th jan 2026".',
+    why: 'Redundant: its generic dental keywords are covered by Calls & Bookings, which has cleaner goals (calls + bookings only) and a priced landing page instead of the homepage. Keeps enabled spend at AED 230/day (PMax 90 + Calls & Bookings 70 + DN Ortho 70) instead of creeping to 300.',
+  },
+  {
+    date: '2026-09-02',
+    platform: 'Google',
+    action:
+      'Repointed the live Calls & Bookings ad to /en/first-look (Lane B — The DN First Look, AED 799 welcome visit).',
+    why: 'A transparent priced offer converts search traffic better than the homepage brochure; one lane, one campaign, one page.',
+  },
+  {
     date: '2026-09-02',
     platform: 'Google',
     action:
@@ -241,7 +261,10 @@ export function OrthoPlan() {
         <div className="mt-4 grid gap-3 lg:grid-cols-2">
           <div className="rounded-card border border-line p-4">
             <h3 className="text-[13.5px] font-semibold tracking-tight text-ink">
-              Phase 1 — Google Search (now)
+              Phase 1 — Google Search{' '}
+              <span className="rounded bg-good/10 px-1.5 py-0.5 text-[10px] font-medium text-good align-middle">
+                LIVE 3 Sep 2026
+              </span>
             </h3>
             <ul className="mt-2 space-y-1.5 text-[12px] leading-snug text-ink-soft">
               <li>Campaign: <span className="font-medium text-ink">Search | DN Ortho | Braces &amp; Aligners | Dubai</span></li>
