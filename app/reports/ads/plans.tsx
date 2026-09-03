@@ -96,6 +96,185 @@ export function ActionLog() {
 }
 
 /* ------------------------------------------------------------------ */
+/* Campaign specs — objective, tagging, tracking, expected results     */
+/* ------------------------------------------------------------------ */
+
+interface CampaignSpec {
+  name: string;
+  lane: string;
+  state: 'live' | 'learning' | 'watch';
+  budget: string;
+  objective: string;
+  tagging: string[];
+  tracking: string[];
+  expected: string[];
+}
+
+/** One block per running campaign. Expectations are honest planning
+ *  numbers anchored on this account's own history — not promises. */
+const CAMPAIGN_SPECS: CampaignSpec[] = [
+  {
+    name: 'Search | Calls & Bookings | Dubai | Sep 2026',
+    lane: 'Lane B — First Look · /en/first-look',
+    state: 'live',
+    budget: 'AED 70/day',
+    objective:
+      'New-patient lead gen: turn general "dentist / dental clinic dubai & near me" searches into calls and booked visits for the AED 799 First Look.',
+    tagging: [
+      'Google auto-tagging (GCLID) on — every click is individually attributable',
+      'Naming convention Search | offer | geo | date; display path /dubai/book-online',
+      'One lane, one final URL — /en/first-look, AI Max & URL expansion off',
+    ],
+    tracking: [
+      'Campaign-level conversion goals: Book appointments + Phone call leads ONLY (account-default junk goals excluded)',
+      'UAE call number with Google call reporting on the ad',
+      'Maximise Conversions bidding trains on those two actions and nothing else',
+    ],
+    expected: [
+      'CPC ~AED 6–9 on the proven exact-match queries (account history)',
+      'Target ≤ AED 15/lead after learning; the old sibling campaign booked at AED 9.34/conv',
+      '~5–10 leads/day at full budget once out of learning (1–2 weeks)',
+    ],
+  },
+  {
+    name: 'Search | DN Ortho | Braces & Aligners | Dubai | Sep 2026',
+    lane: 'Lane J — DN Scan · /en/scan',
+    state: 'learning',
+    budget: 'AED 70/day',
+    objective:
+      'Ortho consult lead gen for Dr. Luvi: braces/Invisalign searches → booked DN Scan (AED 499, credited to treatment).',
+    tagging: [
+      'Auto-tagging (GCLID); display path /scan/book',
+      '16 exact/phrase ortho keywords only — no broad match',
+      'Final URL /en/scan; ad copy sells the paid-and-credited scan (no "free consult" claims)',
+    ],
+    tracking: [
+      'Same lead-only goals: Book appointments + Phone call leads',
+      'Health-policy keyword exception under Google review (same as parent campaign — cleared before)',
+      'Judge on cost per booked scan, not per click',
+    ],
+    expected: [
+      'CPC higher than general dental: ~AED 10–20 on Invisalign/braces terms',
+      'Win threshold ≤ AED 80/booked scan — one aligner case covers months of spend',
+      'Low volume first days while review + learning complete; ~1–3 scans/week initially',
+    ],
+  },
+  {
+    name: 'Search | SOS Emergency | Dubai | Sep 2026',
+    lane: 'Lane D — DN SOS · /en/sos',
+    state: 'learning',
+    budget: 'AED 70/day',
+    objective:
+      'Same-day emergency lead gen: toothache / broken tooth / emergency dentist searches → immediate calls for the AED 699 SOS visit.',
+    tagging: [
+      'Auto-tagging (GCLID); display path /sos/book',
+      '16 exact/phrase emergency keywords; no 24/7 claims in copy (clinic hours honesty)',
+      'Final URL /en/sos — tap-to-call is the primary CTA',
+    ],
+    tracking: [
+      'Lead-only goals: Phone call leads carry this campaign (emergency patients call, not form-fill)',
+      'Call reporting on the UAE number; watch call length as a quality proxy',
+      'Next sharpen: ad schedule matched to clinic hours so calls land when reception answers',
+    ],
+    expected: [
+      'Highest conversion rate of the three — emergency intent converts at 8–12% typically',
+      'Target ≤ AED 40/call-lead; CPC ~AED 8–14 on emergency terms',
+      'Volume is demand-driven and spiky — judge weekly, not daily',
+    ],
+  },
+  {
+    name: 'Dental Nation Campaign | March 13 (Performance Max)',
+    lane: 'Cross-network — Search, Maps, Display, YouTube, Gmail',
+    state: 'watch',
+    budget: 'AED 90/day',
+    objective:
+      'Automated supplemental reach beyond keyword targeting; catches demand the Search campaigns miss (Maps, competitors’ branded, long-tail).',
+    tagging: [
+      'Auto-tagging (GCLID); asset groups auto-assemble the creative',
+      'Landing pages partly auto-selected — the campaign predates the one-lane-one-page rule',
+    ],
+    tracking: [
+      'Still on ACCOUNT-DEFAULT goals: Engagements / YouTube views / page views inflate its "conversions"',
+      'Queued fix: demote junk goals to secondary so PMax bids on calls + bookings only',
+    ],
+    expected: [
+      'Reported conversions are directional only until the goal cleanup lands',
+      'After cleanup expect reported conversions to DROP but real lead quality to rise — that is success, not failure',
+    ],
+  },
+];
+
+const stateChip = (s: CampaignSpec['state']) =>
+  s === 'live'
+    ? { label: 'LIVE', cls: 'bg-good/10 text-good' }
+    : s === 'learning'
+      ? { label: 'LIVE · LEARNING', cls: 'bg-accent/8 text-accent' }
+      : { label: 'LIVE · NEEDS GOAL CLEANUP', cls: 'bg-watch/10 text-watch' };
+
+function SpecList({ title, items }: { title: string; items: string[] }) {
+  return (
+    <div>
+      <p className="text-[10.5px] font-medium uppercase tracking-wide text-ink-faint">{title}</p>
+      <ul className="mt-1.5 space-y-1.5">
+        {items.map((s, i) => (
+          <li key={i} className="flex gap-2 text-[12px] leading-snug text-ink-soft">
+            <span className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-accent/60" />
+            {s}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+export function CampaignSpecs() {
+  return (
+    <Card>
+      <SectionHeader
+        eyebrow="Campaign specs"
+        title="Objective, tagging, tracking & expected results — per campaign"
+      />
+      <div className="px-5 pb-5 pt-3">
+        <p className="text-[12.5px] leading-snug text-ink-soft">
+          The contract for each running campaign: what it is trying to achieve, how its traffic is
+          tagged and its conversions tracked, and what results are realistic. Expectations are
+          planning numbers anchored on this account&apos;s own history — never promises.
+        </p>
+        <div className="mt-4 space-y-3">
+          {CAMPAIGN_SPECS.map((c) => {
+            const chip = stateChip(c.state);
+            return (
+              <div key={c.name} className="rounded-card border border-line p-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-[13.5px] font-semibold tracking-tight text-ink">{c.name}</h3>
+                  <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${chip.cls}`}>{chip.label}</span>
+                  <span className="text-[11px] tabular-nums text-ink-faint">{c.budget}</span>
+                </div>
+                <p className="mt-0.5 text-[11px] text-ink-faint">{c.lane}</p>
+                <p className="mt-2 text-[12.5px] leading-snug text-ink">
+                  <span className="font-medium">Objective:</span> {c.objective}
+                </p>
+                <div className="mt-3 grid gap-4 lg:grid-cols-3">
+                  <SpecList title="Tagging" items={c.tagging} />
+                  <SpecList title="Tracking" items={c.tracking} />
+                  <SpecList title="Expected results" items={c.expected} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <Takeaway>
+          Shared measurement backbone: Google auto-tagging on every click, lead-only conversion
+          goals on all three Search campaigns, and the queued account-level goal cleanup to bring
+          PMax onto the same standard. Cost per BOOKED patient — not per click — is the number that
+          decides budgets.
+        </Takeaway>
+      </div>
+    </Card>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /* Landing-page plan                                                   */
 /* ------------------------------------------------------------------ */
 

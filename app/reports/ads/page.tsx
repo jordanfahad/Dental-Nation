@@ -2,7 +2,7 @@ import { currentRole } from '@/lib/auth/role';
 import { GoogleAdsPerformance } from '@/components/sections/marketing/GoogleAdsPerformance';
 import { MetaAdsPerformance } from '@/components/sections/marketing/MetaAdsPerformance';
 import { Card, SectionHeader } from '@/components/ui/Card';
-import { ActionLog, LandingPagePlan, OrthoPlan } from './plans';
+import { ActionLog, CampaignSpecs, LandingPagePlan, OrthoPlan } from './plans';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -103,7 +103,12 @@ export default async function AdsCommandPage({
         <ActionLog />
       </div>
 
-      {view === 'google' ? <GoogleAdsPerformance /> : null}
+      {view === 'google' ? (
+        <div className="space-y-5">
+          <GoogleAdsPerformance />
+          <CampaignSpecs />
+        </div>
+      ) : null}
       {view === 'meta' ? <MetaAdsPerformance /> : null}
       {view === 'plan' ? (
         <div className="space-y-5">
