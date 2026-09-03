@@ -23,6 +23,20 @@ const LOG: LogEntry[] = [
     date: '2026-09-03',
     platform: 'Meta',
     action:
+      'Wired the patient database into DN Ortho targeting: Fahad uploaded the 561-row patient list ("DN Patients | Customer list | Sep 2026"); built a 1% lookalike from it and set the ad set to include the lookalike and exclude the patient list. Also hardened the audience: saved audience "DN Ortho | Dubai central | 18-55" (age capped 18-55, Advantage+ audience off) and switched OFF location expansion, so delivery stays inside Al Wasl/Jumeirah +8mi.',
+    why: 'Ads now chase people who look like existing patients instead of pure cold traffic, and stop paying to show braces offers to people who are already patients. Location expansion was silently broadening the radius targeting to millions of people; off keeps every dirham inside the clinic’s real catchment. No PII was handled by the AI — Fahad uploaded the list himself.',
+  },
+  {
+    date: '2026-09-03',
+    platform: 'Google',
+    action:
+      'Attached the Customer Match list ("DN Patients | Customer Match | Sep 2026", uploaded by Fahad) in OBSERVATION mode to all three Search campaigns — Calls & Bookings, DN Ortho, SOS Emergency. Status: under Google review and below the 100-member serving threshold until matching completes (24-48h typical).',
+    why: 'Observation mode changes nothing about who sees the ads — it only starts measuring how past patients behave vs. cold searchers, and later enables bid adjustments and Smart Bidding signals on that segment. Zero-risk first step with real patient data.',
+  },
+  {
+    date: '2026-09-03',
+    platform: 'Meta',
+    action:
       'Published "Leads | WhatsApp | DN Ortho | Dubai | Sep 2026" — click-to-WhatsApp (+971 55 277 2311), AED 50/day, open audience Al Wasl/Jumeirah +8mi, two static ads from the Masoud lane-J creative set ("See your smile before you commit" / "What is a digital smile scan?"). Copy sells The DN Scan (AED 499, credited). Replaced the inherited Ramadan AED 2,199 WhatsApp auto-reply with a DN Ortho welcome + pre-filled booking message. In Meta ad review; benchmark AED 18/conversation from the account’s prior WhatsApp winner.',
     why: 'Meta lead gen restarted on the only historically-proven format (243 conversations @ AED 18), refreshed from seasonal to evergreen ortho creative. DN Ortho focus per Dr. Luvi; budget per Fahad. Three old third-party drafts in the account were left untouched.',
   },
