@@ -21,6 +21,13 @@ interface LogEntry {
 const LOG: LogEntry[] = [
   {
     date: '2026-09-03',
+    platform: 'Google',
+    action:
+      'Account-level conversion-goal cleanup (the "road to 10/10" pass): Engagements and YouTube follow-on views REMOVED from account-default goals and all their actions demoted to secondary/observe-only (GA4 user_engagement, whatsapp_click, YouTube subscriptions & follow-on views); Phone call lead PROMOTED to account-default alongside Book appointment; the Misconfigured "Submit lead forms" goal’s stale reference to a deleted campaign removed. Also created the offline-import conversion action under the "Converted lead" goal (AED 500 default value, count One, data-driven attribution, data source to be connected later).',
+    why: 'Campaigns on default goals — PMax March 13 above all — were bidding toward engagements and YouTube views while IGNORING phone calls. Now every default-goal campaign optimizes for calls + bookings only, and the "Conversions" column finally means leads. The offline action is the container for the real 10/10 metric: booked patients fed back from the clinic’s appointment system, so Google can eventually bid on revenue, not clicks. PMax numbers will drop — that’s honesty, not regression.',
+  },
+  {
+    date: '2026-09-03',
     platform: 'Meta',
     action:
       'Wired the patient database into DN Ortho targeting: Fahad uploaded the 561-row patient list ("DN Patients | Customer list | Sep 2026"); built a 1% lookalike from it and set the ad set to include the lookalike and exclude the patient list. Also hardened the audience: saved audience "DN Ortho | Dubai central | 18-55" (age capped 18-55, Advantage+ audience off) and switched OFF location expansion, so delivery stays inside Al Wasl/Jumeirah +8mi.',
