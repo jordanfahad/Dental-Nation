@@ -23,6 +23,7 @@ export const TABS = [
   { key: 'analytics', label: 'Google Analytics' },
   { key: 'digital', label: 'Digital & SEO' },
   { key: 'clarity', label: 'Heatmaps & Recordings' },
+  { key: 'drop', label: 'Data Drop' },
   { key: 'group', label: 'Group Revenue', adminOnly: true },
   { key: 'operations', label: 'Head of Operations', adminOnly: true },
   { key: 'report', label: 'Board Report', adminOnly: true },

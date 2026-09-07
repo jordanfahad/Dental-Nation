@@ -15,6 +15,7 @@ import { ExecutiveDashboard } from '@/components/sections/executive/ExecutiveDas
 import { PractoReport } from '@/components/sections/practo/PractoReport';
 import { BookingsReport } from '@/components/sections/bookings/BookingsReport';
 import { ArabyAdsReport } from '@/components/sections/arabyads/ArabyAdsReport';
+import { DataDrop } from '@/components/sections/drop/DataDrop';
 import { MarketingReport } from '@/components/sections/marketing/MarketingReport';
 import { SocialReport } from '@/components/sections/social/SocialReport';
 import { GoogleAnalyticsReport } from '@/components/sections/analytics/GoogleAnalyticsReport';
@@ -134,6 +135,7 @@ export default async function DashboardPage({
         {tab === 'analytics' ? <GoogleAnalyticsReport range={range} /> : null}
         {tab === 'digital' ? <DigitalSeo range={range} /> : null}
         {tab === 'clarity' ? <ClarityReport /> : null}
+        {tab === 'drop' ? <DataDrop /> : null}
         {/* Group Revenue + Board Report are grantable per-user: resolveTabInSet
             already restricts `tab` to the viewer's effective set, so membership
             alone gates them (no extra isAdmin check). Status + Users stay hard
