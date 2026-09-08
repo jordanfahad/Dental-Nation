@@ -3,6 +3,7 @@ import { Card, SectionHeader, Takeaway } from '@/components/ui/Card';
 import { KpiBand, type KpiItem } from '@/components/charts/KpiBand';
 import { HBarChart, Donut, TrendChart, CATEGORICAL, TOKENS, type BarDatum, type TrendSeries } from '@/components/charts/Charts';
 import { GroupSubNav } from './GroupSubNav';
+import { FinanceRevenue } from './FinanceRevenue';
 import { resolveGroupSub } from './subtabs';
 import { GrowthPlatform } from '@/components/sections/growth/GrowthPlatform';
 import { KpiBenchmarks } from '@/components/sections/growth/KpiBenchmarks';
@@ -261,6 +262,17 @@ export async function GroupRevenue({ range, sub, gchan, gclinic, mpipe, compare 
       <div className="space-y-4">
         <GroupSubNav active={active} />
         <GrowthPlatform range={{ from: range?.from, to: range?.to }} gchan={gchan} gclinic={gclinic} />
+      </div>
+    );
+  }
+
+  // Finance 2026 — the Mega Board Report's finance section, from the CFO-side
+  // Data Drop handover (Jawad). Same parking spot: inherits the Group grant.
+  if (active === 'finance') {
+    return (
+      <div className="space-y-4">
+        <GroupSubNav active={active} />
+        <FinanceRevenue />
       </div>
     );
   }

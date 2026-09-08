@@ -13,6 +13,7 @@ export const GROUP_SUBTABS = [
   { key: 'dn-alwasl', label: 'Dental Nation Al Wasl' },
   { key: 'dr-tosun', label: 'Dr Tosun Dental' },
   { key: 'al-maher', label: 'AMC' },
+  { key: 'finance', label: 'Finance 2026' },
   { key: 'growth', label: 'Growth Platform' },
   { key: 'kpis', label: 'KPI Benchmarks' },
   { key: 'mos', label: 'Marketing OS' },
