@@ -500,14 +500,14 @@ export const PLATFORM_LAYERS: PlatformLayer[] = [
         overview:
           'A CEO-first decision dashboard specified by the Head of Operations: eight portals combining clinical, operational, commercial, procurement, CRM, marketing and doctor-performance intelligence — conclusions, exceptions and plan-vs-actual before raw tables, with the CEO-approved Daily Appointment Report preserved exactly.',
         built:
-          'Full build specification complete and approved: eight decision portals, a canonical data model across seven source systems, commission economics formula-controlled to AED 0.02 (all 15 August workbooks reconcile), a six-phase build plan from security reset to CEO sign-off, and privacy by design — no patient-level information rendered anywhere.',
+          'Specification complete AND the first working deployment is live (QA): all eight decision portals running — CEO Intelligence, Clinical & Doctor Performance with commission economics formula-controlled to AED 0.02 (all 15 August workbooks reconcile), Procurement, Practo, Zavis and DN Ortho. Its headline figures cross-verify against this platform\u2019s finance feed to the dirham (Jan\u2013Jul clinical revenue matches exactly).',
         coverage:
-          'Specification stage — August 2026 commission economics and revenue workbooks already reconciled as the control baseline; live integrations (Practo, Zoho Books, Zavis) phased next.',
+          'QA deployment stage — commission and revenue workbooks reconciled as the control baseline; production hardening (authenticated allowlist access) is the gating step before rollout.',
         evidence: [{ label: 'Build specification — full chapter in the Operating Platform report', href: OPS, kind: 'doc' }],
         pnl: '',
         owner: 'Dr Luvi Kaprani',
-        status: 'in-implementation',
-        refresh: 'Specification approved Sep 2026 — progress tracked in the Operating Platform report',
+        status: 'demonstrated',
+        refresh: 'QA deployment live Sep 2026 — production access hardening in progress',
         updated: '2026-09-11',
       },
       {
