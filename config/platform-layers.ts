@@ -136,28 +136,38 @@ export const PLATFORM_LAYERS: PlatformLayer[] = [
         title: 'Clinical Workforce & Specialty Supply',
         overview:
           'Clinician roster, specialty mix, coverage by location, workforce capacity and the ability to redirect patients across the network.',
-        built: '',
-        coverage: '',
-        evidence: [],
-        pnl: '',
+        built:
+          'A canonical roster of 22 clinicians across the three branches, assembled from the Head of Operations\u2019 September handover: branch-wise daily schedules for every doctor, monthly production per clinician from the group revenue workbook, and full commission economics for 15 clinicians \u2014 each formula-verified to AED 0.02 against the source workbooks. Specialty mix spans orthodontics, general dentistry, endodontics, periodontics, paediatrics, prosthodontics, implantology, oral surgery and hygiene.',
+        coverage:
+          'All three clinics. August 2026: 15 clinicians actively billing (top-three concentration 68.8%); redirect capacity demonstrated by cross-branch orthodontic coverage. Known gap, tracked openly: specialty mapping still to be confirmed for 10 clinicians, and two August commission files (Dr Safwan Sultan, Dr Ali Ghasemi) to be supplied.',
+        evidence: [
+          { label: 'Doctor production & commission economics — verification chapter', href: OPS, kind: 'doc' },
+          { label: 'Group revenue by doctor (live)', href: GROUP, kind: 'kpi' },
+        ],
+        pnl: 'Doctor payable formula-controlled: net shareable revenue \u00d7 contractual rate + diagnostic share \u2014 August payroll AED 126,388 across 15 clinicians, reconciled twice independently.',
         owner: 'Dr Luvi Kaprani',
         status: 'validate',
-        refresh: 'Pending source: EMR / HR roster (owner handoff)',
-        updated: SEEDED,
+        refresh: 'Drafted from Dr Luvi\u2019s 11 Sep 2026 handover \u2014 awaiting her sign-off; EMR/HR roster feed to follow',
+        updated: '2026-09-11',
       },
       {
         id: '1.3',
         title: 'Centers of Excellence / Advanced Capacity',
         overview:
           'Current specialty-centre capacity and advanced-care supply, including the orthodontic programme documents and links.',
-        built: '',
-        coverage: '',
-        evidence: [],
-        pnl: '',
+        built:
+          'The orthodontic programme is a running centre-of-excellence operation: four orthodontists tracked daily across the three branches (consultations booked, attended, new patients, revenue), a dedicated DN Ortho landing page live, bilingual campaign scripts produced, and an unconverted-treatment-plan follow-up workflow with a live receptionist sheet. The programme has its own control tower inside the operations Executive Intelligence Dashboard.',
+        coverage:
+          'Orthodontics live at all three branches (Dr Yahya, Dr Hasna, Dr Yasmin, Dr Suzana). Early tracker snapshot: 75.7% consultation attendance, AED 21.4K tracked revenue over the first three logged days; 105-case unconverted-plan pool under active follow-up. Other specialty centres to be documented next.',
+        evidence: [
+          { label: 'DN Ortho programme detail \u2014 Operating Platform report', href: OPS, kind: 'doc' },
+          { label: 'Growth report \u2014 ortho campaigns', href: GROWTH, kind: 'kpi' },
+        ],
+        pnl: 'Ortho is the deepest-value lane: comprehensive treatments carry the group\u2019s highest per-patient value, and the follow-up pool converts existing demand at near-zero acquisition cost.',
         owner: 'Dr Luvi Kaprani',
         status: 'validate',
-        refresh: 'Pending: ortho documents & links from clinical team',
-        updated: SEEDED,
+        refresh: 'Drafted from Dr Luvi\u2019s 11 Sep 2026 handover \u2014 awaiting her sign-off; daily tracker feed to follow',
+        updated: '2026-09-11',
       },
     ],
   },
