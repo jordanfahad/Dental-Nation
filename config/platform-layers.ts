@@ -440,7 +440,7 @@ export const PLATFORM_LAYERS: PlatformLayer[] = [
     builtSummary: [
       'One orchestration layer connecting growth, finance, procurement, IT & tech, governance, HR and clinical support',
     ],
-    highlights: ['10 systems built & operating within 9 months', '23% procurement-cost reduction', '3× net-margin uplift in mature clinic', 'Executive Intelligence Dashboard specified — 8 portals, CEO-first (Dr Luvi)'],
+    highlights: ['10 systems built & operating within 9 months', '23% procurement-cost reduction', '3× net-margin uplift in mature clinic', 'Executive Intelligence Dashboard demonstrated — 8 portals live in QA, verified to the dirham (Dr Luvi)'],
     reports: [
       { label: 'Finance section', href: FINANCE },
       { label: 'Operating Platform report — shared services', href: OPS },
