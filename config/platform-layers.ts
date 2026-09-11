@@ -440,7 +440,7 @@ export const PLATFORM_LAYERS: PlatformLayer[] = [
     builtSummary: [
       'One orchestration layer connecting growth, finance, procurement, IT & tech, governance, HR and clinical support',
     ],
-    highlights: ['10 systems built & operating within 9 months', '23% procurement-cost reduction', '3× net-margin uplift in mature clinic'],
+    highlights: ['10 systems built & operating within 9 months', '23% procurement-cost reduction', '3× net-margin uplift in mature clinic', 'Executive Intelligence Dashboard specified — 8 portals, CEO-first (Dr Luvi)'],
     reports: [
       { label: 'Finance section', href: FINANCE },
       { label: 'Operating Platform report — shared services', href: OPS },
@@ -493,6 +493,22 @@ export const PLATFORM_LAYERS: PlatformLayer[] = [
         status: 'built',
         refresh: 'Live — automated every 15 minutes',
         updated: SEEDED,
+      },
+      {
+        id: '5.5',
+        title: 'Executive Intelligence Dashboard',
+        overview:
+          'A CEO-first decision dashboard specified by the Head of Operations: eight portals combining clinical, operational, commercial, procurement, CRM, marketing and doctor-performance intelligence — conclusions, exceptions and plan-vs-actual before raw tables, with the CEO-approved Daily Appointment Report preserved exactly.',
+        built:
+          'Full build specification complete and approved: eight decision portals, a canonical data model across seven source systems, commission economics formula-controlled to AED 0.02 (all 15 August workbooks reconcile), a six-phase build plan from security reset to CEO sign-off, and privacy by design — no patient-level information rendered anywhere.',
+        coverage:
+          'Specification stage — August 2026 commission economics and revenue workbooks already reconciled as the control baseline; live integrations (Practo, Zoho Books, Zavis) phased next.',
+        evidence: [{ label: 'Build specification — full chapter in the Operating Platform report', href: OPS, kind: 'doc' }],
+        pnl: '',
+        owner: 'Dr Luvi Kaprani',
+        status: 'in-implementation',
+        refresh: 'Specification approved Sep 2026 — progress tracked in the Operating Platform report',
+        updated: '2026-09-11',
       },
       {
         id: '5.4',
