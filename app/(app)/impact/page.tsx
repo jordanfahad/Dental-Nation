@@ -56,16 +56,6 @@ export default async function ImpactPage() {
   return (
     <div className="bg-[linear-gradient(135deg,#F7F5EF,#ffffff_45%,#EEEFE1)]">
       <div className="mx-auto max-w-7xl px-5 py-8">
-        {/* Reference library entry: the full ZAVIS marketing knowledge base. */}
-        <div className="mb-4 flex items-center justify-between rounded-xl border border-[#D8D8CC] bg-white/70 px-4 py-2.5">
-          <p className="text-[12px] text-[#767769]">
-            <span className="font-semibold text-[#244260]">ZAVIS Marketing Knowledge Graph</span> — the complete
-            knowledge base of the marketing system (platforms, channels, assets, strategies).
-          </p>
-          <a href="/impact/zavis-know-how" className="shrink-0 rounded-full border border-[#244260] px-3 py-1 text-[11.5px] font-medium text-[#244260] transition hover:bg-[#244260] hover:text-white">
-            Open →
-          </a>
-        </div>
         <DashboardTabs
           overview={
             <>

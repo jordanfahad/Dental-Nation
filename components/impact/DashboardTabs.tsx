@@ -70,6 +70,20 @@ export function DashboardTabs(panels: Record<TabKey, React.ReactNode>) {
               {t.label}
             </button>
           ))}
+          {/* Reference-library entries — real pages, styled as sibling tabs. */}
+          <span aria-hidden className="mx-1 my-1 w-px shrink-0 self-stretch bg-dn-navy/15" />
+          <a
+            href="/Fahad-know-how"
+            className="whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm font-medium text-dn-navy/70 transition-colors hover:bg-dn-navy/5 hover:text-dn-navy"
+          >
+            Fahad Know-How ↗
+          </a>
+          <a
+            href="/impact/zavis-know-how"
+            className="whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm font-medium text-dn-navy/70 transition-colors hover:bg-dn-navy/5 hover:text-dn-navy"
+          >
+            ZAVIS Knowledge Graph ↗
+          </a>
         </div>
       </div>
 
