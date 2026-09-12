@@ -80,6 +80,12 @@ export function DashboardTabs(panels: Record<TabKey, React.ReactNode>) {
             Fahad Know-How ↗
           </a>
           <a
+            href="/Fahad-know-how/operating-model"
+            className="whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm font-medium text-dn-navy/70 transition-colors hover:bg-dn-navy/5 hover:text-dn-navy"
+          >
+            Operating Model ↗
+          </a>
+          <a
             href="/impact/zavis-know-how"
             className="whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm font-medium text-dn-navy/70 transition-colors hover:bg-dn-navy/5 hover:text-dn-navy"
           >
