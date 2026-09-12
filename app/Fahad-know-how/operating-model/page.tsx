@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: 'Fahad Know-How — Operating Model R
 
 /**
  * Fahad's know-how library — reference documents for the leadership team,
- * behind the dashboard login. First entry: the e-commerce operating model
+ * behind the dashboard login. Nested under the interactive system map at /Fahad-know-how. This entry: the e-commerce operating model
  * (Al Tayer / Bloomingdale's reference case) with its read-across to a
  * multi-clinic dental group. Rendered from content/*.md so the document can
  * be updated without touching components.
@@ -32,7 +32,7 @@ export default async function FahadKnowHowPage() {
           interactive version of this page.
         </p>
         <p className="mt-2 text-[11px] text-ink-faint">
-          <Link href="/" className="text-accent underline-offset-2 hover:underline">← Back to dashboard</Link>
+          <Link href="/Fahad-know-how" className="text-accent underline-offset-2 hover:underline">← Back to the Know-How map</Link>
         </p>
       </header>
       <Markdown source={source} />
