@@ -28,6 +28,7 @@ import { GroupRevenue } from '@/components/sections/clinics/GroupRevenue';
 import { UserManagement } from '@/components/sections/users/UserManagement';
 import { OpsReport } from '@/components/sections/opsreport/OpsReport';
 import { CeoIntelligence } from '@/components/sections/opsreport/CeoIntelligence';
+import { ClinicalPortal, DailyReportPortal, DoctorPortal, OrthoPortal, PractoPortal, ProcurementPortal, ZavisPortal } from '@/components/sections/opsreport/Portals';
 
 export const dynamic = 'force-dynamic';
 // The Marketing deep-dive sub-tabs make several live Meta/Google ad-API calls,
@@ -152,27 +153,42 @@ export default async function DashboardPage({
           <>
             {/* Sub-nav: the editable live report (default) vs the CEO
                 Intelligence executive view — Dr Luvi's layout on live data. */}
-            <nav className="no-print mb-1 mt-1 flex gap-1.5">
-              <a
-                href="?tab=operations"
-                aria-current={sp.otab !== 'ceo' ? 'page' : undefined}
-                className={`inline-block rounded-full border px-3.5 py-1.5 text-[12.5px] font-medium transition ${sp.otab !== 'ceo' ? 'border-accent bg-accent text-white' : 'border-line bg-card text-ink-soft hover:border-accent/40 hover:text-ink'}`}
-              >
-                Live Report
-              </a>
-              <a
-                href="?tab=operations&otab=ceo"
-                aria-current={sp.otab === 'ceo' ? 'page' : undefined}
-                className={`inline-block rounded-full border px-3.5 py-1.5 text-[12.5px] font-medium transition ${sp.otab === 'ceo' ? 'border-accent bg-accent text-white' : 'border-line bg-card text-ink-soft hover:border-accent/40 hover:text-ink'}`}
-              >
-                CEO Intelligence
-              </a>
+            <nav className="no-print mb-1 mt-1 flex flex-wrap gap-1.5">
+              {([
+                ['', 'Live Report'],
+                ['ceo', 'CEO Intelligence'],
+                ['clinical', 'Clinical Performance'],
+                ['doctors', 'Doctor Performance'],
+                ['ortho', 'DN Ortho'],
+                ['practo', 'Practo Live'],
+                ['zavis', 'Zavis Operations'],
+                ['procurement', 'Procurement'],
+                ['daily', 'Daily Appointment Report'],
+              ] as [string, string][]).map(([k, label]) => {
+                const active = (sp.otab ?? '') === k;
+                return (
+                  <a
+                    key={label}
+                    href={k ? `?tab=operations&otab=${k}` : '?tab=operations'}
+                    aria-current={active ? 'page' : undefined}
+                    className={`inline-block rounded-full border px-3.5 py-1.5 text-[12.5px] font-medium transition ${active ? 'border-accent bg-accent text-white' : 'border-line bg-card text-ink-soft hover:border-accent/40 hover:text-ink'}`}
+                  >
+                    {label}
+                  </a>
+                );
+              })}
             </nav>
-            {sp.otab === 'ceo' ? (
-              <CeoIntelligence />
-            ) : (
+            {sp.otab === 'ceo' ? <CeoIntelligence /> : null}
+            {sp.otab === 'clinical' ? <ClinicalPortal /> : null}
+            {sp.otab === 'doctors' ? <DoctorPortal /> : null}
+            {sp.otab === 'ortho' ? <OrthoPortal /> : null}
+            {sp.otab === 'practo' ? <PractoPortal /> : null}
+            {sp.otab === 'zavis' ? <ZavisPortal /> : null}
+            {sp.otab === 'procurement' ? <ProcurementPortal /> : null}
+            {sp.otab === 'daily' ? <DailyReportPortal /> : null}
+            {!sp.otab ? (
               <OpsReport editable={isAdmin || (me?.extraTabs ?? []).includes('operations')} editorName={me?.name} />
-            )}
+            ) : null}
           </>
         ) : null}
         {tab === 'status' && isAdmin ? <StatusReport /> : null}
