@@ -12,6 +12,7 @@ import { ImpactByFunction } from "@/components/impact/ImpactByFunction";
 import { FlowchartsSection } from "@/components/impact/FlowchartsSection";
 import { EvidenceLocker } from "@/components/impact/EvidenceLocker";
 import { DashboardTabs } from "@/components/impact/DashboardTabs";
+import { SmileClubOptimization } from "@/components/sections/smileclub/SmileClubOptimization";
 import { GrowthBuildsShowcase } from "@/components/impact/GrowthBuildsShowcase";
 import { Y1PlanBanner } from "@/components/impact/Y1PlanBanner";
 import { formatDate, formatRelativeTime } from "@/lib/impact/format";
@@ -81,6 +82,7 @@ export default async function ImpactPage() {
           }
           operating={<FlowchartsSection flowcharts={data.flowcharts} />}
           evidence={<EvidenceLocker evidence={data.evidence} components={data.components} canEdit={canEdit} />}
+          smileclub={<SmileClubOptimization />}
         />
 
         <footer className="mt-10 border-t border-hairline pt-4 text-xs text-ink-3">

@@ -459,7 +459,7 @@ const SUBS: { id: Sub; label: string }[] = [
 export function SmileClubOptimization() {
   const [sub, setSub] = useState<Sub>('diag');
   return (
-    <main className="mx-auto max-w-[980px]">
+    <section className="mx-auto max-w-[980px]">
       <header className="mb-3 border-b border-line pb-3">
         <p className="eyebrow text-accent">Growth Programme · Smile Club</p>
         <h1 className="mt-1 text-lg font-semibold tracking-tight text-ink" style={{ fontFamily: 'Georgia, serif' }}>
@@ -490,6 +490,6 @@ export function SmileClubOptimization() {
         {sub === 'offline' && <Offline />}
         {sub === 'kpis' && <Kpis />}
       </div>
-    </main>
+    </section>
   );
 }

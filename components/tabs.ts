@@ -20,7 +20,6 @@ export const TABS = [
   { key: 'arabyads', label: 'Araby Ads' },
   { key: 'marketing', label: 'Marketing' },
   { key: 'social', label: 'Social & Local' },
-  { key: 'smileclub', label: 'Smile Club Optimization' },
   { key: 'analytics', label: 'Google Analytics' },
   { key: 'digital', label: 'Digital & SEO' },
   { key: 'clarity', label: 'Heatmaps & Recordings' },

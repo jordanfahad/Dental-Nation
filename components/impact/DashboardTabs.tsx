@@ -13,7 +13,7 @@ import { cn } from "@/components/ui/cn";
  * globals.css). The active tab is mirrored to the URL hash, so a specific view
  * is bookmarkable / shareable (e.g. …/impact#tasks).
  */
-export type TabKey = "overview" | "projects" | "tasks" | "impact" | "operating" | "evidence";
+export type TabKey = "overview" | "projects" | "tasks" | "impact" | "operating" | "evidence" | "smileclub";
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: "overview", label: "Overview" },
@@ -22,6 +22,7 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: "impact", label: "Impact & Effort" },
   { key: "operating", label: "Operating model" },
   { key: "evidence", label: "Evidence" },
+  { key: "smileclub", label: "Smile Club" },
 ];
 
 export function DashboardTabs(panels: Record<TabKey, React.ReactNode>) {
