@@ -27,6 +27,7 @@ import { DigitalSeo } from '@/components/sections/digital/DigitalSeo';
 import { GroupRevenue } from '@/components/sections/clinics/GroupRevenue';
 import { UserManagement } from '@/components/sections/users/UserManagement';
 import { OpsReport } from '@/components/sections/opsreport/OpsReport';
+import { CeoIntelligence } from '@/components/sections/opsreport/CeoIntelligence';
 
 export const dynamic = 'force-dynamic';
 // The Marketing deep-dive sub-tabs make several live Meta/Google ad-API calls,
@@ -64,6 +65,7 @@ export default async function DashboardPage({
     rdate?: string;
     rcad?: string;
     rcmp?: string;
+    otab?: string;
     clinic?: string;
   }>;
 }) {
@@ -119,7 +121,7 @@ export default async function DashboardPage({
           navigation so the skeleton shows immediately instead of the shell
           hanging on the tab's data. */}
       <Suspense
-        key={`${tab}|${sp.tab ?? ''}|${sp.from ?? ''}|${sp.to ?? ''}|${sp.preset ?? ''}|${sp.compare ?? ''}|${sp.mtab ?? ''}|${sp.mscope ?? ''}|${sp.btab ?? ''}|${sp.ptab ?? ''}|${sp.gtab ?? ''}|${sp.gchan ?? ''}|${sp.gclinic ?? ''}|${sp.mpipe ?? ''}|${sp.rdate ?? ''}|${sp.rcad ?? ''}|${sp.rcmp ?? ''}|${clinic}`}
+        key={`${tab}|${sp.tab ?? ''}|${sp.from ?? ''}|${sp.to ?? ''}|${sp.preset ?? ''}|${sp.compare ?? ''}|${sp.mtab ?? ''}|${sp.mscope ?? ''}|${sp.btab ?? ''}|${sp.ptab ?? ''}|${sp.gtab ?? ''}|${sp.gchan ?? ''}|${sp.gclinic ?? ''}|${sp.mpipe ?? ''}|${sp.rdate ?? ''}|${sp.rcad ?? ''}|${sp.rcmp ?? ''}|${sp.otab ?? ''}|${clinic}`}
         fallback={<TabSkeleton />}
       >
         {tab === 'executive' ? <ExecutiveDashboard query={query} gclinic={sp.gclinic} /> : null}
@@ -147,7 +149,31 @@ export default async function DashboardPage({
         {/* The operations tab grant IS the edit right — that is how the
             Operations Director owns the document without other admin power. */}
         {tab === 'operations' ? (
-          <OpsReport editable={isAdmin || (me?.extraTabs ?? []).includes('operations')} editorName={me?.name} />
+          <>
+            {/* Sub-nav: the editable live report (default) vs the CEO
+                Intelligence executive view — Dr Luvi's layout on live data. */}
+            <nav className="no-print mb-1 mt-1 flex gap-1.5">
+              <a
+                href="?tab=operations"
+                aria-current={sp.otab !== 'ceo' ? 'page' : undefined}
+                className={`inline-block rounded-full border px-3.5 py-1.5 text-[12.5px] font-medium transition ${sp.otab !== 'ceo' ? 'border-accent bg-accent text-white' : 'border-line bg-card text-ink-soft hover:border-accent/40 hover:text-ink'}`}
+              >
+                Live Report
+              </a>
+              <a
+                href="?tab=operations&otab=ceo"
+                aria-current={sp.otab === 'ceo' ? 'page' : undefined}
+                className={`inline-block rounded-full border px-3.5 py-1.5 text-[12.5px] font-medium transition ${sp.otab === 'ceo' ? 'border-accent bg-accent text-white' : 'border-line bg-card text-ink-soft hover:border-accent/40 hover:text-ink'}`}
+              >
+                CEO Intelligence
+              </a>
+            </nav>
+            {sp.otab === 'ceo' ? (
+              <CeoIntelligence />
+            ) : (
+              <OpsReport editable={isAdmin || (me?.extraTabs ?? []).includes('operations')} editorName={me?.name} />
+            )}
+          </>
         ) : null}
         {tab === 'status' && isAdmin ? <StatusReport /> : null}
         {tab === 'users' && isAdmin ? <UserManagement /> : null}
