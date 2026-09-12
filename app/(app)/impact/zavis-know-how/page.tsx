@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation';
 import { currentRole } from '@/lib/auth/role';
 import { canSeeGrowthProjects } from '@/lib/auth/session';
 import { Markdown } from '@/components/docs/Markdown';
+import { ZavisGraphVisuals } from '@/components/docs/ZavisGraphVisuals';
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'ZAVIS — Marketing Knowledge Graph' };
@@ -38,7 +39,13 @@ export default async function ZavisKnowHowPage() {
           <Link href="/impact" className="text-accent underline-offset-2 hover:underline">← Back to Growth Projects</Link>
         </p>
       </header>
-      <Markdown source={source} />
+      <ZavisGraphVisuals />
+      <details className="mt-8 rounded-card border border-line bg-panel/30 p-4">
+        <summary className="cursor-pointer text-[13px] font-semibold text-ink">
+          Full source document — ontology, every node and relationship, constraints, open questions
+        </summary>
+        <div className="mt-3"><Markdown source={source} /></div>
+      </details>
     </main>
   );
 }

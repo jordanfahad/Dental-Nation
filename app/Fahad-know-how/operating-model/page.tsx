@@ -3,6 +3,7 @@ import path from 'path';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Markdown } from '@/components/docs/Markdown';
+import { OperatingModelVisuals } from '@/components/docs/OperatingModelVisuals';
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'Fahad Know-How — Operating Model Reference' };
@@ -35,7 +36,13 @@ export default async function FahadKnowHowPage() {
           <Link href="/Fahad-know-how" className="text-accent underline-offset-2 hover:underline">← Back to the Know-How map</Link>
         </p>
       </header>
-      <Markdown source={source} />
+      <OperatingModelVisuals />
+      <details className="mt-8 rounded-card border border-line bg-panel/30 p-4">
+        <summary className="cursor-pointer text-[13px] font-semibold text-ink">
+          Full source document — department profiles, interaction map, scenarios, RACI
+        </summary>
+        <div className="mt-3"><Markdown source={source} /></div>
+      </details>
     </main>
   );
 }
