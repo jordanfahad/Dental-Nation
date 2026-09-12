@@ -339,14 +339,18 @@ export const PLATFORM_LAYERS: PlatformLayer[] = [
         overview:
           'The end-to-end patient journey, referral routing, treatment-plan coordination and handoffs between clinics and specialty services.',
         built:
-          'Patient Intelligence Platform plugged in for operations-triggered communications (validation of the data push to the marketing platform in progress; comms sending owned by Dr Luvi under Operations).',
-        coverage: '',
-        evidence: [],
-        pnl: '',
+          'Patient Intelligence Platform plugged in for operations-triggered communications (validation of the data push to the marketing platform in progress; comms sending owned by Dr Luvi under Operations). Beneath it, the coordination spine is running: every enquiry route (booking widget, campaign forms, CRM) lands in one live appointment registry mirrored from the CRM every 15 minutes, with the hospital system as the final roll call \u2014 so a patient\u2019s journey from first contact to attended treatment is traceable across branches.',
+        coverage:
+          'All three clinics on the shared registry; cross-branch orthodontic referral routing demonstrated (four orthodontists covering three sites). Treatment-plan coordination live for the ortho programme: a 105-case unconverted-plan pool under receptionist follow-up with first/second/third attempts logged per case. General treatment-plan coordination beyond ortho pending the EMR connection.',
+        evidence: [
+          { label: 'Clinical Operations \u2014 live worklist & bookings', href: CLINOPS, kind: 'kpi' },
+          { label: 'DN Ortho follow-up workflow \u2014 Operating Platform report', href: OPS, kind: 'doc' },
+        ],
+        pnl: 'The unconverted-plan pool converts demand the group has already paid to acquire \u2014 each recovered plan is treatment value at near-zero incremental acquisition cost.',
         owner: 'Dr Luvi Kaprani',
         status: 'in-implementation',
-        refresh: 'Pending: PIP data-push validation (Zavis)',
-        updated: SEEDED,
+        refresh: 'Drafted from verified platform data 12 Sep 2026 \u2014 awaiting Dr Luvi\u2019s sign-off; PIP data-push validation (Zavis) still pending',
+        updated: '2026-09-12',
       },
       {
         id: '3.4',
@@ -463,9 +467,14 @@ export const PLATFORM_LAYERS: PlatformLayer[] = [
         title: 'Centralized Shared Services',
         overview:
           'Clinic operations & administration, commercial & finance, procurement & inventory, IT support, facilities & project management.',
-        built: '',
-        coverage: '',
-        evidence: [{ label: 'Operating Platform report', href: OPS, kind: 'live' }],
+        built:
+          'Commercial & finance reporting is centralised: all three clinics\u2019 invoice-line revenue flows into one group feed with a monthly workbook cadence from Finance, reconciled to the fils, and a governed in-dashboard handover lane (Data Drop) replaces ad-hoc file sharing for finance and operations inputs. Procurement centralisation is designed \u2014 the three branch Zoho Books organisations are mapped in the Executive Intelligence specification \u2014 pending API authorisation.',
+        coverage:
+          'Finance shared service live across all three clinics; operations file intake live. Procurement, IT support and facilities administration to be documented by the owners.',
+        evidence: [
+          { label: 'Finance section \u2014 group revenue (live)', href: FINANCE, kind: 'kpi' },
+          { label: 'Operating Platform report', href: OPS, kind: 'live' },
+        ],
         pnl: '',
         owner: 'Dr Luvi Kaprani · Mr Jawad Shafiq',
         status: 'in-implementation',
