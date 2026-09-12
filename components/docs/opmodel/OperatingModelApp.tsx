@@ -11,7 +11,7 @@
  * All content comes from data/operating-model.ts.
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   CADENCE, DEPTS, INTERACTIONS, PRINCIPLES, RACI, SCENARIOS, deptById,
   type Dept,
@@ -194,6 +194,12 @@ function Profile({ id, mode, onJump }: { id: string; mode: Mode; onJump: (id: st
 
 function StructureTab({ mode, sel, setSel }: { mode: Mode; sel: string | null; setSel: (id: string | null) => void }) {
   const row = (ids: string[]) => ids.map((id) => deptById(id)!);
+  const profileRef = useRef<HTMLDivElement>(null);
+  // The profile renders below the (tall) org chart — without this, clicking a
+  // node looks like nothing happened because the panel opens off-screen.
+  useEffect(() => {
+    if (sel) profileRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [sel]);
   return (
     <div>
       <p className="mb-2 text-[11px]" style={{ color: OLIVE }}>
@@ -223,7 +229,11 @@ function StructureTab({ mode, sel, setSel }: { mode: Mode; sel: string | null; s
         </p>
         <Node d={deptById('retail_ops')!} mode={mode} selected={sel === 'retail_ops'} onSelect={(i) => setSel(sel === i ? null : i)} />
       </div>
-      {sel && <Profile id={sel} mode={mode} onJump={(i) => setSel(i)} />}
+      {sel && (
+        <div ref={profileRef} style={{ scrollMarginTop: 12 }}>
+          <Profile id={sel} mode={mode} onJump={(i) => setSel(i)} />
+        </div>
+      )}
       {!sel && (
         <div className="mt-3 grid gap-2 md:grid-cols-2">
           {PRINCIPLES.map((p, i) => (
