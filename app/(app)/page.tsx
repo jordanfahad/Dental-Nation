@@ -18,6 +18,7 @@ import { ArabyAdsReport } from '@/components/sections/arabyads/ArabyAdsReport';
 import { DataDrop } from '@/components/sections/drop/DataDrop';
 import { MarketingReport } from '@/components/sections/marketing/MarketingReport';
 import { SocialReport } from '@/components/sections/social/SocialReport';
+import { SmileClubOptimization } from '@/components/sections/smileclub/SmileClubOptimization';
 import { GoogleAnalyticsReport } from '@/components/sections/analytics/GoogleAnalyticsReport';
 import { ClarityReport } from '@/components/sections/clarity/ClarityReport';
 import { StatusReport } from '@/components/sections/status/StatusReport';
@@ -135,6 +136,7 @@ export default async function DashboardPage({
         {tab === 'arabyads' ? <ArabyAdsReport range={range} /> : null}
         {tab === 'marketing' ? <MarketingReport sub={sp.mtab} range={range} mscope={sp.mscope} /> : null}
         {tab === 'social' ? <SocialReport range={range} /> : null}
+        {tab === 'smileclub' ? <SmileClubOptimization /> : null}
         {tab === 'analytics' ? <GoogleAnalyticsReport range={range} /> : null}
         {tab === 'digital' ? <DigitalSeo range={range} /> : null}
         {tab === 'clarity' ? <ClarityReport /> : null}
