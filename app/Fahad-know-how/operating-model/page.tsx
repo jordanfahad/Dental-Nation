@@ -1,7 +1,7 @@
 import { readFile } from 'fs/promises';
 import path from 'path';
 import type { Metadata } from 'next';
-import Link from 'next/link';
+import { Breadcrumbs } from '@/components/docs/Breadcrumbs';
 import { Markdown } from '@/components/docs/Markdown';
 import { OperatingModelApp } from '@/components/docs/opmodel/OperatingModelApp';
 
@@ -23,6 +23,14 @@ export default async function FahadKnowHowPage() {
   return (
     <main className="mx-auto max-w-[880px] px-4 py-6 md:px-8">
       <header className="mb-4 border-b border-line pb-4">
+        <Breadcrumbs
+          items={[
+            { label: 'Dashboard', href: '/' },
+            { label: 'Growth Projects', href: '/impact' },
+            { label: 'Know-How map', href: '/Fahad-know-how' },
+            { label: 'Operating model' },
+          ]}
+        />
         <p className="eyebrow text-accent">Fahad · Know-How</p>
         <h1 className="mt-1 text-xl font-semibold tracking-tight text-ink">
           How a large-scale omni-channel retail business runs
@@ -31,9 +39,6 @@ export default async function FahadKnowHowPage() {
           Interactive reference operating model (Al Tayer Group / Bloomingdale&apos;s case) — prepared for Mr Akbar.
           Explore the structure, hand-offs, cadence and scenarios, then flip the view to see the whole model
           relabelled as a multi-clinic dental group.
-        </p>
-        <p className="mt-2 text-[11px] text-ink-faint">
-          <Link href="/Fahad-know-how" className="text-accent underline-offset-2 hover:underline">← Back to the Know-How map</Link>
         </p>
       </header>
       <OperatingModelApp />
