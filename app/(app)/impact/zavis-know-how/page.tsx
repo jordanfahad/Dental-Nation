@@ -6,7 +6,7 @@ import { redirect } from 'next/navigation';
 import { currentRole } from '@/lib/auth/role';
 import { canSeeGrowthProjects } from '@/lib/auth/session';
 import { Markdown } from '@/components/docs/Markdown';
-import { ZavisGraphVisuals } from '@/components/docs/ZavisGraphVisuals';
+import { ZavisKnowHowApp } from '@/components/docs/zavis/ZavisKnowHowApp';
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'ZAVIS — Marketing Knowledge Graph' };
@@ -32,14 +32,15 @@ export default async function ZavisKnowHowPage() {
           Dental Nation Marketing Knowledge Graph
         </h1>
         <p className="mt-1 max-w-[680px] text-[12.5px] leading-snug text-ink-soft">
-          The complete ZAVIS knowledge base of the marketing system — platforms, channels, assets, campaigns,
-          strategies and their relationships. Prepared by ZAVIS, 11 September 2026.
+          The ZAVIS Marketing OS — the platform suite with live links and delivery status, the automated
+          segment-to-broadcast loop, the paid and organic lead engines, the programmatic SEO factory and the pilot
+          plan. Knowledge graph prepared by ZAVIS 11 Sep 2026; delivery status updated 12 Sep 2026.
         </p>
         <p className="mt-2 text-[11px] text-ink-faint">
           <Link href="/impact" className="text-accent underline-offset-2 hover:underline">← Back to Growth Projects</Link>
         </p>
       </header>
-      <ZavisGraphVisuals />
+      <ZavisKnowHowApp />
       <details className="mt-8 rounded-card border border-line bg-panel/30 p-4">
         <summary className="cursor-pointer text-[13px] font-semibold text-ink">
           Full source document — ontology, every node and relationship, constraints, open questions
