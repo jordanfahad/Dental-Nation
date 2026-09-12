@@ -3,7 +3,7 @@ import path from 'path';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Markdown } from '@/components/docs/Markdown';
-import { OperatingModelVisuals } from '@/components/docs/OperatingModelVisuals';
+import { OperatingModelApp } from '@/components/docs/opmodel/OperatingModelApp';
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'Fahad Know-How — Operating Model Reference' };
@@ -28,15 +28,15 @@ export default async function FahadKnowHowPage() {
           How a large-scale omni-channel retail business runs
         </h1>
         <p className="mt-1 max-w-[680px] text-[12.5px] leading-snug text-ink-soft">
-          Reference operating model (Al Tayer Group / Bloomingdale&apos;s case) with a full read-across to a
-          multi-clinic dental group — prepared for Mr Akbar. Section 9 is the build specification for the future
-          interactive version of this page.
+          Interactive reference operating model (Al Tayer Group / Bloomingdale&apos;s case) — prepared for Mr Akbar.
+          Explore the structure, hand-offs, cadence and scenarios, then flip the view to see the whole model
+          relabelled as a multi-clinic dental group.
         </p>
         <p className="mt-2 text-[11px] text-ink-faint">
           <Link href="/Fahad-know-how" className="text-accent underline-offset-2 hover:underline">← Back to the Know-How map</Link>
         </p>
       </header>
-      <OperatingModelVisuals />
+      <OperatingModelApp />
       <details className="mt-8 rounded-card border border-line bg-panel/30 p-4">
         <summary className="cursor-pointer text-[13px] font-semibold text-ink">
           Full source document — department profiles, interaction map, scenarios, RACI
