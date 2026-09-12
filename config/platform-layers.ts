@@ -391,14 +391,18 @@ export const PLATFORM_LAYERS: PlatformLayer[] = [
         title: 'Clinical Leadership & Governance',
         overview:
           'Clinical governance structure, decision rights, leadership forums, network-wide clinical accountability and escalation.',
-        built: '',
-        coverage: '',
-        evidence: [],
+        built:
+          'A working governance rhythm runs today: every branch files a daily appointment report with a named preparer and submission time; clinician economics pass a monthly formula-controlled reconciliation (verified to AED 0.02 across all 15 August workbooks, twice independently); and the Head of Operations maintains the live Operating Platform report as the group\u2019s governed operating narrative \u2014 including her dashboard build specification and its independent verification. Formal structure (leadership forums, decision rights, escalation paths) to be documented from clinical leadership records.',
+        coverage:
+          'Daily reporting live at all three branches; monthly commission control live for 15 clinicians; the operations report maintained continuously. Forums and escalation documentation pending.',
+        evidence: [
+          { label: 'Operating Platform report \u2014 governed live document', href: OPS, kind: 'live' },
+        ],
         pnl: '',
         owner: 'Dr Luvi Kaprani',
         status: 'validate',
-        refresh: 'Pending: governance records from clinical leadership',
-        updated: SEEDED,
+        refresh: 'Operating routines drafted from verified evidence 12 Sep 2026 \u2014 formal governance records still pending from clinical leadership',
+        updated: '2026-09-12',
       },
       {
         id: '4.2',
@@ -419,14 +423,18 @@ export const PLATFORM_LAYERS: PlatformLayer[] = [
         title: 'Quality, Safety, Compliance & Audit',
         overview:
           'Quality measures, safety controls, compliance requirements, audit routines and corrective-action evidence.',
-        built: '',
-        coverage: '',
-        evidence: [],
+        built:
+          'Patient-experience quality is measured and managed: every daily branch report captures per-patient ratings and comments, and the public measure stands at 4.9\u2605 across 62 Google reviews with a 97% response rate. The 2026 clinical-quality KPI framework is defined and loaded on the group\u2019s restricted KPI page \u2014 clinical audit pass \u2265 95%, consent completeness \u2265 98%, infection-control compliance \u2265 98%, treatment-plan documentation \u2265 98% \u2014 awaiting the first audited actuals.',
+        coverage:
+          'Experience quality live across all three clinics. Clinical audit, safety and compliance evidence (audit routines, corrective actions) pending from the clinical team.',
+        evidence: [
+          { label: 'Patient feedback & daily report routine \u2014 Operating Platform report', href: OPS, kind: 'doc' },
+        ],
         pnl: '',
         owner: 'Dr Luvi Kaprani',
         status: 'validate',
-        refresh: 'Pending: audit & compliance evidence',
-        updated: SEEDED,
+        refresh: 'Experience measures live; audit & compliance actuals pending \u2014 drafted 12 Sep 2026, awaiting Dr Luvi\u2019s sign-off',
+        updated: '2026-09-12',
       },
       {
         id: '4.4',
