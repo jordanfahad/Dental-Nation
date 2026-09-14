@@ -8,6 +8,7 @@ import type {
   Flowchart,
   IngestionJob,
   LaneESnapshot,
+  LiveOutcomes,
   Project,
   ProjectBlocker,
   Task,
@@ -224,6 +225,42 @@ export async function getLastAppliedJob(): Promise<IngestionJob | null> {
   return (data as IngestionJob) ?? null;
 }
 
+/**
+ * Live outcomes for the hero tiles — the platform's own feeds, not project
+ * bookkeeping. Leads: the deduplicated all-channel actual maintained in
+ * platform_kpi_targets (the same number the KPI tab shows). Reviews: count +
+ * average straight from the synced gmb_reviews table. Resilient: any failure
+ * → null and the hero falls back gracefully.
+ */
+export async function getLiveOutcomes(): Promise<LiveOutcomes | null> {
+  const db = getSupabaseAdmin();
+  if (!db) return null;
+  try {
+    const [kpiRes, revRes] = await Promise.all([
+      db
+        .from("platform_kpi_targets")
+        .select("actual_value, updated_at")
+        .eq("kpi", "Leads (all channels)")
+        .maybeSingle(),
+      db.from("gmb_reviews").select("rating"),
+    ]);
+    const leads = kpiRes.data as { actual_value: number | string | null; updated_at: string | null } | null;
+    const ratings = ((revRes.data ?? []) as { rating: number | null }[])
+      .map((r) => r.rating)
+      .filter((r): r is number => r != null);
+    return {
+      leads_ytd: leads?.actual_value != null ? Number(leads.actual_value) : null,
+      leads_as_of: leads?.updated_at ?? null,
+      reviews_count: ratings.length || null,
+      reviews_avg: ratings.length
+        ? Math.round((ratings.reduce((a, b) => a + b, 0) / ratings.length) * 10) / 10
+        : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export interface DashboardData {
   components: Component[];
   projects: Project[];
@@ -233,12 +270,13 @@ export interface DashboardData {
   effortLog: EffortLog[];
   flowcharts: Flowchart[];
   snapshot: LaneESnapshot | null;
+  outcomes: LiveOutcomes | null;
   lastApplied: IngestionJob | null;
   pendingReviewCount: number;
 }
 
 export async function getDashboardData(): Promise<DashboardData> {
-  const [components, projects, tasks, blockers, evidence, effortLog, flowcharts, snapshot, lastApplied, jobs] =
+  const [components, projects, tasks, blockers, evidence, effortLog, flowcharts, snapshot, outcomes, lastApplied, jobs] =
     await Promise.all([
       getComponents(),
       getProjects(),
@@ -248,6 +286,7 @@ export async function getDashboardData(): Promise<DashboardData> {
       getEffortLog(),
       getFlowcharts(),
       getLaneESnapshot(),
+      getLiveOutcomes(),
       getLastAppliedJob(),
       getIngestionJobs(),
     ]);
@@ -260,6 +299,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     effortLog,
     flowcharts,
     snapshot,
+    outcomes,
     lastApplied,
     pendingReviewCount: jobs.filter((j) => j.status === "pending_review").length,
   };

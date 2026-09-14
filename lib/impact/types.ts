@@ -141,6 +141,18 @@ export interface LaneESnapshot {
   leads_total: number | null;
 }
 
+/**
+ * Live outcome figures for the hero tiles, read from the platform's own
+ * feeds rather than project bookkeeping: the deduplicated all-channel lead
+ * actual from the KPI table, and the synced Google-review corpus.
+ */
+export interface LiveOutcomes {
+  leads_ytd: number | null;
+  leads_as_of: string | null;
+  reviews_count: number | null;
+  reviews_avg: number | null;
+}
+
 // ---- Flowcharts (operating architecture / roadmaps) ----
 export type FlowTone = "start" | "process" | "decision" | "accent" | "end";
 export interface FlowNode {

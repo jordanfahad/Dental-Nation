@@ -10,20 +10,14 @@ export function Hero({ summary }: { summary: ImpactSummary }) {
   }));
 
   // Outcome KPIs (the heroes) + a surface-area tile, reference-deck style. Each
-  // tile deep-links to its detail: project tiles scroll to that function's cards
-  // in Project Control; the live Lane E metric opens the Performance Report.
-  const countByComp = new Map(summary.components.map((c) => [c.id, c.projectCount]));
-  const grp = (id: string) => ((countByComp.get(id) ?? 0) > 0 ? `#pc-${id}` : "#project-control");
+  // tile deep-links to where its number lives: leads → the KPI feed, reviews →
+  // Social & Local, SEO pages → the live knowledge base, platforms → the
+  // Marketing OS explorer.
   const hrefByKey: Record<string, string> = {
-    leads: "/",
-    sites: grp("website_growth"),
-    hires: grp("hiring"),
-    ranking:
-      (countByComp.get("seo") ?? 0) > 0
-        ? "#pc-seo"
-        : (countByComp.get("ai_seo") ?? 0) > 0
-          ? "#pc-ai_seo"
-          : "#project-control",
+    leads: "/?tab=executive",
+    reviews: "/?tab=social",
+    seo_pages: "https://dentalnation.com/en/knowledge",
+    platforms: "/impact/zavis-know-how",
   };
   const tiles = [
     ...summary.headline.map((h) => ({
@@ -73,14 +67,14 @@ export function Hero({ summary }: { summary: ImpactSummary }) {
                 {t.live && (
                   <div className="mt-1.5 inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-dn-mint">
                     <span className="h-1.5 w-1.5 rounded-full bg-dn-mint" />
-                    live — Lane E
+                    live feed
                   </div>
                 )}
                 <span
                   aria-hidden
                   className="absolute right-3 top-3 text-sm text-dn-mint opacity-0 transition-opacity group-hover:opacity-80"
                 >
-                  {t.href === "/" ? "↗" : "↓"}
+                  {t.href.startsWith("#") ? "↓" : "↗"}
                 </span>
               </a>
             ))}

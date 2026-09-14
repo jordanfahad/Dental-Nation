@@ -132,53 +132,59 @@ export interface HeadlineResult {
 }
 
 export function headlineResults(data: DashboardData): HeadlineResult[] {
-  const { projects, snapshot } = data;
-  const completedIn = (componentId: string) =>
-    projects.filter((p) => p.component_id === componentId && p.status === "completed").length;
-
-  const sitesShipped = completedIn("website_growth");
-  const hiresMade = completedIn("hiring");
-  const rankingWins = completedIn("seo") + completedIn("ai_seo");
-
+  const { snapshot, outcomes } = data;
   const results: HeadlineResult[] = [];
 
-  // Leads generated — attributable to Lane E where a snapshot exists (§7).
-  if (snapshot && snapshot.qualified_inquiries != null) {
+  // Leads — the deduplicated all-channel actual from the live KPI feed (the
+  // same number the KPI tab shows). The old Lane E funnel snapshot went stale
+  // in March; it remains only as a clearly-dated fallback.
+  if (outcomes?.leads_ytd != null) {
+    results.push({
+      key: "leads",
+      value: outcomes.leads_ytd.toLocaleString("en-US"),
+      label: "Leads — all channels",
+      sub: "2026 YTD · enquiry union, deduplicated",
+      source: "lane_e",
+      live: true,
+    });
+  } else if (snapshot && snapshot.qualified_inquiries != null) {
     results.push({
       key: "leads",
       value: snapshot.qualified_inquiries.toLocaleString("en-US"),
       label: "Qualified inquiries",
-      sub:
-        snapshot.glow_up_bookings != null
-          ? `${snapshot.glow_up_bookings.toLocaleString("en-US")} Glow Up bookings`
-          : "since launch",
+      sub: `Lane E snapshot · ${snapshot.snapshot_date}`,
+      source: "lane_e",
+      live: false,
+    });
+  }
+
+  // Google reviews — count + average straight from the synced review table.
+  if (outcomes?.reviews_count != null) {
+    results.push({
+      key: "reviews",
+      value: outcomes.reviews_count.toLocaleString("en-US"),
+      label: "Google reviews",
+      sub: outcomes.reviews_avg != null ? `${outcomes.reviews_avg}★ average · grown from 40` : "grown from 40",
       source: "lane_e",
       live: true,
     });
   }
 
+  // Dated platform facts (same figures as the ZAVIS know-how page).
   results.push(
     {
-      key: "sites",
-      value: sitesShipped.toLocaleString("en-US"),
-      label: "Sites shipped",
-      sub: "Website Growth — completed",
+      key: "seo_pages",
+      value: "19,500+",
+      label: "SEO pages live",
+      sub: "programmatic knowledge base · ZAVIS, 12 Sep",
       source: "derived",
       live: false,
     },
     {
-      key: "hires",
-      value: hiresMade.toLocaleString("en-US"),
-      label: "Hires made",
-      sub: "Hiring / Talent — completed",
-      source: "derived",
-      live: false,
-    },
-    {
-      key: "ranking",
-      value: rankingWins.toLocaleString("en-US"),
-      label: "Ranking & visibility wins",
-      sub: "SEO + AI SEO — completed",
+      key: "platforms",
+      value: "6",
+      label: "Platforms live",
+      sub: "reporting platform + 5 Marketing OS products",
       source: "derived",
       live: false,
     }
