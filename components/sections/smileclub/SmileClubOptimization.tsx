@@ -22,11 +22,11 @@ const MINT = '#A9C3A6';
 const OLIVE = '#767769';
 const LINE = '#D8D8CC';
 
-type Sub = 'reco' | 'offer' | 'waves' | 'corporate' | 'channels' | 'kpis';
+type Sub = 'reco' | 'mandate' | 'offer' | 'waves' | 'corporate' | 'channels' | 'kpis';
 
 /* ── atoms ─────────────────────────────────────────────────────── */
 
-function Exhibit({ n, title }: { n: number; title: string }) {
+function Exhibit({ n, title }: { n: number | string; title: string }) {
   return (
     <div className="mb-1.5 flex items-baseline gap-2">
       <span className="text-[9.5px] font-bold uppercase tracking-widest" style={{ color: CORAL }}>Exhibit {n}</span>
@@ -165,7 +165,157 @@ const FORTNIGHT = [
   { d: 'Day 14', t: 'Fortnight review: fix, continue testing, or expand provisionally', o: 'Fahad → Mr Akbar' },
 ];
 
+/* ── the 30-day mandate (Gautam, Action Map v4, 16 Sep) ───────── */
+
+const MANDATE_MIX = [
+  { ch: 'Existing DN clinics', n: 60, note: '3 clinics × 20 — Al Wasl, Dr Tosun, AMC (live clinic conversion)' },
+  { ch: 'Corporate', n: 24, note: 'pipeline equivalent to ≥ 72 memberships required' },
+  { ch: 'Website', n: 12, note: '150 qualified opportunities by Day 30 at 8% conversion' },
+  { ch: 'Clinic reseller', n: 7, note: '2 resellers active and source-coded' },
+  { ch: 'Affiliate', n: 7, note: '3 affiliates active and source-coded' },
+  { ch: 'CSR', n: 4, note: '' },
+  { ch: 'Broker', n: 3, note: '' },
+  { ch: 'Distributor', n: 3, note: '' },
+];
+
+const CHECKPOINTS = [
+  { d: '23 Sep · Day 7', plan: 36, min: 30 },
+  { d: '30 Sep · Day 14', plan: 60, min: 50 },
+  { d: '7 Oct · Day 21', plan: 88, min: 75 },
+  { d: '16 Oct · Day 30', plan: 120, min: 120 },
+];
+
+const REGISTER = [
+  { act: 'Accept the commercial mandate', dl: '17 Sep 10:00', who: 'Fahad', out: '120 by 16 Oct; bulk CRM target 0 — targets, deadlines and guardrails acknowledged in writing.' },
+  { act: 'Submit the quantified marketing response', dl: '17 Sep EOD', who: 'Fahad', out: '100% of the 120 mapped: source forecast, qualified demand, conversion, spend, CAC, launch date, owner.' },
+  { act: 'Close the historical CRM test', dl: '18 Sep EOD', who: 'Gautam shares data · Fahad reviews', out: '71 replies classified, 417 failures coded, new bulk sends 0 — reconciled to payment and membership records.' },
+  { act: 'Activate the first acquisition portfolio', dl: '19 Sep EOD', who: 'Fahad', out: 'Every live activity has source, spend, forecast, destination and response owner.' },
+  { act: 'Checkpoints (Day 7 / 14 / 21)', dl: '23 Sep · 30 Sep · 7 Oct', who: 'Fahad + Smile Club Coordinator; Day 21 with Gautam', out: '36/30 → 60/50 → 88/75 cumulative paid; recovery plan next business day if missed.' },
+  { act: 'Complete the mandate', dl: '16 Oct', who: 'Gautam → Mr Akbar', out: '120 paid, active, non-refunded, source-coded; ≥98% data and attribution; Finance-validated.' },
+];
+
+const MANDATE_MAP = [
+  { req: 'Existing DN clinics — 60', ours: 'Wave 1 front-desk route + onboarding (front desk + Dr Luvi): one consistent explanation, QR at three branches, first-appointment help, objection log.' },
+  { req: 'Corporate — 24 (pipeline ≥ 72)', ours: 'Corporate playbook: warm doors (Michael Page HR contact, RBS, partners) + the three warm introductions the mandate asks Mr Akbar to provide (CEO approval item 6).' },
+  { req: 'Website — 12 (150 qualified @ 8%)', ours: 'Wave 1 relevant placements + Wave 2 SEO membership cluster and eligibility-checked paid tests; ZAVIS pilot LP live.' },
+  { req: 'Reseller / affiliate / broker / distributor / CSR — 24', ours: 'NEW commercial-access lane the mandate adds beyond rev. 2 — folds into the B2B mechanics (partner codes, QR links, referral agreements) with per-partner source codes.' },
+  { req: 'Bulk CRM: target 0, budget 0', ours: 'Aligned with our audience-eligibility and consent rule. The Wave 1 CRM test stays limited, consented and non-bulk — scope confirmed against the CRM hold.' },
+  { req: 'CAC ≤ Finance ceiling · daily spend/forecast', ours: 'Our economics gate — "allowable CAC from measured economics" — now given its owner: Finance sets the ceiling, Mr Akbar signs it.' },
+  { req: '≥ 98% data & attribution · dashboard spine (enquiry → qualified → checkout → paid → card active → booked → attended)', ours: 'Exactly the measurement machinery of rev. 2 — activation tracked as first booking AND first completed visit; the spine answers the console-tracking question we posed to Gautam.' },
+  { req: '3× pipeline coverage · 09:00 review · 16:00 recovery · EOD scorecard', ours: 'The daily operating rhythm the pilot reports into; the objection log and comparison-group reads feed the same reviews.' },
+];
+
 /* ── sub-views ─────────────────────────────────────────────────── */
+
+function MandateTab() {
+  const maxMix = MANDATE_MIX[0].n;
+  return (
+    <div className="space-y-5">
+      <p className="rounded-xl border-l-4 bg-white px-4 py-3 text-[12.5px] font-medium leading-snug" style={{ borderColor: GOLD, color: NAVY, fontFamily: 'Georgia, serif' }}>
+        <span className="font-bold">The owner has set the outcome: 120 paid memberships by 16 October.</span>{' '}
+        Gautam&apos;s Marketing Activation Action Map (v4, 16 Sep) mandates the result and delegates the method —
+        which is precisely the ownership split rev. 2 called for. This page maps his requirements onto this plan&apos;s
+        machinery, one to one. Guardrails: ≥3× pipeline coverage · CAC within the Finance ceiling · ≥98% data &amp;
+        attribution · bulk CRM at zero · family counts as one contract.
+      </p>
+
+      <section>
+        <Exhibit n="M1" title="The 120, by source — and the checkpoint line" />
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Card>
+            <p className="mb-2 text-[11px] font-semibold" style={{ color: NAVY }}>Paid membership target by channel</p>
+            {MANDATE_MIX.map((m) => (
+              <div key={m.ch} className="mb-1.5 flex items-center gap-2">
+                <span className="w-[118px] shrink-0 text-[10.5px]" style={{ color: '#3a4148' }}>{m.ch}</span>
+                <div className="h-3.5 flex-1 rounded-full" style={{ backgroundColor: '#EEEFE1' }}>
+                  <div className="h-3.5 rounded-full" style={{ width: `${Math.max(4, Math.round((m.n / maxMix) * 100))}%`, backgroundColor: m.ch === 'Existing DN clinics' ? NAVY : BLUE }} />
+                </div>
+                <span className="w-[24px] shrink-0 text-right text-[10.5px] font-semibold tabular-nums" style={{ color: NAVY }}>{m.n}</span>
+              </div>
+            ))}
+            <p className="mt-2 text-[10px]" style={{ color: OLIVE }}>Existing DN = live clinic conversion (50% of the mix). Bulk CRM contributes zero.</p>
+          </Card>
+          <Card>
+            <p className="mb-2 text-[11px] font-semibold" style={{ color: NAVY }}>Management checkpoints — plan / minimum</p>
+            <div className="space-y-2">
+              {CHECKPOINTS.map((c, i) => (
+                <div key={c.d} className="flex items-center gap-2.5">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ backgroundColor: i === CHECKPOINTS.length - 1 ? CORAL : NAVY }}>{i + 1}</span>
+                  <span className="w-[104px] shrink-0 text-[11px] font-bold" style={{ color: NAVY }}>{c.d}</span>
+                  <div className="h-3.5 flex-1 rounded-full" style={{ backgroundColor: '#EEEFE1' }}>
+                    <div className="h-3.5 rounded-full" style={{ width: `${Math.round((c.plan / 120) * 100)}%`, backgroundColor: i === CHECKPOINTS.length - 1 ? CORAL : GOLD }} />
+                  </div>
+                  <span className="w-[58px] shrink-0 text-right text-[10.5px] tabular-nums" style={{ color: '#3a4148' }}><b>{c.plan}</b> / {c.min}</span>
+                </div>
+              ))}
+            </div>
+            <p className="mt-2 text-[10px]" style={{ color: OLIVE }}>A missed minimum triggers a recovery plan the next business day. Day-15–30 funding releases after the 30 Sep review.</p>
+          </Card>
+        </div>
+      </section>
+
+      <section>
+        <Exhibit n="M2" title="Action register — deadlines this week" />
+        <div className="overflow-x-auto rounded-xl border bg-white" style={{ borderColor: LINE }}>
+          <table className="w-full border-collapse text-[11px]">
+            <thead>
+              <tr className="text-left text-[9.5px] uppercase tracking-wide" style={{ color: OLIVE, backgroundColor: '#F7F7F0' }}>
+                <th className="px-3 py-2 font-bold">Action</th><th className="px-3 py-2 font-bold">Deadline</th>
+                <th className="px-3 py-2 font-bold">Accountable</th><th className="px-3 py-2 font-bold">Completion looks like</th>
+              </tr>
+            </thead>
+            <tbody>
+              {REGISTER.map((r) => (
+                <tr key={r.act} className="border-t align-top" style={{ borderColor: '#EEEFE1' }}>
+                  <td className="px-3 py-1.5 font-semibold" style={{ color: NAVY }}>{r.act}</td>
+                  <td className="px-3 py-1.5 whitespace-nowrap font-bold" style={{ color: CORAL }}>{r.dl}</td>
+                  <td className="px-3 py-1.5" style={{ color: OLIVE }}>{r.who}</td>
+                  <td className="px-3 py-1.5" style={{ color: '#3a4148' }}>{r.out}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <Exhibit n="M3" title="The logical map — his requirement, our machinery" />
+        <div className="overflow-x-auto rounded-xl border bg-white" style={{ borderColor: LINE }}>
+          <table className="w-full border-collapse text-[11px]">
+            <thead>
+              <tr className="text-left text-[9.5px] uppercase tracking-wide" style={{ color: OLIVE, backgroundColor: '#F7F7F0' }}>
+                <th className="px-3 py-2 font-bold" style={{ width: '40%' }}>Mandate requires (Gautam)</th>
+                <th className="px-3 py-2 font-bold">Delivered by (this plan)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {MANDATE_MAP.map((m) => (
+                <tr key={m.req} className="border-t align-top" style={{ borderColor: '#EEEFE1' }}>
+                  <td className="px-3 py-1.5 font-semibold" style={{ color: NAVY }}>{m.req}</td>
+                  <td className="px-3 py-1.5" style={{ color: '#3a4148' }}>{m.ours}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="mt-2 space-y-2">
+          <Note tone="gold">
+            How the two documents fit: rev. 2 said targets should be &quot;set from baseline and economics&quot; by the
+            owner — the mandate is the owner doing exactly that, with fixed checkpoints replacing this plan&apos;s
+            indicative dates. The measurement definitions, consent rules and economics gates of rev. 2 remain the
+            control system the mandate is tracked with. First hard funnel data also arrives with it: the historical
+            CRM test (71 replies, 417 failures to reconcile) closes 18 Sep.
+          </Note>
+          <Note tone="coral">
+            Open before launch (17 Sep): Mr Akbar&apos;s sign-off — 30-day budget ceiling, allowable CAC and initial
+            release are blank in the mandate; plus the three warm corporate introductions and confirmation of the
+            CRM hold. Fahad&apos;s quantified response is due 17 Sep EOD.
+          </Note>
+        </div>
+      </section>
+    </div>
+  );
+}
 
 function Recommendation() {
   return (
@@ -539,6 +689,7 @@ function Kpis() {
 
 const SUBS: { id: Sub; label: string }[] = [
   { id: 'reco', label: 'The recommendation' },
+  { id: 'mandate', label: '30-day mandate' },
   { id: 'offer', label: 'Offer & economics' },
   { id: 'waves', label: 'Three waves' },
   { id: 'corporate', label: 'Corporate playbook' },
@@ -556,9 +707,11 @@ export function SmileClubOptimization() {
           Smile Club — membership growth plan
         </h1>
         <p className="mt-1 max-w-[720px] text-[12px] leading-snug text-ink-soft">
-          Prepared for Mr Akbar · rev. 2, 12 Sep 2026 (incorporating external review). A focused, measurable pilot —
-          offer validation, contribution economics and capacity as expansion gates, one defined corporate pilot
-          through warm doors, offline deferred until the evidence earns it.
+          Prepared for Mr Akbar · rev. 2, 12 Sep 2026 (incorporating external review) · Gautam&apos;s 30-day
+          activation mandate (v4, 16 Sep) mapped in. A focused, measurable pilot — offer validation, contribution
+          economics and capacity as expansion gates, one defined corporate pilot through warm doors, offline
+          deferred until the evidence earns it — now running against the owner&apos;s mandated outcome: 120 paid
+          memberships by 16 October.
         </p>
       </header>
       <div className="flex flex-wrap gap-1.5 border-b pb-2" style={{ borderColor: LINE }}>
@@ -574,6 +727,7 @@ export function SmileClubOptimization() {
       </div>
       <div className="mt-3">
         {sub === 'reco' && <Recommendation />}
+        {sub === 'mandate' && <MandateTab />}
         {sub === 'offer' && <OfferEconomics />}
         {sub === 'waves' && <Waves />}
         {sub === 'corporate' && <Corporate />}
