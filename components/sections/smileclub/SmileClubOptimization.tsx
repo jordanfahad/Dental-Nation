@@ -22,7 +22,7 @@ const MINT = '#A9C3A6';
 const OLIVE = '#767769';
 const LINE = '#D8D8CC';
 
-type Sub = 'reco' | 'mandate' | 'offer' | 'waves' | 'corporate' | 'channels' | 'kpis';
+type Sub = 'reco' | 'mandate' | 'response' | 'offer' | 'waves' | 'corporate' | 'channels' | 'kpis';
 
 /* ── atoms ─────────────────────────────────────────────────────── */
 
@@ -312,6 +312,141 @@ function MandateTab() {
             CRM hold. Fahad&apos;s quantified response is due 17 Sep EOD.
           </Note>
         </div>
+      </section>
+    </div>
+  );
+}
+
+/* ── Fahad's 30-day delivery plan (the quantified response, v1 · 17 Sep) ── */
+
+interface ResponseRow {
+  source: string; target: number; demand: string; method: string; launch: string; code: string; owner: string;
+}
+
+const RESPONSE_ROWS: ResponseRow[] = [
+  {
+    source: 'Existing DN clinics', target: 60,
+    demand: '20 per branch. Demand basis: live patient flow at Al Wasl, Dr Tosun, AMC — conversion assumption to be validated against branch footfall in week 1.',
+    method: 'Front-desk script + QR standee at all three branches; the offer made at the checkout moment with the savings example; onboarding (first appointment help) from day one. Daily per-branch count in the 09:00 review.',
+    launch: '18–19 Sep', code: 'SC-ALW / SC-TOS / SC-AMC (QR per branch)', owner: 'Front desk + Dr Luvi · reported by Smile Club Coordinator',
+  },
+  {
+    source: 'Corporate', target: 24,
+    demand: 'Pipeline ≥ 72 membership-equivalent (mandate requirement, ~33% assumed close). Built from: Michael Page HR contact, RBS, existing partners + the 3 warm introductions requested from Mr Akbar.',
+    method: 'Pilot package per employer: company code + on-site dental day + quarterly aggregated usage report. Discovery meetings this week; model (employee-paid / subsidized / employer-paid) agreed per employer.',
+    launch: 'Discovery now · first pilot live w/c 22 Sep', code: 'One code per employer', owner: 'Fahad + Mr Akbar',
+  },
+  {
+    source: 'Website', target: 12,
+    demand: '150 qualified opportunities by Day 30 at 8% conversion (mandate assumption). Sources: membership placements on demonstrated-traffic pages, cost-guide module, ZAVIS pilot LP traffic.',
+    method: 'Membership placements + Smile Club module on top cost/treatment pages (ZAVIS); eligibility-checked paid support — search-intent tests and offer-led CTWA; 10-minute contact-centre follow-up on qualified enquiries.',
+    launch: '19 Sep (with the portfolio)', code: 'UTM + source field per placement/campaign', owner: 'Fahad + ZAVIS · contact centre for follow-up',
+  },
+  {
+    source: 'Clinic resellers', target: 7,
+    demand: '2 resellers active and source-coded (mandate requirement).',
+    method: 'Reseller agreements + per-partner codes and QR links (the B2B mechanics already tasked: partner codes, QR links, referral agreements).',
+    launch: 'Agreements w/c 22 Sep', code: 'Per-partner code', owner: 'Fahad',
+  },
+  {
+    source: 'Affiliates', target: 7,
+    demand: '3 affiliates active and source-coded (mandate requirement).',
+    method: 'Affiliate agreements with tracked links/codes; commission structure priced within the CAC ceiling once Finance sets it.',
+    launch: 'Agreements w/c 22 Sep', code: 'Per-affiliate code', owner: 'Fahad',
+  },
+  {
+    source: 'CSR', target: 4,
+    demand: 'Community/CSR activation near the branches.',
+    method: 'On-the-spot enrolment with the QR flow at community events; costed per event before commitment.',
+    launch: 'First event by early Oct', code: 'Per-event code', owner: 'Fahad',
+  },
+  {
+    source: 'Brokers', target: 3,
+    demand: 'Source-coded broker agreements.',
+    method: 'Same mechanics as resellers; terms within the CAC ceiling.',
+    launch: 'w/c 22 Sep', code: 'Per-broker code', owner: 'Fahad',
+  },
+  {
+    source: 'Distributors', target: 3,
+    demand: 'Source-coded distributor agreements.',
+    method: 'Same mechanics as resellers; terms within the CAC ceiling.',
+    launch: 'w/c 22 Sep', code: 'Per-distributor code', owner: 'Fahad',
+  },
+];
+
+function ResponseTab() {
+  const total = RESPONSE_ROWS.reduce((a, r) => a + r.target, 0);
+  return (
+    <div className="space-y-5">
+      <p className="rounded-xl border-l-4 bg-white px-4 py-3 text-[12.5px] font-medium leading-snug" style={{ borderColor: GOLD, color: NAVY, fontFamily: 'Georgia, serif' }}>
+        <span className="font-bold">Fahad&apos;s quantified marketing response — v1, 17 Sep.</span>{' '}
+        100% of the 120 mapped to source, demand basis, method, launch date, tracking and owner. Spend and CAC
+        columns are deliberately open: the working-media ceiling is <i>paid-media target × Finance-approved
+        allowable CAC</i>, and both AED figures await Mr Akbar&apos;s sign-off — no numbers are invented here.
+        Bulk CRM: target 0, budget 0, per the mandate.
+      </p>
+
+      <section>
+        <Exhibit n="R1" title={`The 120, sourced and owned — ${total}/120 mapped`} />
+        <div className="overflow-x-auto rounded-xl border bg-white" style={{ borderColor: LINE }}>
+          <table className="w-full border-collapse text-[10.5px]">
+            <thead>
+              <tr className="text-left text-[9.5px] uppercase tracking-wide" style={{ color: OLIVE, backgroundColor: '#F7F7F0' }}>
+                <th className="px-2.5 py-2 font-bold">Source</th><th className="px-2.5 py-2 text-center font-bold">Paid</th>
+                <th className="px-2.5 py-2 font-bold">Qualified demand & assumption</th><th className="px-2.5 py-2 font-bold">Method</th>
+                <th className="px-2.5 py-2 font-bold">Launch</th><th className="px-2.5 py-2 font-bold">Tracking</th><th className="px-2.5 py-2 font-bold">Owner</th>
+              </tr>
+            </thead>
+            <tbody>
+              {RESPONSE_ROWS.map((r) => (
+                <tr key={r.source} className="border-t align-top" style={{ borderColor: '#EEEFE1' }}>
+                  <td className="px-2.5 py-1.5 font-bold whitespace-nowrap" style={{ color: NAVY }}>{r.source}</td>
+                  <td className="px-2.5 py-1.5 text-center font-bold tabular-nums" style={{ color: CORAL }}>{r.target}</td>
+                  <td className="px-2.5 py-1.5" style={{ color: '#3a4148' }}>{r.demand}</td>
+                  <td className="px-2.5 py-1.5" style={{ color: '#3a4148' }}>{r.method}</td>
+                  <td className="px-2.5 py-1.5 whitespace-nowrap" style={{ color: OLIVE }}>{r.launch}</td>
+                  <td className="px-2.5 py-1.5" style={{ color: OLIVE }}>{r.code}</td>
+                  <td className="px-2.5 py-1.5" style={{ color: OLIVE }}>{r.owner}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="grid gap-3 md:grid-cols-2">
+        <Card>
+          <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: BLUE }}>Spend, CAC & funding gates — awaiting the Finance inputs</p>
+          <ul className="mt-2 space-y-1.5">
+            {[
+              'Working-media ceiling = paid-media acquisition target × allowable CAC (Finance sets the CAC; Mr Akbar signs the 30-day ceiling and initial release — the blanks on the mandate’s sign-off page).',
+              'Forecast CAC by activity + blended total submitted the day the ceiling lands; spend and forecast then update daily.',
+              'Funding gates: 17 Sep initial launch funding → 30 Sep Day-15–30 funding after pace, CAC and data review → 16 Oct next-period funding for proven sources.',
+              'Reallocation: up to 10% may move within the ceiling, reported the same day. Scale / optimize / hold rules as mandated (hold if attribution < 98% or CAC breaches the ceiling).',
+            ].map((t) => (
+              <li key={t} className="flex gap-2 text-[11.5px] leading-snug" style={{ color: '#3a4148' }}>
+                <span className="mt-[6px] h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: MINT }} />{t}
+              </li>
+            ))}
+          </ul>
+        </Card>
+        <Card>
+          <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: CORAL }}>Control, risk & recovery</p>
+          <ul className="mt-2 space-y-1.5">
+            {[
+              'Tracking: every activity source-coded (QR / employer code / partner code / UTM); the dashboard spine — enquiry → qualified → checkout → paid → card active → booked → attended — is the single report; ≥98% attribution is the hold trigger.',
+              'Rhythm: 09:00 outcome review · 16:00 recovery queue · EOD scorecard · weekly resource decision, run with the Smile Club Coordinator.',
+              'Risk 1 — creative assets: the designer gap limits paid creative volume. Mitigation: Creative OS output + offer-led formats; the hire decision (19 Sep) is the unlock.',
+              'Risk 2 — corporate intro timing: the 24 depends on doors opening in week 1; mitigation: Michael Page + RBS start now, Mr Akbar’s three intros requested at sign-off.',
+              'Risk 3 — clinic capacity: 60 clinic conversions must be servable; branch appointment availability is checked in the daily review before pushing harder.',
+              'Recovery rule: any missed checkpoint minimum → recovery plan the next business day, as mandated.',
+            ].map((t) => (
+              <li key={t} className="flex gap-2 text-[11.5px] leading-snug" style={{ color: '#3a4148' }}>
+                <span className="mt-[6px] h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: CORAL }} />{t}
+              </li>
+            ))}
+          </ul>
+        </Card>
       </section>
     </div>
   );
@@ -690,6 +825,7 @@ function Kpis() {
 const SUBS: { id: Sub; label: string }[] = [
   { id: 'reco', label: 'The recommendation' },
   { id: 'mandate', label: '30-day mandate' },
+  { id: 'response', label: '30-day delivery plan' },
   { id: 'offer', label: 'Offer & economics' },
   { id: 'waves', label: 'Three waves' },
   { id: 'corporate', label: 'Corporate playbook' },
@@ -728,6 +864,7 @@ export function SmileClubOptimization() {
       <div className="mt-3">
         {sub === 'reco' && <Recommendation />}
         {sub === 'mandate' && <MandateTab />}
+        {sub === 'response' && <ResponseTab />}
         {sub === 'offer' && <OfferEconomics />}
         {sub === 'waves' && <Waves />}
         {sub === 'corporate' && <Corporate />}
