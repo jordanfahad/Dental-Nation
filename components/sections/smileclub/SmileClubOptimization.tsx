@@ -379,11 +379,11 @@ function ResponseTab() {
   return (
     <div className="space-y-5">
       <p className="rounded-xl border-l-4 bg-white px-4 py-3 text-[12.5px] font-medium leading-snug" style={{ borderColor: GOLD, color: NAVY, fontFamily: 'Georgia, serif' }}>
-        <span className="font-bold">Fahad&apos;s quantified marketing response — v1, 17 Sep.</span>{' '}
-        100% of the 120 mapped to source, demand basis, method, launch date, tracking and owner. Spend and CAC
-        columns are deliberately open: the working-media ceiling is <i>paid-media target × Finance-approved
-        allowable CAC</i>, and both AED figures await Mr Akbar&apos;s sign-off — no numbers are invented here.
-        Bulk CRM: target 0, budget 0, per the mandate.
+        <span className="font-bold">Fahad&apos;s quantified marketing response — v1.1, 18 Sep.</span>{' '}
+        100% of the 120 mapped to source, demand basis, method, launch date, tracking and owner. The budget panel
+        (R2) carries Fahad&apos;s proposed AED 30,000 DM budget with an honest CPL/CAC decomposition — marked
+        PROPOSED until Mr Akbar signs the ceiling, allowable CAC and initial release. Bulk CRM: target 0, budget 0,
+        per the mandate.
       </p>
 
       <section>
@@ -414,9 +414,68 @@ function ResponseTab() {
         </div>
       </section>
 
+      <section>
+        <Exhibit n="R2" title="Budget — AED 30,000 / 30 days (PROPOSED, pending Mr Akbar's sign-off)" />
+        <div className="grid gap-2 md:grid-cols-3">
+          {([
+            ['AED 30,000', 'DM budget · 30 days', 'Full digital budget supporting all lanes — awareness, retargeting, corporate air-cover, offer creative — not only direct website acquisition.'],
+            ['≤ AED 250', 'Blended CAC guardrail', '= 30,000 ÷ 120. Mandate-level metric: 18–25% of the first-year fee (AED 999–1,399). Achieved via the low-media channels delivering their 108 — it is not an ad-performance metric.'],
+            ['CPL 150 · ceiling 200', 'Paid-lane cost per lead', 'Target 150; 200 is the hard break-point — above it the website-12 target is mathematically dead within this budget (150 leads × 200 = the full 30K).'],
+          ] as [string, string, string][]).map(([v, l, s]) => (
+            <div key={l} className="rounded-xl border bg-white px-3 py-2.5" style={{ borderColor: LINE }}>
+              <p className="text-[16px] font-bold tabular-nums" style={{ color: NAVY, fontFamily: 'Georgia, serif' }}>{v}</p>
+              <p className="text-[10.5px] font-bold uppercase tracking-wide" style={{ color: BLUE }}>{l}</p>
+              <p className="mt-0.5 text-[10px] leading-snug" style={{ color: OLIVE }}>{s}</p>
+            </div>
+          ))}
+        </div>
+        <div className="mt-2 overflow-x-auto rounded-xl border bg-white" style={{ borderColor: LINE }}>
+          <table className="w-full border-collapse text-[11px]">
+            <thead>
+              <tr className="text-left text-[9.5px] uppercase tracking-wide" style={{ color: OLIVE, backgroundColor: '#F7F7F0' }}>
+                <th className="px-3 py-2 font-bold">Paid-lane scenario</th><th className="px-3 py-2 text-center font-bold">Cost of 150 leads</th>
+                <th className="px-3 py-2 text-center font-bold">Leads within 30K</th><th className="px-3 py-2 text-center font-bold">Paid @ 8%</th>
+                <th className="px-3 py-2 text-center font-bold">Paid-lane CAC</th><th className="px-3 py-2 font-bold">Verdict</th>
+              </tr>
+            </thead>
+            <tbody>
+              {([
+                ['CPL 150 — target', 'AED 22,500', '200', '16', '~AED 1,875', 'Website-12 beaten with 7.5K headroom for the other lanes.'],
+                ['CPL 200 — ceiling', 'AED 30,000', '150', '12', 'AED 2,500', 'Exactly on plan; zero headroom — the operating break-point.'],
+                ['CPL 500 — downside', 'AED 75,000 (2.5× budget)', '60', '~5', '~AED 6,000', 'Recovery trigger: shift budget to clinic/corporate enablement + warm audiences; website target revised.'],
+              ] as string[][]).map((r) => (
+                <tr key={r[0]} className="border-t align-top" style={{ borderColor: '#EEEFE1' }}>
+                  <td className="px-3 py-1.5 font-semibold whitespace-nowrap" style={{ color: NAVY }}>{r[0]}</td>
+                  <td className="px-3 py-1.5 text-center tabular-nums" style={{ color: '#3a4148' }}>{r[1]}</td>
+                  <td className="px-3 py-1.5 text-center tabular-nums" style={{ color: '#3a4148' }}>{r[2]}</td>
+                  <td className="px-3 py-1.5 text-center font-bold tabular-nums" style={{ color: CORAL }}>{r[3]}</td>
+                  <td className="px-3 py-1.5 text-center tabular-nums" style={{ color: '#3a4148' }}>{r[4]}</td>
+                  <td className="px-3 py-1.5" style={{ color: OLIVE }}>{r[5]}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="mt-2 space-y-2">
+          <Note tone="coral">
+            Dropped from the earlier draft: a CAC target of AED 70 — unreachable under any paid scenario (it would
+            require more than two memberships per lead at target CPL) and only meaningful as a blend at ~8.4K spend.
+            Paid-lane CAC (~1,875–2,500 at target CPL) exceeds the first-year fee on its own: it is justified only by
+            incremental treatment revenue, which the pilot measures — until then, paid stays capped at this budget.
+          </Note>
+          <Note tone="gold">
+            Definition to agree at sign-off: under the mandate&apos;s formula (working-media ceiling = paid-media
+            acquisition target × allowable CAC), 12 × 250 authorizes only AED 3,000 of direct-acquisition working
+            media. The 30K is therefore submitted as the full DM budget across all lanes, with direct acquisition as
+            one slice — agreeing this labelling now prevents a definitional &quot;overspend&quot; at the first
+            checkpoint review.
+          </Note>
+        </div>
+      </section>
+
       <section className="grid gap-3 md:grid-cols-2">
         <Card>
-          <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: BLUE }}>Spend, CAC & funding gates — awaiting the Finance inputs</p>
+          <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: BLUE }}>Funding gates & rules — 30K proposed, sign-off pending</p>
           <ul className="mt-2 space-y-1.5">
             {[
               'Working-media ceiling = paid-media acquisition target × allowable CAC (Finance sets the CAC; Mr Akbar signs the 30-day ceiling and initial release — the blanks on the mandate’s sign-off page).',
