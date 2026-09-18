@@ -473,6 +473,58 @@ function ResponseTab() {
         </div>
       </section>
 
+      <section>
+        <Exhibit n="R3" title="Channels, sub-channels, funnels & assets" />
+        <p className="mb-2 text-[11px]" style={{ color: OLIVE }}>
+          Each channel runs its own micro-funnel; every one of them rolls up into the mandate spine
+          (enquiry → qualified → checkout → paid → card active → booked → attended) via its source code. Assets marked ◆
+          depend on the designer hire; everything else ships from Creative OS templates or copy.
+        </p>
+        <div className="overflow-x-auto rounded-xl border bg-white" style={{ borderColor: LINE }}>
+          <table className="w-full border-collapse text-[10.5px]">
+            <thead>
+              <tr className="text-left text-[9.5px] uppercase tracking-wide" style={{ color: OLIVE, backgroundColor: '#F7F7F0' }}>
+                <th className="px-2.5 py-2 font-bold">Channel (target)</th><th className="px-2.5 py-2 font-bold">Sub-channels</th>
+                <th className="px-2.5 py-2 font-bold">Micro-funnel</th><th className="px-2.5 py-2 font-bold">Asset types</th>
+              </tr>
+            </thead>
+            <tbody>
+              {([
+                ['In-clinic (60)', 'Front desk at checkout · waiting area · chair-side mention by clinician',
+                 'Visit → offer made → interest → QR enrolment → card active → first benefit booked',
+                 'Front-desk script EN/AR · QR standee per branch · counter card with the savings example · staff FAQ one-pager · waiting-area poster ◆ · consented 1-to-1 WhatsApp follow-up template'],
+                ['Corporate (24)', 'Warm intros · on-site dental days · HR internal comms',
+                 'Intro → HR meeting → pilot agreed → employees reached → coded enrolments → activated',
+                 'Corporate one-pager (pilot package + savings math) · HR email kit · employer code + enrolment page · on-site day kit (banner ◆, screening forms, QR) · quarterly usage-report template'],
+                ['Website — owned (12)', 'Membership page · cost-guide & treatment-page modules · knowledge-base house ads · booking-widget cross-sell',
+                 'Page visit → membership view → enquiry / checkout start → qualified (10-min contact centre) → paid',
+                 'Membership module/banner EN/AR · savings-examples block · plain-language FAQ rewrite · checkout copy'],
+                ['Paid digital (supports the 12)', 'Google Search (membership + cost intent) · Meta CTWA offer lane · retargeting (site visitors; lists only after the eligibility check)',
+                 'Impression → click → LP / WhatsApp chat → qualified lead (CPL measured HERE) → checkout → paid @ 8%',
+                 'Search ad copy set EN/AR · 3–5 CTWA statics + offer cards ◆ · retargeting statics ◆ · LP membership variant · WhatsApp quick-reply scripts'],
+                ['Partners (20: resellers 7 · affiliates 7 · brokers 3 · distributors 3)', 'Per partner type, each with its own agreement',
+                 'Agreement → partner promotes → coded referral → qualified → paid',
+                 'Partner kit (explainer + code/QR + commission sheet) · co-branded flyer template ◆ · WhatsApp share cards'],
+                ['CSR / community (4)', 'Events near the three branches',
+                 'Footfall → conversation → on-the-spot QR enrolment',
+                 'Event banner ◆ · QR flyers · savings one-pager'],
+              ] as string[][]).map((r) => (
+                <tr key={r[0]} className="border-t align-top" style={{ borderColor: '#EEEFE1' }}>
+                  <td className="px-2.5 py-1.5 font-bold" style={{ color: NAVY }}>{r[0]}</td>
+                  <td className="px-2.5 py-1.5" style={{ color: '#3a4148' }}>{r[1]}</td>
+                  <td className="px-2.5 py-1.5" style={{ color: '#3a4148' }}>{r[2]}</td>
+                  <td className="px-2.5 py-1.5" style={{ color: OLIVE }}>{r[3]}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="mt-2 rounded-lg px-3 py-2 text-[11px] font-medium" style={{ backgroundColor: '#FDF9EC', color: '#6d5a1d' }}>
+          Asset production owners: copy + templates — Fahad; automated statics — Creative OS (ZAVIS); ◆ items need the
+          in-house designer — the launch set ships without them, they upgrade the mix when the hire lands.
+        </p>
+      </section>
+
       <section className="grid gap-3 md:grid-cols-2">
         <Card>
           <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: BLUE }}>Funding gates & rules — 30K proposed, sign-off pending</p>
