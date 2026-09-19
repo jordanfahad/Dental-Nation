@@ -4,9 +4,12 @@
  * imports the same definitions (mirrors components/tabs.ts).
  */
 export const MARKETING_SUBTABS = [
-  { key: 'overview', label: 'Overview' },
+  { key: 'overview', label: 'Channel Tree' },
   { key: 'google', label: 'Google Ads Performance' },
   { key: 'meta', label: 'Meta Ads Performance' },
+  // The former Overview: spend → reported → tracked leakage + three-lens
+  // triangulation. Kept whole — the tree links to it, never replaces it.
+  { key: 'recon', label: 'Reconciliation' },
 ] as const;
 
 export type MarketingSubTab = (typeof MARKETING_SUBTABS)[number]['key'];

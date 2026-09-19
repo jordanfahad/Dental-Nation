@@ -1,4 +1,5 @@
 import { getMarketingReport } from '@/lib/marketing/report';
+import { ChannelTree } from './ChannelTree';
 import { MarketingSubNav } from './MarketingSubNav';
 import { resolveMarketingSub } from './subtabs';
 import { MarketingJourneySection } from '@/components/sections/shared/MarketingJourneySection';
@@ -71,7 +72,7 @@ function ScopePills({ active, sub, channelLabel, rangeQs }: { active: 'channel' 
  * scope pill for the whole-clinic journey. The Overview keeps the all-channel
  * journey, where it belongs.
  */
-export async function MarketingReport({ sub, range, mscope }: { sub?: string; range?: { from: string; to: string }; mscope?: string }) {
+export async function MarketingReport({ sub, range, mscope, mgrp, mchan }: { sub?: string; range?: { from: string; to: string }; mscope?: string; mgrp?: string; mchan?: string }) {
   const active = resolveMarketingSub(sub);
   const scope: 'channel' | 'all' = mscope === 'all' ? 'all' : 'channel';
   const channelKey = active === 'google' ? ('paid-search' as const) : active === 'meta' ? ('paid-social' as const) : null;
@@ -83,6 +84,10 @@ export async function MarketingReport({ sub, range, mscope }: { sub?: string; ra
         <GoogleAdsPerformance range={range} />
       ) : active === 'meta' ? (
         <MetaAdsPerformance range={range} />
+      ) : active === 'recon' ? (
+        <MarketingOverview />
+      ) : range ? (
+        <ChannelTree range={range} grp={mgrp} chan={mchan} />
       ) : (
         <MarketingOverview />
       )}
@@ -95,8 +100,8 @@ export async function MarketingReport({ sub, range, mscope }: { sub?: string; ra
             <MarketingJourneySection range={range} />
           )}
         </>
-      ) : range ? (
-        /* Overview: the all-channel clinic outcome + full journey, as before. */
+      ) : range && active === 'recon' ? (
+        /* Reconciliation keeps the all-channel clinic outcome + full journey. */
         <MarketingJourneySection range={range} />
       ) : null}
     </div>

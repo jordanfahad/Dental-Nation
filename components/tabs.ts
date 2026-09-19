@@ -17,8 +17,10 @@ export const TABS = [
   { key: 'crm', label: 'CRM — Zavis' },
   { key: 'practo', label: 'Practo Insta' },
   { key: 'bookings', label: 'Website Bookings' },
-  { key: 'arabyads', label: 'Araby Ads' },
+  // Marketing leads the acquisition cluster: it is the hub (the channel tree),
+  // with Araby Ads and the other channel tabs as its specialist deep-dives.
   { key: 'marketing', label: 'Marketing' },
+  { key: 'arabyads', label: 'Araby Ads' },
   { key: 'social', label: 'Social & Local' },
   { key: 'analytics', label: 'Google Analytics' },
   { key: 'digital', label: 'Digital & SEO' },
