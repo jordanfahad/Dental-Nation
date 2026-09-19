@@ -139,7 +139,7 @@ export const getCeoIntel = unstable_cache(
 
     // Patient-experience quality — live Google profile.
     try {
-      const { data } = await db.from('gmb_reviews').select('rating, reply_comment').limit(5000);
+      const { data } = await db.from('gmb_reviews').select('rating, reply_comment').is('removed_at', null).limit(5000);
       const rows = data ?? [];
       if (rows.length) {
         out.reviews = {

@@ -47,6 +47,7 @@ export async function getGmbReviewsReport(): Promise<GmbReviewsReport | null> {
   const { data, error } = await supabase
     .from('gmb_reviews')
     .select('reviewer_name, rating, comment, create_time, reply_comment')
+    .is('removed_at', null)
     .order('create_time', { ascending: false })
     .limit(2000);
   if (error || !data || data.length === 0) return null;
