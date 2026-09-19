@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { MarketingReport, MktCampaign } from '@/lib/marketing/report';
 import type { ArabyReport } from '@/lib/arabyads/report';
 import { ownerFor } from '@/config/data-gap-owners';
+import { isLiveCampaign, maxLastDate } from '@/lib/marketing/recency';
 
 /**
  * Marketing channel tree — the fixed four-level hierarchy every marketing
@@ -201,14 +202,18 @@ function PlatformPill({ p }: { p: 'Meta' | 'Google' }) {
  * share-of-spend bar; the long tail folds into a native <details> so the page
  * stays scannable without JavaScript. One row shape at every rank.
  */
-function CampaignRow({ c, rank, totalSpend }: { c: MktCampaign; rank: number; totalSpend: number }) {
+function CampaignRow({ c, rank, totalSpend, anchor }: { c: MktCampaign; rank: number; totalSpend: number; anchor: string | null }) {
   const share = totalSpend > 0 ? c.spend / totalSpend : 0;
+  const live = isLiveCampaign(c, anchor);
   return (
     <tr className="border-t align-middle" style={{ borderColor: '#EEEFE1' }}>
       <td className="px-3 py-1.5 text-right text-[10px] font-bold tabular-nums" style={{ color: OLIVE }}>{rank}</td>
       <td className="px-3 py-1.5"><PlatformPill p={c.platform} /></td>
       <td className="px-3 py-1.5">
-        <span className="block max-w-[300px] truncate text-[11px] font-semibold" style={{ color: NAVY }} title={c.campaign}>{c.campaign}</span>
+        <span className="flex max-w-[300px] items-center gap-1.5">
+          <span className="truncate text-[11px] font-semibold" style={{ color: NAVY }} title={c.campaign}>{c.campaign}</span>
+          {live ? <span className="shrink-0 rounded-full px-1.5 py-px text-[8.5px] font-bold uppercase tracking-wide" style={{ backgroundColor: '#e7efe6', color: '#2C5E3F' }}>live</span> : null}
+        </span>
         <span className="mt-1 block h-1.5 w-full max-w-[300px] rounded-full" style={{ backgroundColor: TRACK }}>
           <span className="block h-1.5 rounded-full" style={{ width: `${Math.max(2, Math.round(share * 100))}%`, backgroundColor: c.platform === 'Google' ? NAVY : BLUE }} />
         </span>
@@ -222,6 +227,7 @@ function CampaignRow({ c, rank, totalSpend }: { c: MktCampaign; rank: number; to
 }
 
 function CampaignLadder({ campaigns, totalSpend }: { campaigns: MktCampaign[]; totalSpend: number }) {
+  const anchor = maxLastDate(campaigns);
   const top = campaigns.slice(0, 10);
   const rest = campaigns.slice(10);
   const restSpend = rest.reduce((a, c) => a + c.spend, 0);
@@ -241,7 +247,7 @@ function CampaignLadder({ campaigns, totalSpend }: { campaigns: MktCampaign[]; t
       <table className="w-full border-collapse">
         <thead>{head}</thead>
         <tbody>
-          {top.map((c, i) => <CampaignRow key={`${c.platform}|${c.campaign}`} c={c} rank={i + 1} totalSpend={totalSpend} />)}
+          {top.map((c, i) => <CampaignRow key={`${c.platform}|${c.campaign}`} c={c} rank={i + 1} totalSpend={totalSpend} anchor={anchor} />)}
         </tbody>
       </table>
       {rest.length > 0 ? (
@@ -251,11 +257,44 @@ function CampaignLadder({ campaigns, totalSpend }: { campaigns: MktCampaign[]; t
           </summary>
           <table className="w-full border-collapse">
             <tbody>
-              {rest.map((c, i) => <CampaignRow key={`${c.platform}|${c.campaign}`} c={c} rank={i + 11} totalSpend={totalSpend} />)}
+              {rest.map((c, i) => <CampaignRow key={`${c.platform}|${c.campaign}`} c={c} rank={i + 11} totalSpend={totalSpend} anchor={anchor} />)}
             </tbody>
           </table>
         </details>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * Running now — the campaigns with insight rows in the trailing week, pinned
+ * ABOVE the lifetime ladder. This is what makes a fresh September launch
+ * visible on day one instead of ranking last by lifetime spend.
+ */
+function RunningNow({ campaigns }: { campaigns: MktCampaign[] }) {
+  const anchor = maxLastDate(campaigns);
+  const live = campaigns.filter((c) => isLiveCampaign(c, anchor));
+  if (live.length === 0) return null;
+  return (
+    <div className="rounded-xl border-2 p-3.5" style={{ borderColor: '#2C5E3F33', backgroundColor: '#f4f8f3' }}>
+      <p className="mb-2 flex items-center gap-2 text-[10.5px] font-bold uppercase tracking-wide" style={{ color: '#2C5E3F' }}>
+        <span className="h-2 w-2 animate-pulse rounded-full" style={{ backgroundColor: '#2C5E3F' }} />
+        Running now — {int(live.length)} campaign{live.length === 1 ? '' : 's'} with delivery this week (as of {anchor})
+      </p>
+      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+        {live.map((c) => (
+          <div key={`${c.platform}|${c.campaign}`} className="rounded-lg border bg-white px-3 py-2" style={{ borderColor: LINE }}>
+            <div className="flex items-center justify-between gap-2">
+              <span className="truncate text-[11px] font-bold" style={{ color: NAVY }} title={c.campaign}>{c.campaign}</span>
+              <PlatformPill p={c.platform} />
+            </div>
+            <p className="mt-1 text-[10px] tabular-nums" style={{ color: INK }}>
+              {aed(c.spend)} · {int(c.reportedLeads)} leads{c.costPerReported != null ? ` · ${aed(c.costPerReported)}/lead` : ''}
+            </p>
+            <p className="mt-0.5 text-[9.5px]" style={{ color: OLIVE }}>{c.firstDate ?? '—'} → {c.lastDate ?? '—'}</p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -274,6 +313,8 @@ function PerformanceDrill({ mkt, rangeQs }: { mkt: Mkt; rangeQs: string }) {
         <Stat v={mkt.totals.costPerReported != null ? aed(mkt.totals.costPerReported) : null} l="Cost / reported lead" s="platform-attributed" gap="no reported leads" />
         <Stat v={mkt.ga4.available ? int(mkt.ga4.paidLeads) : null} l="GA4 paid leads" s="independent site check" gap={mkt.ga4.note ?? 'GA4 unavailable'} />
       </div>
+
+      <RunningNow campaigns={mkt.campaigns} />
 
       {google || meta ? (
         <div>

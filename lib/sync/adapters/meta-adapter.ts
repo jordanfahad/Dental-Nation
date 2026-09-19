@@ -160,6 +160,82 @@ export async function syncMeta(supabase: AdminClient, opts: MetaSyncOpts = {}): 
   }
 }
 
+const AD_FIELDS = 'ad_id,ad_name,adset_name,campaign_id,campaign_name,spend,impressions,clicks,actions,date_start,date_stop';
+
+interface MetaAdRow extends MetaRow {
+  ad_id?: string;
+  ad_name?: string;
+  adset_name?: string;
+}
+
+function adInsightsUrl(cfg: MetaConfig, accountId: string, from: string, to: string): string {
+  const tr = encodeURIComponent(JSON.stringify({ since: from, until: to }));
+  return (
+    `https://graph.facebook.com/${cfg.version}/act_${accountId}/insights` +
+    `?level=ad&time_increment=1&fields=${AD_FIELDS}&time_range=${tr}&limit=500` +
+    `&access_token=${encodeURIComponent(cfg.token)}`
+  );
+}
+
+/**
+ * AD-level daily insights → lane_e.meta_ad_insights_raw. This is the feed for
+ * the "Running ads" view (the in-dashboard equivalent of the vendor's ads
+ * page): every individual ad with its spend/leads by day, so recency and
+ * per-creative performance are visible instead of only campaign aggregates.
+ * Same guarantees as syncMeta: upsert by key, paginate, never throw.
+ */
+export async function syncMetaAds(supabase: AdminClient, opts: MetaSyncOpts = {}): Promise<MetaSyncResult> {
+  const cfg = getMetaConfig();
+  if (!cfg) return { ok: false, fetched: 0, stored: 0, accounts: 0, error: 'not_configured' };
+  try {
+    const days = opts.days ?? 30;
+    const to = opts.to ?? iso(new Date());
+    const from = opts.from ?? iso(new Date(new Date(to).getTime() - (days - 1) * 86400_000));
+
+    const all: { row: MetaAdRow; account: string }[] = [];
+    for (const account of cfg.accountIds) {
+      const rows: MetaAdRow[] = [];
+      let url: string | null = adInsightsUrl(cfg, account, from, to);
+      for (let guard = 0; url && guard < 200; guard++) {
+        const res: Response = await fetch(url, { cache: 'no-store' });
+        const body: unknown = await res.json().catch(() => null);
+        if (!body || typeof body !== 'object') break;
+        const obj = body as { data?: MetaAdRow[]; paging?: { next?: string }; error?: { message?: string } };
+        if (obj.error) throw new Error(`Meta API: ${obj.error.message ?? 'unknown error'}`);
+        if (Array.isArray(obj.data)) rows.push(...obj.data);
+        url = obj.paging?.next ?? null;
+      }
+      for (const row of rows) all.push({ row, account });
+    }
+
+    const records = all.map(({ row, account }) => ({
+      key: `${account}|${row.ad_id ?? 'ad'}|${row.date_start ?? 'na'}`,
+      account_id: account,
+      ad_id: row.ad_id ?? null,
+      ad_name: row.ad_name ?? null,
+      adset_name: row.adset_name ?? null,
+      campaign_id: row.campaign_id ?? null,
+      campaign_name: row.campaign_name ?? null,
+      date: row.date_start ?? null,
+      spend: row.spend != null ? Number(row.spend) || 0 : null,
+      impressions: row.impressions != null ? Number(row.impressions) || 0 : null,
+      clicks: row.clicks != null ? Number(row.clicks) || 0 : null,
+      leads: leadsFromActions(row.actions),
+      data: row as unknown as Record<string, unknown>,
+      fetched_at: new Date().toISOString(),
+    }));
+    const byKey = new Map(records.map((r) => [r.key, r]));
+    const deduped = [...byKey.values()];
+    for (let i = 0; i < deduped.length; i += 500) {
+      const { error } = await supabase.from('meta_ad_insights_raw').upsert(deduped.slice(i, i + 500), { onConflict: 'key' });
+      if (error) throw new Error(`ad-level upsert failed: ${error.message}`);
+    }
+    return { ok: true, fetched: all.length, stored: deduped.length, accounts: cfg.accountIds.length };
+  } catch (err) {
+    return { ok: false, fetched: 0, stored: 0, accounts: 0, error: (err as Error).message };
+  }
+}
+
 /** Shape-discovery probe: fetch a small recent window for the first account and
  *  return a sample row + summary, so we can confirm the actions/lead mapping. */
 export async function metaProbe(supabase: AdminClient): Promise<{ ok: boolean; data?: unknown; error?: string }> {

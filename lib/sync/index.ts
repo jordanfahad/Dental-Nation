@@ -6,7 +6,7 @@ import { fetchGa4Summary } from './adapters/ga4-adapter';
 import { syncGa4Daily } from './adapters/ga4-daily';
 import { syncPracto, syncPractoAppointments } from './adapters/practo-adapter';
 import { isPractoConfigured } from '@/config/practo';
-import { syncMeta } from './adapters/meta-adapter';
+import { syncMeta, syncMetaAds } from './adapters/meta-adapter';
 import { isMetaConfigured } from '@/config/meta';
 import { syncGoogleAds } from './adapters/google-ads-adapter';
 import { isGoogleAdsConfigured } from '@/config/google-ads';
@@ -320,6 +320,22 @@ export async function runSync(trigger: SyncTrigger): Promise<SyncSummary> {
     } catch (err) {
       sheetsFailed.push('Meta Ads (insights)');
       dataGaps.push({ area: 'spend', detail: `Meta Ads sync failed: ${(err as Error).message}`, owner: 'Acquisition' });
+    }
+
+    // Ad-level pull for the "Running ads" view — best-effort: its failure
+    // records a gap but never costs the campaign-level sync above.
+    try {
+      const ma = await syncMetaAds(supabase);
+      if (ma.ok) {
+        sheetsOk.push(`Meta Ads (ad-level) — ${ma.stored} rows`);
+        rowsIngested += ma.stored;
+      } else if (ma.error !== 'not_configured') {
+        sheetsFailed.push('Meta Ads (ad-level)');
+        dataGaps.push({ area: 'spend', detail: `Meta ad-level sync failed: ${ma.error ?? 'unknown'}`, owner: 'Acquisition' });
+      }
+    } catch (err) {
+      sheetsFailed.push('Meta Ads (ad-level)');
+      dataGaps.push({ area: 'spend', detail: `Meta ad-level sync failed: ${(err as Error).message}`, owner: 'Acquisition' });
     }
   }
 

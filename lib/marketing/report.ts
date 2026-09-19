@@ -135,6 +135,9 @@ export interface MktCampaign {
   spend: number;
   reportedLeads: number;
   costPerReported: number | null;
+  /** First / last day with insight rows — the recency signal for LIVE badges. */
+  firstDate: string | null;
+  lastDate: string | null;
 }
 export interface MarketingReport {
   source: 'live' | 'empty';
@@ -278,15 +281,19 @@ export async function getMarketingReport(): Promise<MarketingReport> {
 
     // Top campaigns by spend across both platforms.
     const campAgg = new Map<string, MktCampaign>();
-    const addCamp = (platform: 'Meta' | 'Google', name: string | null, spend: number, rep: number) => {
+    const addCamp = (platform: 'Meta' | 'Google', name: string | null, spend: number, rep: number, date: string | null) => {
       const key = `${platform}|${name ?? '(unnamed)'}`;
-      const row = campAgg.get(key) ?? { platform, campaign: name ?? '(unnamed)', spend: 0, reportedLeads: 0, costPerReported: null };
+      const row = campAgg.get(key) ?? { platform, campaign: name ?? '(unnamed)', spend: 0, reportedLeads: 0, costPerReported: null, firstDate: null, lastDate: null };
       row.spend += spend;
       row.reportedLeads += rep;
+      if (date) {
+        if (row.firstDate == null || date < row.firstDate) row.firstDate = date;
+        if (row.lastDate == null || date > row.lastDate) row.lastDate = date;
+      }
       campAgg.set(key, row);
     };
-    for (const r of meta) addCamp('Meta', r.campaign_name, Number(r.spend) || 0, Number(r.leads) || 0);
-    for (const r of gads) addCamp('Google', r.campaign_name, Number(r.spend) || 0, Number(r.conversions) || 0);
+    for (const r of meta) addCamp('Meta', r.campaign_name, Number(r.spend) || 0, Number(r.leads) || 0, (r as { date?: string | null }).date ?? null);
+    for (const r of gads) addCamp('Google', r.campaign_name, Number(r.spend) || 0, Number(r.conversions) || 0, (r as { date?: string | null }).date ?? null);
     const campaigns = [...campAgg.values()]
       .map((c) => ({ ...c, costPerReported: rate(c.spend, c.reportedLeads) }))
       .sort((a, b) => b.spend - a.spend);
