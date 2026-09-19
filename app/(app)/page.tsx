@@ -66,6 +66,8 @@ export default async function DashboardPage({
     mscope?: string;
     mgrp?: string;
     mchan?: string;
+    mcamp?: string;
+    gcamp?: string;
     rdate?: string;
     rcad?: string;
     rcmp?: string;
@@ -125,7 +127,7 @@ export default async function DashboardPage({
           navigation so the skeleton shows immediately instead of the shell
           hanging on the tab's data. */}
       <Suspense
-        key={`${tab}|${sp.tab ?? ''}|${sp.from ?? ''}|${sp.to ?? ''}|${sp.preset ?? ''}|${sp.compare ?? ''}|${sp.mtab ?? ''}|${sp.mscope ?? ''}|${sp.mgrp ?? ''}|${sp.mchan ?? ''}|${sp.btab ?? ''}|${sp.ptab ?? ''}|${sp.gtab ?? ''}|${sp.gchan ?? ''}|${sp.gclinic ?? ''}|${sp.mpipe ?? ''}|${sp.rdate ?? ''}|${sp.rcad ?? ''}|${sp.rcmp ?? ''}|${sp.otab ?? ''}|${clinic}`}
+        key={`${tab}|${sp.tab ?? ''}|${sp.from ?? ''}|${sp.to ?? ''}|${sp.preset ?? ''}|${sp.compare ?? ''}|${sp.mtab ?? ''}|${sp.mscope ?? ''}|${sp.mgrp ?? ''}|${sp.mchan ?? ''}|${sp.mcamp ?? ''}|${sp.gcamp ?? ''}|${sp.btab ?? ''}|${sp.ptab ?? ''}|${sp.gtab ?? ''}|${sp.gchan ?? ''}|${sp.gclinic ?? ''}|${sp.mpipe ?? ''}|${sp.rdate ?? ''}|${sp.rcad ?? ''}|${sp.rcmp ?? ''}|${sp.otab ?? ''}|${clinic}`}
         fallback={<TabSkeleton />}
       >
         {tab === 'executive' ? <ExecutiveDashboard query={query} gclinic={sp.gclinic} /> : null}
@@ -136,7 +138,7 @@ export default async function DashboardPage({
         {tab === 'practo' ? <PractoReport range={{ ...range, clinic }} sub={sp.ptab} /> : null}
         {tab === 'bookings' ? <BookingsReport report={shell} sub={sp.btab} /> : null}
         {tab === 'arabyads' ? <ArabyAdsReport range={range} /> : null}
-        {tab === 'marketing' ? <MarketingReport sub={sp.mtab} range={range} mscope={sp.mscope} mgrp={sp.mgrp} mchan={sp.mchan} /> : null}
+        {tab === 'marketing' ? <MarketingReport sub={sp.mtab} range={range} mscope={sp.mscope} mgrp={sp.mgrp} mchan={sp.mchan} mcamp={sp.mcamp} gcamp={sp.gcamp} /> : null}
         {tab === 'social' ? <SocialReport range={range} /> : null}
         {tab === 'analytics' ? <GoogleAnalyticsReport range={range} /> : null}
         {tab === 'digital' ? <DigitalSeo range={range} /> : null}

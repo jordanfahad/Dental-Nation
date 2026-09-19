@@ -95,6 +95,45 @@ export interface SeoLite {
   } | null;
 }
 
+/** Deep-link a campaign into its platform page, pre-filtered, window kept. */
+const campHref = (c: { platform: 'Meta' | 'Google'; campaign: string }, rangeQs: string) =>
+  c.platform === 'Google'
+    ? `?tab=marketing&mtab=google${rangeQs}&gcamp=${encodeURIComponent(c.campaign)}`
+    : `?tab=marketing&mtab=meta${rangeQs}&mcamp=${encodeURIComponent(c.campaign)}`;
+
+/** The tree as designed — partners and campaign types per channel, for the
+ *  clickable flow map (mirrors the target-structure chart one to one). */
+const FLOW: Record<ChannelKey, { partners: { name: string; status: 'live' | 'soon' | 'open slot'; href?: string }[]; types: { label: string; href?: string }[] }> = {
+  performance: {
+    partners: [{ name: 'In-house', status: 'live' }, { name: 'Performance agency', status: 'open slot' }],
+    types: [{ label: 'Paid Search', href: '?tab=marketing&mtab=google' }, { label: 'Paid Social', href: '?tab=marketing&mtab=meta' }],
+  },
+  affiliates: {
+    partners: [{ name: 'ArabyAds', status: 'live', href: '?tab=arabyads' }, { name: 'Platformance', status: 'soon' }],
+    types: [{ label: 'Lead Gen DSP', href: '?tab=arabyads' }, { label: 'Influencer Push' }, { label: 'Lead Gen (Platformance)' }],
+  },
+  seo: {
+    partners: [{ name: 'CRM-DN (in-house)', status: 'live', href: '?tab=digital' }],
+    types: [{ label: 'Programmatic SEO', href: '?tab=digital' }, { label: 'Editorial & backlinks', href: '?tab=digital' }],
+  },
+  social: {
+    partners: [{ name: 'In-house', status: 'live', href: '?tab=social' }],
+    types: [{ label: 'Organic posting', href: '?tab=social' }],
+  },
+  referrals: {
+    partners: [{ name: 'In-house', status: 'live' }],
+    types: [{ label: 'Partner sites & backlinks' }],
+  },
+  direct: {
+    partners: [{ name: 'In-house', status: 'live' }],
+    types: [{ label: 'Brand demand' }],
+  },
+  crm: {
+    partners: [{ name: 'CRM-DN (in-house)', status: 'live', href: '?tab=crm' }],
+    types: [{ label: 'Triggered 1-to-1', href: '?tab=crm' }],
+  },
+};
+
 interface LeafNumbers { leads: number | null; spend: number | null; cpl: number | null; gap?: string }
 
 function numbersFor(key: ChannelKey, mkt: Mkt, araby: ArabyReport | null): LeafNumbers {
@@ -218,7 +257,7 @@ function PlatformPill({ p }: { p: 'Meta' | 'Google' }) {
  * share-of-spend bar; the long tail folds into a native <details> so the page
  * stays scannable without JavaScript. One row shape at every rank.
  */
-function CampaignRow({ c, rank, totalSpend, anchor }: { c: MktCampaign; rank: number; totalSpend: number; anchor: string | null }) {
+function CampaignRow({ c, rank, totalSpend, anchor, rangeQs }: { c: MktCampaign; rank: number; totalSpend: number; anchor: string | null; rangeQs: string }) {
   const share = totalSpend > 0 ? c.spend / totalSpend : 0;
   const live = isLiveCampaign(c, anchor);
   return (
@@ -227,7 +266,14 @@ function CampaignRow({ c, rank, totalSpend, anchor }: { c: MktCampaign; rank: nu
       <td className="px-3 py-1.5"><PlatformPill p={c.platform} /></td>
       <td className="px-3 py-1.5">
         <span className="flex max-w-[300px] items-center gap-1.5">
-          <span className="truncate text-[11px] font-semibold" style={{ color: NAVY }} title={c.campaign}>{c.campaign}</span>
+          <a
+            href={campHref(c, rangeQs)}
+            className="truncate text-[11px] font-semibold hover:underline"
+            style={{ color: NAVY }}
+            title={`${c.campaign} — open the ${c.platform} deep-dive filtered to this campaign`}
+          >
+            {c.campaign}
+          </a>
           {live ? <span className="shrink-0 rounded-full px-1.5 py-px text-[8.5px] font-bold uppercase tracking-wide" style={{ backgroundColor: '#e7efe6', color: '#2C5E3F' }}>live</span> : null}
         </span>
         <span className="mt-1 block h-1.5 w-full max-w-[300px] rounded-full" style={{ backgroundColor: TRACK }}>
@@ -242,7 +288,7 @@ function CampaignRow({ c, rank, totalSpend, anchor }: { c: MktCampaign; rank: nu
   );
 }
 
-function CampaignLadder({ campaigns, totalSpend }: { campaigns: MktCampaign[]; totalSpend: number }) {
+function CampaignLadder({ campaigns, totalSpend, rangeQs }: { campaigns: MktCampaign[]; totalSpend: number; rangeQs: string }) {
   const anchor = maxLastDate(campaigns);
   const top = campaigns.slice(0, 10);
   const rest = campaigns.slice(10);
@@ -263,7 +309,7 @@ function CampaignLadder({ campaigns, totalSpend }: { campaigns: MktCampaign[]; t
       <table className="w-full border-collapse">
         <thead>{head}</thead>
         <tbody>
-          {top.map((c, i) => <CampaignRow key={`${c.platform}|${c.campaign}`} c={c} rank={i + 1} totalSpend={totalSpend} anchor={anchor} />)}
+          {top.map((c, i) => <CampaignRow key={`${c.platform}|${c.campaign}`} c={c} rank={i + 1} totalSpend={totalSpend} anchor={anchor} rangeQs={rangeQs} />)}
         </tbody>
       </table>
       {rest.length > 0 ? (
@@ -273,7 +319,7 @@ function CampaignLadder({ campaigns, totalSpend }: { campaigns: MktCampaign[]; t
           </summary>
           <table className="w-full border-collapse">
             <tbody>
-              {rest.map((c, i) => <CampaignRow key={`${c.platform}|${c.campaign}`} c={c} rank={i + 11} totalSpend={totalSpend} anchor={anchor} />)}
+              {rest.map((c, i) => <CampaignRow key={`${c.platform}|${c.campaign}`} c={c} rank={i + 11} totalSpend={totalSpend} anchor={anchor} rangeQs={rangeQs} />)}
             </tbody>
           </table>
         </details>
@@ -287,7 +333,7 @@ function CampaignLadder({ campaigns, totalSpend }: { campaigns: MktCampaign[]; t
  * ABOVE the lifetime ladder. This is what makes a fresh September launch
  * visible on day one instead of ranking last by lifetime spend.
  */
-function RunningNow({ campaigns }: { campaigns: MktCampaign[] }) {
+function RunningNow({ campaigns, rangeQs }: { campaigns: MktCampaign[]; rangeQs: string }) {
   const anchor = maxLastDate(campaigns);
   const live = campaigns.filter((c) => isLiveCampaign(c, anchor));
   if (live.length === 0) return null;
@@ -299,7 +345,7 @@ function RunningNow({ campaigns }: { campaigns: MktCampaign[] }) {
       </p>
       <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
         {live.map((c) => (
-          <div key={`${c.platform}|${c.campaign}`} className="rounded-lg border bg-white px-3 py-2" style={{ borderColor: LINE }}>
+          <a key={`${c.platform}|${c.campaign}`} href={campHref(c, rangeQs)} className="block rounded-lg border bg-white px-3 py-2 transition hover:shadow-sm" style={{ borderColor: LINE }} title={`Open the ${c.platform} deep-dive filtered to this campaign`}>
             <div className="flex items-center justify-between gap-2">
               <span className="truncate text-[11px] font-bold" style={{ color: NAVY }} title={c.campaign}>{c.campaign}</span>
               <PlatformPill p={c.platform} />
@@ -307,8 +353,8 @@ function RunningNow({ campaigns }: { campaigns: MktCampaign[] }) {
             <p className="mt-1 text-[10px] tabular-nums" style={{ color: INK }}>
               {aed(c.spend)} · {int(c.reportedLeads)} leads{c.costPerReported != null ? ` · ${aed(c.costPerReported)}/lead` : ''}
             </p>
-            <p className="mt-0.5 text-[9.5px]" style={{ color: OLIVE }}>{c.firstDate ?? '—'} → {c.lastDate ?? '—'}</p>
-          </div>
+            <p className="mt-0.5 text-[9.5px]" style={{ color: OLIVE }}>{c.firstDate ?? '—'} → {c.lastDate ?? '—'} · drill in →</p>
+          </a>
         ))}
       </div>
     </div>
@@ -330,7 +376,7 @@ function PerformanceDrill({ mkt, rangeQs }: { mkt: Mkt; rangeQs: string }) {
         <Stat v={mkt.ga4.available ? int(mkt.ga4.paidLeads) : null} l="GA4 paid leads" s="independent site check" gap={mkt.ga4.note ?? 'GA4 unavailable'} />
       </div>
 
-      <RunningNow campaigns={mkt.campaigns} />
+      <RunningNow campaigns={mkt.campaigns} rangeQs={rangeQs} />
 
       {google || meta ? (
         <div>
@@ -350,7 +396,7 @@ function PerformanceDrill({ mkt, rangeQs }: { mkt: Mkt; rangeQs: string }) {
         {mkt.campaigns.length === 0 ? (
           <GapNote>No campaign rows in the synced window — owner: {ownerFor('spend')}.</GapNote>
         ) : (
-          <CampaignLadder campaigns={mkt.campaigns} totalSpend={mkt.totals.adSpend} />
+          <CampaignLadder campaigns={mkt.campaigns} totalSpend={mkt.totals.adSpend} rangeQs={rangeQs} />
         )}
         <DeepDive links={[
           { label: 'Google Ads deep-dive', href: `?tab=marketing&mtab=google${rangeQs}` },
@@ -532,6 +578,115 @@ function CrmDrill({ mkt, rangeQs }: { mkt: Mkt; rangeQs: string }) {
 
 /* ── the tab ──────────────────────────────────────────────────── */
 
+/**
+ * The flow map — the target-structure chart, live and clickable. Level chips:
+ * MARKETING → Group (toggle) → Channel (selects the drilldown) → Partner →
+ * Campaign type (deep-dive links). Mirrors the four-level rule exactly.
+ */
+function FlowMap({ group, setGroup, chan, setChan, rangeQs }: {
+  group: 'online' | 'offline'; setGroup: (g: 'online' | 'offline') => void;
+  chan: string | null; setChan: (c: string | null) => void; rangeQs: string;
+}) {
+  const activeFlow = chan ? FLOW[chan as ChannelKey] : null;
+  const activeDef = CHANNELS.find((c) => c.key === chan) ?? null;
+  const lvl = (label: string) => (
+    <span className="w-[86px] shrink-0 pt-1 text-[8.5px] font-bold uppercase tracking-widest" style={{ color: OLIVE }}>{label}</span>
+  );
+  return (
+    <div className="rounded-xl border bg-white p-4" style={{ borderColor: LINE }}>
+      <div className="space-y-2.5">
+        <div className="flex items-start gap-3">
+          {lvl('Level 0')}
+          <span className="rounded px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-white" style={{ backgroundColor: '#1f3a5f' }}>Marketing</span>
+        </div>
+        <div className="flex items-start gap-3">
+          {lvl('1 · Group')}
+          <div className="flex flex-wrap gap-1.5">
+            {(['online', 'offline'] as const).map((g) => (
+              <button
+                key={g} type="button" onClick={() => setGroup(g)}
+                aria-current={group === g ? 'page' : undefined}
+                className="rounded px-3 py-1 text-[11px] font-bold transition"
+                style={group === g ? { backgroundColor: NAVY, color: 'white' } : { backgroundColor: '#EEF2F7', color: NAVY }}
+              >
+                {g === 'online' ? 'Online / Digital' : 'Offline'}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="flex items-start gap-3">
+          {lvl('2 · Channel')}
+          <div className="flex flex-wrap gap-1.5">
+            {group === 'online' ? (
+              CHANNELS.map((c) => (
+                <button
+                  key={c.key} type="button" onClick={() => setChan(chan === c.key ? null : c.key)}
+                  aria-current={chan === c.key ? 'page' : undefined}
+                  className="rounded border px-2.5 py-1 text-[10.5px] font-semibold transition"
+                  style={chan === c.key ? { backgroundColor: BLUE, borderColor: BLUE, color: 'white' } : { backgroundColor: '#F4F8FA', borderColor: `${BLUE}55`, color: NAVY }}
+                >
+                  {c.label}
+                </button>
+              ))
+            ) : (
+              OFFLINE.map((o) => (
+                <span key={o.label} className="rounded border border-dashed px-2.5 py-1 text-[10.5px] font-semibold" style={{ borderColor: LINE, color: OLIVE }}>{o.label}</span>
+              ))
+            )}
+          </div>
+        </div>
+        {group === 'online' ? (
+          <>
+            <div className="flex items-start gap-3">
+              {lvl('3 · Partner')}
+              <div className="flex flex-wrap items-center gap-1.5">
+                {activeFlow ? (
+                  activeFlow.partners.map((p) =>
+                    p.href ? (
+                      <a key={p.name} href={`${p.href}${rangeQs}`} className="rounded border px-2.5 py-1 text-[10.5px] font-semibold hover:underline" style={{ backgroundColor: '#e8f0fa', borderColor: BLUE, color: '#1f3a5f' }}>
+                        {p.name} →
+                      </a>
+                    ) : (
+                      <span key={p.name} className="rounded border px-2.5 py-1 text-[10.5px] font-semibold" style={{ backgroundColor: '#e8f0fa', borderColor: `${BLUE}66`, color: '#1f3a5f' }}>
+                        {p.name}{p.status !== 'live' ? ` · ${p.status}` : ''}
+                      </span>
+                    ),
+                  )
+                ) : (
+                  <span className="pt-1 text-[10.5px]" style={{ color: OLIVE }}>pick a channel above to expand its partners</span>
+                )}
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              {lvl('4 · Type')}
+              <div className="flex flex-wrap items-center gap-1.5">
+                {activeFlow ? (
+                  activeFlow.types.map((ty) =>
+                    ty.href ? (
+                      <a key={ty.label} href={`${ty.href}${rangeQs}`} className="rounded border border-dashed px-2.5 py-1 text-[10.5px] hover:underline" style={{ borderColor: '#999', color: INK }}>
+                        {ty.label} →
+                      </a>
+                    ) : (
+                      <span key={ty.label} className="rounded border border-dashed px-2.5 py-1 text-[10.5px]" style={{ borderColor: '#bbb', color: OLIVE }}>{ty.label}</span>
+                    ),
+                  )
+                ) : (
+                  <span className="pt-1 text-[10.5px]" style={{ color: OLIVE }}>—</span>
+                )}
+              </div>
+            </div>
+            {activeDef ? (
+              <p className="pl-[98px] text-[10px]" style={{ color: OLIVE }}>
+                {activeDef.label}: {activeDef.note} Metrics open below ↓
+              </p>
+            ) : null}
+          </>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 export function ChannelTreeView({ mkt, araby, social, seo, rangeQs, initialChan, initialGroup }: {
   mkt: Mkt; araby: ArabyReport | null; social: SocialLite | null; seo: SeoLite | null; rangeQs: string;
   initialChan?: string; initialGroup: 'online' | 'offline';
@@ -617,8 +772,9 @@ export function ChannelTreeView({ mkt, araby, social, seo, rangeQs, initialChan,
       {group === 'online' ? (
         <>
           <section id="tree" ref={treeRef} className="scroll-mt-4">
-            <Exhibit n="T2" title="The tree — seven online channels, one shape" />
-            <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
+            <Exhibit n="T2" title="The tree — the structure chart, live" />
+            <FlowMap group={group} setGroup={setGroup} chan={chan} setChan={setChan} rangeQs={rangeQs} />
+            <div className="mt-3 grid gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
               {CHANNELS.map((c) => {
                 const n = numbersFor(c.key, mkt, araby);
                 const isActive = active?.key === c.key;

@@ -17,7 +17,7 @@ const pct = (n: number) => `${(n * 100).toFixed(1)}%`;
  * The account slicing (ALL entities + status/campaign/date filters) lives in
  * the client MetaAdsView so filtering is instant.
  */
-export async function MetaAdsPerformance({ range }: { range?: { from: string; to: string } } = {}) {
+export async function MetaAdsPerformance({ range, mcamp }: { range?: { from: string; to: string }; mcamp?: string } = {}) {
   const r = await getMetaAdsDetail(range ?? {});
 
   if (!r.available) {
@@ -72,7 +72,7 @@ export async function MetaAdsPerformance({ range }: { range?: { from: string; to
         </div>
       </Card>
 
-      <MetaAdsView r={r} range={range} />
+      <MetaAdsView r={r} range={range} initialCampaign={mcamp} />
     </div>
   );
 }

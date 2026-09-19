@@ -30,11 +30,24 @@ const num = 'py-2 px-2 text-right text-[12px] tabular-nums text-ink-soft';
  * assets) deep dive. Live from the Google Ads API; aggregated over the window.
  * Honest: any API issue degrades to an owned data gap, never a fabricated zero.
  */
-export async function GoogleAdsPerformance({ range }: { range?: { from: string; to: string } } = {}) {
+export async function GoogleAdsPerformance({ range, gcamp }: { range?: { from: string; to: string }; gcamp?: string } = {}) {
   // Fetched together: Google's own account view + the dashboard's attribution
   // for the SAME window (request-deduped), so the conversions figure can align
   // with the Markov model instead of parroting the platform's structural zero.
-  const [r, perf] = await Promise.all([getGoogleAdsDetail(range ?? {}), getChannelPerformance(range ?? {})]);
+  const [rRaw, perf] = await Promise.all([getGoogleAdsDetail(range ?? {}), getChannelPerformance(range ?? {})]);
+  // ?gcamp= narrows every lens to one campaign — how the channel-tree ladder
+  // deep-links a campaign into this page. Landing pages have no campaign
+  // dimension in the API, so that table stays account-wide (labelled below).
+  const r = gcamp
+    ? {
+        ...rRaw,
+        campaigns: rRaw.campaigns.filter((c) => c.name === gcamp),
+        adGroups: rRaw.adGroups.filter((g) => g.campaign === gcamp),
+        ads: rRaw.ads.filter((a) => a.campaign === gcamp),
+        assetGroups: rRaw.assetGroups.filter((g) => g.campaign === gcamp),
+        pmaxAssets: rRaw.pmaxAssets.filter((a) => a.campaign === gcamp),
+      }
+    : rRaw;
   const ps = perf.channels.find((c) => c.key === 'paid-search');
   const bookings = (ps?.booked ?? 0) + (ps?.estExtraBookings ?? 0);
 
@@ -92,6 +105,13 @@ export async function GoogleAdsPerformance({ range }: { range?: { from: string; 
           </p>
         </div>
       </Card>
+
+      {gcamp ? (
+        <p className="flex flex-wrap items-center gap-2 rounded-card border border-accent/30 bg-accent/5 px-4 py-2.5 text-[12px] text-ink">
+          Filtered to campaign <span className="font-semibold">{gcamp}</span>
+          <a href={`?tab=marketing&mtab=google${range ? `&from=${range.from}&to=${range.to}&preset=custom` : ''}`} className="font-medium text-accent hover:underline">clear filter ×</a>
+        </p>
+      ) : null}
 
       <Card>
         <SectionHeader tag="G1" eyebrow="Scorecard" title="Account totals" />
@@ -216,8 +236,9 @@ export async function GoogleAdsPerformance({ range }: { range?: { from: string; 
         </div>
       </Card>
 
+      <div id="landing-pages" className="scroll-mt-4">
       <Card>
-        <SectionHeader tag="G5" eyebrow="Destinations" title={`Landing pages (${r.landingPages.length})`} />
+        <SectionHeader tag="G5" eyebrow="Destinations" title={`Landing pages (${r.landingPages.length})${gcamp ? ' — account-wide (no campaign dimension)' : ''}`} />
         <div className="overflow-x-auto px-5 pb-5 pt-4">
           {r.landingPages.length === 0 ? (
             <p className="text-[12px] text-ink-faint">No landing-page rows in this window{r.note ? ` — ${r.note}` : ''}.</p>
@@ -248,6 +269,7 @@ export async function GoogleAdsPerformance({ range }: { range?: { from: string; 
           </Takeaway>
         </div>
       </Card>
+      </div>
 
       {r.campaigns.some((c) => c.channelType === 'PERFORMANCE_MAX') || r.assetGroups.length > 0 ? (
         <Card>

@@ -72,7 +72,7 @@ function ScopePills({ active, sub, channelLabel, rangeQs }: { active: 'channel' 
  * scope pill for the whole-clinic journey. The Overview keeps the all-channel
  * journey, where it belongs.
  */
-export async function MarketingReport({ sub, range, mscope, mgrp, mchan }: { sub?: string; range?: { from: string; to: string }; mscope?: string; mgrp?: string; mchan?: string }) {
+export async function MarketingReport({ sub, range, mscope, mgrp, mchan, mcamp, gcamp }: { sub?: string; range?: { from: string; to: string }; mscope?: string; mgrp?: string; mchan?: string; mcamp?: string; gcamp?: string }) {
   const active = resolveMarketingSub(sub);
   const scope: 'channel' | 'all' = mscope === 'all' ? 'all' : 'channel';
   const channelKey = active === 'google' ? ('paid-search' as const) : active === 'meta' ? ('paid-social' as const) : null;
@@ -94,9 +94,9 @@ export async function MarketingReport({ sub, range, mscope, mgrp, mchan }: { sub
         <div className="mt-2.5"><MarketingSubNav active={active} /></div>
       </header>
       {active === 'google' ? (
-        <GoogleAdsPerformance range={range} />
+        <GoogleAdsPerformance range={range} gcamp={gcamp} />
       ) : active === 'meta' ? (
-        <MetaAdsPerformance range={range} />
+        <MetaAdsPerformance range={range} mcamp={mcamp} />
       ) : active === 'recon' ? (
         <MarketingOverview />
       ) : range ? (

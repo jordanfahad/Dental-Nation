@@ -51,9 +51,9 @@ function FilterPill({ on, children, onClick }: { on: boolean; children: React.Re
   );
 }
 
-export function MetaAdsView({ r, range }: { r: MetaAdsDetailReport; range?: { from: string; to: string } }) {
+export function MetaAdsView({ r, range, initialCampaign }: { r: MetaAdsDetailReport; range?: { from: string; to: string }; initialCampaign?: string }) {
   const [status, setStatus] = useState<StatusFilter>('all');
-  const [camp, setCamp] = useState<string>('all');
+  const [camp, setCamp] = useState<string>(initialCampaign && r.campaigns.some((c) => c.name === initialCampaign) ? initialCampaign : 'all');
   // The logical layer: an ad can be ACTIVE inside a paused campaign — this
   // filters ad sets and ads by their PARENT CAMPAIGN's state.
   const [campState, setCampState] = useState<StatusFilter>('all');
@@ -218,6 +218,7 @@ export function MetaAdsView({ r, range }: { r: MetaAdsDetailReport; range?: { fr
         </div>
       </Card>
 
+      <div id="landing-pages" className="scroll-mt-4">
       <Card>
         <SectionHeader tag="M3.5" eyebrow="Destinations" title={`Landing pages (${landingPages.length}) — from the filtered ads`} />
         <div className="overflow-x-auto px-5 pb-5 pt-4">
@@ -255,6 +256,7 @@ export function MetaAdsView({ r, range }: { r: MetaAdsDetailReport; range?: { fr
           </div>
         </div>
       </Card>
+      </div>
 
       <Card>
         <SectionHeader tag="M4" eyebrow="Ads & creative assets" title={`Ads — showing ${ads.length} of ${r.ads.length}`} right={campStatePills} />
