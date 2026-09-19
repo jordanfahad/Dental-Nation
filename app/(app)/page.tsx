@@ -6,6 +6,7 @@ import { resolveClinic } from '@/config/clinics';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { TabBar } from '@/components/TabBar';
+import { BackFrom } from '@/components/BackFrom';
 import { ClinicFilter } from '@/components/ClinicFilter';
 import { TabSkeleton } from '@/components/TabSkeleton';
 import { DailyControlReport } from '@/components/sections/daily/DailyControlReport';
@@ -204,6 +205,7 @@ export default async function DashboardPage({
         {tab === 'users' && isAdmin ? <UserManagement /> : null}
       </Suspense>
 
+      <BackFrom />
       <Footer ingestion={shell.ingestion} />
       <p className="mt-2 text-center text-[9.5px] text-ink-faint/70">
         build {(process.env.VERCEL_GIT_COMMIT_SHA ?? 'dev').slice(0, 7)}
