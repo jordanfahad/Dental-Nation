@@ -40,3 +40,7 @@ widget-failure.png
 
 # Discovery-run captures (uploaded as CI artifacts, never committed)
 probe/
+
+# agent bus — local work/state never committed (see .agent-bus/AGENT-BUS.md)
+.agent-bus/work/
+.agent-bus/state/
