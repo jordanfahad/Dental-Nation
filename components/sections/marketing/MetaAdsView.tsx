@@ -54,15 +54,35 @@ function FilterPill({ on, children, onClick }: { on: boolean; children: React.Re
 export function MetaAdsView({ r, range }: { r: MetaAdsDetailReport; range?: { from: string; to: string } }) {
   const [status, setStatus] = useState<StatusFilter>('all');
   const [camp, setCamp] = useState<string>('all');
+  // The logical layer: an ad can be ACTIVE inside a paused campaign — this
+  // filters ad sets and ads by their PARENT CAMPAIGN's state.
+  const [campState, setCampState] = useState<StatusFilter>('all');
 
   const campaignNames = useMemo(() => r.campaigns.map((c) => c.name), [r.campaigns]);
+  const activeCampaignNames = useMemo(
+    () => new Set(r.campaigns.filter((c) => isActive(c.status)).map((c) => c.name)),
+    [r.campaigns],
+  );
 
   const byStatus = <T extends { status: string }>(rows: T[]) =>
     status === 'all' ? rows : rows.filter((x) => (status === 'active' ? isActive(x.status) : !isActive(x.status)));
+  const byCampState = <T extends { campaign: string }>(rows: T[]) =>
+    campState === 'all'
+      ? rows
+      : rows.filter((x) => (campState === 'active' ? activeCampaignNames.has(x.campaign) : !activeCampaignNames.has(x.campaign)));
 
   const campaigns = byStatus(r.campaigns).filter((c) => camp === 'all' || c.name === camp);
-  const adSets = byStatus(r.adSets).filter((s) => camp === 'all' || s.campaign === camp);
-  const ads = byStatus(r.ads).filter((a) => camp === 'all' || a.campaign === camp);
+  const adSets = byCampState(byStatus(r.adSets).filter((s) => camp === 'all' || s.campaign === camp));
+  const ads = byCampState(byStatus(r.ads).filter((a) => camp === 'all' || a.campaign === camp));
+
+  const campStatePills = (
+    <div className="flex items-center gap-1.5">
+      <span className="text-[10px] font-medium uppercase tracking-wide text-ink-faint">Campaign state</span>
+      <FilterPill on={campState === 'all'} onClick={() => setCampState('all')}>All</FilterPill>
+      <FilterPill on={campState === 'active'} onClick={() => setCampState('active')}>Active</FilterPill>
+      <FilterPill on={campState === 'inactive'} onClick={() => setCampState('inactive')}>Inactive</FilterPill>
+    </div>
+  );
 
   // Date presets re-fetch server-side (the API aggregates per window).
   const today = range?.to ?? new Date().toISOString().slice(0, 10);
@@ -156,7 +176,7 @@ export function MetaAdsView({ r, range }: { r: MetaAdsDetailReport; range?: { fr
       </Card>
 
       <Card>
-        <SectionHeader tag="M3" eyebrow="Ad sets · targeting & budgets" title={`Ad sets — showing ${adSets.length} of ${r.adSets.length}`} />
+        <SectionHeader tag="M3" eyebrow="Ad sets · targeting & budgets" title={`Ad sets — showing ${adSets.length} of ${r.adSets.length}`} right={campStatePills} />
         <div className="overflow-x-auto px-5 pb-5 pt-4">
           <table className="w-full text-left">
             <thead><tr className="border-b border-line">
@@ -185,7 +205,7 @@ export function MetaAdsView({ r, range }: { r: MetaAdsDetailReport; range?: { fr
       </Card>
 
       <Card>
-        <SectionHeader tag="M4" eyebrow="Ads & creative assets" title={`Ads — showing ${ads.length} of ${r.ads.length}`} />
+        <SectionHeader tag="M4" eyebrow="Ads & creative assets" title={`Ads — showing ${ads.length} of ${r.ads.length}`} right={campStatePills} />
         <div className="grid grid-cols-1 gap-3 px-5 pb-5 pt-4 sm:grid-cols-2">
           {ads.map((a) => (
             <div key={a.id} className="flex gap-3 rounded-card border border-line p-3">
