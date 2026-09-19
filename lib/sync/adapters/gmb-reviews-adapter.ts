@@ -1,6 +1,7 @@
 import 'server-only';
 import type { AdminClient } from '@/lib/supabase/server';
 import { resolveGmbConfig, type GmbConfig } from '@/config/gmb';
+import { missingGmbReviewIds, parseGmbReviewsPage, type ApiReview } from '../gmb-reviews-reconciliation';
 
 /**
  * Google reviews adapter — pulls every review on the Business Profile into
@@ -14,8 +15,8 @@ import { resolveGmbConfig, type GmbConfig } from '@/config/gmb';
  *   GET  mybusiness.googleapis.com/v4/{account}/{location}/reviews  (paged)
  *
  * Upserts by review_id, so edited reviews and late replies update in place —
- * a full pull every run is fine (a clinic has hundreds of reviews, not
- * millions), and it means deleted replies / re-ratings never go stale.
+ * a full pull every run also reconciles removals per location. Only a complete,
+ * valid, non-empty snapshot can mark missing reviews removed.
  */
 
 export interface GmbReviewsSyncResult {
@@ -61,23 +62,6 @@ async function firstAccount(token: string): Promise<string> {
 
 const STARS: Record<string, number> = { ONE: 1, TWO: 2, THREE: 3, FOUR: 4, FIVE: 5 };
 
-interface ApiReview {
-  reviewId?: string;
-  reviewer?: { displayName?: string };
-  starRating?: string;
-  comment?: string;
-  createTime?: string;
-  updateTime?: string;
-  reviewReply?: { comment?: string; updateTime?: string };
-}
-interface ReviewsPage {
-  reviews?: ApiReview[];
-  averageRating?: number;
-  totalReviewCount?: number;
-  nextPageToken?: string;
-  error?: { message?: string };
-}
-
 export async function syncGmbReviews(supabase: AdminClient, opts: { config?: GmbConfig } = {}): Promise<GmbReviewsSyncResult> {
   const cfg = opts.config ?? (await resolveGmbConfig(supabase));
   if (!cfg) return { ok: false, fetched: 0, stored: 0, averageRating: null, totalOnGoogle: null, error: 'GMB not configured' };
@@ -97,52 +81,102 @@ export async function syncGmbReviews(supabase: AdminClient, opts: { config?: Gmb
   let totalOnGoogle: number | null = null;
 
   for (const loc of cfg.locations) {
-    let pageToken: string | undefined;
-    do {
-      const u = new URL(`${V4}/${account}/${loc.path}/reviews`);
-      u.searchParams.set('pageSize', '50');
-      if (pageToken) u.searchParams.set('pageToken', pageToken);
-      let data: ReviewsPage;
-      try {
+    try {
+      const reviews: ApiReview[] = [];
+      const reviewIds = new Set<string>();
+      const pageTokens = new Set<string>();
+      let locationTotal: number | undefined;
+      let pageToken: string | undefined;
+      do {
+        const u = new URL(`${V4}/${account}/${loc.path}/reviews`);
+        u.searchParams.set('pageSize', '50');
+        if (pageToken) u.searchParams.set('pageToken', pageToken);
         const res = await fetch(u.toString(), { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' });
-        data = (await res.json().catch(() => ({}))) as ReviewsPage;
-        if (!res.ok) {
-          return {
-            ok: false, fetched, stored, averageRating, totalOnGoogle,
-            error: `reviews.list ${res.status}: ${data.error?.message ?? 'request failed'}`,
-          };
+        if (!res.ok) throw new Error(`reviews.list ${res.status}: request failed`);
+        const data = parseGmbReviewsPage(await res.json());
+        fetched += data.reviews.length;
+        averageRating = data.averageRating ?? averageRating;
+        totalOnGoogle = data.totalReviewCount ?? totalOnGoogle;
+
+        if (data.totalReviewCount != null) {
+          if (locationTotal != null && locationTotal !== data.totalReviewCount) {
+            throw new Error('reviews.list count changed during pagination; reconciliation skipped');
+          }
+          locationTotal = data.totalReviewCount;
         }
-      } catch (err) {
-        return { ok: false, fetched, stored, averageRating, totalOnGoogle, error: (err as Error).message };
+        if (data.reviews.length === 0 && (reviews.length > 0 || data.nextPageToken)) {
+          throw new Error('reviews.list returned an empty page during pagination; reconciliation skipped');
+        }
+        for (const review of data.reviews) {
+          if (reviewIds.has(review.reviewId)) {
+            throw new Error('reviews.list returned a duplicate review; reconciliation skipped');
+          }
+          reviewIds.add(review.reviewId);
+          reviews.push(review);
+        }
+        pageToken = data.nextPageToken;
+        if (pageToken) {
+          if (pageTokens.has(pageToken)) {
+            throw new Error('reviews.list repeated a page token; reconciliation skipped');
+          }
+          pageTokens.add(pageToken);
+        }
+      } while (pageToken);
+
+      // An empty source is not evidence that every stored review was removed.
+      if (reviews.length === 0) continue;
+      if (locationTotal != null && locationTotal !== reviews.length) {
+        throw new Error('reviews.list count does not match the snapshot; reconciliation skipped');
       }
 
-      averageRating = data.averageRating ?? averageRating;
-      totalOnGoogle = data.totalReviewCount ?? totalOnGoogle;
+      const syncedAt = new Date().toISOString();
+      const rows = reviews.map((r) => ({
+        review_id: r.reviewId,
+        location_path: loc.path,
+        location_label: loc.label,
+        reviewer_name: r.reviewer?.displayName ?? null,
+        rating: STARS[r.starRating],
+        comment: r.comment ?? null,
+        create_time: r.createTime,
+        update_time: r.updateTime ?? null,
+        reply_comment: r.reviewReply?.comment ?? null,
+        reply_time: r.reviewReply?.updateTime ?? null,
+        synced_at: syncedAt,
+        removed_at: null,
+      }));
 
-      const rows = (data.reviews ?? [])
-        .filter((r) => r.reviewId && r.createTime && STARS[r.starRating ?? ''])
-        .map((r) => ({
-          review_id: r.reviewId!,
-          location_path: loc.path,
-          location_label: loc.label,
-          reviewer_name: r.reviewer?.displayName ?? null,
-          rating: STARS[r.starRating!],
-          comment: r.comment ?? null,
-          create_time: r.createTime!,
-          update_time: r.updateTime ?? null,
-          reply_comment: r.reviewReply?.comment ?? null,
-          reply_time: r.reviewReply?.updateTime ?? null,
-          synced_at: new Date().toISOString(),
-        }));
-      fetched += data.reviews?.length ?? 0;
-
-      if (rows.length > 0) {
-        const { error } = await supabase.from('gmb_reviews').upsert(rows, { onConflict: 'review_id' });
-        if (error) return { ok: false, fetched, stored, averageRating, totalOnGoogle, error: `upsert failed: ${error.message}` };
-        stored += rows.length;
+      // Read the full active set before writing; PostgREST caps individual pages.
+      const activeIds: string[] = [];
+      const pageSize = 500;
+      for (let offset = 0; ; offset += pageSize) {
+        const { data, error } = await supabase.from('gmb_reviews')
+          .select('review_id')
+          .eq('location_path', loc.path)
+          .is('removed_at', null)
+          .order('review_id', { ascending: true })
+          .range(offset, offset + pageSize - 1);
+        if (error) throw new Error(`review lookup failed: ${error.message}`);
+        if (!data) throw new Error('review lookup returned no data');
+        activeIds.push(...data.map((r: { review_id: string }) => r.review_id));
+        if (data.length < pageSize) break;
       }
-      pageToken = data.nextPageToken;
-    } while (pageToken);
+
+      const missingIds = missingGmbReviewIds(activeIds, [...reviewIds]);
+      const { error } = await supabase.from('gmb_reviews').upsert(rows, { onConflict: 'review_id' });
+      if (error) throw new Error(`upsert failed: ${error.message}`);
+      stored += rows.length;
+
+      for (let i = 0; i < missingIds.length; i += 100) {
+        const { error: removalError } = await supabase.from('gmb_reviews')
+          .update({ removed_at: syncedAt })
+          .eq('location_path', loc.path)
+          .is('removed_at', null)
+          .in('review_id', missingIds.slice(i, i + 100));
+        if (removalError) throw new Error(`review removal failed: ${removalError.message}`);
+      }
+    } catch (err) {
+      return { ok: false, fetched, stored, averageRating, totalOnGoogle, error: (err as Error).message };
+    }
   }
 
   return { ok: true, fetched, stored, averageRating, totalOnGoogle };

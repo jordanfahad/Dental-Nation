@@ -242,7 +242,7 @@ export async function getLiveOutcomes(): Promise<LiveOutcomes | null> {
         .select("actual_value, updated_at")
         .eq("kpi", "Leads (all channels)")
         .maybeSingle(),
-      db.from("gmb_reviews").select("rating"),
+      db.from("gmb_reviews").select("rating").is("removed_at", null),
     ]);
     const leads = kpiRes.data as { actual_value: number | string | null; updated_at: string | null } | null;
     const ratings = ((revRes.data ?? []) as { rating: number | null }[])
