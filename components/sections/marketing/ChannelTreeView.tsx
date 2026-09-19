@@ -79,6 +79,10 @@ const GA4_RE: Partial<Record<ChannelKey, RegExp>> = {
   direct: /^direct$/i,
 };
 
+export interface SocialLite {
+  channels: { label: string; lastDay: string | null; metrics: { label: string; value: number; isStock: boolean }[] }[];
+}
+
 interface LeafNumbers { leads: number | null; spend: number | null; cpl: number | null; gap?: string }
 
 function numbersFor(key: ChannelKey, mkt: Mkt, araby: ArabyReport | null): LeafNumbers {
@@ -354,7 +358,7 @@ function PerformanceDrill({ mkt, rangeQs }: { mkt: Mkt; rangeQs: string }) {
   );
 }
 
-function AffiliatesDrill({ araby }: { araby: ArabyReport | null }) {
+function AffiliatesDrill({ araby, rangeQs }: { araby: ArabyReport | null; rangeQs: string }) {
   if (!araby || !araby.configured || araby.source === 'empty') {
     return (
       <div className="space-y-4">
@@ -395,7 +399,7 @@ function AffiliatesDrill({ araby }: { araby: ArabyReport | null }) {
             l.bookings > 0 ? aed(l.cost / l.bookings) : '—',
           ])}
         />
-        <DeepDive links={[{ label: 'Full Araby Ads tab — publishers, drop-off, Practo outcomes', href: '?tab=arabyads' }]} />
+        <DeepDive links={[{ label: 'Full Araby Ads tab — publishers, drop-off, Practo outcomes', href: `?tab=arabyads${rangeQs}` }]} />
       </div>
 
       <div>
@@ -409,14 +413,14 @@ function AffiliatesDrill({ araby }: { araby: ArabyReport | null }) {
   );
 }
 
-function Ga4Drill({ def, mkt, n }: { def: ChannelDef; mkt: Mkt; n: LeafNumbers }) {
+function Ga4Drill({ def, mkt, n, rangeQs, social }: { def: ChannelDef; mkt: Mkt; n: LeafNumbers; rangeQs: string; social: SocialLite | null }) {
   const share = n.leads != null && mkt.ga4.available && mkt.ga4.totalLeads > 0 ? n.leads / mkt.ga4.totalLeads : null;
   const deepDive =
     def.key === 'seo'
-      ? [{ label: 'Digital & SEO tab — rankings, pages, keywords', href: '?tab=digital' }, { label: 'Google Analytics tab', href: '?tab=analytics' }]
+      ? [{ label: 'Digital & SEO tab — rankings, pages, keywords', href: `?tab=digital${rangeQs}` }, { label: 'Google Analytics tab', href: `?tab=analytics${rangeQs}` }]
       : def.key === 'social'
-        ? [{ label: 'Social & Local tab — posts, demographics', href: '?tab=social' }, { label: 'Google Analytics tab', href: '?tab=analytics' }]
-        : [{ label: 'Google Analytics tab', href: '?tab=analytics' }];
+        ? [{ label: 'Social & Local tab — posts, demographics', href: `?tab=social${rangeQs}` }, { label: 'Google Analytics tab', href: `?tab=analytics${rangeQs}` }]
+        : [{ label: 'Google Analytics tab', href: `?tab=analytics${rangeQs}` }];
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
@@ -430,6 +434,31 @@ function Ga4Drill({ def, mkt, n }: { def: ChannelDef; mkt: Mkt; n: LeafNumbers }
           <BarRow label={def.label} value={n.leads ?? 0} max={mkt.ga4.totalLeads} color={LENS_COLOR.GA4} display={pct(share)} />
         </div>
       ) : null}
+      {def.key === 'social' && social ? (
+        <div>
+          <p className="mb-2 text-[10.5px] font-bold uppercase tracking-wide" style={{ color: OLIVE }}>
+            Channel accounts in the window — the Social &amp; Local numbers, in place
+          </p>
+          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+            {social.channels.map((c) => (
+              <div key={c.label} className="rounded-lg border bg-white px-3 py-2.5" style={{ borderColor: LINE }}>
+                <div className="flex items-baseline justify-between gap-2">
+                  <p className="truncate text-[11.5px] font-bold" style={{ color: NAVY }}>{c.label}</p>
+                  {c.lastDay ? <span className="shrink-0 text-[9px]" style={{ color: OLIVE }}>to {c.lastDay}</span> : null}
+                </div>
+                <div className="mt-1.5 grid grid-cols-2 gap-x-3 gap-y-1">
+                  {c.metrics.map((m) => (
+                    <div key={m.label}>
+                      <p className="text-[13px] font-bold tabular-nums" style={{ color: NAVY, fontFamily: 'Georgia, serif' }}>{int(m.value)}</p>
+                      <p className="text-[8.5px] uppercase tracking-wide" style={{ color: OLIVE }}>{m.label}{m.isStock ? ' · total' : ''}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
       <div>
         <PartnerHeading name={def.partners} status="live" />
         <p className="text-[11.5px] leading-snug" style={{ color: INK }}>{def.note}</p>
@@ -439,7 +468,7 @@ function Ga4Drill({ def, mkt, n }: { def: ChannelDef; mkt: Mkt; n: LeafNumbers }
   );
 }
 
-function CrmDrill({ mkt }: { mkt: Mkt }) {
+function CrmDrill({ mkt, rangeQs }: { mkt: Mkt; rangeQs: string }) {
   const rows = mkt.trackedByChannel.filter((c) => /whatsapp|email|sms/i.test(c.label));
   const total = rows.reduce((a, c) => a + c.value, 0);
   const max = Math.max(...rows.map((r) => r.value), 1);
@@ -457,7 +486,7 @@ function CrmDrill({ mkt }: { mkt: Mkt }) {
         ) : (
           <GapNote>No channel-attributed tracker rows in this window — owner: {ownerFor('channel')}.</GapNote>
         )}
-        <DeepDive links={[{ label: 'CRM-DN tab', href: '?tab=crm' }]} />
+        <DeepDive links={[{ label: 'CRM-DN tab', href: `?tab=crm${rangeQs}` }]} />
       </div>
     </div>
   );
@@ -465,8 +494,8 @@ function CrmDrill({ mkt }: { mkt: Mkt }) {
 
 /* ── the tab ──────────────────────────────────────────────────── */
 
-export function ChannelTreeView({ mkt, araby, rangeQs, initialChan, initialGroup }: {
-  mkt: Mkt; araby: ArabyReport | null; rangeQs: string;
+export function ChannelTreeView({ mkt, araby, social, rangeQs, initialChan, initialGroup }: {
+  mkt: Mkt; araby: ArabyReport | null; social: SocialLite | null; rangeQs: string;
   initialChan?: string; initialGroup: 'online' | 'offline';
 }) {
   // The whole tree is data-complete after ONE server fetch — every drilldown
@@ -615,11 +644,11 @@ export function ChannelTreeView({ mkt, araby, rangeQs, initialChan, initialGroup
                 {active.key === 'performance' ? (
                   <PerformanceDrill mkt={mkt} rangeQs={rangeQs} />
                 ) : active.key === 'affiliates' ? (
-                  <AffiliatesDrill araby={araby} />
+                  <AffiliatesDrill araby={araby} rangeQs={rangeQs} />
                 ) : active.key === 'crm' ? (
-                  <CrmDrill mkt={mkt} />
+                  <CrmDrill mkt={mkt} rangeQs={rangeQs} />
                 ) : (
-                  <Ga4Drill def={active} mkt={mkt} n={numbersFor(active.key, mkt, araby)} />
+                  <Ga4Drill def={active} mkt={mkt} n={numbersFor(active.key, mkt, araby)} rangeQs={rangeQs} social={social} />
                 )}
               </div>
               <p className="mt-2 rounded-lg px-3 py-2 text-[11px] font-medium" style={{ backgroundColor: '#FDF9EC', color: '#6d5a1d' }}>

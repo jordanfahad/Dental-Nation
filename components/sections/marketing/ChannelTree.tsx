@@ -1,6 +1,7 @@
 import { getMarketingReport } from '@/lib/marketing/report';
 import { getArabyAdsReport } from '@/lib/arabyads/report';
-import { ChannelTreeView } from './ChannelTreeView';
+import { getSocialReport } from '@/lib/social/report';
+import { ChannelTreeView, type SocialLite } from './ChannelTreeView';
 
 /**
  * Server shell for the marketing channel tree: ONE parallel fetch of the two
@@ -9,9 +10,26 @@ import { ChannelTreeView } from './ChannelTreeView';
  * ad platforms, GA4 or the affiliate feed. ?mchan / ?mgrp still deep-link.
  */
 export async function ChannelTree({ range, grp, chan }: { range: { from: string; to: string }; grp?: string; chan?: string }) {
-  const [mktRes, arabyRes] = await Promise.allSettled([getMarketingReport(range), getArabyAdsReport(range)]);
+  const [mktRes, arabyRes, socialRes] = await Promise.allSettled([
+    getMarketingReport(range),
+    getArabyAdsReport(range),
+    getSocialReport(range),
+  ]);
   const mkt = mktRes.status === 'fulfilled' ? mktRes.value : null;
   const araby = arabyRes.status === 'fulfilled' ? arabyRes.value : null;
+  // Compact, serializable social snapshot so the Social drilldown carries the
+  // Social & Local tab's headline numbers instead of only linking out.
+  const socialRep = socialRes.status === 'fulfilled' ? socialRes.value : null;
+  const social: SocialLite | null =
+    socialRep && socialRep.source === 'live' && socialRep.channels.length > 0
+      ? {
+          channels: socialRep.channels.map((c) => ({
+            label: c.label,
+            lastDay: c.lastDay,
+            metrics: c.metrics.slice(0, 4).map((m) => ({ label: m.label, value: m.value, isStock: m.isStock })),
+          })),
+        }
+      : null;
   if (!mkt) {
     return (
       <p className="rounded-lg px-3 py-2 text-[11px] font-medium leading-snug" style={{ backgroundColor: '#FBEFEC', color: '#B45F53' }}>
@@ -23,6 +41,7 @@ export async function ChannelTree({ range, grp, chan }: { range: { from: string;
     <ChannelTreeView
       mkt={mkt}
       araby={araby}
+      social={social}
       rangeQs={`&from=${range.from}&to=${range.to}&preset=custom`}
       initialChan={chan}
       initialGroup={grp === 'offline' ? 'offline' : 'online'}
