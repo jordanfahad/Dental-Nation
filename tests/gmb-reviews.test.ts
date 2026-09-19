@@ -200,6 +200,18 @@ for (const [name, page] of [
   });
 }
 
+test('a stale totalReviewCount does not block reconciliation', async (t) => {
+  // Observed live 19 Sep 2026: Google's counter disagreed with a complete,
+  // clean snapshot on a healthy profile. The counter is advisory — pagination
+  // integrity, not the counter, proves completeness.
+  const db = mockDatabase([storedReview('keep'), storedReview('gone')]);
+  mockGoogle(t, [{ reviews: [review('keep')], totalReviewCount: 99 }]);
+  const result = await syncGmbReviews(db.client, { config });
+  assert.equal(result.ok, true);
+  assert.equal(typeof db.rows.find((r) => r.review_id === 'gone')?.removed_at, 'string');
+  assert.equal(db.rows.find((r) => r.review_id === 'keep')?.removed_at, null);
+});
+
 const incompleteSnapshots: [string, () => unknown[], RegExp][] = [
   ['malformed review on a later page', () => [
     { reviews: [review('one')], nextPageToken: 'next' },
@@ -216,7 +228,6 @@ const incompleteSnapshots: [string, () => unknown[], RegExp][] = [
   ], /network failure/],
   ['empty later page', () => [{ reviews: [review('one')], nextPageToken: 'next' }, {}], /empty page/],
   ['empty page with a continuation token', () => [{ reviews: [], nextPageToken: 'next' }], /empty page/],
-  ['truncated count', () => [{ reviews: [review('one')], totalReviewCount: 2 }], /count does not match/],
   ['count changed between pages', () => [
     { reviews: [review('one')], totalReviewCount: 2, nextPageToken: 'next' },
     { reviews: [review('two')], totalReviewCount: 3 },

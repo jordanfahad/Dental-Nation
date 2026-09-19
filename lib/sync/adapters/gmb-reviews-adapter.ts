@@ -125,9 +125,13 @@ export async function syncGmbReviews(supabase: AdminClient, opts: { config?: Gmb
 
       // An empty source is not evidence that every stored review was removed.
       if (reviews.length === 0) continue;
-      if (locationTotal != null && locationTotal !== reviews.length) {
-        throw new Error('reviews.list count does not match the snapshot; reconciliation skipped');
-      }
+      // totalReviewCount is deliberately NOT required to equal the snapshot:
+      // Google's counter is approximate/stale (observed live 19 Sep 2026 — a
+      // healthy profile returned a complete snapshot disagreeing with its own
+      // count, the very drift this reconciliation exists to fix). Completeness
+      // is established by pagination terminating cleanly plus the integrity
+      // guards above; the cross-page count-drift check still catches mid-run
+      // churn.
 
       const syncedAt = new Date().toISOString();
       const rows = reviews.map((r) => ({
