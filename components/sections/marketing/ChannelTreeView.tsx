@@ -56,7 +56,7 @@ const CHANNELS: ChannelDef[] = [
   { key: 'social', label: 'Social / Organic', lens: 'GA4', leadNoun: 'site leads', partners: 'In-house', note: 'GA4 leads from unpaid social; posting detail lives in Social & Local.' },
   { key: 'referrals', label: 'Referrals', lens: 'GA4', leadNoun: 'site leads', partners: 'In-house', note: 'GA4 leads arriving from other sites (incl. the W3Layouts backlink).' },
   { key: 'direct', label: 'Direct', lens: 'GA4', leadNoun: 'site leads', partners: 'In-house', note: 'GA4 leads with no attributed source — brand demand and untagged links.' },
-  { key: 'crm', label: 'CRM', lens: 'Tracker', leadNoun: 'tracked leads', partners: 'CRM-DN (in-house)', note: 'Email / WhatsApp — in-house tracker leads logged from consented 1-to-1 contact.' },
+  { key: 'crm', label: 'Email / WhatsApp / SMS', lens: 'Tracker', leadNoun: 'tracked leads', partners: 'CRM-DN (in-house)', note: 'In-house tracker leads logged from consented 1-to-1 contact.' },
 ];
 
 const OFFLINE: { label: string; verdict: string; note: string }[] = [
