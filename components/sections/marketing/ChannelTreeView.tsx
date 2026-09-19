@@ -83,6 +83,18 @@ export interface SocialLite {
   channels: { label: string; lastDay: string | null; metrics: { label: string; value: number; isStock: boolean }[] }[];
 }
 
+export interface SeoLite {
+  organicSessions: number | null;
+  pagesIndexed: number | null;
+  gsc: {
+    clicks: number;
+    impressions: number;
+    ctr: number;
+    position: number | null;
+    topQueries: { query: string; clicks: number; position: number }[];
+  } | null;
+}
+
 interface LeafNumbers { leads: number | null; spend: number | null; cpl: number | null; gap?: string }
 
 function numbersFor(key: ChannelKey, mkt: Mkt, araby: ArabyReport | null): LeafNumbers {
@@ -413,7 +425,7 @@ function AffiliatesDrill({ araby, rangeQs }: { araby: ArabyReport | null; rangeQ
   );
 }
 
-function Ga4Drill({ def, mkt, n, rangeQs, social }: { def: ChannelDef; mkt: Mkt; n: LeafNumbers; rangeQs: string; social: SocialLite | null }) {
+function Ga4Drill({ def, mkt, n, rangeQs, social, seo }: { def: ChannelDef; mkt: Mkt; n: LeafNumbers; rangeQs: string; social: SocialLite | null; seo: SeoLite | null }) {
   const share = n.leads != null && mkt.ga4.available && mkt.ga4.totalLeads > 0 ? n.leads / mkt.ga4.totalLeads : null;
   const deepDive =
     def.key === 'seo'
@@ -432,6 +444,32 @@ function Ga4Drill({ def, mkt, n, rangeQs, social }: { def: ChannelDef; mkt: Mkt;
         <div>
           <p className="mb-2 text-[10.5px] font-bold uppercase tracking-wide" style={{ color: OLIVE }}>Position in the GA4 mix</p>
           <BarRow label={def.label} value={n.leads ?? 0} max={mkt.ga4.totalLeads} color={LENS_COLOR.GA4} display={pct(share)} />
+        </div>
+      ) : null}
+      {def.key === 'seo' && seo ? (
+        <div>
+          <p className="mb-2 text-[10.5px] font-bold uppercase tracking-wide" style={{ color: OLIVE }}>
+            Search reality in the window — the Digital &amp; SEO numbers, in place
+          </p>
+          <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+            <Stat v={seo.organicSessions != null ? int(seo.organicSessions) : null} l="Organic sessions" s="GA4 · organic search" gap="GA4 unavailable" />
+            <Stat v={seo.gsc ? int(seo.gsc.clicks) : null} l="Search clicks" s={seo.gsc ? `${int(seo.gsc.impressions)} impressions · ${(seo.gsc.ctr * 100).toFixed(1)}% CTR` : undefined} gap="Search Console unavailable" />
+            <Stat v={seo.gsc?.position != null ? seo.gsc.position.toFixed(1) : null} l="Avg position" s="Google Search Console" gap="Search Console unavailable" />
+            <Stat v={seo.pagesIndexed != null ? int(seo.pagesIndexed) : null} l="Pages indexed" s="sitemaps · incl. programmatic SEO" gap="index count unavailable" />
+          </div>
+          {seo.gsc && seo.gsc.topQueries.length > 0 ? (
+            <div className="mt-2">
+              <p className="mb-1 text-[10px] font-bold uppercase tracking-wide" style={{ color: OLIVE }}>Top queries by clicks</p>
+              <div className="flex flex-wrap gap-1.5">
+                {seo.gsc.topQueries.map((q) => (
+                  <span key={q.query} className="rounded-full border px-2.5 py-1 text-[10.5px]" style={{ borderColor: LINE, color: INK }}>
+                    <span className="font-semibold" style={{ color: NAVY }}>{q.query}</span>
+                    <span style={{ color: OLIVE }}> · {int(q.clicks)} clicks · pos {q.position.toFixed(1)}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </div>
       ) : null}
       {def.key === 'social' && social ? (
@@ -494,8 +532,8 @@ function CrmDrill({ mkt, rangeQs }: { mkt: Mkt; rangeQs: string }) {
 
 /* ── the tab ──────────────────────────────────────────────────── */
 
-export function ChannelTreeView({ mkt, araby, social, rangeQs, initialChan, initialGroup }: {
-  mkt: Mkt; araby: ArabyReport | null; social: SocialLite | null; rangeQs: string;
+export function ChannelTreeView({ mkt, araby, social, seo, rangeQs, initialChan, initialGroup }: {
+  mkt: Mkt; araby: ArabyReport | null; social: SocialLite | null; seo: SeoLite | null; rangeQs: string;
   initialChan?: string; initialGroup: 'online' | 'offline';
 }) {
   // The whole tree is data-complete after ONE server fetch — every drilldown
@@ -648,7 +686,7 @@ export function ChannelTreeView({ mkt, araby, social, rangeQs, initialChan, init
                 ) : active.key === 'crm' ? (
                   <CrmDrill mkt={mkt} rangeQs={rangeQs} />
                 ) : (
-                  <Ga4Drill def={active} mkt={mkt} n={numbersFor(active.key, mkt, araby)} rangeQs={rangeQs} social={social} />
+                  <Ga4Drill def={active} mkt={mkt} n={numbersFor(active.key, mkt, araby)} rangeQs={rangeQs} social={social} seo={seo} />
                 )}
               </div>
               <p className="mt-2 rounded-lg px-3 py-2 text-[11px] font-medium" style={{ backgroundColor: '#FDF9EC', color: '#6d5a1d' }}>
