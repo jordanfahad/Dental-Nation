@@ -24,6 +24,10 @@ export const TABS = [
   { key: 'digital', label: 'Digital & SEO' },
   { key: 'clarity', label: 'Heatmaps & Recordings' },
   { key: 'drop', label: 'Data Drop' },
+  // Grantable, hidden by default: the Smile Club plan's per-person window onto
+  // the performance dashboard (its primary home is /impact#smileclub, which
+  // staff-based roles cannot open — this grant gives Gautam ONLY this view).
+  { key: 'smileclub', label: 'Smile Club Plan', adminOnly: true },
   { key: 'group', label: 'Group Revenue', adminOnly: true },
   { key: 'operations', label: 'Head of Operations', adminOnly: true },
   { key: 'report', label: 'Board Report', adminOnly: true },
