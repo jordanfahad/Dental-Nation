@@ -67,8 +67,8 @@ const WAVES: Wave[] = [
     intro: 'Sell to people who already know us — and onboard properly from the first enrolment. Baseline, prices and definitions come before broad activation.',
     plays: [
       { title: 'Baseline & terms first', engine: 'Data', owner: 'Gautam + finance/ops (to confirm)', detail: 'Enrolments, payment status, plan mix, usage, cancellations; benefit-delivery costs; clinic prices; membership terms. The savings examples and funnel definitions come from this — nothing scales before it exists.' },
-      { title: 'Limited CRM test', engine: 'CRM / WhatsApp', owner: 'Fahad + ZAVIS', detail: 'A few appropriate, contactable patient segments — consent and opt-out handling confirmed first — with a comparable uncontacted group where practical, so results have denominators and an incrementality read.' },
-      { title: 'Front-desk route', engine: 'In-clinic', owner: 'Front desk + Dr Luvi', detail: 'One consistent explanation, a simple enrolment route, QR at the three branches — and a structured objection log from day one.' },
+      { title: 'High-intent triggered contact — replaces the broad CRM test', engine: 'CRM / WhatsApp', owner: 'Fahad + ZAVIS + contact centre', detail: 'LEARNING APPLIED (12 Sep update): five campaign sends (3 doctor-led + retry + follow-up; 1,280 non-unique reach, 863 delivered, 71 replies) proved broadcast engagement comes back appointment-led, not membership-led — so no further broadcast testing. Instead: event-triggered, 1-to-1 consented contact at high-intent moments — open treatment plans, due preventive recalls, completed SOS follow-ups, website abandoners — each source-coded.' },
+      { title: 'Front-desk route', engine: 'In-clinic', owner: 'Front desk + Dr Luvi', detail: 'The enablement already exists from the programme build: Reception Conversion Guide (Ask → Match → Value → Clarify → Close), reception member deck, objection handling and Emirati Arabic scripts, plus value-discovery training completed. Wave 1 executes it: QR at the three branches, the offer at checkout, and a structured objection log from day one.' },
       { title: 'Relevant placements only', engine: 'Owned web', owner: 'ZAVIS + W3Layouts', detail: 'Membership placements on the most relevant pages with demonstrated traffic, prioritised by actual local intent and conversion potential — page count alone is not opportunity. Relevant cost-guide readers are a testable prospect audience.' },
       { title: 'Onboarding & activation — in Wave 1', engine: 'Member experience', owner: 'Fahad + Gautam + front desk', detail: 'Welcome and clear benefits/terms; help arranging the first clinically appropriate appointment; first booking and first completed visit tracked separately; care-plan reminders; payment-failure follow-up; cancellation reasons; renewal prep; a member value statement showing actual benefits received.' },
       { title: 'Corporate discovery in parallel', engine: 'B2B', owner: 'Fahad + Mr Akbar', detail: 'Warm HR conversations start now (Michael Page contact, RBS, existing partners) — discovery does not wait for a finished case study.' },
@@ -188,7 +188,7 @@ const CHECKPOINTS = [
 const REGISTER = [
   { act: 'Accept the commercial mandate', dl: '17 Sep 10:00', who: 'Fahad', out: '120 by 16 Oct; bulk CRM target 0 — targets, deadlines and guardrails acknowledged in writing.' },
   { act: 'Submit the quantified marketing response', dl: '17 Sep EOD', who: 'Fahad', out: '100% of the 120 mapped: source forecast, qualified demand, conversion, spend, CAC, launch date, owner.' },
-  { act: 'Close the historical CRM test', dl: '18 Sep EOD', who: 'Gautam shares data · Fahad reviews', out: '71 replies classified, 417 failures coded, new bulk sends 0 — reconciled to payment and membership records.' },
+  { act: 'Close the historical CRM test', dl: '18 Sep EOD', who: 'Gautam shares data · Fahad reviews', out: '71 replies classified, 417 failures coded, new bulk sends 0 — reconciled to payment and membership records. Campaign-level numbers received via the 12 Sep progress update (5 sends, 1,280 non-unique reach, 863 delivered); the payment-record reconciliation review remains.' },
   { act: 'Activate the first acquisition portfolio', dl: '19 Sep EOD', who: 'Fahad', out: 'Every live activity has source, spend, forecast, destination and response owner.' },
   { act: 'Checkpoints (Day 7 / 14 / 21)', dl: '23 Sep · 30 Sep · 7 Oct', who: 'Fahad + Smile Club Coordinator; Day 21 with Gautam', out: '36/30 → 60/50 → 88/75 cumulative paid; recovery plan next business day if missed.' },
   { act: 'Complete the mandate', dl: '16 Oct', who: 'Gautam → Mr Akbar', out: '120 paid, active, non-refunded, source-coded; ≥98% data and attribution; Finance-validated.' },
@@ -379,11 +379,12 @@ function ResponseTab() {
   return (
     <div className="space-y-5">
       <p className="rounded-xl border-l-4 bg-white px-4 py-3 text-[12.5px] font-medium leading-snug" style={{ borderColor: GOLD, color: NAVY, fontFamily: 'Georgia, serif' }}>
-        <span className="font-bold">Fahad&apos;s quantified marketing response — v1.1, 18 Sep.</span>{' '}
+        <span className="font-bold">Fahad&apos;s quantified marketing response — v1.2, 19 Sep.</span>{' '}
         100% of the 120 mapped to source, demand basis, method, launch date, tracking and owner. The budget panel
         (R2) carries Fahad&apos;s proposed AED 30,000 DM budget with an honest CPL/CAC decomposition — marked
         PROPOSED until Mr Akbar signs the ceiling, allowable CAC and initial release. Bulk CRM: target 0, budget 0,
-        per the mandate.
+        per the mandate. v1.2 applies the 12 Sep programme-update learnings: broadcast CRM testing is dropped for
+        high-intent triggered contact, and plays now use the enablement assets the programme has already built.
       </p>
 
       <section>
@@ -492,7 +493,7 @@ function ResponseTab() {
               {([
                 ['In-clinic (60)', 'Front desk at checkout · waiting area · chair-side mention by clinician',
                  'Visit → offer made → interest → QR enrolment → card active → first benefit booked',
-                 'Front-desk script EN/AR · QR standee per branch · counter card with the savings example · staff FAQ one-pager · waiting-area poster ◆ · consented 1-to-1 WhatsApp follow-up template'],
+                 'EXISTS from the programme build: Reception Conversion Guide + member deck + Emirati Arabic scripts + objection handling. To produce: QR standee per branch · counter card with the savings example · waiting-area poster ◆ · consented 1-to-1 WhatsApp follow-up template'],
                 ['Corporate (24)', 'Warm intros · on-site dental days · HR internal comms',
                  'Intro → HR meeting → pilot agreed → employees reached → coded enrolments → activated',
                  'Corporate one-pager (pilot package + savings math) · HR email kit · employer code + enrolment page · on-site day kit (banner ◆, screening forms, QR) · quarterly usage-report template'],
@@ -504,7 +505,7 @@ function ResponseTab() {
                  'Search ad copy set EN/AR · 3–5 CTWA statics + offer cards ◆ · retargeting statics ◆ · LP membership variant · WhatsApp quick-reply scripts'],
                 ['Partners (20: resellers 7 · affiliates 7 · brokers 3 · distributors 3)', 'Per partner type, each with its own agreement',
                  'Agreement → partner promotes → coded referral → qualified → paid',
-                 'Partner kit (explainer + code/QR + commission sheet) · co-branded flyer template ◆ · WhatsApp share cards'],
+                 'EXISTS from the programme build: community partnership decks (EN/AR) + an organisation-specific deck (Dreevo). To produce: per-partner codes/QR + commission sheet · co-branded flyer template ◆ · WhatsApp share cards'],
                 ['CSR / community (4)', 'Events near the three branches',
                  'Footfall → conversation → on-the-spot QR enrolment',
                  'Event banner ◆ · QR flyers · savings one-pager'],
