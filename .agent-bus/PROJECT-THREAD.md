@@ -49,14 +49,28 @@ P&L pathway block complete on all 24 capabilities, pending finance ticks.
 
 ## Open problems
 
-- GMB sync reconciliation (deleted reviews never removed) — first bus task
-  candidate (DN-001).
 - Practo API credential rotation outstanding (urgent, old).
 - Designer hire decision gates smart/dynamic creatives (Smile Club DM plan
   blocker).
 - Jawad's P&L ticks + September workbook; Dr Luvi's audit records + sign-offs.
+- /impact hero reviews tile still a hardcoded dated fact — switching it to
+  the live active count is UNBLOCKED (see DN-001 below) once the owner
+  eyeballs the public profile against the reconciled number one time.
+
+## Done via the bus
+
+- DN-001 (19 Sep) — GMB review reconciliation. Astra built (99,917 OpenAI
+  tokens; 23 tests), Claude QA'd, migrated, merged, deployed. First prod run
+  tripped Astra's strict totalReviewCount==snapshot guard: Google's counter
+  is approximate/stale on a healthy profile, so it is now advisory —
+  completeness rests on clean pagination + integrity guards (88c6ff2).
+  Verified 11:31 UTC sync: 80 rows → 61 active / 19 removed (the spam-sweep
+  deletions), matching the public profile. LEARNING for future specs: never
+  gate writes on Google's own aggregate counters.
 
 ## Next
 
-- Run DN-001 through the bus end-to-end as the pilot of remote mode.
 - Day-7 mandate checkpoint (23 Sep): first source-coded funnel reads.
+- Marketing channel tree shipped 19 Sep (Group > Channel > Partner >
+  Campaign type; agencies never channels) — gather Fahad's feedback, then
+  consider wiring the Reconciliation lenses into the tree cards.
