@@ -202,14 +202,20 @@ const emptyReport: MarketingReport = {
   googlePeriod: { from: null, to: null },
 };
 
-export async function getMarketingReport(): Promise<MarketingReport> {
+/** With `range`, every lens (ad platforms, tracker, GA4) is scoped to the
+ *  selected window so the tab obeys the date picker; without it, all-time
+ *  (the Reconciliation view's historical analysis). */
+export async function getMarketingReport(range?: { from: string; to: string }): Promise<MarketingReport> {
   const supabase = getSupabaseAdmin();
   if (!supabase) return emptyReport;
   try {
+    const metaQ = supabase.from('meta_insights_raw').select('campaign_name, date, spend, leads');
+    const gadsQ = supabase.from('google_ads_insights_raw').select('campaign_name, date, spend, conversions');
+    const leadQ = supabase.from('leads').select('inquiry_date, channel_source');
     const [{ data: metaRows }, { data: gadsRows }, { data: leadRows }] = await Promise.all([
-      supabase.from('meta_insights_raw').select('campaign_name, date, spend, leads'),
-      supabase.from('google_ads_insights_raw').select('campaign_name, date, spend, conversions'),
-      supabase.from('leads').select('inquiry_date, channel_source'),
+      range ? metaQ.gte('date', range.from).lte('date', range.to) : metaQ,
+      range ? gadsQ.gte('date', range.from).lte('date', range.to) : gadsQ,
+      range ? leadQ.gte('inquiry_date', range.from).lte('inquiry_date', range.to) : leadQ,
     ]);
 
     const meta = (metaRows as { campaign_name: string | null; date: string | null; spend: number | null; leads: number | null }[]) ?? [];
@@ -255,10 +261,11 @@ export async function getMarketingReport(): Promise<MarketingReport> {
       ...leads.map((l) => l.inquiry_date),
     ].filter(Boolean).sort() as string[];
     const today = new Date().toISOString().slice(0, 10);
-    const ga4From = allDates[0] ?? new Date(Date.now() - 90 * 86400_000).toISOString().slice(0, 10);
+    const ga4From = range?.from ?? allDates[0] ?? new Date(Date.now() - 90 * 86400_000).toISOString().slice(0, 10);
+    const ga4To = range?.to ?? today;
     let ga4: MktGa4 = { ...emptyGa4 };
     try {
-      const lens = await fetchGa4LeadLens(ga4From, today);
+      const lens = await fetchGa4LeadLens(ga4From, ga4To);
       const paidLeads = lens.byChannel
         .filter((c) => GA4_PAID_CHANNELS.test(c.channel))
         .reduce((a, c) => a + c.leads, 0);

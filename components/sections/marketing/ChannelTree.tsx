@@ -9,7 +9,7 @@ import { ChannelTreeView } from './ChannelTreeView';
  * ad platforms, GA4 or the affiliate feed. ?mchan / ?mgrp still deep-link.
  */
 export async function ChannelTree({ range, grp, chan }: { range: { from: string; to: string }; grp?: string; chan?: string }) {
-  const [mktRes, arabyRes] = await Promise.allSettled([getMarketingReport(), getArabyAdsReport(range)]);
+  const [mktRes, arabyRes] = await Promise.allSettled([getMarketingReport(range), getArabyAdsReport(range)]);
   const mkt = mktRes.status === 'fulfilled' ? mktRes.value : null;
   const araby = arabyRes.status === 'fulfilled' ? arabyRes.value : null;
   if (!mkt) {
