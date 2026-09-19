@@ -394,7 +394,7 @@ export const PLATFORM_LAYERS: PlatformLayer[] = [
         built:
           'A working governance rhythm runs today: every branch files a daily appointment report with a named preparer and submission time; clinician economics pass a monthly formula-controlled reconciliation (verified to AED 0.02 across all 15 August workbooks, twice independently); and the Head of Operations maintains the live Operating Platform report as the group\u2019s governed operating narrative. The formal OpCo structure is now documented: two pillars under the operating company \u2014 Head of Operations (patient experience & front office, centralized procurement, HR & administration, IT & facilities) and Clinical Director (clinical compliance lead, master nurse-in-charge, branch nurses-in-charge, doctors & specialists) \u2014 with a defined dual-accountability line routing schedules, patient flow and non-clinical coordination through Operations, and four weekly governance forums: Operations Review, Clinical Governance, Nursing Standards, Front-Office & Patient Experience.',
         coverage:
-          'Daily reporting live at all three branches; monthly commission control live for 15 clinicians; the operations report maintained continuously; the two-pillar structure and weekly forum cadence documented. Escalation-path detail beneath the forums still to be documented.',
+          'Daily reporting live at all three branches; monthly commission control live for 15 clinicians; the operations report maintained continuously; the two-pillar structure and weekly forum cadence documented, and escalation paths documented in the leadership-signed Corporate Policy (clinical-operations chapter).',
         evidence: [
           { label: 'Operating Platform report \u2014 governed live document', href: OPS, kind: 'live' },
         ],
@@ -409,14 +409,16 @@ export const PLATFORM_LAYERS: PlatformLayer[] = [
         title: 'Standards, Protocols & Care Pathways',
         overview:
           'Clinical protocols, referral rules, documentation standards and common care pathways used across clinics and specialties.',
-        built: '',
-        coverage: '',
+        built:
+          'The group operates under a comprehensive, leadership-signed Corporate Policy (2025, 110 pages) — every page counter-signed by the Managing Partners and the Medical Director. Its clinical-operations chapter is the protocol core: appointment scheduling and management, treatment-room guidelines, patient records, informed consent, treatment and care standards, patient-care supervision, sedation and immobilization, transfer and referral rules, infection control and sterilization procedures, medication management, sentinel-event handling, emergency and critical-situation management, equipment maintenance and calibration, and a documented escalation policy. Supporting chapters cover compliance and regulatory, code of conduct, credentialing and privileging, patient rights and complaint resolution, IT and data security, and HSE (fire safety, medical and hazardous waste, radiation safety) — with a defined policy-governance and review schedule.',
+        coverage:
+          'Group-wide policy applicable across the three branches, with a regulations/standards reference appendix and forms library. Specialty-level care pathways (per-treatment clinical protocols) are the next documentation layer beneath it.',
         evidence: [],
         pnl: 'Standardised pathways make revenue reproducible: consistent treatment planning and documentation reduce rework, support payer and regulator confidence, and let any clinician deliver the group standard of care — the precondition for adding clinics without margin dilution.',
         owner: 'Dr Luvi Kaprani',
         status: 'validate',
-        refresh: 'Pending: SOPs / protocols for the evidence library',
-        updated: SEEDED,
+        refresh: 'Corporate Policy 2025 received via the 19 Sep Data Drop (leadership-signed source held in the evidence bucket) — capability text awaiting Dr Luvi’s sign-off',
+        updated: '2026-09-19',
       },
       {
         id: '4.3',
@@ -444,7 +446,7 @@ export const PLATFORM_LAYERS: PlatformLayer[] = [
         built:
           'The inter-branch training programme is running and documented: signed Observation Learning Acknowledgment forms (13 in the September 2026 cohort alone) record each visiting nurse’s supervised procedure observation — procedure, date and duration — counter-signed three ways: the trainee, the DHA-licensed treating doctor (stamped), and the supervising dental assistant. Occupational health is tracked per staff member: OHS screening registers cover the clinical team against an eight-test panel (TB, hepatitis B/C, HIV, varicella, rubella, measles/mumps, HBs antibody status).',
         coverage:
-          'Inter-branch nurse cross-training live (September cohort hosted at the Dr Tosun branch, procedures from laser periodontics to restorative); OHS registers maintained for two branches. Structured CPD calendar and a formal competency matrix still to be documented. Source scans carry staff signatures and health data — held internally, never published.',
+          'Inter-branch nurse cross-training live (September cohort hosted at the Dr Tosun branch, procedures from laser periodontics to restorative); OHS registers maintained for two branches. Policy foundations now documented in the Corporate Policy 2025 (staff training & continuing education, credentialing & privileging, physician ongoing professional practice evaluation); the operating CPD calendar and competency matrix remain to be produced under them. Source scans carry staff signatures and health data — held internally, never published.',
         evidence: [],
         pnl: 'Cross-branch training turns one branch’s specialist capability into group capability: signed-off procedure observation widens what every branch can safely offer — lifting revenue per chair without new hires — and documented competency reduces clinical and insurance risk.',
         owner: 'Dr Luvi Kaprani',
