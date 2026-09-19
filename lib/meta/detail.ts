@@ -215,9 +215,13 @@ export async function getMetaAdsDetail(opts: { from?: string; to?: string } = {}
       (t, c) => ({ spend: t.spend + c.spend, impressions: t.impressions + c.impressions, clicks: t.clicks + c.clicks, leads: t.leads + c.leads }),
       { ...zero },
     );
-    campaigns.sort((a, b) => b.spend - a.spend);
-    adSets.sort((a, b) => b.spend - a.spend);
-    ads.sort((a, b) => b.spend - a.spend);
+    // ACTIVE entities lead, then spend — otherwise a freshly launched
+    // campaign ranks below ten months of paused history and reads as
+    // "Meta isn't updated" (exactly the Sep 2026 complaint).
+    const stRank = (s: string) => (s === 'ACTIVE' ? 0 : 1);
+    campaigns.sort((a, b) => stRank(a.status) - stRank(b.status) || b.spend - a.spend);
+    adSets.sort((a, b) => stRank(a.status) - stRank(b.status) || b.spend - a.spend);
+    ads.sort((a, b) => stRank(a.status) - stRank(b.status) || b.spend - a.spend);
 
     const available = campaigns.length > 0 || adSets.length > 0 || ads.length > 0;
     return { available, note: available ? null : 'no Meta entities returned', period: { from, to }, totals, campaigns, adSets, ads };

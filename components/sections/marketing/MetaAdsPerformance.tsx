@@ -90,7 +90,11 @@ export async function MetaAdsPerformance({ range }: { range?: { from: string; to
       </Card>
 
       <Card>
-        <SectionHeader tag="M2" eyebrow="Campaigns" title="Campaigns" />
+        <SectionHeader
+          tag="M2"
+          eyebrow="Campaigns · active first"
+          title={`Campaigns (${r.campaigns.filter((c) => c.status === 'ACTIVE').length} active of ${r.campaigns.length})`}
+        />
         <div className="px-5 pb-5 pt-4 overflow-x-auto">
           <table className="w-full text-left">
             <thead><tr className="border-b border-line">
@@ -146,7 +150,7 @@ export async function MetaAdsPerformance({ range }: { range?: { from: string; to
       </Card>
 
       <Card>
-        <SectionHeader tag="M4" eyebrow="Ads & creative assets" title={`Top ads (${ads.length} of ${r.ads.length})`} />
+        <SectionHeader tag="M4" eyebrow="Ads & creative assets · active first" title={`Ads (${ads.length} of ${r.ads.length} — active lead)`} />
         <div className="px-5 pb-5 pt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
           {ads.map((a) => (
             <div key={a.id} className="flex gap-3 rounded-card border border-line p-3">
