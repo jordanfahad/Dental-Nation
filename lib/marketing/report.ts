@@ -152,6 +152,8 @@ export interface MarketingReport {
   };
   monthly: MktMonth[];
   topCampaigns: MktCampaign[];
+  /** EVERY campaign in the window, spend-sorted — topCampaigns is its top slice. */
+  campaigns: MktCampaign[];
   /** In-house tracker leads by channel (context for attribution). */
   trackedByChannel: { label: string; value: number }[];
   /** GA4 site-tagged gross-lead lens (independent triangulation). */
@@ -190,6 +192,7 @@ const emptyReport: MarketingReport = {
   totals: { adSpend: 0, reportedLeads: 0, trackedLeads: 0, leakageAbs: null, trackedShare: null, costPerReported: null, costPerTracked: null },
   monthly: [],
   topCampaigns: [],
+  campaigns: [],
   trackedByChannel: [],
   ga4: emptyGa4,
   metaPeriod: { from: null, to: null },
@@ -284,10 +287,10 @@ export async function getMarketingReport(): Promise<MarketingReport> {
     };
     for (const r of meta) addCamp('Meta', r.campaign_name, Number(r.spend) || 0, Number(r.leads) || 0);
     for (const r of gads) addCamp('Google', r.campaign_name, Number(r.spend) || 0, Number(r.conversions) || 0);
-    const topCampaigns = [...campAgg.values()]
+    const campaigns = [...campAgg.values()]
       .map((c) => ({ ...c, costPerReported: rate(c.spend, c.reportedLeads) }))
-      .sort((a, b) => b.spend - a.spend)
-      .slice(0, 12);
+      .sort((a, b) => b.spend - a.spend);
+    const topCampaigns = campaigns.slice(0, 12);
 
     // Tracker by channel.
     const chan = new Map<string, number>();
@@ -318,6 +321,7 @@ export async function getMarketingReport(): Promise<MarketingReport> {
       },
       monthly,
       topCampaigns,
+      campaigns,
       trackedByChannel,
       ga4,
       metaPeriod: { from: metaDates[0] ?? null, to: metaDates[metaDates.length - 1] ?? null },

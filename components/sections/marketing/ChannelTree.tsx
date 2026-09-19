@@ -1,35 +1,45 @@
 import { getMarketingReport, type MarketingReport, type MktCampaign } from '@/lib/marketing/report';
 import { getArabyAdsReport, type ArabyReport } from '@/lib/arabyads/report';
-import { Card, SectionHeader, Takeaway } from '@/components/ui/Card';
-import { DataGapInline } from '@/components/ui/DataGap';
-import { KpiBand, type KpiItem } from '@/components/charts/KpiBand';
-import { HBarChart, TOKENS, type BarDatum } from '@/components/charts/Charts';
 import { ownerFor } from '@/config/data-gap-owners';
 
-const aed = (n: number) => `AED ${Math.round(n).toLocaleString('en-US')}`;
-const int = (n: number) => Math.round(n).toLocaleString('en-US');
-const pct = (n: number) => `${Math.round(n * 100)}%`;
-
 /**
- * Marketing channel tree — the fixed four-level hierarchy the whole marketing
- * view follows:
+ * Marketing channel tree — the fixed four-level hierarchy every marketing
+ * number reports through:
  *
  *   Group (Online / Offline) → Channel → Partner → Campaign type
  *
  * Agencies are never channels: ArabyAds sits under Affiliates, any performance
  * agency under Performance. No data source is added or removed here — every
  * leaf re-maps a number that already exists elsewhere in the dashboard, and
- * each card names the LENS it counts in (platform / GA4 / tracker / bookings),
- * because those are distinct populations that must never be summed silently.
+ * each card names the LENS it counts in (Platform / GA4 / Tracker / Bookings):
+ * distinct populations that are never summed silently.
+ *
+ * Styled in the McKinsey exhibit language of the Smile Club tab (Georgia
+ * serif, exhibit tags, thesis bar, proportion bars) so the two flagship
+ * strategy views read as one house style.
  */
+
+const NAVY = '#244260';
+const BLUE = '#5793A3';
+const GOLD = '#E1C96E';
+const CORAL = '#B45F53';
+const OLIVE = '#767769';
+const LINE = '#D8D8CC';
+const INK = '#3a4148';
+const TRACK = '#EEEFE1';
+
+const aed = (n: number) => `AED ${Math.round(n).toLocaleString('en-US')}`;
+const int = (n: number) => Math.round(n).toLocaleString('en-US');
+const pct = (n: number) => `${Math.round(n * 100)}%`;
 
 type ChannelKey = 'performance' | 'affiliates' | 'seo' | 'social' | 'referrals' | 'direct' | 'crm';
 type Mkt = MarketingReport;
+type Lens = 'Platform' | 'GA4' | 'Tracker' | 'Bookings';
 
 interface ChannelDef {
   key: ChannelKey;
   label: string;
-  lens: 'Platform' | 'GA4' | 'Tracker' | 'Bookings';
+  lens: Lens;
   leadNoun: string;
   partners: string;
   note: string;
@@ -42,21 +52,16 @@ const CHANNELS: ChannelDef[] = [
   { key: 'social', label: 'Social / Organic', lens: 'GA4', leadNoun: 'site leads', partners: 'In-house', note: 'GA4 leads from unpaid social; posting detail lives in Social & Local.' },
   { key: 'referrals', label: 'Referrals', lens: 'GA4', leadNoun: 'site leads', partners: 'In-house', note: 'GA4 leads arriving from other sites (incl. the W3Layouts backlink).' },
   { key: 'direct', label: 'Direct', lens: 'GA4', leadNoun: 'site leads', partners: 'In-house', note: 'GA4 leads with no attributed source — brand demand and untagged links.' },
-  { key: 'crm', label: 'Email / WhatsApp', lens: 'Tracker', leadNoun: 'tracked leads', partners: 'In-house (ZAVIS CRM)', note: 'In-house tracker leads logged from WhatsApp/CRM contact.' },
+  { key: 'crm', label: 'Email / WhatsApp', lens: 'Tracker', leadNoun: 'tracked leads', partners: 'In-house (ZAVIS CRM)', note: 'In-house tracker leads logged from consented WhatsApp/CRM contact.' },
 ];
 
-const OFFLINE: { label: string; note: string }[] = [
-  { label: 'Events', note: 'CSR / community activations near the branches — costed per event; no reporting source connected yet.' },
-  { label: 'Print / OOH', note: 'Radio and billboards stay deferred by the evidence rule; no spend, no source.' },
-  { label: 'Walk-ins / Word of mouth', note: 'Captured clinically in Practo, not marketing-attributed; front-desk source codes will make this countable.' },
+const OFFLINE: { label: string; verdict: string; note: string }[] = [
+  { label: 'Events', verdict: 'Case by case', note: 'CSR / community activations near the branches — costed per event before commitment; no reporting source connected yet.' },
+  { label: 'Print / OOH', verdict: 'Deferred', note: 'Radio and billboards stay deferred by the evidence rule — broad reach, weak attribution, high cost.' },
+  { label: 'Walk-ins / Word of mouth', verdict: 'Untagged', note: 'Captured clinically in Practo, not marketing-attributed; front-desk source codes will make this countable.' },
 ];
 
-const LENS_COLOR: Record<ChannelDef['lens'], string> = {
-  Platform: TOKENS.accent,
-  GA4: '#6D28D9',
-  Tracker: TOKENS.good,
-  Bookings: TOKENS.accent600,
-};
+const LENS_COLOR: Record<Lens, string> = { Platform: NAVY, GA4: '#6D28D9', Tracker: '#2C5E3F', Bookings: BLUE };
 
 function ga4For(mkt: Mkt, re: RegExp): number | null {
   if (!mkt.ga4.available) return null;
@@ -95,91 +100,71 @@ function numbersFor(key: ChannelKey, mkt: Mkt, araby: ArabyReport | null): LeafN
   }
 }
 
-/* ── presentation ─────────────────────────────────────────────── */
+/* ── McKinsey atoms (shared visual language with the Smile Club tab) ── */
 
-function LensDot({ lens }: { lens: ChannelDef['lens'] }) {
+function Exhibit({ n, title, right }: { n: string; title: string; right?: React.ReactNode }) {
   return (
-    <span className="inline-flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-ink-faint">
-      <span className="h-1.5 w-1.5 rounded-full" style={{ background: LENS_COLOR[lens] }} />
-      {lens} lens
-    </span>
-  );
-}
-
-function ChannelCard({ def, n, href, active }: { def: ChannelDef; n: LeafNumbers; href: string; active: boolean }) {
-  return (
-    <a
-      href={href}
-      aria-current={active ? 'page' : undefined}
-      className={`group block rounded-card border bg-card p-4 transition ${
-        active ? 'border-accent shadow-sm' : 'border-line hover:border-accent/40'
-      }`}
-    >
-      <div className="flex items-start justify-between gap-2">
-        <p className="text-[12.5px] font-semibold leading-tight text-ink">{def.label}</p>
-        <LensDot lens={def.lens} />
+    <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+      <div className="flex items-baseline gap-2">
+        <span className="text-[9.5px] font-bold uppercase tracking-widest" style={{ color: CORAL }}>Exhibit {n}</span>
+        <h2 className="text-[14px] font-semibold" style={{ color: NAVY, fontFamily: 'Georgia, serif' }}>{title}</h2>
       </div>
-      {n.leads == null ? (
-        <>
-          <p className="mt-3 text-[24px] font-semibold leading-none tabular-nums text-ink-faint">—</p>
-          <p className="mt-1 text-[11px] leading-snug text-ink-faint">{n.gap}</p>
-        </>
-      ) : (
-        <>
-          <p className="mt-3 text-[24px] font-semibold leading-none tabular-nums text-ink">{int(n.leads)}</p>
-          <p className="mt-1 text-[11px] text-ink-faint">{def.leadNoun}</p>
-        </>
-      )}
-      <div className="mt-3 flex items-baseline justify-between border-t border-line/60 pt-2.5 text-[11.5px] tabular-nums">
-        <span className="text-ink-soft">{n.spend != null ? aed(n.spend) : 'no media cost'}</span>
-        <span className="text-ink-soft">{n.cpl != null ? `${aed(n.cpl)} / lead` : ''}</span>
-      </div>
-      <div className="mt-2 flex items-center justify-between gap-2">
-        <p className="truncate text-[10.5px] text-ink-faint">{def.partners}</p>
-        <span className={`shrink-0 text-[10.5px] font-medium ${active ? 'text-accent' : 'text-ink-faint group-hover:text-accent'}`}>
-          {active ? 'open below' : 'drill in →'}
-        </span>
-      </div>
-    </a>
-  );
-}
-
-function PartnerHeading({ name, status }: { name: string; status: 'live' | 'coming soon' | 'open slot' }) {
-  return (
-    <div className="mb-3 flex items-center gap-2 border-b border-line/60 pb-2">
-      <p className="text-[12.5px] font-semibold text-ink">{name}</p>
-      <span
-        className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
-          status === 'live' ? 'bg-good-50 text-good' : status === 'coming soon' ? 'bg-watch-50 text-watch' : 'bg-line/40 text-ink-faint'
-        }`}
-      >
-        {status}
-      </span>
+      {right}
     </div>
   );
 }
 
-function CampaignTable({ rows }: { rows: { type: string; name: string; spend: number | null; leads: number | null; cpl: number | null }[] }) {
+function Stat({ v, l, s, gap }: { v: string | null; l: string; s?: string; gap?: string }) {
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-left text-[12.5px]">
+    <div className="rounded-xl border bg-white px-3 py-2.5" style={{ borderColor: LINE }}>
+      <p className="text-[17px] font-bold tabular-nums" style={{ color: v != null ? NAVY : CORAL, fontFamily: 'Georgia, serif' }}>{v ?? '—'}</p>
+      <p className="text-[9.5px] font-bold uppercase tracking-wide" style={{ color: BLUE }}>{l}</p>
+      <p className="mt-0.5 text-[9.5px] leading-snug" style={{ color: v != null ? OLIVE : CORAL }}>{v != null ? s : gap ?? s}</p>
+    </div>
+  );
+}
+
+function BarRow({ label, value, max, color, display }: { label: string; value: number; max: number; color: string; display: string }) {
+  return (
+    <div className="mb-1.5 flex items-center gap-2">
+      <span className="w-[150px] shrink-0 truncate text-[10.5px]" style={{ color: INK }} title={label}>{label}</span>
+      <div className="h-3.5 flex-1 rounded-full" style={{ backgroundColor: TRACK }}>
+        <div className="h-3.5 rounded-full" style={{ width: `${Math.max(3, Math.round((value / Math.max(1, max)) * 100))}%`, backgroundColor: color }} />
+      </div>
+      <span className="w-[64px] shrink-0 text-right text-[10.5px] font-semibold tabular-nums" style={{ color: NAVY }}>{display}</span>
+    </div>
+  );
+}
+
+function GapNote({ children }: { children: React.ReactNode }) {
+  return <p className="rounded-lg px-3 py-2 text-[11px] font-medium leading-snug" style={{ backgroundColor: '#FBEFEC', color: CORAL }}>{children}</p>;
+}
+
+function PartnerHeading({ name, status }: { name: string; status: 'live' | 'coming soon' | 'open slot' }) {
+  const tone = status === 'live' ? { bg: '#e7efe6', fg: '#2C5E3F' } : status === 'coming soon' ? { bg: '#f5ecd8', fg: '#8a6a1e' } : { bg: '#efede6', fg: OLIVE };
+  return (
+    <div className="mb-2.5 flex items-center gap-2 border-b pb-2" style={{ borderColor: '#EEEFE1' }}>
+      <p className="text-[12.5px] font-bold" style={{ color: NAVY }}>{name}</p>
+      <span className="rounded-full px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wide" style={{ backgroundColor: tone.bg, color: tone.fg }}>{status}</span>
+    </div>
+  );
+}
+
+function McTable({ head, rows }: { head: string[]; rows: React.ReactNode[][] }) {
+  return (
+    <div className="overflow-x-auto rounded-xl border bg-white" style={{ borderColor: LINE }}>
+      <table className="w-full border-collapse text-[11px]">
         <thead>
-          <tr className="border-b border-line text-[10.5px] uppercase tracking-wide text-ink-faint">
-            <th className="py-2 pr-3 font-medium">Campaign type</th>
-            <th className="py-2 pr-3 font-medium">Campaign</th>
-            <th className="py-2 pl-3 text-right font-medium">Spend</th>
-            <th className="py-2 pl-3 text-right font-medium">Leads</th>
-            <th className="py-2 pl-3 text-right font-medium">Cost / lead</th>
+          <tr className="text-left text-[9.5px] uppercase tracking-wide" style={{ color: OLIVE, backgroundColor: '#F7F7F0' }}>
+            {head.map((h, i) => <th key={h} className={`px-3 py-2 font-bold ${i >= head.length - 3 ? 'text-right' : ''}`}>{h}</th>)}
           </tr>
         </thead>
         <tbody>
           {rows.map((r, i) => (
-            <tr key={`${r.type}-${r.name}-${i}`} className="border-b border-line/60 last:border-0">
-              <td className="whitespace-nowrap py-2 pr-3 text-ink-soft">{r.type}</td>
-              <td className="py-2 pr-3 text-ink" title={r.name}><span className="block max-w-[300px] truncate">{r.name}</span></td>
-              <td className="py-2 pl-3 text-right tabular-nums text-ink">{r.spend != null ? aed(r.spend) : '—'}</td>
-              <td className="py-2 pl-3 text-right tabular-nums text-ink-soft">{r.leads != null ? int(r.leads) : '—'}</td>
-              <td className="py-2 pl-3 text-right tabular-nums text-ink-soft">{r.cpl != null ? aed(r.cpl) : '—'}</td>
+            <tr key={i} className="border-t align-top" style={{ borderColor: '#EEEFE1' }}>
+              {r.map((cell, j) => (
+                <td key={j} className={`px-3 py-1.5 ${j >= r.length - 3 ? 'text-right tabular-nums' : ''}`} style={{ color: j === 0 ? NAVY : INK }}>{cell}</td>
+              ))}
             </tr>
           ))}
         </tbody>
@@ -188,51 +173,72 @@ function CampaignTable({ rows }: { rows: { type: string; name: string; spend: nu
   );
 }
 
-function DeepDiveLinks({ links }: { links: { label: string; href: string }[] }) {
+function DeepDive({ links }: { links: { label: string; href: string }[] }) {
   return (
-    <p className="text-[12px]">
+    <p className="mt-3 text-[11.5px]">
       {links.map((l, i) => (
         <span key={l.href}>
-          {i > 0 ? <span className="mx-2 text-ink-faint">·</span> : null}
-          <a href={l.href} className="font-medium text-accent hover:underline">{l.label} →</a>
+          {i > 0 ? <span className="mx-2" style={{ color: OLIVE }}>·</span> : null}
+          <a href={l.href} className="font-semibold hover:underline" style={{ color: BLUE }}>{l.label} →</a>
         </span>
       ))}
     </p>
   );
 }
 
+/* ── drilldowns ───────────────────────────────────────────────── */
+
+function PlatformPill({ p }: { p: 'Meta' | 'Google' }) {
+  const tone = p === 'Google' ? { bg: `${NAVY}14`, fg: NAVY } : { bg: `${BLUE}1F`, fg: BLUE };
+  return <span className="rounded px-1.5 py-0.5 text-[9.5px] font-bold" style={{ backgroundColor: tone.bg, color: tone.fg }}>{p}</span>;
+}
+
 function PerformanceDrill({ mkt, rangeQs }: { mkt: Mkt; rangeQs: string }) {
   const meta = mkt.platforms.find((p) => p.platform === 'Meta');
   const google = mkt.platforms.find((p) => p.platform === 'Google');
-  const kpis: KpiItem[] = [
-    { label: 'Paid spend', value: mkt.source === 'empty' ? null : aed(mkt.totals.adSpend), hint: 'Meta + Google', gapDetail: 'no spend synced', gapOwner: ownerFor('spend') },
-    { label: 'Google spend', value: google ? aed(google.spend) : null, gapDetail: 'no Google rows', gapOwner: ownerFor('spend') },
-    { label: 'Meta spend', value: meta ? aed(meta.spend) : null, gapDetail: 'no Meta rows', gapOwner: ownerFor('spend') },
-    { label: 'Reported leads', value: int(mkt.totals.reportedLeads), hint: 'platform-attributed' },
-    { label: 'Cost / reported lead', value: mkt.totals.costPerReported != null ? aed(mkt.totals.costPerReported) : null, goodWhenUp: false, gapDetail: 'no reported leads', gapOwner: ownerFor('attribution') },
-    { label: 'GA4 paid leads', value: mkt.ga4.available ? int(mkt.ga4.paidLeads) : null, hint: 'independent site check', gapDetail: mkt.ga4.note ?? 'GA4 unavailable', gapOwner: ownerFor('channel') },
-  ];
+  const gCount = mkt.campaigns.filter((c) => c.platform === 'Google').length;
+  const mCount = mkt.campaigns.filter((c) => c.platform === 'Meta').length;
   return (
-    <div className="space-y-5">
-      <KpiBand items={kpis} />
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-5">
+        <Stat v={mkt.source === 'empty' ? null : aed(mkt.totals.adSpend)} l="Paid spend" s="Meta + Google" gap="no spend synced" />
+        <Stat v={google ? aed(google.spend) : null} l="Google spend" s={google ? `${int(google.reportedLeads)} reported` : undefined} gap="no Google rows" />
+        <Stat v={meta ? aed(meta.spend) : null} l="Meta spend" s={meta ? `${int(meta.reportedLeads)} reported` : undefined} gap="no Meta rows" />
+        <Stat v={mkt.totals.costPerReported != null ? aed(mkt.totals.costPerReported) : null} l="Cost / reported lead" s="platform-attributed" gap="no reported leads" />
+        <Stat v={mkt.ga4.available ? int(mkt.ga4.paidLeads) : null} l="GA4 paid leads" s="independent site check" gap={mkt.ga4.note ?? 'GA4 unavailable'} />
+      </div>
+
       <div>
         <PartnerHeading name="In-house" status="live" />
-        {mkt.topCampaigns.length === 0 ? (
-          <DataGapInline detail="no campaign rows in the synced window" owner={ownerFor('spend')} />
+        <p className="mb-2 text-[11px]" style={{ color: OLIVE }}>
+          <span className="font-bold" style={{ color: NAVY }}>{int(mkt.campaigns.length)} campaigns</span> in the
+          selected window — Google {int(gCount)} · Meta {int(mCount)} — every one listed, spend-sorted. Campaign
+          type: Google = Paid Search, Meta = Paid Social.
+        </p>
+        {mkt.campaigns.length === 0 ? (
+          <GapNote>No campaign rows in the synced window — owner: {ownerFor('spend')}.</GapNote>
         ) : (
-          <CampaignTable rows={mkt.topCampaigns.map((c: MktCampaign) => ({ type: c.platform === 'Google' ? 'Paid Search' : 'Paid Social', name: c.campaign, spend: c.spend, leads: c.reportedLeads, cpl: c.costPerReported }))} />
+          <McTable
+            head={['Type', 'Campaign', 'Spend', 'Leads', 'Cost / lead']}
+            rows={mkt.campaigns.map((c: MktCampaign) => [
+              <span key="t" className="flex items-center gap-1.5 whitespace-nowrap"><PlatformPill p={c.platform} />{c.platform === 'Google' ? 'Paid Search' : 'Paid Social'}</span>,
+              <span key="n" className="block max-w-[320px] truncate font-semibold" title={c.campaign}>{c.campaign}</span>,
+              aed(c.spend),
+              int(c.reportedLeads),
+              c.costPerReported != null ? aed(c.costPerReported) : '—',
+            ])}
+          />
         )}
-        <div className="mt-3">
-          <DeepDiveLinks links={[
-            { label: 'Google Ads deep-dive', href: `?tab=marketing&mtab=google${rangeQs}` },
-            { label: 'Meta Ads deep-dive', href: `?tab=marketing&mtab=meta${rangeQs}` },
-            { label: 'Reconciliation & leakage', href: `?tab=marketing&mtab=recon${rangeQs}` },
-          ]} />
-        </div>
+        <DeepDive links={[
+          { label: 'Google Ads deep-dive', href: `?tab=marketing&mtab=google${rangeQs}` },
+          { label: 'Meta Ads deep-dive', href: `?tab=marketing&mtab=meta${rangeQs}` },
+          { label: 'Reconciliation & leakage', href: `?tab=marketing&mtab=recon${rangeQs}` },
+        ]} />
       </div>
+
       <div>
         <PartnerHeading name="Performance agency" status="open slot" />
-        <p className="text-[12.5px] leading-snug text-ink-soft">
+        <p className="text-[11.5px] leading-snug" style={{ color: INK }}>
           No external agency is engaged — paid runs in-house. The slot exists so agency-run campaigns would land
           here, under Performance, never as their own channel.
         </p>
@@ -241,57 +247,55 @@ function PerformanceDrill({ mkt, rangeQs }: { mkt: Mkt; rangeQs: string }) {
   );
 }
 
-function AffiliatesDrill({ araby, rangeQs }: { araby: ArabyReport | null; rangeQs: string }) {
+function AffiliatesDrill({ araby }: { araby: ArabyReport | null }) {
   if (!araby || !araby.configured || araby.source === 'empty') {
     return (
       <div className="space-y-4">
         <PartnerHeading name="ArabyAds" status="live" />
-        <DataGapInline detail="no ArabyAds bookings in the selected window" owner={ownerFor('channel')} />
+        <GapNote>No ArabyAds bookings in the selected window — widen the date range to cover the campaign, or check the Araby Ads tab. Owner: {ownerFor('channel')}.</GapNote>
         <PartnerHeading name="Platformance" status="coming soon" />
-        <p className="text-[12.5px] leading-snug text-ink-soft">Placeholder until the partnership goes live — it will report here, under Affiliates.</p>
+        <p className="text-[11.5px] leading-snug" style={{ color: INK }}>Second affiliate partner in onboarding — reports here when live.</p>
       </div>
     );
   }
   const cpb = araby.bookings.total > 0 ? araby.cost.windowCost / araby.bookings.total : null;
-  const kpis: KpiItem[] = [
-    { label: 'Confirmed bookings', value: int(araby.bookings.total), hint: 'the billable event' },
-    { label: 'Booking revenue', value: aed(araby.bookings.revenue), hint: 'clinic value of those bookings' },
-    { label: 'Cost (this window)', value: aed(araby.cost.windowCost), hint: 'bookings × rate card' },
-    { label: 'Cost / booking', value: cpb != null ? aed(cpb) : null, goodWhenUp: false, gapDetail: 'no bookings to divide by', gapOwner: ownerFor('channel') },
-    { label: 'Budget used (lifetime)', value: pct(araby.cost.utilization), hint: `${aed(araby.cost.toDateCost)} of ${aed(araby.cost.budgetCap)} cap` },
-  ];
-  const laneMix: BarDatum[] = araby.cost.perLane
-    .filter((l) => l.bookings > 0)
-    .map((l) => ({ label: `${l.lane} (${l.laneCode})`, value: l.bookings }));
+  const maxLane = Math.max(...araby.cost.perLane.map((l) => l.bookings), 1);
   return (
-    <div className="space-y-5">
-      <KpiBand items={kpis} />
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-5">
+        <Stat v={int(araby.bookings.total)} l="Confirmed bookings" s="the billable event" />
+        <Stat v={aed(araby.bookings.revenue)} l="Booking revenue" s="clinic value of those bookings" />
+        <Stat v={aed(araby.cost.windowCost)} l="Cost · this window" s="bookings × rate card" />
+        <Stat v={cpb != null ? aed(cpb) : null} l="Cost / booking" s="blended across lanes" gap="no bookings to divide by" />
+        <Stat v={pct(araby.cost.utilization)} l="Budget used · lifetime" s={`${aed(araby.cost.toDateCost)} of ${aed(araby.cost.budgetCap)} cap`} />
+      </div>
+
       <div>
         <PartnerHeading name="ArabyAds" status="live" />
-        {laneMix.length > 0 ? (
-          <div className="mb-4">
-            <p className="mb-2 text-[10.5px] font-medium uppercase tracking-wide text-ink-faint">Bookings by lane</p>
-            <HBarChart data={laneMix} valueFormat="int" />
-          </div>
-        ) : null}
-        <CampaignTable
-          rows={araby.cost.perLane.map((l) => ({
-            type: 'Lead Gen · pay-per-booking',
-            name: `${l.lane} — ${l.laneCode} · rate ${aed(l.rate)}`,
-            spend: l.cost,
-            leads: l.bookings,
-            cpl: l.bookings > 0 ? l.cost / l.bookings : null,
-          }))}
-        />
-        <div className="mt-3">
-          <DeepDiveLinks links={[{ label: 'Full Araby Ads tab (publishers, drop-off, Practo outcomes)', href: '?tab=arabyads' }]} />
+        <p className="mb-2 text-[10.5px] font-bold uppercase tracking-wide" style={{ color: OLIVE }}>Bookings by lane — pay only on results</p>
+        <div className="mb-3">
+          {araby.cost.perLane.map((l) => (
+            <BarRow key={l.laneCode} label={`${l.lane} (${l.laneCode})`} value={l.bookings} max={maxLane} color={BLUE} display={int(l.bookings)} />
+          ))}
         </div>
+        <McTable
+          head={['Campaign type', 'Lane · rate card', 'Cost', 'Bookings', 'Cost / booking']}
+          rows={araby.cost.perLane.map((l) => [
+            'Lead Gen · pay-per-booking',
+            <span key="n" className="font-semibold">{l.lane} — {l.laneCode} · {aed(l.rate)}/booking</span>,
+            aed(l.cost),
+            int(l.bookings),
+            l.bookings > 0 ? aed(l.cost / l.bookings) : '—',
+          ])}
+        />
+        <DeepDive links={[{ label: 'Full Araby Ads tab — publishers, drop-off, Practo outcomes', href: '?tab=arabyads' }]} />
       </div>
+
       <div>
         <PartnerHeading name="Platformance" status="coming soon" />
-        <p className="text-[12.5px] leading-snug text-ink-soft">
-          Second affiliate partner in onboarding. When live it reports here with the same leaf card — same
-          shape, same funnel spine, its own source codes.
+        <p className="text-[11.5px] leading-snug" style={{ color: INK }}>
+          Second affiliate partner in onboarding. When live it reports here with the same leaf card — same shape,
+          same funnel spine, its own source codes.
         </p>
       </div>
     </div>
@@ -300,24 +304,29 @@ function AffiliatesDrill({ araby, rangeQs }: { araby: ArabyReport | null; rangeQ
 
 function Ga4Drill({ def, mkt, n }: { def: ChannelDef; mkt: Mkt; n: LeafNumbers }) {
   const share = n.leads != null && mkt.ga4.available && mkt.ga4.totalLeads > 0 ? n.leads / mkt.ga4.totalLeads : null;
-  const kpis: KpiItem[] = [
-    { label: def.leadNoun, value: n.leads != null ? int(n.leads) : null, hint: 'GA4 first-user channel', gapDetail: n.gap ?? 'GA4 unavailable', gapOwner: ownerFor('channel') },
-    { label: 'Share of GA4 site leads', value: share != null ? pct(share) : null, hint: `of ${mkt.ga4.available ? int(mkt.ga4.totalLeads) : '—'} site leads`, gapDetail: 'GA4 unavailable', gapOwner: ownerFor('channel') },
-    { label: 'Media cost', value: 'AED 0', hint: 'organic — staffed work, not free' },
-  ];
   const deepDive =
     def.key === 'seo'
-      ? [{ label: 'Digital & SEO tab (rankings, pages, keywords)', href: '?tab=digital' }, { label: 'Google Analytics tab', href: '?tab=analytics' }]
+      ? [{ label: 'Digital & SEO tab — rankings, pages, keywords', href: '?tab=digital' }, { label: 'Google Analytics tab', href: '?tab=analytics' }]
       : def.key === 'social'
-        ? [{ label: 'Social & Local tab (posts, demographics)', href: '?tab=social' }, { label: 'Google Analytics tab', href: '?tab=analytics' }]
+        ? [{ label: 'Social & Local tab — posts, demographics', href: '?tab=social' }, { label: 'Google Analytics tab', href: '?tab=analytics' }]
         : [{ label: 'Google Analytics tab', href: '?tab=analytics' }];
   return (
-    <div className="space-y-5">
-      <KpiBand items={kpis} />
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
+        <Stat v={n.leads != null ? int(n.leads) : null} l={def.leadNoun} s="GA4 first-user channel" gap={n.gap ?? 'GA4 unavailable'} />
+        <Stat v={share != null ? pct(share) : null} l="Share of GA4 site leads" s={mkt.ga4.available ? `of ${int(mkt.ga4.totalLeads)} site leads` : undefined} gap="GA4 unavailable" />
+        <Stat v="AED 0" l="Media cost" s="organic — staffed work, not free" />
+      </div>
+      {share != null ? (
+        <div>
+          <p className="mb-2 text-[10.5px] font-bold uppercase tracking-wide" style={{ color: OLIVE }}>Position in the GA4 mix</p>
+          <BarRow label={def.label} value={n.leads ?? 0} max={mkt.ga4.totalLeads} color={LENS_COLOR.GA4} display={pct(share)} />
+        </div>
+      ) : null}
       <div>
         <PartnerHeading name={def.partners} status="live" />
-        <p className="text-[12.5px] leading-snug text-ink-soft">{def.note}</p>
-        <div className="mt-3"><DeepDiveLinks links={deepDive} /></div>
+        <p className="text-[11.5px] leading-snug" style={{ color: INK }}>{def.note}</p>
+        <DeepDive links={deepDive} />
       </div>
     </div>
   );
@@ -326,21 +335,22 @@ function Ga4Drill({ def, mkt, n }: { def: ChannelDef; mkt: Mkt; n: LeafNumbers }
 function CrmDrill({ mkt }: { mkt: Mkt }) {
   const rows = mkt.trackedByChannel.filter((c) => /whatsapp|email|sms/i.test(c.label));
   const total = rows.reduce((a, c) => a + c.value, 0);
-  const kpis: KpiItem[] = [
-    { label: 'Tracked leads', value: rows.length ? int(total) : null, hint: 'WhatsApp / email in the tracker', gapDetail: 'no WhatsApp/email tracker rows', gapOwner: ownerFor('channel') },
-    { label: 'Bulk sends', value: '0', hint: 'held at zero per the Smile Club mandate' },
-    { label: 'Media cost', value: 'AED 0', hint: 'consented 1-to-1 contact only' },
-  ];
-  const mix: BarDatum[] = rows.map((c) => ({ label: c.label, value: c.value }));
+  const max = Math.max(...rows.map((r) => r.value), 1);
   return (
-    <div className="space-y-5">
-      <KpiBand items={kpis} />
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
+        <Stat v={rows.length ? int(total) : null} l="Tracked leads" s="WhatsApp / email in the tracker" gap="no WhatsApp/email tracker rows" />
+        <Stat v="0" l="Bulk sends" s="held at zero per the Smile Club mandate" />
+        <Stat v="AED 0" l="Media cost" s="consented 1-to-1 contact only" />
+      </div>
       <div>
         <PartnerHeading name="In-house (ZAVIS CRM)" status="live" />
-        {mix.length > 0 ? <HBarChart data={mix} valueFormat="int" /> : <DataGapInline detail="no channel-attributed tracker rows" owner={ownerFor('channel')} />}
-        <div className="mt-3">
-          <DeepDiveLinks links={[{ label: 'CRM — Zavis tab', href: '?tab=crm' }]} />
-        </div>
+        {rows.length > 0 ? (
+          <div>{rows.map((r) => <BarRow key={r.label} label={r.label} value={r.value} max={max} color={LENS_COLOR.Tracker} display={int(r.value)} />)}</div>
+        ) : (
+          <GapNote>No channel-attributed tracker rows in this window — owner: {ownerFor('channel')}.</GapNote>
+        )}
+        <DeepDive links={[{ label: 'CRM — Zavis tab', href: '?tab=crm' }]} />
       </div>
     </div>
   );
@@ -353,40 +363,32 @@ export async function ChannelTree({ range, grp, chan }: { range: { from: string;
   const [mktRes, arabyRes] = await Promise.allSettled([getMarketingReport(), getArabyAdsReport(range)]);
   const mkt = mktRes.status === 'fulfilled' ? mktRes.value : null;
   const araby = arabyRes.status === 'fulfilled' ? arabyRes.value : null;
-  if (!mkt) {
-    return (
-      <Card>
-        <SectionHeader tag="T" eyebrow="Marketing · Channel tree" title="Marketing — channel tree" />
-        <div className="px-5 pb-5 pt-4"><DataGapInline detail="marketing report unavailable" owner={ownerFor('spend')} /></div>
-      </Card>
-    );
-  }
+  if (!mkt) return <GapNote>Marketing report unavailable — owner: {ownerFor('spend')}.</GapNote>;
+
   const rangeQs = `&from=${range.from}&to=${range.to}&preset=custom`;
   const active = CHANNELS.find((c) => c.key === chan) ?? null;
 
-  // Summary strip. Spend = paid platforms + affiliate cost (both real, both
-  // AED). Lead lenses stay separate — GA4 vs tracker — never summed.
+  // Spend = paid platforms + affiliate cost (both real, both AED). Lead lenses
+  // stay separate — GA4 vs tracker — never summed.
   const affiliateCost = araby && araby.configured && araby.source !== 'empty' ? araby.cost.windowCost : 0;
   const totalSpend = (mkt.source === 'empty' ? 0 : mkt.totals.adSpend) + affiliateCost;
   const attributedRevenue = araby?.bookings.revenue ?? null;
-  const kpis: KpiItem[] = [
-    { label: 'Marketing spend', value: totalSpend > 0 ? aed(totalSpend) : null, hint: 'paid platforms + affiliate cost', gapDetail: 'no spend synced', gapOwner: ownerFor('spend') },
-    { label: 'GA4 site leads', value: mkt.ga4.available ? int(mkt.ga4.totalLeads) : null, hint: 'site-tagged · all online channels', gapDetail: mkt.ga4.note ?? 'GA4 lens unavailable', gapOwner: ownerFor('channel') },
-    { label: 'Tracked leads', value: int(mkt.totals.trackedLeads), hint: 'in-house tracker' },
-    { label: 'Blended cost / tracked lead', value: mkt.totals.costPerTracked != null ? aed(mkt.totals.costPerTracked) : null, goodWhenUp: false, gapDetail: 'no tracked leads to divide by', gapOwner: ownerFor('attribution') },
-    { label: 'Revenue attributed', value: attributedRevenue != null && attributedRevenue > 0 ? aed(attributedRevenue) : null, hint: 'ArabyAds bookings only today', gapDetail: 'only affiliate bookings carry revenue attribution', gapOwner: ownerFor('attribution') },
-    { label: 'ROAS', value: null, gapDetail: 'needs per-channel revenue attribution (UTM/source tagging) — honest gap, not a guess', gapOwner: ownerFor('attribution') },
-  ];
-
-  const ga4Mix: BarDatum[] = mkt.ga4.available ? mkt.ga4.byChannel.map((c) => ({ label: c.channel, value: c.leads })) : [];
+  const maxGa4 = Math.max(...mkt.ga4.byChannel.map((c) => c.leads), 1);
 
   return (
     <div className="space-y-5">
-      <Card>
-        <SectionHeader
-          tag="T"
-          eyebrow="Marketing · Channel tree"
-          title="One tree: Group → Channel → Partner → Campaign type"
+      <p className="rounded-xl border-l-4 bg-white px-4 py-3 text-[12.5px] font-medium leading-snug" style={{ borderColor: GOLD, color: NAVY, fontFamily: 'Georgia, serif' }}>
+        <span className="font-bold">Every marketing dirham and lead has one fixed address:</span>{' '}
+        Group → Channel → Partner → Campaign type. Agencies are never channels — ArabyAds reports under
+        Affiliates, an agency would report under Performance. Each leaf names its counting lens
+        (Platform · GA4 · Tracker · Bookings); different lenses sit side by side and are never summed into one
+        invented total.
+      </p>
+
+      <section>
+        <Exhibit
+          n="T1"
+          title="The operating picture"
           right={
             <div className="flex gap-1.5">
               {(['online', 'offline'] as const).map((g) => (
@@ -394,7 +396,8 @@ export async function ChannelTree({ range, grp, chan }: { range: { from: string;
                   key={g}
                   href={`?tab=marketing&mtab=overview${g === 'offline' ? '&mgrp=offline' : ''}${rangeQs}`}
                   aria-current={group === g ? 'page' : undefined}
-                  className={`inline-block rounded-full border px-3 py-1 text-[11.5px] font-medium transition ${group === g ? 'border-accent bg-accent text-white' : 'border-line bg-card text-ink-soft hover:border-accent/40 hover:text-ink'}`}
+                  className="rounded-full px-3 py-1 text-[11px] font-bold transition"
+                  style={group === g ? { backgroundColor: NAVY, color: 'white' } : { backgroundColor: '#F1F1EA', color: OLIVE }}
                 >
                   {g === 'online' ? 'Online / Digital' : 'Offline'}
                 </a>
@@ -402,93 +405,123 @@ export async function ChannelTree({ range, grp, chan }: { range: { from: string;
             </div>
           }
         />
-        <div className="px-5 pb-5 pt-4">
-          <p className="text-[12.5px] leading-snug text-ink-soft">
-            Every marketing number has a fixed address in this tree. Agencies are{' '}
-            <span className="font-medium text-ink">never channels</span> — ArabyAds sits under Affiliates, an
-            agency would sit under Performance. Each card names its counting lens; different lenses sit side by
-            side and are never summed into one total.
-          </p>
-          <div className="mt-4"><KpiBand items={kpis} /></div>
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
+          <Stat v={totalSpend > 0 ? aed(totalSpend) : null} l="Marketing spend" s="paid platforms + affiliate cost" gap="no spend synced" />
+          <Stat v={mkt.ga4.available ? int(mkt.ga4.totalLeads) : null} l="GA4 site leads" s="site-tagged · all online" gap={mkt.ga4.note ?? 'GA4 unavailable'} />
+          <Stat v={int(mkt.totals.trackedLeads)} l="Tracked leads" s="in-house tracker" />
+          <Stat v={mkt.totals.costPerTracked != null ? aed(mkt.totals.costPerTracked) : null} l="Blended cost / tracked" s="all spend ÷ tracker leads" gap="no tracked leads" />
+          <Stat v={attributedRevenue != null && attributedRevenue > 0 ? aed(attributedRevenue) : null} l="Revenue attributed" s="ArabyAds bookings only today" gap="only affiliate bookings attribute revenue" />
+          <Stat v={null} l="ROAS" gap="needs UTM/source tagging — honest gap, not a guess" />
         </div>
-      </Card>
+      </section>
 
       {group === 'online' ? (
         <>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {CHANNELS.map((c) => (
-              <ChannelCard
-                key={c.key}
-                def={c}
-                n={numbersFor(c.key, mkt, araby)}
-                href={`?tab=marketing&mtab=overview&mchan=${c.key}${rangeQs}`}
-                active={active?.key === c.key}
-              />
-            ))}
-          </div>
+          <section>
+            <Exhibit n="T2" title="The tree — seven online channels, one shape" />
+            <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
+              {CHANNELS.map((c) => {
+                const n = numbersFor(c.key, mkt, araby);
+                const isActive = active?.key === c.key;
+                return (
+                  <a
+                    key={c.key}
+                    href={`?tab=marketing&mtab=overview&mchan=${c.key}${rangeQs}`}
+                    aria-current={isActive ? 'page' : undefined}
+                    className="block rounded-xl border-2 bg-white p-3.5 transition"
+                    style={isActive ? { borderColor: NAVY, boxShadow: `0 0 0 3px ${GOLD}44` } : { borderColor: LINE }}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-[12px] font-bold leading-tight" style={{ color: NAVY }}>{c.label}</p>
+                      <span className="inline-flex shrink-0 items-center gap-1 text-[9px] font-bold uppercase tracking-wide" style={{ color: LENS_COLOR[c.lens] }}>
+                        <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: LENS_COLOR[c.lens] }} />{c.lens}
+                      </span>
+                    </div>
+                    {n.leads == null ? (
+                      <>
+                        <p className="mt-2.5 text-[22px] font-bold leading-none tabular-nums" style={{ color: '#C9C9BC', fontFamily: 'Georgia, serif' }}>—</p>
+                        <p className="mt-1 text-[10px] leading-snug" style={{ color: CORAL }}>{n.gap}</p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="mt-2.5 text-[22px] font-bold leading-none tabular-nums" style={{ color: NAVY, fontFamily: 'Georgia, serif' }}>{int(n.leads)}</p>
+                        <p className="mt-1 text-[10px]" style={{ color: OLIVE }}>{c.leadNoun}</p>
+                      </>
+                    )}
+                    <div className="mt-2.5 flex items-baseline justify-between border-t pt-2 text-[10.5px] tabular-nums" style={{ borderColor: '#EEEFE1', color: INK }}>
+                      <span>{n.spend != null ? aed(n.spend) : 'no media cost'}</span>
+                      <span>{n.cpl != null ? `${aed(n.cpl)}/lead` : ''}</span>
+                    </div>
+                    <div className="mt-1.5 flex items-center justify-between gap-2">
+                      <p className="truncate text-[9.5px]" style={{ color: OLIVE }}>{c.partners}</p>
+                      <span className="shrink-0 text-[10px] font-bold" style={{ color: isActive ? NAVY : BLUE }}>{isActive ? 'open below' : 'drill in →'}</span>
+                    </div>
+                  </a>
+                );
+              })}
+            </div>
+          </section>
 
           {active ? (
-            <Card>
-              <SectionHeader
-                tag="T2"
-                eyebrow={`Online › ${active.label} · ${active.lens} lens`}
-                title={`${active.label} — partners & campaign types`}
-                right={
-                  <a href={`?tab=marketing&mtab=overview${rangeQs}`} className="text-[11.5px] font-medium text-accent hover:underline">
-                    ← all channels
-                  </a>
-                }
+            <section>
+              <Exhibit
+                n="T3"
+                title={`Online › ${active.label} — partners & campaign types`}
+                right={<a href={`?tab=marketing&mtab=overview${rangeQs}`} className="text-[11px] font-bold hover:underline" style={{ color: BLUE }}>← all channels</a>}
               />
-              <div className="px-5 pb-5 pt-4">
+              <div className="rounded-xl border bg-white p-4" style={{ borderColor: LINE }}>
                 {active.key === 'performance' ? (
                   <PerformanceDrill mkt={mkt} rangeQs={rangeQs} />
                 ) : active.key === 'affiliates' ? (
-                  <AffiliatesDrill araby={araby} rangeQs={rangeQs} />
+                  <AffiliatesDrill araby={araby} />
                 ) : active.key === 'crm' ? (
                   <CrmDrill mkt={mkt} />
                 ) : (
                   <Ga4Drill def={active} mkt={mkt} n={numbersFor(active.key, mkt, araby)} />
                 )}
-                <div className="mt-4">
-                  <Takeaway>
-                    {active.note} Numbers here match the {active.lens} source&apos;s own tab exactly — lenses are
-                    never mixed into one total.
-                  </Takeaway>
-                </div>
               </div>
-            </Card>
+              <p className="mt-2 rounded-lg px-3 py-2 text-[11px] font-medium" style={{ backgroundColor: '#FDF9EC', color: '#6d5a1d' }}>
+                {active.note} Numbers match the {active.lens} source&apos;s own tab exactly — lenses are never mixed
+                into one total.
+              </p>
+            </section>
           ) : (
-            <Card>
-              <SectionHeader tag="T2" eyebrow="Same lens" title="GA4 site leads by channel — the one comparable mix" />
-              <div className="px-5 pb-5 pt-4">
-                {ga4Mix.length === 0 ? (
-                  <DataGapInline detail={mkt.ga4.note ?? 'GA4 lead lens unavailable'} owner={ownerFor('channel')} />
+            <section>
+              <Exhibit n="T3" title="GA4 site leads by channel — the one comparable mix" />
+              <div className="rounded-xl border bg-white p-4" style={{ borderColor: LINE }}>
+                {mkt.ga4.byChannel.length === 0 ? (
+                  <GapNote>{mkt.ga4.note ?? 'GA4 lead lens unavailable'} — owner: {ownerFor('channel')}.</GapNote>
                 ) : (
                   <>
-                    <HBarChart data={ga4Mix} valueFormat="int" />
-                    <Takeaway>
+                    {mkt.ga4.byChannel.map((c) => (
+                      <BarRow key={c.channel} label={c.channel} value={c.leads} max={maxGa4} color={LENS_COLOR.GA4} display={int(c.leads)} />
+                    ))}
+                    <p className="mt-2 text-[10px]" style={{ color: OLIVE }}>
                       Shares are only honest within one lens, so this mix uses GA4&apos;s site-tagged leads alone.
-                      Click a channel card above to drill into its partners and campaign types; the Reconciliation
-                      sub-tab keeps the three-lens leakage analysis.
-                    </Takeaway>
+                      Click a channel card above to drill in; the Reconciliation sub-tab keeps the three-lens
+                      leakage analysis.
+                    </p>
                   </>
                 )}
               </div>
-            </Card>
+            </section>
           )}
         </>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-3">
-          {OFFLINE.map((o) => (
-            <div key={o.label} className="rounded-card border border-dashed border-line bg-card p-4">
-              <div className="flex items-baseline justify-between gap-2">
-                <p className="text-[12.5px] font-semibold text-ink">{o.label}</p>
-                <span className="rounded-full bg-line/40 px-2 py-0.5 text-[10px] font-medium text-ink-faint">no source</span>
+        <section>
+          <Exhibit n="T2" title="Offline — three channels, none yet countable" />
+          <div className="grid gap-2.5 sm:grid-cols-3">
+            {OFFLINE.map((o) => (
+              <div key={o.label} className="rounded-xl border-2 border-dashed bg-white p-3.5" style={{ borderColor: LINE }}>
+                <div className="flex items-baseline justify-between gap-2">
+                  <p className="text-[12px] font-bold" style={{ color: NAVY }}>{o.label}</p>
+                  <span className="rounded px-1.5 py-0.5 text-[9.5px] font-bold" style={{ backgroundColor: '#f5ecd8', color: '#8a6a1e' }}>{o.verdict}</span>
+                </div>
+                <p className="mt-2 text-[11px] leading-snug" style={{ color: INK }}>{o.note}</p>
               </div>
-              <p className="mt-2 text-[11.5px] leading-snug text-ink-soft">{o.note}</p>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        </section>
       )}
     </div>
   );
