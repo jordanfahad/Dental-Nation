@@ -392,17 +392,17 @@ export const PLATFORM_LAYERS: PlatformLayer[] = [
         overview:
           'Clinical governance structure, decision rights, leadership forums, network-wide clinical accountability and escalation.',
         built:
-          'A working governance rhythm runs today: every branch files a daily appointment report with a named preparer and submission time; clinician economics pass a monthly formula-controlled reconciliation (verified to AED 0.02 across all 15 August workbooks, twice independently); and the Head of Operations maintains the live Operating Platform report as the group\u2019s governed operating narrative \u2014 including her dashboard build specification and its independent verification. Formal structure (leadership forums, decision rights, escalation paths) to be documented from clinical leadership records.',
+          'A working governance rhythm runs today: every branch files a daily appointment report with a named preparer and submission time; clinician economics pass a monthly formula-controlled reconciliation (verified to AED 0.02 across all 15 August workbooks, twice independently); and the Head of Operations maintains the live Operating Platform report as the group\u2019s governed operating narrative. The formal OpCo structure is now documented: two pillars under the operating company \u2014 Head of Operations (patient experience & front office, centralized procurement, HR & administration, IT & facilities) and Clinical Director (clinical compliance lead, master nurse-in-charge, branch nurses-in-charge, doctors & specialists) \u2014 with a defined dual-accountability line routing schedules, patient flow and non-clinical coordination through Operations, and four weekly governance forums: Operations Review, Clinical Governance, Nursing Standards, Front-Office & Patient Experience.',
         coverage:
-          'Daily reporting live at all three branches; monthly commission control live for 15 clinicians; the operations report maintained continuously. Forums and escalation documentation pending.',
+          'Daily reporting live at all three branches; monthly commission control live for 15 clinicians; the operations report maintained continuously; the two-pillar structure and weekly forum cadence documented. Escalation-path detail beneath the forums still to be documented.',
         evidence: [
           { label: 'Operating Platform report \u2014 governed live document', href: OPS, kind: 'live' },
         ],
         pnl: '',
         owner: 'Dr Luvi Kaprani',
         status: 'validate',
-        refresh: 'Operating routines drafted from verified evidence 12 Sep 2026 \u2014 formal governance records still pending from clinical leadership',
-        updated: '2026-09-12',
+        refresh: 'Governance structure documented from the OpCo organisation chart (19 Sep 2026) \u2014 awaiting Dr Luvi\u2019s sign-off',
+        updated: '2026-09-19',
       },
       {
         id: '4.2',
@@ -424,31 +424,33 @@ export const PLATFORM_LAYERS: PlatformLayer[] = [
         overview:
           'Quality measures, safety controls, compliance requirements, audit routines and corrective-action evidence.',
         built:
-          'Patient-experience quality is measured and managed: every daily branch report captures per-patient ratings and comments, and the public measure stands at 4.9\u2605 across 62 Google reviews with a 97% response rate. The 2026 clinical-quality KPI framework is defined and loaded on the group\u2019s restricted KPI page \u2014 clinical audit pass \u2265 95%, consent completeness \u2265 98%, infection-control compliance \u2265 98%, treatment-plan documentation \u2265 98% \u2014 awaiting the first audited actuals.',
+          'Patient-experience quality is measured and managed: every daily branch report captures per-patient ratings and comments, and the public measure stands at 4.9\u2605 across 60 publicly visible Google reviews (verified 14 Sep 2026). The 2026 clinical-quality KPI framework is defined and loaded on the group\u2019s restricted KPI page \u2014 clinical audit pass \u2265 95%, consent completeness \u2265 98%, infection-control compliance \u2265 98%, treatment-plan documentation \u2265 98% \u2014 awaiting the first audited actuals. Regulatory and facility compliance is tracked in a three-branch register: DHA facility licenses, trade licenses, FANR radiology registrations, tenancy, and service contracts (medical & general waste, water testing, planned preventive maintenance, pest control, fire & safety) with start and expiry dates per branch; clinician credentials are registered with DHA license and malpractice expiry dates across the roster.',
         coverage:
-          'Experience quality live across all three clinics. Clinical audit, safety and compliance evidence (audit routines, corrective actions) pending from the clinical team.',
+          'Experience quality live across all three clinics; the compliance and credential registers cover all three branches (a handful of Al Maher service contracts remain held with the previous operator, flagged in the register). Clinical audit routines and corrective-action evidence remain pending from the clinical team.',
         evidence: [
           { label: 'Patient feedback & daily report routine \u2014 Operating Platform report', href: OPS, kind: 'doc' },
         ],
         pnl: '',
         owner: 'Dr Luvi Kaprani',
         status: 'validate',
-        refresh: 'Experience measures live; audit & compliance actuals pending \u2014 drafted 12 Sep 2026, awaiting Dr Luvi\u2019s sign-off',
-        updated: '2026-09-12',
+        refresh: 'Compliance & credential registers added from Dr Luvi\u2019s 19 Sep 2026 handover \u2014 audit actuals still pending; awaiting her sign-off',
+        updated: '2026-09-19',
       },
       {
         id: '4.4',
         title: 'Clinical Training & Competency',
         overview:
           'Clinical onboarding, training, competency validation and continuous professional-development evidence.',
-        built: '',
-        coverage: '',
+        built:
+          'The inter-branch training programme is running and documented: signed Observation Learning Acknowledgment forms (13 in the September 2026 cohort alone) record each visiting nurse’s supervised procedure observation — procedure, date and duration — counter-signed three ways: the trainee, the DHA-licensed treating doctor (stamped), and the supervising dental assistant. Occupational health is tracked per staff member: OHS screening registers cover the clinical team against an eight-test panel (TB, hepatitis B/C, HIV, varicella, rubella, measles/mumps, HBs antibody status).',
+        coverage:
+          'Inter-branch nurse cross-training live (September cohort hosted at the Dr Tosun branch, procedures from laser periodontics to restorative); OHS registers maintained for two branches. Structured CPD calendar and a formal competency matrix still to be documented. Source scans carry staff signatures and health data — held internally, never published.',
         evidence: [],
         pnl: '',
         owner: 'Dr Luvi Kaprani',
         status: 'validate',
-        refresh: 'Pending: training logs & competency records',
-        updated: SEEDED,
+        refresh: 'Drafted from Dr Luvi’s 19 Sep 2026 handover (signed training forms + OHS registers) — awaiting her sign-off',
+        updated: '2026-09-19',
       },
     ],
   },

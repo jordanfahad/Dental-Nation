@@ -23,6 +23,10 @@ export default async function RoomDashPage({
   const { token } = await params;
   const link = await resolveShareToken(token, 'room');
   if (!link) notFound();
+  // Investor-tier room links carry {"dash": false} in sections: the curated
+  // report pages stay open, but the LIVE dashboard behind the token does not
+  // exist for them — same indistinguishable 404 as a bad token.
+  if (link.sections?.dash === false) notFound();
   await bumpShareView(token);
   const sp = await searchParams;
   return (

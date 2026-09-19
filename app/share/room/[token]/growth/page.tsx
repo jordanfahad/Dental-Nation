@@ -27,11 +27,15 @@ export default async function RoomGrowthPage({
   await bumpShareView(token);
   const sp = await searchParams;
   const base = `/share/room/${token}`;
+  // Investor-tier links ({"dash": false}) get the curated report with no
+  // deep-links into the live dashboard — dashHrefFor renders nothing without
+  // a dashBasePath on room paths.
+  const dashAllowed = link.sections?.dash !== false;
 
   return (
     <main className="mx-auto max-w-[1240px] px-4 py-6 sm:px-8 sm:py-8">
       <RoomSectionBar backHref={base} section="Growth Department Live Dashboard" />
-      <CommandDeck searchParams={sp} basePath={`${base}/growth`} dashBasePath={`${base}/dash`} />
+      <CommandDeck searchParams={sp} basePath={`${base}/growth`} dashBasePath={dashAllowed ? `${base}/dash` : undefined} />
     </main>
   );
 }

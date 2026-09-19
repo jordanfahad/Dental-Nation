@@ -27,6 +27,9 @@ export default async function RoomFinancePage({ params }: { params: Promise<{ to
   if (!link) notFound();
   await bumpShareView(token);
   const base = `/share/room/${token}`;
+  // Investor-tier links ({"dash": false}) see the curated finance page with no
+  // jump into the live dashboard.
+  const dashAllowed = link.sections?.dash !== false;
 
   return (
     <main className="mx-auto max-w-[880px] px-4 py-6 sm:px-8 sm:py-8">
@@ -46,10 +49,14 @@ export default async function RoomFinancePage({ params }: { params: Promise<{ to
           <ul className="mt-2 space-y-1.5 text-[12px] leading-snug text-ink-soft">
             <li>
               · <span className="font-medium text-ink">Historical clinic revenue</span> (pre-2026 PMS imports), with
-              monthly trend —{' '}
-              <Link href={`${base}/dash?tab=group`} className="font-semibold text-accent underline-offset-2 hover:underline">
-                open the live Group Revenue view →
-              </Link>
+              monthly trend{dashAllowed ? (
+                <>
+                  {' '}—{' '}
+                  <Link href={`${base}/dash?tab=group`} className="font-semibold text-accent underline-offset-2 hover:underline">
+                    open the live Group Revenue view →
+                  </Link>
+                </>
+              ) : null}
             </li>
             <li>
               · <span className="font-medium text-ink">Growth economics</span> — revenue vs growth investment, monthly,
