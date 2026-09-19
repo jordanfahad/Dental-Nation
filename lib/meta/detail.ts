@@ -38,6 +38,19 @@ export interface MetaAdSetDetail extends MetaMetrics {
   optimizationGoal: string;
   targeting: string;
 }
+/** Destination: creative.link_url, else the object_story_spec link. */
+function creativeLink(cr: Record<string, unknown>): string | null {
+  if (cr.link_url) return String(cr.link_url);
+  const oss = (cr.object_story_spec ?? {}) as Record<string, unknown>;
+  const ld = (oss.link_data ?? {}) as Record<string, unknown>;
+  if (ld.link) return String(ld.link);
+  const vd = (oss.video_data ?? {}) as Record<string, unknown>;
+  const cta = (vd.call_to_action ?? {}) as Record<string, unknown>;
+  const ctav = (cta.value ?? {}) as Record<string, unknown>;
+  if (ctav.link) return String(ctav.link);
+  return null;
+}
+
 export interface MetaAdDetail extends MetaMetrics {
   id: string;
   name: string;
@@ -48,6 +61,8 @@ export interface MetaAdDetail extends MetaMetrics {
   creativeBody: string | null;
   thumbnailUrl: string | null;
   cta: string | null;
+  /** Destination URL (creative link_url / story link), when the API exposes it. */
+  linkUrl: string | null;
 }
 export interface MetaAdsDetailReport {
   available: boolean;
@@ -170,7 +185,7 @@ export async function getMetaAdsDetail(opts: { from?: string; to?: string } = {}
       const [campObjs, setObjs, adObjs, campIns, setIns, adIns] = await Promise.all([
         graphAll(cfg, `act_${account}/campaigns`, { fields: 'id,name,objective,status,daily_budget,lifetime_budget' }),
         graphAll(cfg, `act_${account}/adsets`, { fields: 'id,name,status,campaign{name},daily_budget,lifetime_budget,optimization_goal,targeting' }),
-        graphAll(cfg, `act_${account}/ads`, { fields: 'id,name,status,adset{name},campaign{name},creative{title,body,thumbnail_url,call_to_action_type}' }),
+        graphAll(cfg, `act_${account}/ads`, { fields: 'id,name,status,adset{name},campaign{name},creative{title,body,thumbnail_url,call_to_action_type,link_url,object_story_spec}' }),
         insightsByLevel(cfg, account, 'campaign', from, to),
         insightsByLevel(cfg, account, 'adset', from, to),
         insightsByLevel(cfg, account, 'ad', from, to),
@@ -206,6 +221,7 @@ export async function getMetaAdsDetail(opts: { from?: string; to?: string } = {}
           creativeBody: cr.body ? String(cr.body) : null,
           thumbnailUrl: cr.thumbnail_url ? String(cr.thumbnail_url) : null,
           cta: cr.call_to_action_type ? String(cr.call_to_action_type) : null,
+          linkUrl: creativeLink(cr),
           ...mx,
         });
       }

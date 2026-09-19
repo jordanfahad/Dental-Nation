@@ -215,6 +215,94 @@ export async function GoogleAdsPerformance({ range }: { range?: { from: string; 
           </Takeaway>
         </div>
       </Card>
+
+      <Card>
+        <SectionHeader tag="G5" eyebrow="Destinations" title={`Landing pages (${r.landingPages.length})`} />
+        <div className="overflow-x-auto px-5 pb-5 pt-4">
+          {r.landingPages.length === 0 ? (
+            <p className="text-[12px] text-ink-faint">No landing-page rows in this window{r.note ? ` — ${r.note}` : ''}.</p>
+          ) : (
+            <table className="w-full text-left">
+              <thead><tr className="border-b border-line">
+                <th className={th}>Landing page</th><th className={`${th} text-right`}>Spend</th>
+                <th className={`${th} text-right`}>Impr.</th><th className={`${th} text-right`}>Clicks</th>
+                <th className={`${th} text-right`}>Conv.</th><th className={`${th} text-right`}>Cost / conv.</th>
+              </tr></thead>
+              <tbody>
+                {r.landingPages.slice(0, 40).map((lp) => (
+                  <tr key={lp.url} className="border-b border-line/60 last:border-0">
+                    <td className={td}><span className="block max-w-[340px] truncate" title={lp.url}>{lp.url.replace(/^https?:\/\/(www\.)?/, '')}</span></td>
+                    <td className={`${num} font-medium text-ink`}>{aed(lp.cost)}</td>
+                    <td className={num}>{int(lp.impressions)}</td>
+                    <td className={num}>{int(lp.clicks)}</td>
+                    <td className={num}>{int(lp.conversions)}</td>
+                    <td className={num}>{lp.conversions > 0 ? aed(lp.cost / lp.conversions) : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          <Takeaway>
+            Where the paid clicks actually land, with what each page&apos;s conversions cost — the page-level
+            read that shows whether budget problems are creative problems or landing-page problems.
+          </Takeaway>
+        </div>
+      </Card>
+
+      {r.campaigns.some((c) => c.channelType === 'PERFORMANCE_MAX') || r.assetGroups.length > 0 ? (
+        <Card>
+          <SectionHeader tag="G6" eyebrow="Performance Max" title={`PMax asset groups (${r.assetGroups.length})`} />
+          <div className="px-5 pb-5 pt-4">
+            {r.assetGroups.length === 0 ? (
+              <p className="text-[12px] text-ink-faint">PMax campaigns exist but no asset-group rows returned{r.note ? ` — ${r.note}` : ''}.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                  <thead><tr className="border-b border-line">
+                    <th className={th}>Asset group</th><th className={th}>Campaign</th><th className={th}>Status</th>
+                    <th className={`${th} text-right`}>Spend</th><th className={`${th} text-right`}>Impr.</th>
+                    <th className={`${th} text-right`}>Clicks</th><th className={`${th} text-right`}>Conv.</th>
+                  </tr></thead>
+                  <tbody>
+                    {r.assetGroups.map((g) => (
+                      <tr key={g.id} className="border-b border-line/60 last:border-0">
+                        <td className={td}><span className="block max-w-[200px] truncate" title={g.name}>{g.name}</span></td>
+                        <td className={td}><span className="block max-w-[180px] truncate text-[11px] text-ink-soft" title={g.campaign}>{g.campaign}</span></td>
+                        <td className={td}><Pill text={g.status} /></td>
+                        <td className={`${num} font-medium text-ink`}>{aed(g.cost)}</td>
+                        <td className={num}>{int(g.impressions)}</td>
+                        <td className={num}>{int(g.clicks)}</td>
+                        <td className={num}>{int(g.conversions)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {r.pmaxAssets.length > 0 ? (
+              <div className="mt-4">
+                <p className="text-[10.5px] font-medium uppercase tracking-wide text-ink-faint">
+                  PMax creatives — Google&apos;s own performance labels ({r.pmaxAssets.length} assets)
+                </p>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {r.pmaxAssets.slice(0, 60).map((a, i) => (
+                    <span key={i} className="inline-flex items-center gap-1.5 rounded border border-line px-2 py-1 text-[11px]">
+                      <span className="max-w-[220px] truncate text-ink" title={a.text ?? a.assetType}>{a.text ?? clean(a.assetType)}</span>
+                      <span className="text-[9.5px] uppercase text-ink-faint">{clean(a.fieldType)}</span>
+                      <Pill text={a.performanceLabel} />
+                    </span>
+                  ))}
+                </div>
+                <Takeaway>
+                  Google does not expose per-asset spend inside PMax — its performance label
+                  (Best / Good / Low / Learning) is the official per-creative signal. Replace
+                  &ldquo;Low&rdquo; assets first; asset-group spend above shows where the money goes.
+                </Takeaway>
+              </div>
+            ) : null}
+          </div>
+        </Card>
+      ) : null}
     </div>
   );
 }

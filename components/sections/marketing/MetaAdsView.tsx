@@ -75,6 +75,20 @@ export function MetaAdsView({ r, range }: { r: MetaAdsDetailReport; range?: { fr
   const adSets = byCampState(byStatus(r.adSets).filter((s) => camp === 'all' || s.campaign === camp));
   const ads = byCampState(byStatus(r.ads).filter((a) => camp === 'all' || a.campaign === camp));
 
+  // Landing pages, aggregated from the FILTERED ads so the table obeys every
+  // filter above. Meta reports metrics per ad; the destination comes from the
+  // creative, so ads without an exposed link land under "(destination not set)".
+  const landingPages = useMemo(() => {
+    const agg = new Map<string, { url: string; spend: number; impressions: number; clicks: number; leads: number; adCount: number }>();
+    for (const a of ads) {
+      const url = a.linkUrl ?? '(destination not set)';
+      const row = agg.get(url) ?? { url, spend: 0, impressions: 0, clicks: 0, leads: 0, adCount: 0 };
+      row.spend += a.spend; row.impressions += a.impressions; row.clicks += a.clicks; row.leads += a.leads; row.adCount += 1;
+      agg.set(url, row);
+    }
+    return [...agg.values()].sort((a, b) => b.spend - a.spend);
+  }, [ads]);
+
   const campStatePills = (
     <div className="flex items-center gap-1.5">
       <span className="text-[10px] font-medium uppercase tracking-wide text-ink-faint">Campaign state</span>
@@ -201,6 +215,44 @@ export function MetaAdsView({ r, range }: { r: MetaAdsDetailReport; range?: { fr
             </tbody>
           </table>
           {adSets.length === 0 ? <p className="pt-3 text-[12px] text-ink-faint">No ad sets match the current filters.</p> : null}
+        </div>
+      </Card>
+
+      <Card>
+        <SectionHeader tag="M3.5" eyebrow="Destinations" title={`Landing pages (${landingPages.length}) — from the filtered ads`} />
+        <div className="overflow-x-auto px-5 pb-5 pt-4">
+          {landingPages.length === 0 ? (
+            <p className="text-[12px] text-ink-faint">No ads match the current filters.</p>
+          ) : (
+            <table className="w-full text-left">
+              <thead><tr className="border-b border-line">
+                <th className={th}>Landing page</th><th className={`${th} text-right`}>Ads</th>
+                <th className={`${th} text-right`}>Spend</th><th className={`${th} text-right`}>Impr.</th>
+                <th className={`${th} text-right`}>Clicks</th><th className={`${th} text-right`}>Leads</th>
+                <th className={`${th} text-right`}>Cost / lead</th>
+              </tr></thead>
+              <tbody>
+                {landingPages.map((lp) => (
+                  <tr key={lp.url} className="border-b border-line/60 last:border-0">
+                    <td className={td}><span className="block max-w-[320px] truncate" title={lp.url}>{lp.url.replace(/^https?:\/\/(www\.)?/, '')}</span></td>
+                    <td className={num}>{int(lp.adCount)}</td>
+                    <td className={`${num} font-medium text-ink`}>{aed(lp.spend)}</td>
+                    <td className={num}>{int(lp.impressions)}</td>
+                    <td className={num}>{int(lp.clicks)}</td>
+                    <td className={num}>{int(lp.leads)}</td>
+                    <td className={num}>{lp.leads > 0 ? aed(lp.spend / lp.leads) : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          <div className="px-0 pt-2">
+            <Takeaway>
+              Where the filtered ads send people, with each destination&apos;s cost per lead — the read that
+              separates creative problems from landing-page problems. Click-to-WhatsApp ads carry no page URL
+              and group under &ldquo;destination not set&rdquo;.
+            </Takeaway>
+          </div>
         </div>
       </Card>
 

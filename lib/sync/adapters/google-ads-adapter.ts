@@ -369,6 +369,26 @@ export interface GAdsAdDetail extends GAdsMetrics {
   headlines: string[];
   descriptions: string[];
 }
+export interface GAdsLandingPage extends GAdsMetrics {
+  url: string;
+}
+export interface GAdsAssetGroup extends GAdsMetrics {
+  id: string;
+  name: string;
+  campaign: string;
+  status: string;
+}
+/** PMax creative: the API exposes Google's own performance label per asset
+ *  (BEST / GOOD / LOW / LEARNING / PENDING), not per-asset spend. */
+export interface GAdsPmaxAsset {
+  assetGroup: string;
+  campaign: string;
+  fieldType: string;
+  assetType: string;
+  text: string | null;
+  performanceLabel: string;
+  status: string;
+}
 export interface GoogleAdsDetailReport {
   available: boolean;
   note: string | null;
@@ -377,6 +397,9 @@ export interface GoogleAdsDetailReport {
   campaigns: GAdsCampaignDetail[];
   adGroups: GAdsAdGroupDetail[];
   ads: GAdsAdDetail[];
+  landingPages: GAdsLandingPage[];
+  assetGroups: GAdsAssetGroup[];
+  pmaxAssets: GAdsPmaxAsset[];
 }
 
 const emptyGAdsDetail: GoogleAdsDetailReport = {
@@ -387,6 +410,9 @@ const emptyGAdsDetail: GoogleAdsDetailReport = {
   campaigns: [],
   adGroups: [],
   ads: [],
+  landingPages: [],
+  assetGroups: [],
+  pmaxAssets: [],
 };
 
 const m = (r: Record<string, unknown>) => (r.metrics ?? {}) as Record<string, unknown>;
@@ -407,6 +433,10 @@ export async function getGoogleAdsDetail(opts: { from?: string; to?: string } = 
     const campaigns: GAdsCampaignDetail[] = [];
     const adGroups: GAdsAdGroupDetail[] = [];
     const ads: GAdsAdDetail[] = [];
+    const lpAgg = new Map<string, GAdsLandingPage>();
+    const assetGroups: GAdsAssetGroup[] = [];
+    const pmaxAssets: GAdsPmaxAsset[] = [];
+    const degraded: string[] = [];
 
     for (const customer of cfg.customerIds) {
       const campRows = await gaqlSearch(
@@ -472,16 +502,90 @@ export async function getGoogleAdsDetail(opts: { from?: string; to?: string } = 
       }
     }
 
+    // Landing pages, PMax asset groups and PMax creatives are additive lenses:
+    // each degrades to a note without costing the core hierarchy above.
+    for (const customer of cfg.customerIds) {
+      try {
+        const lpRows = await gaqlSearch(
+          cfg, accessToken, customer,
+          `SELECT landing_page_view.unexpanded_final_url, metrics.cost_micros, metrics.impressions, ` +
+          `metrics.clicks, metrics.conversions FROM landing_page_view ${where}`,
+          version, cfg.loginCustomerId,
+        );
+        for (const r of lpRows) {
+          const lv = (r.landingPageView ?? {}) as Record<string, unknown>;
+          const url = String(lv.unexpandedFinalUrl ?? '(unknown)');
+          const mm = m(r);
+          const row = lpAgg.get(url) ?? { url, cost: 0, impressions: 0, clicks: 0, conversions: 0 };
+          row.cost += AED(mm.costMicros); row.impressions += N(mm.impressions);
+          row.clicks += N(mm.clicks); row.conversions += N(mm.conversions);
+          lpAgg.set(url, row);
+        }
+      } catch (err) {
+        degraded.push(`landing pages: ${(err as Error).message.slice(0, 120)}`);
+      }
+      try {
+        const agRows2 = await gaqlSearch(
+          cfg, accessToken, customer,
+          `SELECT asset_group.id, asset_group.name, asset_group.status, campaign.name, ` +
+          `metrics.cost_micros, metrics.impressions, metrics.clicks, metrics.conversions FROM asset_group ${where}`,
+          version, cfg.loginCustomerId,
+        );
+        for (const r of agRows2) {
+          const g = (r.assetGroup ?? {}) as Record<string, unknown>;
+          const c = (r.campaign ?? {}) as Record<string, unknown>;
+          const mm = m(r);
+          assetGroups.push({
+            id: String(g.id ?? ''), name: String(g.name ?? '(unnamed)'), campaign: String(c.name ?? ''),
+            status: String(g.status ?? ''),
+            cost: AED(mm.costMicros), impressions: N(mm.impressions), clicks: N(mm.clicks), conversions: N(mm.conversions),
+          });
+        }
+      } catch (err) {
+        degraded.push(`asset groups: ${(err as Error).message.slice(0, 120)}`);
+      }
+      try {
+        const aaRows = await gaqlSearch(
+          cfg, accessToken, customer,
+          `SELECT asset_group_asset.field_type, asset_group_asset.performance_label, asset_group_asset.status, ` +
+          `asset.type, asset.name, asset.text_asset.text, asset_group.name, campaign.name FROM asset_group_asset ` +
+          `WHERE asset_group_asset.status != 'REMOVED'`,
+          version, cfg.loginCustomerId,
+        );
+        for (const r of aaRows) {
+          const aga = (r.assetGroupAsset ?? {}) as Record<string, unknown>;
+          const a = (r.asset ?? {}) as Record<string, unknown>;
+          const ta = (a.textAsset ?? {}) as Record<string, unknown>;
+          const g = (r.assetGroup ?? {}) as Record<string, unknown>;
+          const c = (r.campaign ?? {}) as Record<string, unknown>;
+          pmaxAssets.push({
+            assetGroup: String(g.name ?? ''), campaign: String(c.name ?? ''),
+            fieldType: String(aga.fieldType ?? ''), assetType: String(a.type ?? ''),
+            text: ta.text != null ? String(ta.text) : a.name != null ? String(a.name) : null,
+            performanceLabel: String(aga.performanceLabel ?? 'UNKNOWN'), status: String(aga.status ?? ''),
+          });
+        }
+      } catch (err) {
+        degraded.push(`pmax assets: ${(err as Error).message.slice(0, 120)}`);
+      }
+    }
+
     const totals = campaigns.reduce(
       (t, c) => ({ cost: t.cost + c.cost, impressions: t.impressions + c.impressions, clicks: t.clicks + c.clicks, conversions: t.conversions + c.conversions }),
       { cost: 0, impressions: 0, clicks: 0, conversions: 0 },
     );
-    campaigns.sort((a, b) => b.cost - a.cost);
-    adGroups.sort((a, b) => b.cost - a.cost);
-    ads.sort((a, b) => b.cost - a.cost);
+    // ENABLED entities lead, then spend — a fresh launch must never rank
+    // below months of paused history (the "not updated" illusion).
+    const stRank = (s: string) => (s === 'ENABLED' ? 0 : 1);
+    campaigns.sort((a, b) => stRank(a.status) - stRank(b.status) || b.cost - a.cost);
+    adGroups.sort((a, b) => stRank(a.status) - stRank(b.status) || b.cost - a.cost);
+    ads.sort((a, b) => stRank(a.status) - stRank(b.status) || b.cost - a.cost);
+    const landingPages = [...lpAgg.values()].sort((a, b) => b.cost - a.cost);
+    assetGroups.sort((a, b) => stRank(a.status) - stRank(b.status) || b.cost - a.cost);
 
     const available = campaigns.length > 0 || adGroups.length > 0 || ads.length > 0;
-    return { available, note: available ? null : 'no Google Ads entities in this window', period: { from, to }, totals, campaigns, adGroups, ads };
+    const note = available ? (degraded.length ? `partial: ${degraded.join(' · ')}` : null) : 'no Google Ads entities in this window';
+    return { available, note, period: { from, to }, totals, campaigns, adGroups, ads, landingPages, assetGroups, pmaxAssets };
   } catch (err) {
     return { ...emptyGAdsDetail, note: (err as Error).message };
   }
