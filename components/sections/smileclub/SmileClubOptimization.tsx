@@ -22,7 +22,7 @@ const MINT = '#A9C3A6';
 const OLIVE = '#767769';
 const LINE = '#D8D8CC';
 
-type Sub = 'reco' | 'mandate' | 'response' | 'offer' | 'waves' | 'corporate' | 'channels' | 'kpis';
+type Sub = 'reco' | 'mandate' | 'response' | 'dm' | 'offer' | 'waves' | 'corporate' | 'channels' | 'kpis';
 
 /* ── atoms ─────────────────────────────────────────────────────── */
 
@@ -97,6 +97,37 @@ const WAVES: Wave[] = [
     ],
   },
 ];
+
+/**
+ * Results to date, wave by wave — ONLY what Gautam has shared (the 12 Sep
+ * management progress update and Action Map v4, 16 Sep). No numbers are
+ * invented; where an outcome awaits reconciliation it says so.
+ */
+const WAVE_RESULTS: Record<string, { verdict: string; items: string[] }> = {
+  wave1: {
+    verdict: 'Tested — the broadcast lane is closed by evidence; the in-clinic lane is fully enabled and now carries the 60.',
+    items: [
+      'Broadcast CRM test (5 sends: 3 doctor-led + retry + follow-up): 1,280 non-unique reach · 863 delivered · 71 replies · 417 failures to code. Engagement came back appointment-led, not membership-led — 0 memberships confirmed from broadcast pending the payment-record reconciliation (closes 18 Sep). Consequence: bulk sends target 0, budget 0; triggered 1-to-1 contact replaces it.',
+      'Front-desk enablement DELIVERED by the programme build: reception member deck, Reception Conversion Guide (Ask → Match → Value → Clarify → Close), objection handling and Emirati Arabic scripts, value-discovery training completed — Wave 1 executes assets that already exist.',
+      'Product & governance in place: four plans live with an online joining route; Member Agreement v1.3 governs eligibility, family structure, payments, cancellation and failed-payment rules.',
+    ],
+  },
+  wave2: {
+    verdict: 'Partially entered — partnership GTM is built and activating; paid scale waits on the creative unlock.',
+    items: [
+      'Partnership go-to-market: bilingual community-partnership decks and an organisation-specific proposal complete; partner outreach active, first activations being scheduled (12 Sep update).',
+      'Paid + owned: ZAVIS pilot landing page live with search ads following; the membership SEO cluster is tasked. Meta dynamic/smart-creative formats are HELD by the creative blocker (see the Digital marketing plan) — offer-led statics and search carry paid until the designer unlock.',
+      'No paid-channel conversion results exist yet — the first source-coded funnel reads arrive with the 23 Sep Day-7 checkpoint.',
+    ],
+  },
+  wave3: {
+    verdict: 'Not entered — by design. The evidence gate has not opened; only the corporate doors are being warmed.',
+    items: [
+      'Corporate: warm doors named and outreach mandated by Mr Akbar — Assembly Global and Michael Page (Fahad’s contacts) plus ArabyAds through the existing partner relationship. Timeline and asks in the Digital marketing plan.',
+      'No Wave-3 spend, no offline commitments, no expansion claims — Wave 3 opens only on measured contribution from Waves 1–2.',
+    ],
+  },
+};
 
 const FACTS: { cat: string; color: string; items: string }[] = [
   { cat: 'Established (our own platform)', color: '#2C5E3F', items: 'Smile Club product + admin console live · 4.9★ across 62 GMB reviews · patient audience lists exist in both ad accounts · warm corporate contacts (Michael Page HR contact, RBS, current partners)' },
@@ -479,7 +510,9 @@ function ResponseTab() {
         <p className="mb-2 text-[11px]" style={{ color: OLIVE }}>
           Each channel runs its own micro-funnel; every one of them rolls up into the mandate spine
           (enquiry → qualified → checkout → paid → card active → booked → attended) via its source code. Assets marked ◆
-          depend on the designer hire; everything else ships from Creative OS templates or copy.
+          depend on the designer hire; everything else ships from Creative OS templates or copy. The digital lanes are
+          elaborated — budget slices, the creative blocker, corporate outreach and the week-by-week timeline — in the
+          Digital marketing plan sub-tab.
         </p>
         <div className="overflow-x-auto rounded-xl border bg-white" style={{ borderColor: LINE }}>
           <table className="w-full border-collapse text-[10.5px]">
@@ -559,6 +592,226 @@ function ResponseTab() {
             ))}
           </ul>
         </Card>
+      </section>
+    </div>
+  );
+}
+
+/* ── Digital marketing plan (elaborated 19 Sep — Fahad) ────────── */
+
+interface DmChannel {
+  channel: string; role: string; execution: string; budget: string; status: string; statusColor: string;
+}
+
+const DM_CHANNELS: DmChannel[] = [
+  {
+    channel: 'Google Search', role: 'Capture existing intent — membership, dental-cost and treatment queries, EN/AR, geo around the three branches.',
+    execution: 'Responsive search ads → ZAVIS pilot LP / membership LP variant → lead (CPL measured here) → 10-minute contact-centre follow-up. Negative lists to keep booking intent separate from membership intent.',
+    budget: 'AED 12,000', status: 'LIVE', statusColor: '#2C5E3F',
+  },
+  {
+    channel: 'Meta — paid (FB/IG)', role: 'Prospecting on eligibility-checked geo/interest audiences + retargeting site visitors; CTWA offer lane straight into WhatsApp.',
+    execution: 'Offer-led statics from Creative OS launch now; Advantage+/dynamic-creative formats HELD by the smart/dynamic-creatives blocker below. Patient-list audiences only after the documented eligibility check.',
+    budget: 'AED 9,000', status: 'PARTIAL — creative-capped', statusColor: '#7a6420',
+  },
+  {
+    channel: 'LinkedIn — corporate lane', role: 'Reach corporate buyers: HR, People/Culture, Benefits and Office-Manager titles in Dubai — air-cover that warms the Assembly Global / Michael Page / ArabyAds doors before and after the intro emails.',
+    execution: 'Founder-led organic posts (Fahad) from w/c 22 Sep at zero media cost + one bounded sponsored test on the corporate one-pager; every corporate meeting preceded by a connection touch.',
+    budget: 'AED 3,000 (test)', status: 'READY — w/c 22 Sep', statusColor: BLUE,
+  },
+  {
+    channel: 'ArabyAds — performance network', role: 'Paid distribution priced on performance: the Smile Club offer through their affiliate/programmatic network on a CPL model inside the CAC ceiling — extends the lead-gen go-live already scheduled for next week.',
+    execution: 'Scope added to the go-live agenda (pre-launch meeting held): dedicated source code, CPL agreed against the 150/200 lane targets, weekly reconciliation into the funnel spine.',
+    budget: 'AED 3,000 (CPL-based)', status: 'SCOPING — go-live next week', statusColor: BLUE,
+  },
+  {
+    channel: 'Website sticky banner', role: 'NEW traffic opportunity: a persistent, dismissible site-wide banner routes ALL existing traffic — booking intent, cost-guide readers, entrances across the 19,500+ SEO pages — to the Smile Club page at zero media cost.',
+    execution: '“Smile Club — dental care from AED 99/month → Join” EN/AR; UTM sc-banner; built by ZAVIS/W3Layouts; click-through and paid conversions read from the funnel spine.',
+    budget: 'No media cost', status: 'TO BUILD — w/c 22 Sep', statusColor: CORAL,
+  },
+  {
+    channel: 'SEO — membership cluster', role: 'Own the organic membership and cost-comparison queries the paid lane is bidding on.',
+    execution: 'Dedicated EN/AR membership pages + Smile Club modules on the highest-traffic cost/treatment pages (ZAVIS); compounding, not checkpoint-dependent.',
+    budget: 'No media cost', status: 'IN PROGRESS', statusColor: BLUE,
+  },
+  {
+    channel: 'GMB / local', role: 'Convert local discovery on the 4.9★ profile (60 public reviews) across the three branches.',
+    execution: 'Offer posts + membership link in profiles; review pacing rules already issued to the team stay in force.',
+    budget: 'No media cost', status: 'READY', statusColor: '#2C5E3F',
+  },
+  {
+    channel: 'WhatsApp / CRM — triggered', role: 'High-intent 1-to-1 contact only: open treatment plans, due recalls, SOS follow-ups, website abandoners. Bulk sends: target 0, budget 0, per the mandate.',
+    execution: 'Consented, source-coded templates; the contact centre works the qualified queue within 10 minutes.',
+    budget: 'No media cost', status: 'LIVE', statusColor: '#2C5E3F',
+  },
+  {
+    channel: 'Organic social (IG · TikTok)', role: 'Proof content — member value statements, front-desk moments, doctor trust. TikTok paid stays deferred: asset-blocked.',
+    execution: 'IG proof posts ride the existing calendar; TikTok revisited only when the creative unlock lands and a source-coded test can be bounded.',
+    budget: 'No media cost', status: 'IG on · TikTok deferred', statusColor: OLIVE,
+  },
+];
+
+const DM_OUTREACH = [
+  {
+    org: 'Assembly Global', door: 'Fahad’s direct contact', code: 'SC-ASG',
+    ask: 'Employer-paid (Model 3) or subsidized (Model 2) memberships for their Dubai team; on-site dental day as the opener.',
+    timeline: 'Intro email w/c 22 Sep → meeting by 30 Sep → pilot decision by 7 Oct',
+  },
+  {
+    org: 'Michael Page', door: 'Fahad’s HR contact (already on the warm list)', code: 'SC-MPG',
+    ask: 'Same pilot package; as a recruiter they are also a multiplier — their client HR network if the pilot lands.',
+    timeline: 'Intro email w/c 22 Sep → meeting by 30 Sep → pilot decision by 7 Oct',
+  },
+  {
+    org: 'ArabyAds', door: 'Existing partner relationship (pre-launch meeting held)', code: 'SC-ARB',
+    ask: 'Two asks in one meeting: staff memberships for their own team (Model 3/2) AND the CPL distribution lane above.',
+    timeline: 'Raised at the go-live meeting w/c 22 Sep → decision by 30 Sep',
+  },
+];
+
+const DM_TIMELINE = [
+  { wk: 'w/c 19 Sep · Days 1–7', paid: 'Search live · LinkedIn organic starts · sticky banner briefed to ZAVIS · Meta statics prepped', corp: 'Outreach emails drafted for Assembly Global + Michael Page · ArabyAds go-live agenda extended to Smile Club', gate: 'Day-7 checkpoint 23 Sep — 36 plan / 30 minimum' },
+  { wk: 'w/c 22 Sep · Days 8–14', paid: 'Sticky banner LIVE · Meta statics live · ArabyAds CPL scope agreed · LinkedIn sponsored test brief ready', corp: 'Assembly Global + Michael Page meetings held · ArabyAds double-ask made', gate: 'Day-14 checkpoint 30 Sep — 60/50 · Day-15–30 funding review' },
+  { wk: 'w/c 29 Sep · Days 15–21', paid: 'Reallocate ±10% to the winning lanes · LinkedIn sponsored test live if creative allows', corp: 'First corporate pilot agreed, coded and speced (the “one defined pilot”)', gate: 'Day-21 checkpoint 7 Oct — 88/75, reviewed with Gautam' },
+  { wk: 'w/c 6 Oct · Days 22–28', paid: 'Scale proven sources only · dynamic/smart creatives live IF the designer hire has landed', corp: 'Corporate pilot enrolments running under its employer code', gate: 'CAC vs ceiling + ≥98% attribution checked before any scale-up' },
+  { wk: 'w/c 13 Oct · Days 29–30', paid: 'Final push through proven lanes only — no new experiments', corp: 'Pipeline handover notes for the next period', gate: '16 Oct — 120 paid, active, non-refunded, Finance-validated' },
+];
+
+function DmPlan() {
+  return (
+    <div className="space-y-5">
+      <p className="rounded-xl border-l-4 bg-white px-4 py-3 text-[12.5px] font-medium leading-snug" style={{ borderColor: GOLD, color: NAVY, fontFamily: 'Georgia, serif' }}>
+        <span className="font-bold">The digital marketing plan, elaborated — all channels, one funnel.</span>{' '}
+        Every lane below feeds the same spine (enquiry → qualified → checkout → paid → card active → booked →
+        attended) under its own source code, inside the proposed AED 30,000 / 30-day budget (indicative split;
+        the 10% reallocation rule moves money to what converts). One structural blocker is named honestly —
+        smart/dynamic creatives — and the plan is built to deliver despite it.
+      </p>
+
+      <section>
+        <Exhibit n="D1" title="Channel plan — role, execution, budget slice, status" />
+        <div className="overflow-x-auto rounded-xl border bg-white" style={{ borderColor: LINE }}>
+          <table className="w-full border-collapse text-[10.5px]">
+            <thead>
+              <tr className="text-left text-[9.5px] uppercase tracking-wide" style={{ color: OLIVE, backgroundColor: '#F7F7F0' }}>
+                <th className="px-2.5 py-2 font-bold">Channel</th><th className="px-2.5 py-2 font-bold">Role & audience</th>
+                <th className="px-2.5 py-2 font-bold">Execution & funnel</th><th className="px-2.5 py-2 font-bold">Budget (indicative)</th>
+                <th className="px-2.5 py-2 font-bold">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {DM_CHANNELS.map((c) => (
+                <tr key={c.channel} className="border-t align-top" style={{ borderColor: '#EEEFE1' }}>
+                  <td className="px-2.5 py-1.5 font-bold" style={{ color: NAVY }}>{c.channel}</td>
+                  <td className="px-2.5 py-1.5" style={{ color: '#3a4148' }}>{c.role}</td>
+                  <td className="px-2.5 py-1.5" style={{ color: '#3a4148' }}>{c.execution}</td>
+                  <td className="px-2.5 py-1.5 whitespace-nowrap tabular-nums" style={{ color: OLIVE }}>{c.budget}</td>
+                  <td className="px-2.5 py-1.5 whitespace-nowrap font-bold" style={{ color: c.statusColor }}>{c.status}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="mt-2 text-[10px]" style={{ color: OLIVE }}>
+          Media total AED 27,000 committed + AED 3,000 reserve = the proposed 30K (pending Mr Akbar&apos;s sign-off).
+          No-media-cost lanes are staffed work, not free — owner time is tracked in the daily rhythm.
+        </p>
+      </section>
+
+      <section>
+        <Exhibit n="D2" title="The blocker — smart/dynamic creatives — and the two zero-media unlocks" />
+        <div className="grid gap-3 md:grid-cols-3">
+          <Card accent={CORAL}>
+            <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: CORAL }}>Blocker: smart/dynamic creatives</p>
+            <p className="mt-1.5 text-[11px] leading-snug" style={{ color: '#3a4148' }}>
+              The scale formats — Meta Advantage+ / dynamic creative and Google responsive display / PMax — need
+              asset variety: multiple ratios, message variants, video cutdowns. Creative OS produces templated
+              statics; it cannot feed those formats. Until the in-house designer decision (19 Sep) lands, paid runs
+              creative-capped: search + offer-led statics carry the load and the dynamic lanes stay HELD. This is
+              Risk 1 of the delivery plan, now named as the structural blocker of the DM plan — the hire is the
+              unlock, not more budget.
+            </p>
+          </Card>
+          <Card accent={BLUE}>
+            <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: BLUE }}>Unlock 1: the sticky banner</p>
+            <p className="mt-1.5 text-[11px] leading-snug" style={{ color: '#3a4148' }}>
+              While paid is capped, the cheapest traffic is the traffic we already have. A persistent site-wide
+              banner puts Smile Club in front of every visitor — booking pages, cost guides, the 19,500+ SEO page
+              entrances — and needs one build, no media and no new creative formats. Dismissible, EN/AR, UTM-coded
+              (sc-banner) so its contribution reads directly in the funnel spine. Owner: ZAVIS/W3Layouts, live w/c
+              22 Sep.
+            </p>
+          </Card>
+          <Card accent={BLUE}>
+            <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: BLUE }}>Unlock 2: ArabyAds</p>
+            <p className="mt-1.5 text-[11px] leading-snug" style={{ color: '#3a4148' }}>
+              ArabyAds helps twice. As a <span className="font-semibold">distribution partner</span>: their
+              affiliate/programmatic network runs the Smile Club offer on a CPL model — we pay per lead inside the
+              150/200 lane targets, so the creative cap doesn&apos;t bind and downside is priced. As a{' '}
+              <span className="font-semibold">corporate prospect</span>: their own Dubai team is a Model 3/2
+              candidate — both asks land in the same go-live meeting w/c 22 Sep.
+            </p>
+          </Card>
+        </div>
+      </section>
+
+      <section>
+        <Exhibit n="D3" title="Corporate outreach — Mr Akbar's ask, 19 Sep" />
+        <p className="mb-2 text-[11px]" style={{ color: OLIVE }}>
+          Mr Akbar has asked Fahad to open his contacts at Assembly Global and Michael Page, and to put the buy
+          question to ArabyAds. All three feed the Corporate-24 target (pipeline ≥ 72 equivalent) and each is a
+          candidate for the &quot;one defined pilot&quot;; the three payment models are never blurred in the ask.
+        </p>
+        <div className="overflow-x-auto rounded-xl border bg-white" style={{ borderColor: LINE }}>
+          <table className="w-full border-collapse text-[11px]">
+            <thead>
+              <tr className="text-left text-[9.5px] uppercase tracking-wide" style={{ color: OLIVE, backgroundColor: '#F7F7F0' }}>
+                <th className="px-3 py-2 font-bold">Target</th><th className="px-3 py-2 font-bold">Door</th>
+                <th className="px-3 py-2 font-bold">The ask</th><th className="px-3 py-2 font-bold">Timeline</th><th className="px-3 py-2 font-bold">Code</th>
+              </tr>
+            </thead>
+            <tbody>
+              {DM_OUTREACH.map((o) => (
+                <tr key={o.org} className="border-t align-top" style={{ borderColor: '#EEEFE1' }}>
+                  <td className="px-3 py-1.5 font-bold whitespace-nowrap" style={{ color: NAVY }}>{o.org}</td>
+                  <td className="px-3 py-1.5" style={{ color: '#3a4148' }}>{o.door}</td>
+                  <td className="px-3 py-1.5" style={{ color: '#3a4148' }}>{o.ask}</td>
+                  <td className="px-3 py-1.5" style={{ color: OLIVE }}>{o.timeline}</td>
+                  <td className="px-3 py-1.5 whitespace-nowrap font-semibold" style={{ color: CORAL }}>{o.code}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <Exhibit n="D4" title="Timeline — five weeks to 16 October" />
+        <div className="overflow-x-auto rounded-xl border bg-white" style={{ borderColor: LINE }}>
+          <table className="w-full border-collapse text-[10.5px]">
+            <thead>
+              <tr className="text-left text-[9.5px] uppercase tracking-wide" style={{ color: OLIVE, backgroundColor: '#F7F7F0' }}>
+                <th className="px-2.5 py-2 font-bold">Week</th><th className="px-2.5 py-2 font-bold">Paid & owned</th>
+                <th className="px-2.5 py-2 font-bold">Corporate</th><th className="px-2.5 py-2 font-bold">Gate / checkpoint</th>
+              </tr>
+            </thead>
+            <tbody>
+              {DM_TIMELINE.map((t) => (
+                <tr key={t.wk} className="border-t align-top" style={{ borderColor: '#EEEFE1' }}>
+                  <td className="px-2.5 py-1.5 font-bold whitespace-nowrap" style={{ color: NAVY }}>{t.wk}</td>
+                  <td className="px-2.5 py-1.5" style={{ color: '#3a4148' }}>{t.paid}</td>
+                  <td className="px-2.5 py-1.5" style={{ color: '#3a4148' }}>{t.corp}</td>
+                  <td className="px-2.5 py-1.5 font-semibold" style={{ color: CORAL }}>{t.gate}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="mt-2 rounded-lg px-3 py-2 text-[11px] font-medium" style={{ backgroundColor: '#FDF9EC', color: '#6d5a1d' }}>
+          The timeline is paced by the mandate checkpoints, not the other way round: a missed minimum triggers the
+          next-business-day recovery plan, and nothing scales past a gate with attribution below 98% or CAC above
+          the ceiling.
+        </p>
       </section>
     </div>
   );
@@ -704,6 +957,32 @@ function Waves() {
           ))}
         </div>
       </Card>
+
+      <section className="mt-4">
+        <Exhibit n="5b" title="Results to date — Gautam's shared updates, mapped onto this wave" />
+        {wid === 'wave1' ? (
+          <div className="mb-2 flex flex-wrap gap-1.5">
+            {['5 broadcast sends', '1,280 non-unique reach', '863 delivered', '71 replies', '417 failures to code', '0 broadcast memberships confirmed (reconciliation 18 Sep)'].map((s) => (
+              <Tag key={s} color={CORAL}>{s}</Tag>
+            ))}
+          </div>
+        ) : null}
+        <Card accent={w.color}>
+          <p className="text-[11.5px] font-bold" style={{ color: w.color }}>{WAVE_RESULTS[wid].verdict}</p>
+          <ul className="mt-2 space-y-1.5">
+            {WAVE_RESULTS[wid].items.map((t) => (
+              <li key={t} className="flex gap-2 text-[11.5px] leading-snug" style={{ color: '#3a4148' }}>
+                <span className="mt-[6px] h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: w.color }} />{t}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-[10px]" style={{ color: OLIVE }}>
+            Sources: Smile Club management progress update (12 Sep 2026) and Marketing Activation Action Map v4
+            (16 Sep 2026), both shared by Gautam. Nothing here is a forecast — forecasts live in the 30-day
+            delivery plan.
+          </p>
+        </Card>
+      </section>
       <p className="mt-2 rounded-lg px-3 py-2 text-[11px] font-medium" style={{ backgroundColor: '#FDF9EC', color: '#6d5a1d' }}>
         Reinvestment rule: a wave funds the next only after considering contribution, cash requirements and future
         benefit obligations — annual fees are prepaid care, not free cash.
@@ -938,6 +1217,7 @@ const SUBS: { id: Sub; label: string }[] = [
   { id: 'reco', label: 'The recommendation' },
   { id: 'mandate', label: '30-day mandate' },
   { id: 'response', label: '30-day delivery plan' },
+  { id: 'dm', label: 'Digital marketing plan' },
   { id: 'offer', label: 'Offer & economics' },
   { id: 'waves', label: 'Three waves' },
   { id: 'corporate', label: 'Corporate playbook' },
@@ -977,6 +1257,7 @@ export function SmileClubOptimization() {
         {sub === 'reco' && <Recommendation />}
         {sub === 'mandate' && <MandateTab />}
         {sub === 'response' && <ResponseTab />}
+        {sub === 'dm' && <DmPlan />}
         {sub === 'offer' && <OfferEconomics />}
         {sub === 'waves' && <Waves />}
         {sub === 'corporate' && <Corporate />}
