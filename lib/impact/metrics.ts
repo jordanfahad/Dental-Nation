@@ -158,20 +158,31 @@ export function headlineResults(data: DashboardData): HeadlineResult[] {
     });
   }
 
-  // Google reviews — the PUBLICLY VISIBLE count, manually verified against the
-  // profile. The synced gmb_reviews table is deliberately NOT used here: it
-  // holds every review the API ever returned (79 as of 14 Sep) and never
-  // reconciles Google's spam-filtering/removals, so it overcounts vs what the
-  // public sees (60). Until the sync prunes removed reviews, a dated public
-  // figure is the honest number. Update value + date together on re-check.
-  results.push({
-    key: "reviews",
-    value: "60",
-    label: "Google reviews",
-    sub: "4.9★ · DN Al Wasl public profile · verified 14 Sep · grown from 40",
-    source: "derived",
-    live: false,
-  });
+  // Google reviews — the LIVE active count. Safe to use since 19 Sep 2026:
+  // the sync soft-deletes reviews Google removes (removed_at, reconciled on
+  // every complete snapshot), so active rows track the public profile instead
+  // of overcounting (the old table held every review ever returned — 80 rows
+  // vs 60 public — until the spam-sweep deletions were reconciled: 61/19).
+  // The dated manually-verified figure remains only as the feed-down fallback.
+  if (outcomes?.reviews_count != null) {
+    results.push({
+      key: "reviews",
+      value: outcomes.reviews_count.toLocaleString("en-US"),
+      label: "Google reviews",
+      sub: `${outcomes.reviews_avg != null ? `${outcomes.reviews_avg}★ · ` : ""}removal-reconciled live sync · grown from 40`,
+      source: "lane_e",
+      live: true,
+    });
+  } else {
+    results.push({
+      key: "reviews",
+      value: "60",
+      label: "Google reviews",
+      sub: "4.9★ · DN Al Wasl public profile · verified 14 Sep · grown from 40",
+      source: "derived",
+      live: false,
+    });
+  }
 
   // Dated platform facts (same figures as the ZAVIS know-how page).
   results.push(
