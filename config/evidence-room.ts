@@ -83,5 +83,12 @@ export const ROOM = {
         'Consolidated financial reporting for the group. Clinic-level billed revenue is live today inside the Growth dashboard; the consolidated P&L pack is in preparation with the finance team.',
       status: 'preparing' as const,
     },
+    {
+      key: 'smileclub',
+      title: 'Smile Club — Membership Programme',
+      blurb:
+        'The group’s recurring-revenue membership programme: product and enablement build complete, now in disciplined commercial activation under a 30-day management mandate with weekly checkpoints and source-coded attribution.',
+      status: 'live' as const,
+    },
   ],
 } as const;

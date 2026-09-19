@@ -37,7 +37,7 @@ export default async function RoomPlatformLayerPage({
           ← All six layers
         </Link>
       </p>
-      <LayerPage base={base} layer={layer} />
+      <LayerPage base={base} layer={layer} showKpis={link.sections?.kpis !== false} />
     </main>
   );
 }

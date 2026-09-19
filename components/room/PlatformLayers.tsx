@@ -309,9 +309,13 @@ function ReadinessBar({ layer }: { layer: PlatformLayer }) {
 
 /** A layer page — numbers first (Mr Akbar's feedback), then the capability
  *  pages: header → live KPI band → trend where the layer has one → readiness
- *  schematic → live reports → capabilities. */
-export async function LayerPage({ base, layer }: { base: string; layer: PlatformLayer }) {
-  const visuals = await getLayerVisuals(layer.slug).catch(() => ({ kpis: [] as LayerKpi[], trend: undefined }));
+ *  schematic → live reports → capabilities. `showKpis: false` (investor links
+ *  minted without KPIs) drops the live KPI band and trend entirely — the
+ *  narrative capability pages remain. */
+export async function LayerPage({ base, layer, showKpis = true }: { base: string; layer: PlatformLayer; showKpis?: boolean }) {
+  const visuals = showKpis
+    ? await getLayerVisuals(layer.slug).catch(() => ({ kpis: [] as LayerKpi[], trend: undefined }))
+    : { kpis: [] as LayerKpi[], trend: undefined };
   const trend = 'trend' in visuals ? visuals.trend : undefined;
   return (
     <div className="space-y-4">

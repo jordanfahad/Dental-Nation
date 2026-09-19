@@ -95,6 +95,7 @@ export function RoomSectionBar({ backHref, section, active }: { backHref: string
     { label: 'Growth', href: `${backHref}/growth`, key: 'growth' },
     { label: 'Operations', href: `${backHref}/operations`, key: 'operations' },
     { label: 'Finance', href: `${backHref}/finance`, key: 'finance' },
+    { label: 'Smile Club', href: `${backHref}/smileclub`, key: 'smileclub' },
   ];
   // "platform" is never inferred from the section label — the Operations
   // section is titled "Operating Platform reports" and must not match it.
