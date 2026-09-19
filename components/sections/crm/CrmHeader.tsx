@@ -32,7 +32,7 @@ export function CrmHeader({ report }: { report: CrmReport }) {
     tone = 'neutral';
     verdict = 'Conversations not measured';
     headline =
-      'Appointment data is present, but conversation response times are not sourced — upload a Zavis conversation summary to judge the engagement stage.';
+      'Appointment data is present, but conversation response times are not sourced — upload a CRM-DN conversation summary to judge the engagement stage.';
   }
 
   const metaParts: string[] = [];
@@ -44,7 +44,7 @@ export function CrmHeader({ report }: { report: CrmReport }) {
 
   return (
     <DecisionBanner
-      eyebrow="CRM — Zavis · health"
+      eyebrow="CRM-DN · health"
       verdict={verdict}
       tone={tone}
       headline={headline}

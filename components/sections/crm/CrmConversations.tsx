@@ -52,7 +52,7 @@ export function CrmConversations({ report }: { report: CrmReport }) {
   return (
     <Card>
       <SectionHeader
-        eyebrow="CRM — Zavis · conversations"
+        eyebrow="CRM-DN · conversations"
         title="Engagement volume and when patients reach out"
       />
       <div className="px-5 pb-5 pt-4">

@@ -64,7 +64,7 @@ const MKT_GOOGLE = { label: 'Marketing → Google Ads', href: '/?tab=marketing&m
 const MKT_META = { label: 'Marketing → Meta Ads', href: '/?tab=marketing&mtab=meta' };
 const SOCIAL = { label: 'Social & Local tab', href: '/?tab=social' };
 const ARABY = { label: 'Araby Ads tab', href: '/?tab=arabyads' };
-const CRM_TAB = { label: 'CRM — Zavis tab', href: '/?tab=crm' };
+const CRM_TAB = { label: 'CRM-DN tab', href: '/?tab=crm' };
 const MOS = { label: 'Group → Marketing OS', href: '/?tab=group&gtab=mos' };
 const MOS_SC = { label: 'Marketing OS → Smile Club', href: '/?tab=group&gtab=mos&mpipe=smile-club' };
 const MOS_CRM = { label: 'Marketing OS → CRM pipeline', href: '/?tab=group&gtab=mos&mpipe=crm' };

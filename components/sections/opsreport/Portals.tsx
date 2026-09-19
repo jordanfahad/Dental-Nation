@@ -309,7 +309,7 @@ export async function PractoPortal() {
   const maxDay = Math.max(...p.byDay.map((d) => d.net), 1);
   return (
     <div className="mt-5 space-y-5">
-      <Head kicker="Practo Live" title="Finalized billing from the hospital system — the roll call." note={`${p.from} → ${p.to} (rolling 30 days) · live API, synced every 15 minutes · finalized bills only — appointments live in the Zavis portal`} />
+      <Head kicker="Practo Live" title="Finalized billing from the hospital system — the roll call." note={`${p.from} → ${p.to} (rolling 30 days) · live API, synced every 15 minutes · finalized bills only — appointments live in the CRM-DN portal`} />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {([['Net revenue', aed(p.net)], ['Collected', `${aed(p.collected)} (${p.net > 0 ? pct1((p.collected / p.net) * 100) : '—'})`], ['Patient dues', aed(p.due)], ['Bills', int(p.bills)]] as [string, string][]).map(([l, v]) => (
           <div key={l} className="rounded-card border border-line bg-card px-4 py-3"><p className="text-[16px] font-semibold tabular-nums" style={{ ...SERIF, color: NAVY }}>{v}</p><p className="mt-0.5 text-[10.5px] text-ink-faint">{l}</p></div>
@@ -361,15 +361,15 @@ export async function PractoPortal() {
   );
 }
 
-/* ── Zavis Operations ───────────────────────────────────────────────── */
+/* ── CRM-DN Operations ───────────────────────────────────────────────── */
 
 export async function ZavisPortal() {
   const z = await getZavisOps();
-  if (!z) return <Card><p className="px-5 py-6 text-[12.5px] text-ink-soft">Zavis feed unavailable.</p></Card>;
+  if (!z) return <Card><p className="px-5 py-6 text-[12.5px] text-ink-soft">CRM-DN feed unavailable.</p></Card>;
   const maxF = Math.max(...z.funnel.map((f) => f.count), 1);
   return (
     <div className="mt-5 space-y-5">
-      <Head kicker="Zavis Operations" title="The live appointment registry — not a snapshot." note={`${int(z.total)} appointments in the CRM mirror, refreshed every 15 minutes · statuses move as the diary moves, future bookings included`} />
+      <Head kicker="CRM-DN Operations" title="The live appointment registry — not a snapshot." note={`${int(z.total)} appointments in the CRM mirror, refreshed every 15 minutes · statuses move as the diary moves, future bookings included`} />
       <div className="grid gap-5 lg:grid-cols-2">
         <Card>
           <div className="px-5 py-4">

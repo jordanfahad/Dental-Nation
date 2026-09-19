@@ -119,7 +119,7 @@ export const SECTIONS = {
     practitioner: V('Dr Tosun'),
   },
   website: {
-    vendor: V('Zavis'),
+    vendor: V('CRM-DN'),
     body:
       'Fully live and functional — the group’s owned digital front door, and the property every paid click and every organic search now lands on.',
     organicPoint:

@@ -13,7 +13,7 @@ import { TrendChart, ChartLegend, type TrendSeries } from '@/components/charts/C
  *   - Leads (tracker)  — the manual enquiry log (lane_e.leads). The team has
  *     largely stopped maintaining it, so recent months read low (≈2–3); it is NOT
  *     a measure of real demand on its own.
- *   - Bookings (ZAVIS) — actual patients booked via the CRM. The true demand
+ *   - Bookings (CRM-DN) — actual patients booked via the CRM. The true demand
  *     signal (e.g. ~115 in a month where the tracker shows 3).
  */
 export function ExecMonthlyTrend({ report }: { report: ExecutiveReport }) {
@@ -34,7 +34,7 @@ export function ExecMonthlyTrend({ report }: { report: ExecutiveReport }) {
   const COLORS = { spend: '#D55E00', bookings: '#0072B2', enquiries: '#CC79A7', revenue: '#009E73' };
   const series: TrendSeries[] = [
     { key: 'spend', label: 'Marketing spend (AED)', color: COLORS.spend, kind: 'bar', axis: 'right' },
-    { key: 'bookings', label: 'Bookings (ZAVIS)', color: COLORS.bookings, kind: 'line', axis: 'left' },
+    { key: 'bookings', label: 'Bookings (CRM-DN)', color: COLORS.bookings, kind: 'line', axis: 'left' },
     { key: 'leads', label: 'Enquiries', color: COLORS.enquiries, kind: 'area', axis: 'left' },
     { key: 'revenue', label: 'Clinic revenue (AED)', color: COLORS.revenue, kind: 'line', axis: 'right' },
   ];
@@ -56,7 +56,7 @@ export function ExecMonthlyTrend({ report }: { report: ExecutiveReport }) {
           {months > 0 ? (
             <>
               {months} month{months === 1 ? '' : 's'} of activity — each point is one calendar month
-              {lastLabel ? ` (${lastLabel} is month-to-date)` : ''}. <strong>Bookings (ZAVIS)</strong> is the real
+              {lastLabel ? ` (${lastLabel} is month-to-date)` : ''}. <strong>Bookings (CRM-DN)</strong> is the real
               demand signal — actual patients booked; <strong>Enquiries</strong> combines the manual lead tracker and the
               website-widget submissions (non-test), which are still few next to actual bookings. Counts on the left
               axis; spend &amp; clinic revenue (AED) on the right.

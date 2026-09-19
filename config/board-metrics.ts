@@ -22,7 +22,7 @@ export interface ManualMetric {
 /**
  * The metric keys the report knows how to display.
  *
- * The WhatsApp figures used to live here and no longer do: the Zavis export
+ * The WhatsApp figures used to live here and no longer do: the CRM-DN export
  * already lands in lane_e.crm_* on every sync, so they read live from
  * lane_e.board_crm_summary (migration 0022) instead of being retyped. A number
  * only belongs on this list if there is genuinely no feed for it.

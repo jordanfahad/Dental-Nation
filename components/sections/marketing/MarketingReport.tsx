@@ -79,7 +79,20 @@ export async function MarketingReport({ sub, range, mscope, mgrp, mchan }: { sub
   const channelLabel = active === 'google' ? 'Google' : 'Meta';
   return (
     <div className="space-y-5">
-      <MarketingSubNav active={active} />
+      {/* McKinsey frame: one serif masthead for the whole Marketing tab, so the
+          tree, the deep-dives and the reconciliation read as one document. */}
+      <header className="border-b pb-3" style={{ borderColor: '#D8D8CC' }}>
+        <p className="text-[9.5px] font-bold uppercase tracking-widest" style={{ color: '#B45F53' }}>Growth engine · Marketing</p>
+        <h1 className="mt-0.5 text-lg font-semibold tracking-tight" style={{ color: '#244260', fontFamily: 'Georgia, serif' }}>
+          Marketing performance — one tree, honest lenses
+        </h1>
+        <p className="mt-1 max-w-[760px] text-[12px] leading-snug" style={{ color: '#3a4148' }}>
+          Every dirham and lead reports through Group → Channel → Partner → Campaign type. The Channel Tree is
+          the map; Google and Meta are the paid deep-dives; Reconciliation is where the three counting lenses
+          (platform · site · tracker) are held against each other.
+        </p>
+        <div className="mt-2.5"><MarketingSubNav active={active} /></div>
+      </header>
       {active === 'google' ? (
         <GoogleAdsPerformance range={range} />
       ) : active === 'meta' ? (
@@ -479,7 +492,7 @@ async function MarketingOverview() {
             <>
               <Donut data={channelData} valueFormat="int" centerLabel="tracked" height={200} />
               <Takeaway>
-                Where in-house tracked leads actually originate (WhatsApp, ZAVIS, and others) — the
+                Where in-house tracked leads actually originate (WhatsApp, CRM-DN, and others) — the
                 denominator context for the leakage above. Ad platforms can&apos;t see most of these
                 without source tagging.
               </Takeaway>

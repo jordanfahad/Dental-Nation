@@ -64,7 +64,7 @@ export function CrmScorecards({ report }: { report: CrmReport }) {
   return (
     <Card>
       <SectionHeader
-        eyebrow="CRM — Zavis · scorecard"
+        eyebrow="CRM-DN · scorecard"
         title="The numbers that decide the quarter"
       />
       <div className="px-5 pb-5 pt-3">

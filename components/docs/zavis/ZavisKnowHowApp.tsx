@@ -1,9 +1,9 @@
 'use client';
 
 /**
- * Interactive ZAVIS Marketing OS explorer (/impact/zavis-know-how).
+ * Interactive CRM-DN Marketing OS explorer (/impact/zavis-know-how).
  * McKinsey-style exhibits over the knowledge-graph source document plus the
- * delivery status ZAVIS reported on 12 Sep 2026: the platform suite with
+ * delivery status CRM-DN reported on 12 Sep 2026: the platform suite with
  * per-product profiles and live links, the automated segment→creative→
  * broadcast loop, the paid and organic lead engines, the programmatic SEO
  * factory with its six page archetypes, and the 8-week pilot plan.
@@ -128,7 +128,7 @@ const LOOP_STEPS = [
   { title: 'APIs hand over the audience', who: 'PIP → Content OS', text: 'APIs retrieve the segmentation data and patient records from the Patient Intelligence Platform — already integrated with the Content OS.' },
   { title: 'Assets generate themselves', who: 'Creative OS', text: 'The image-based content-generation pipeline produces personalised WhatsApp creatives and static assets for the selected audience.' },
   { title: 'Broadcast goes out', who: 'WhatsApp', text: 'The campaign reaches exactly the patients the segment describes — no manual asset production in the loop.' },
-  { title: 'Leads route to the clinic', who: 'Al Wasl', text: 'Responses are worked in the clinic; every lead is tagged for quality by ZAVIS.' },
+  { title: 'Leads route to the clinic', who: 'Al Wasl', text: 'Responses are worked in the clinic; every lead is tagged for quality by CRM-DN.' },
   { title: 'The system gets smarter', who: 'Feedback loop', text: 'Quality tags flow back to the ad platforms and the segments — the OS optimises toward better patients, not cheaper clicks.' },
 ];
 
@@ -240,7 +240,7 @@ function OverviewTab({ goToPlatform }: { goToPlatform: (id: string) => void }) {
 
       {/* the one-line story */}
       <p className="rounded-xl border-l-4 bg-white px-4 py-3 text-[12.5px] font-medium leading-snug" style={{ borderColor: GOLD, color: NAVY, fontFamily: 'Georgia, serif' }}>
-        ZAVIS has built a full Marketing OS: patient intelligence decides <em>who</em>, Creative OS produces <em>what</em>,
+        CRM-DN has built a full Marketing OS: patient intelligence decides <em>who</em>, Creative OS produces <em>what</em>,
         Content OS and programmatic SEO carry the <em>message</em>, and every lead feeds quality back into the system.
         The constraint today is not software — it is server capacity.
       </p>
@@ -396,7 +396,7 @@ function LoopTab() {
             <Arrow label="call / message" />
             <FlowBox title="Al Wasl clinic" sub="all pilot routing" color={BLUE} />
             <Arrow label="worked in" />
-            <FlowBox title="ZAVIS" sub="every lead tagged for quality" color={CORAL} />
+            <FlowBox title="CRM-DN" sub="every lead tagged for quality" color={CORAL} />
           </div>
           <div className="mt-3 flex items-center gap-2 rounded-lg border border-dashed px-3 py-2" style={{ borderColor: CORAL }}>
             <span className="text-[14px]" style={{ color: CORAL }}>↩</span>

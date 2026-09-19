@@ -23,7 +23,7 @@ export function CrmFunnel({ report }: { report: CrmReport }) {
   return (
     <Card>
       <SectionHeader
-        eyebrow="CRM — Zavis · funnel"
+        eyebrow="CRM-DN · funnel"
         title="From request to chair: where appointments fall away"
       />
       <div className="px-5 pb-5 pt-4">

@@ -168,7 +168,7 @@ export default async function DashboardPage({
                 ['doctors', 'Doctor Performance'],
                 ['ortho', 'DN Ortho'],
                 ['practo', 'Practo Live'],
-                ['zavis', 'Zavis Operations'],
+                ['zavis', 'CRM-DN Operations'],
                 ['procurement', 'Procurement'],
                 ['daily', 'Daily Appointment Report'],
               ] as [string, string][]).map(([k, label]) => {

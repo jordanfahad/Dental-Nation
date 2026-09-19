@@ -5,7 +5,7 @@ import type { CrmReport } from '@/lib/crm/types';
 import { fmtInt, fmtPct } from './format';
 
 /**
- * CSAT section: patient-satisfaction ratings from Zavis. Average / satisfied /
+ * CSAT section: patient-satisfaction ratings from CRM-DN. Average / satisfied /
  * response count scorecards, a 5→1 star distribution, and the most recent
  * written feedback ("voice of the patient"). Honest by construction — a calm
  * data gap when no ratings are ingested, and the takeaway names that CSAT only
@@ -47,7 +47,7 @@ export function CrmCsat({ report }: { report: CrmReport }) {
   return (
     <Card>
       <SectionHeader
-        eyebrow="CRM — Zavis · patient satisfaction"
+        eyebrow="CRM-DN · patient satisfaction"
         title="How patients rate their conversations (CSAT)"
       />
       <div className="px-5 pb-5 pt-4">

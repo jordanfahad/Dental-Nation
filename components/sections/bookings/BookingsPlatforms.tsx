@@ -24,7 +24,7 @@ type RangeReport = Awaited<ReturnType<typeof getRangeReport>>;
 
 /**
  * Website Bookings › Platforms — enquiries by the channel they reached us on
- * (WhatsApp, Instagram, Telegram, TikTok, Website forms, Walk-ins, ZAVIS,
+ * (WhatsApp, Instagram, Telegram, TikTok, Website forms, Walk-ins, CRM-DN,
  * Telephone, Facebook), from the in-house lead tracker. This is an ENQUIRY
  * population; the website booking WIDGET (a different source) lives on its own
  * sub-tab and is only shown here as a labelled aside next to Website forms —
@@ -350,7 +350,7 @@ export async function BookingsPlatforms({ report }: { report: RangeReport }) {
       </Card>
 
       {/* Website booking-widget enquiries — non-test, with Booked vs Failed-to-book
-          status matched to ZAVIS/Practo, plus the CEO enquiry-detail table. */}
+          status matched to CRM-DN/Practo, plus the CEO enquiry-detail table. */}
       <WidgetEnquiriesPanel report={widget} period={period} />
     </div>
   );

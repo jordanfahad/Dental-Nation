@@ -9,9 +9,9 @@ const int = (n: number) => Math.round(n).toLocaleString('en-US');
  * The acquisition → outcome funnel: Enquiries → Bookings → Attended → Revenue,
  * each stage read from its ONE authoritative source and de-duplicated:
  *   • Enquiries  ← lead tracker (general-booking sheet)
- *   • Bookings   ← Zavis CRM appointments (the website booking widget writes into
- *                  Zavis, so it's already counted here — not added twice)
- *   • Attended   ← Zavis completed appointments (a true subset of bookings)
+ *   • Bookings   ← CRM-DN appointments (the website booking widget writes into
+ *                  CRM-DN, so it's already counted here — not added twice)
+ *   • Attended   ← CRM-DN completed appointments (a true subset of bookings)
  *   • Revenue    ← Practo Insta finalized bills
  *
  * Honest framing: Enquiries is only the TRACKED-lead channel, so bookings can
@@ -37,8 +37,8 @@ export function ExecPipeline({ report }: { report: ExecutiveReport }) {
 
   const sources: { stage: string; src: string }[] = [
     { stage: 'Enquiries', src: 'Lead tracker · general-booking sheet' },
-    { stage: 'Bookings', src: 'Zavis CRM · incl. website booking widget (deduped)' },
-    { stage: 'Attended', src: 'Zavis CRM · completed appointments' },
+    { stage: 'Bookings', src: 'CRM-DN · incl. website booking widget (deduped)' },
+    { stage: 'Attended', src: 'CRM-DN · completed appointments' },
     { stage: 'Revenue', src: 'Practo Insta · finalized bills' },
   ];
 
@@ -79,7 +79,7 @@ export function ExecPipeline({ report }: { report: ExecutiveReport }) {
 
         <Takeaway>
           Each stage is read from its own source and de-duplicated — the website booking widget already writes
-          into Zavis, so bookings aren&apos;t double-counted. <strong>Attended ÷ Bookings</strong> is a true
+          into CRM-DN, so bookings aren&apos;t double-counted. <strong>Attended ÷ Bookings</strong> is a true
           conversion (same population). <strong>Enquiries</strong> is only the tracked-lead channel, so bookings
           can exceed it (walk-ins &amp; direct bookings aren&apos;t in the tracker) — read that step as coverage,
           not a drop-off.

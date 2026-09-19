@@ -34,7 +34,7 @@ export async function CrmOperations() {
       <Card>
         <SectionHeader
           tag="Z1"
-          eyebrow="Zavis operations · channels"
+          eyebrow="CRM-DN operations · channels"
           title="Conversations by inbox (channel)"
           right={<span className="text-[11px] text-ink-faint">{int(ops.totals.conversations)} total</span>}
         />
@@ -68,7 +68,7 @@ export async function CrmOperations() {
 
       {/* Agents */}
       <Card>
-        <SectionHeader tag="Z2" eyebrow="Zavis operations · team" title="Conversations by agent" />
+        <SectionHeader tag="Z2" eyebrow="CRM-DN operations · team" title="Conversations by agent" />
         <div className="px-5 pb-5 pt-4">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[560px] text-[12.5px]">
@@ -103,7 +103,7 @@ export async function CrmOperations() {
       <Card>
         <SectionHeader
           tag="Z3"
-          eyebrow="Zavis operations · labels"
+          eyebrow="CRM-DN operations · labels"
           title="Conversations by label (campaign / PR / segment)"
           right={<span className="text-[11px] text-ink-faint">{int(activeLabels.length)} active · {int(ops.labels.length)} total</span>}
         />

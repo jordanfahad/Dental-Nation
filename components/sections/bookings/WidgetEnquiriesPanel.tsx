@@ -62,7 +62,7 @@ export function WidgetEnquiriesPanel({ report, period }: { report: WidgetEnquiry
           </div>
           <div className="rounded-xl border border-line bg-panel p-3">
             <p className="text-[19px] font-semibold text-good">{int(report.booked)}</p>
-            <p className="text-[10.5px] uppercase tracking-wide text-ink-faint">Booked (in ZAVIS/Practo)</p>
+            <p className="text-[10.5px] uppercase tracking-wide text-ink-faint">Booked (in CRM-DN/Practo)</p>
           </div>
           <div className="rounded-xl border border-line bg-panel p-3">
             <p className="text-[19px] font-semibold text-watch">{int(report.pending)}</p>
@@ -140,7 +140,7 @@ export function WidgetEnquiriesPanel({ report, period }: { report: WidgetEnquiry
 
         <Takeaway>
           Every non-test website-widget enquiry, and whether it reached the clinic&apos;s booking system.{' '}
-          <strong>Booked</strong> = the enquirer&apos;s phone matches a real appointment in ZAVIS or Practo.{' '}
+          <strong>Booked</strong> = the enquirer&apos;s phone matches a real appointment in CRM-DN or Practo.{' '}
           <strong className="text-watch">Practo sync in progress</strong> = enquired in the last ~3 hours and not matched
           yet — the widget→Practo sync can lag, so it&apos;s not counted as failed until then.{' '}
           <strong>Failed to book</strong> = older than ~3 hours and still no match. Booking totals elsewhere stay

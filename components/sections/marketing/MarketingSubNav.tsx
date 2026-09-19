@@ -28,11 +28,8 @@ export function MarketingSubNav({ active }: { active: MarketingSubTab }) {
               <Link
                 href={hrefFor(t.key)}
                 aria-current={isActive ? 'page' : undefined}
-                className={`inline-block rounded-full border px-3.5 py-1.5 text-[12.5px] font-medium transition ${
-                  isActive
-                    ? 'border-accent bg-accent text-white'
-                    : 'border-line bg-card text-ink-soft hover:border-accent/40 hover:text-ink'
-                }`}
+                className="inline-block rounded-full px-3.5 py-1.5 text-[11.5px] font-bold transition"
+                style={isActive ? { backgroundColor: '#244260', color: 'white' } : { backgroundColor: '#F1F1EA', color: '#767769' }}
               >
                 {t.label}
               </Link>

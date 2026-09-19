@@ -240,10 +240,10 @@ async function PractoRevenue({
         </Card>
       ) : null}
 
-      {/* Appointments — when & who (from the Zavis CRM appointment feed). */}
+      {/* Appointments — when & who (from the CRM-DN appointment feed). */}
       {cpb.source !== 'empty' && cpb.byDay.length ? (
         <Card>
-          <SectionHeader tag="P5" eyebrow="Zavis CRM · appointments" title="Appointments — when & who" />
+          <SectionHeader tag="P5" eyebrow="CRM-DN · appointments" title="Appointments — when & who" />
           <div className="px-5 pb-5 pt-4">
             <div className="mb-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
               <div className="rounded-card border border-line p-3.5">
@@ -292,19 +292,19 @@ async function PractoRevenue({
           reach the PMS? Matched by phone to the live Practo appointment feed. */}
       <WidgetPractoConversion data={wc} />
 
-      {/* Patients & appointments — from the Zavis CRM (Practo bills carry no
+      {/* Patients & appointments — from the CRM-DN (Practo bills carry no
           patient name / appointment; the CRM does). Interactive: the scorecards
           filter the tables (New / Existing / Booked-confirmed). */}
       <Card>
         <SectionHeader
           tag="P6"
-          eyebrow="Zavis CRM · patients"
+          eyebrow="CRM-DN · patients"
           title="New patients, appointments & payments"
-          right={<span className="text-[11px] text-ink-faint">Zavis CRM feed</span>}
+          right={<span className="text-[11px] text-ink-faint">CRM-DN feed</span>}
         />
         <div className="px-5 pb-5 pt-4">
           <p className="text-[12.5px] leading-snug text-ink-soft">
-            Patient entries, appointment bookings and amounts from the <strong>Zavis CRM</strong> — Practo&apos;s
+            Patient entries, appointment bookings and amounts from the <strong>CRM-DN</strong> — Practo&apos;s
             finalized bills carry no patient names, so these come from the CRM. <strong>Click a scorecard</strong>{' '}
             to filter the tables. &quot;New&quot; is judged by the patient&apos;s <strong>first visit</strong>{' '}
             (earliest appointment date), so a future follow-up for an existing patient never counts as new.

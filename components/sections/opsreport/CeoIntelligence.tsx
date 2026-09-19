@@ -271,7 +271,7 @@ export async function CeoIntelligence() {
               <tbody>
                 <tr className="border-b border-line/60"><td className="py-1.5 pr-3 text-ink">Clinical revenue</td><td className="py-1.5 pr-3 text-ink-faint">Zoho invoice lines via Finance drops</td><td className="py-1.5 text-good">High — reconciled to the fils</td></tr>
                 <tr className="border-b border-line/60"><td className="py-1.5 pr-3 text-ink">Collections & payroll</td><td className="py-1.5 pr-3 text-ink-faint">Monthly doctor workbooks</td><td className="py-1.5 text-good">High — formula-controlled, twice verified</td></tr>
-                <tr className="border-b border-line/60"><td className="py-1.5 pr-3 text-ink">Appointments</td><td className="py-1.5 pr-3 text-ink-faint">Zavis CRM live mirror</td><td className="py-1.5 text-good">High — live, 15-min cadence</td></tr>
+                <tr className="border-b border-line/60"><td className="py-1.5 pr-3 text-ink">Appointments</td><td className="py-1.5 pr-3 text-ink-faint">CRM-DN live mirror</td><td className="py-1.5 text-good">High — live, 15-min cadence</td></tr>
                 <tr className="border-b border-line/60"><td className="py-1.5 pr-3 text-ink">Demand & media</td><td className="py-1.5 pr-3 text-ink-faint">GA4, ad APIs, enquiry union</td><td className="py-1.5 text-good">High — live APIs</td></tr>
                 <tr><td className="py-1.5 pr-3 text-ink">Procurement</td><td className="py-1.5 pr-3 text-ink-faint">Zoho Books</td><td className="py-1.5 text-watch">Not connected — authorisation with CEO &amp; Finance</td></tr>
               </tbody>

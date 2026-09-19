@@ -128,7 +128,7 @@ export const PLATFORM_LAYERS: PlatformLayer[] = [
         pnl: 'Three operating branches are the revenue engines; capacity — chairs and doctor-hours — is the binding constraint on treatment revenue. Utilisation gains convert fixed clinic cost into margin, and every empty chair-hour is perishable inventory lost.',
         owner: 'Dr Luvi Kaprani',
         status: 'in-implementation',
-        refresh: 'Chair / utilisation data: manual until EMR connection (Dr Luvi + Zavis)',
+        refresh: 'Chair / utilisation data: manual until EMR connection (Dr Luvi + CRM-DN)',
         updated: SEEDED,
       },
       {
@@ -349,7 +349,7 @@ export const PLATFORM_LAYERS: PlatformLayer[] = [
         pnl: 'The unconverted-plan pool converts demand the group has already paid to acquire \u2014 each recovered plan is treatment value at near-zero incremental acquisition cost.',
         owner: 'Dr Luvi Kaprani',
         status: 'in-implementation',
-        refresh: 'Drafted from verified platform data 12 Sep 2026 \u2014 awaiting Dr Luvi\u2019s sign-off; PIP data-push validation (Zavis) still pending',
+        refresh: 'Drafted from verified platform data 12 Sep 2026 \u2014 awaiting Dr Luvi\u2019s sign-off; PIP data-push validation (CRM-DN) still pending',
         updated: '2026-09-12',
       },
       {
@@ -531,7 +531,7 @@ export const PLATFORM_LAYERS: PlatformLayer[] = [
         overview:
           'A CEO-first decision dashboard specified by the Head of Operations: eight portals combining clinical, operational, commercial, procurement, CRM, marketing and doctor-performance intelligence — conclusions, exceptions and plan-vs-actual before raw tables, with the CEO-approved Daily Appointment Report preserved exactly.',
         built:
-          'Specification complete AND the first working deployment is live (QA): all eight decision portals running — CEO Intelligence, Clinical & Doctor Performance with commission economics formula-controlled to AED 0.02 (all 15 August workbooks reconcile), Procurement, Practo, Zavis and DN Ortho. Its headline figures cross-verify against this platform\u2019s finance feed to the dirham (Jan\u2013Jul clinical revenue matches exactly).',
+          'Specification complete AND the first working deployment is live (QA): all eight decision portals running — CEO Intelligence, Clinical & Doctor Performance with commission economics formula-controlled to AED 0.02 (all 15 August workbooks reconcile), Procurement, Practo, CRM-DN and DN Ortho. Its headline figures cross-verify against this platform\u2019s finance feed to the dirham (Jan\u2013Jul clinical revenue matches exactly).',
         coverage:
           'QA deployment stage — commission and revenue workbooks reconciled as the control baseline; production hardening (authenticated allowlist access) is the gating step before rollout.',
         evidence: [{ label: 'Build specification — full chapter in the Operating Platform report', href: OPS, kind: 'doc' }],

@@ -59,7 +59,7 @@ export function WeeklyEntryForms({ kpiOptions }: { kpiOptions: { slug: string; l
             <Field name="date" title="Date" type="date" required />
             <Field name="value" title="Value" type="number" required />
           </div>
-          <Field name="note" title="Note / provenance" placeholder="e.g. from Zavis weekly report" />
+          <Field name="note" title="Note / provenance" placeholder="e.g. from CRM-DN weekly report" />
         </ActionForm>
       ) : null}
 
@@ -104,7 +104,7 @@ export function WeeklyEntryForms({ kpiOptions }: { kpiOptions: { slug: string; l
         <ActionForm action={saveCost} submitLabel="Save month" className="mt-4 max-w-[560px] space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <Field name="month" title="Month" type="date" required />
-            <Field name="zavis_fee" title="Zavis fee (AED)" type="number" />
+            <Field name="zavis_fee" title="CRM-DN fee (AED)" type="number" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <Field name="azure_cost" title="Azure (AED)" type="number" />

@@ -47,7 +47,7 @@ export function ExecOperations({ report }: { report: ExecutiveReport }) {
           <MetricCallout
             label="AI-agent bookings"
             value={fmtInt(kpis.aiAgentBookings)}
-            caption="Appointments booked autonomously by the Zavis AI agent."
+            caption="Appointments booked autonomously by the CRM-DN AI agent."
             tone="good"
           />
           <MetricCallout
@@ -73,7 +73,7 @@ export function ExecOperations({ report }: { report: ExecutiveReport }) {
             <Takeaway>
               {peak
                 ? `Conversation traffic peaks around ${hourLabel(peak.hour)} on ${WEEKDAYS[peak.weekday]} (${peak.conversations}/hr). Staffing — or the AI agent — should be sharpest in that window.`
-                : 'Conversation traffic is not yet sourced; the heatmap fills in once a Zavis traffic export is ingested.'}
+                : 'Conversation traffic is not yet sourced; the heatmap fills in once a CRM-DN traffic export is ingested.'}
               {frDays != null && frDays >= 2
                 ? ` Closing the ${fmtHours(frHours)} first-response gap is the single highest-leverage automation move.`
                 : ''}

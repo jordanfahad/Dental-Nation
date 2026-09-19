@@ -14,7 +14,7 @@ export const TABS = [
   { key: 'clinical-ops', label: 'Clinical Operations', opsTab: true },
   { key: 'daily', label: 'Daily Control' },
   { key: 'weekly', label: 'Weekly Review' },
-  { key: 'crm', label: 'CRM — Zavis' },
+  { key: 'crm', label: 'CRM-DN' },
   { key: 'practo', label: 'Practo Insta' },
   { key: 'bookings', label: 'Website Bookings' },
   // Marketing leads the acquisition cluster: it is the hub (the channel tree),

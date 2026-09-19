@@ -319,7 +319,7 @@ export async function BoardReport({
         <Section eyebrow="Demand" title="Enquiry → booking → revenue">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
             <Funnel label="Enquiries" value={int(k.leadsGenerated)} note="tracker + widget" />
-            <Funnel label="Bookings" value={int(k.appointmentsBooked)} note="ZAVIS/Practo" />
+            <Funnel label="Bookings" value={int(k.appointmentsBooked)} note="CRM-DN/Practo" />
             <Funnel label="Completed" value={int(k.appointmentsCompleted)} note={pct(k.completionRate)} />
             <Funnel label="New patients" value={int(a.billedNewPatients)} note="billed" />
             <Funnel label="Revenue" value={aedK(k.clinicRevenue)} note={`${int(p.billCount)} bills`} strong />
@@ -331,7 +331,7 @@ export async function BoardReport({
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             <Metric label="Completion rate" value={pct(k.completionRate)} sub="attended ÷ concluded" />
             <Metric label="Cancellation rate" value={pct(k.cancellationRate)} />
-            <Metric label="Conversations handled" value={int(k.conversationsHandled)} sub="Zavis CRM" />
+            <Metric label="Conversations handled" value={int(k.conversationsHandled)} sub="CRM-DN" />
             <Metric label="Avg first response" value={k.avgFirstResponseHours != null ? `${k.avgFirstResponseHours.toFixed(1)}h` : '—'} sub="patient enquiries" />
           </div>
         </Section>

@@ -9,7 +9,7 @@ import { MOS_VIEWS } from './views';
 import { WeeklyEntryForms, ApprovalDecide } from './AdminForms';
 
 /**
- * Marketing OS — the Zavis-built system reported to the CEO as five operating
+ * Marketing OS — the CRM-DN-built system reported to the CEO as five operating
  * pipelines, each in three layers: Built → Activated → Outcome. Only Outcome
  * joins the Benchmark KPIs; build volume is never presented as performance.
  *
@@ -72,7 +72,7 @@ function OverviewRatio({ ratio }: { ratio: { revenueAed: number | null; trueCost
           <span className="text-[12px] text-ink-soft">
             revenue {ratio.revenueAed != null ? aed(ratio.revenueAed) : '—'} ÷ true cost{' '}
             {ratio.trueCostAed != null ? aed(ratio.trueCostAed) : '—'}
-            <span className="block text-[10.5px] text-ink-faint">True cost = Zavis fee + Azure + (internal hours × loaded rate)</span>
+            <span className="block text-[10.5px] text-ink-faint">True cost = CRM-DN fee + Azure + (internal hours × loaded rate)</span>
           </span>
         </div>
         {ratio.value == null ? (
@@ -323,7 +323,7 @@ function RiskView() {
         </div>
       </Card>
       <Card>
-        <SectionHeader eyebrow="Marketing OS" title="Standing asks from Zavis" />
+        <SectionHeader eyebrow="Marketing OS" title="Standing asks from CRM-DN" />
         <ol className="list-decimal space-y-1.5 px-5 pb-5 pl-10 pt-3">
           {ZAVIS_ASKS.map((a) => (
             <li key={a.key} className="text-[12px] leading-snug text-ink-soft">{a.ask}</li>
@@ -444,7 +444,7 @@ export async function MarketingOs({
                 <p className="text-[20px] font-semibold tabular-nums leading-none text-ink">
                   {report.effort.avgHours != null ? `${report.effort.avgHours.toFixed(1)} h` : '—'}
                 </p>
-                <p className="mt-1 text-[10.5px] text-ink-faint">DN hours/week on Zavis coordination</p>
+                <p className="mt-1 text-[10.5px] text-ink-faint">DN hours/week on CRM-DN coordination</p>
               </div>
               <div>
                 <p className="text-[20px] font-semibold tabular-nums leading-none text-ink">
@@ -455,7 +455,7 @@ export async function MarketingOs({
               <div>
                 <p className="text-[20px] font-semibold tabular-nums leading-none text-ink">
                   {dnBlocked} <span className="text-[12px] font-normal text-ink-faint">DN</span> · {zavisBlocked}{' '}
-                  <span className="text-[12px] font-normal text-ink-faint">Zavis</span>
+                  <span className="text-[12px] font-normal text-ink-faint">CRM-DN</span>
                 </p>
                 <p className="mt-1 text-[10.5px] text-ink-faint">blocker ownership split</p>
               </div>
@@ -466,7 +466,7 @@ export async function MarketingOs({
                     : '—'}
                 </p>
                 <p className="mt-1 text-[10.5px] text-ink-faint">
-                  true cost this window{report.costs.totalAed > 0 ? ` (Zavis ${aed(report.costs.zavisAed)} · Azure ${aed(report.costs.azureAed)})` : ' — enter fees below'}
+                  true cost this window{report.costs.totalAed > 0 ? ` (CRM-DN ${aed(report.costs.zavisAed)} · Azure ${aed(report.costs.azureAed)})` : ' — enter fees below'}
                 </p>
               </div>
             </div>

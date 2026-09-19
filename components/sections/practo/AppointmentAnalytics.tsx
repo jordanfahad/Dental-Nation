@@ -22,7 +22,7 @@ function hourLabel(h: number | null): string | null {
 
 /**
  * Practo Insta → Appointment Analytics sub-tab. Reproduces the clinic's Practo
- * "Appointment Analytics" screen: appointment KPIs + status + trend (ZAVIS CRM
+ * "Appointment Analytics" screen: appointment KPIs + status + trend (CRM-DN
  * feed), a Revenue Overview and per-provider performance (Practo bills). Driven
  * by the header date-range control.
  */
@@ -36,7 +36,7 @@ export async function AppointmentAnalytics({ range }: { range?: { from?: string;
         <SectionHeader tag="PA" eyebrow="Practo Insta · appointments" title="Appointment Analytics" />
         <div className="px-5 pb-5 pt-4">
           <DataGapInline
-            detail="No appointments or bills in this period — widen the date range, or upload/sync the ZAVIS appointment feed."
+            detail="No appointments or bills in this period — widen the date range, or upload/sync the CRM-DN appointment feed."
             owner={ownerFor('clinic')}
           />
         </div>
@@ -76,13 +76,13 @@ export async function AppointmentAnalytics({ range }: { range?: { from?: string;
         <div className="px-5 pb-5 pt-4">
           <p className="text-[12.5px] leading-snug text-ink-soft">
             The clinic&apos;s appointment book and money view — appointment volume, status mix and peak hours from the{' '}
-            {a.apptSource === 'practo' ? 'Practo Insta appointment book' : 'ZAVIS appointment feed'}, with billed / collected
+            {a.apptSource === 'practo' ? 'Practo Insta appointment book' : 'CRM-DN appointment feed'}, with billed / collected
             revenue and per-doctor performance from Practo Insta bills. <span className="text-ink-faint">Driven by the date range above.</span>
           </p>
           <p className="mt-1.5 text-[11px] text-ink-faint">
             Appointments:{' '}
             <span className="font-medium text-ink-soft">
-              {a.apptSource === 'practo' ? 'Practo Insta (live API)' : a.apptSource === 'zavis' ? 'ZAVIS CRM feed' : '—'}
+              {a.apptSource === 'practo' ? 'Practo Insta (live API)' : a.apptSource === 'zavis' ? 'CRM-DN feed' : '—'}
             </span>{' '}
             · Revenue: <span className="font-medium text-ink-soft">Practo Insta bills</span>
           </p>

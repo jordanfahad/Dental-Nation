@@ -33,7 +33,7 @@ export function ExecHero({ report }: { report: ExecutiveReport }) {
     { label: 'Lead tracker', live: coverage.leads },
     { label: 'Website / GA4', live: coverage.ga4 },
     { label: 'Booking widget', live: coverage.bookings },
-    { label: 'Zavis CRM', live: coverage.crm },
+    { label: 'CRM-DN', live: coverage.crm },
     { label: 'Clinic revenue', live: coverage.practo },
   ];
   const liveCount = pills.filter((p) => p.live).length;

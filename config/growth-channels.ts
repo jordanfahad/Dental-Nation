@@ -88,7 +88,7 @@ export const CHANNELS: ChannelDef[] = [
   {
     key: 'ai-concierge',
     group: 'organic',
-    label: 'AI Concierge (Zavis)',
+    label: 'AI Concierge (CRM-DN)',
     detail: 'Booked through the AI agent on chat.',
   },
   {

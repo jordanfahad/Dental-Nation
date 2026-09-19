@@ -84,9 +84,9 @@ export const HANDOVER = {
     },
     {
       area: 'Paid campaigns',
-      owner: V('Zavis externally · internal review by Gautam / Dr Luvi'),
+      owner: V('CRM-DN externally · internal review by Gautam / Dr Luvi'),
       notes:
-        'Zavis runs delivery. Mr. Akbar nominates Gautam or Dr Luvi to review from our side. Budgets stay at current daily levels.',
+        'CRM-DN runs delivery. Mr. Akbar nominates Gautam or Dr Luvi to review from our side. Budgets stay at current daily levels.',
     },
     {
       area: 'Performance-partner alerts (Araby Ads)',
@@ -95,14 +95,14 @@ export const HANDOVER = {
         'Alert email notifications are switched on, so the team is notified and responds directly. No manual monitoring required.',
     },
     {
-      area: 'Zavis deliverables — QA',
+      area: 'CRM-DN deliverables — QA',
       owner: V('Gautam / Dr Luvi'),
       notes:
-        'Zavis sends the gatekeeping tasks to each team; Gautam and Dr Luvi review the deliverables and come back with a response.',
+        'CRM-DN sends the gatekeeping tasks to each team; Gautam and Dr Luvi review the deliverables and come back with a response.',
     },
     {
       area: 'WhatsApp / Marketing OS',
-      owner: V('Zavis — automated; escalate only if flows stop'),
+      owner: V('CRM-DN — automated; escalate only if flows stop'),
       notes: 'The system runs itself. Escalate on outage, not on volume.',
     },
     {
@@ -177,7 +177,7 @@ export const HANDOVER = {
       title: 'Hashid — onboarding',
       status: V('Trial complete · interview cleared · offer letter next'),
       position:
-        'The trial is done and Hashid has cleared the interview, so this is no longer an assessment — it is paperwork on the critical path. Gautam carries the follow-up, aligning with Syed at Zavis to issue the offer letter and complete onboarding. It does not wait for my return, because the campaign launch below is waiting on the assets he produces.',
+        'The trial is done and Hashid has cleared the interview, so this is no longer an assessment — it is paperwork on the critical path. Gautam carries the follow-up, aligning with Syed at CRM-DN to issue the offer letter and complete onboarding. It does not wait for my return, because the campaign launch below is waiting on the assets he produces.',
     },
     {
       title: 'Lane B, D & E campaign launch',
@@ -207,9 +207,9 @@ export const HANDOVER = {
     },
     {
       title: 'Voice agent R&D',
-      status: V('In progress — Zavis to report back'),
+      status: V('In progress — CRM-DN to report back'),
       position:
-        'Not paused. Core infrastructure is built and functional and the work continues; Zavis come back with the status. Nothing here needs a decision from our side while I am away.',
+        'Not paused. Core infrastructure is built and functional and the work continues; CRM-DN come back with the status. Nothing here needs a decision from our side while I am away.',
     },
   ],
 
@@ -222,13 +222,13 @@ export const HANDOVER = {
       system: 'Performance Dashboard (admin)',
       holders: V('Mr. Akbar manages · Gautam and Dr Luvi each have their own view'),
     },
-    { system: 'Meta Business Manager', holders: V('Gautam · Dr Luvi · Zavis — admin view') },
-    { system: 'Google Ads', holders: V('Gautam · Dr Luvi · Zavis — admin view') },
-    { system: 'Google Search Console', holders: V('Gautam · Dr Luvi · Zavis — admin view') },
-    { system: 'WhatsApp / Marketing OS admin', holders: V('Zavis — admin view') },
+    { system: 'Meta Business Manager', holders: V('Gautam · Dr Luvi · CRM-DN — admin view') },
+    { system: 'Google Ads', holders: V('Gautam · Dr Luvi · CRM-DN — admin view') },
+    { system: 'Google Search Console', holders: V('Gautam · Dr Luvi · CRM-DN — admin view') },
+    { system: 'WhatsApp / Marketing OS admin', holders: V('CRM-DN — admin view') },
     {
       system: 'Website deploy (Vercel / Supabase) — incl. Dr Tosun and Al Maher sites',
-      holders: V('Zavis — admin view'),
+      holders: V('CRM-DN — admin view'),
     },
   ],
 
@@ -240,7 +240,7 @@ export const HANDOVER = {
     'Complete the board report data fills.',
     'Resume campaign scaling on the winners.',
     'Restart the partner commercial discussion — delivery will have resumed; the billing terms are what waited.',
-    'Voice agent — pick up Zavis’s status report and decide the next step.',
+    'Voice agent — pick up CRM-DN’s status report and decide the next step.',
   ],
 } as const;
 

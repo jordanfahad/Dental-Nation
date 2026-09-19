@@ -25,7 +25,7 @@ export function CrmTrend({ report }: { report: CrmReport }) {
   return (
     <Card>
       <SectionHeader
-        eyebrow="CRM — Zavis · momentum"
+        eyebrow="CRM-DN · momentum"
         title="Appointments created over time"
       />
       <div className="px-5 pb-5 pt-4">

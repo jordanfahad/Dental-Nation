@@ -316,7 +316,7 @@ export function Part1Execution({ range, totals, prior, monthly, manual, insights
         />
       </div>
 
-      {/* ── Exhibit 5 · The WhatsApp layer, live from Zavis ── */}
+      {/* ── Exhibit 5 · The WhatsApp layer, live from CRM-DN ── */}
       <Exhibit
         id="s-whatsapp"
         n={5}
@@ -326,10 +326,10 @@ export function Part1Execution({ range, totals, prior, monthly, manual, insights
             ? `WhatsApp is now the group's primary patient channel — ${Math.round((crm.whatsappConversations / crm.totalConversations) * 100)}% of every conversation the clinics have`
             : 'WhatsApp carries the group’s patient communication'
         }
-        source="Zavis CRM — conversation and inbox reports, synced into the Lane E pipeline"
+        source="CRM-DN — conversation and inbox reports, synced into the Lane E pipeline"
         note={
           crm?.periodStart
-            ? `Zavis reporting period ${crm.periodStart} to ${crm.periodEnd}. Booking origin is reported exactly as the practice platform records it — platform, widget, CRM or AI agent. There is no "WhatsApp" booking source in the data, so no WhatsApp booking count is claimed.`
+            ? `CRM-DN reporting period ${crm.periodStart} to ${crm.periodEnd}. Booking origin is reported exactly as the practice platform records it — platform, widget, CRM or AI agent. There is no "WhatsApp" booking source in the data, so no WhatsApp booking count is claimed.`
             : undefined
         }
       >
@@ -350,7 +350,7 @@ export function Part1Execution({ range, totals, prior, monthly, manual, insights
             source={
               crm?.messagesSent != null
                 ? `${fmt.int(crm.messagesSent)} sent · ${fmt.int(crm.messagesReceived ?? 0)} received`
-                : 'Zavis CRM'
+                : 'CRM-DN'
             }
             hero
           />

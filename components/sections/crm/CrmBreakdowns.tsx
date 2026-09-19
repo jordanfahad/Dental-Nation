@@ -16,7 +16,7 @@ export function CrmBreakdowns({ report }: { report: CrmReport }) {
   return (
     <div className="grid gap-5 lg:grid-cols-3">
       <Card>
-        <SectionHeader eyebrow="CRM — Zavis · mix" title="Appointments by source" />
+        <SectionHeader eyebrow="CRM-DN · mix" title="Appointments by source" />
         <div className="px-5 pb-5 pt-4">
           {a.bySource.length ? (
             <Donut data={toBars(a.bySource)} valueFormat="int" centerLabel="appts" height={180} />
@@ -27,7 +27,7 @@ export function CrmBreakdowns({ report }: { report: CrmReport }) {
       </Card>
 
       <Card>
-        <SectionHeader eyebrow="CRM — Zavis · mix" title="By department" />
+        <SectionHeader eyebrow="CRM-DN · mix" title="By department" />
         <div className="px-5 pb-5 pt-4">
           {a.byDepartment.length ? (
             <HBarChart data={toBars(a.byDepartment)} valueFormat="int" />
@@ -41,7 +41,7 @@ export function CrmBreakdowns({ report }: { report: CrmReport }) {
       </Card>
 
       <Card>
-        <SectionHeader eyebrow="CRM — Zavis · mix" title="Top doctors" />
+        <SectionHeader eyebrow="CRM-DN · mix" title="Top doctors" />
         <div className="px-5 pb-5 pt-4">
           {a.byDoctor.length ? (
             <HBarChart data={toBars(a.byDoctor)} valueFormat="int" />

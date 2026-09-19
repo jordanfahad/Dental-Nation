@@ -67,9 +67,9 @@ const WAVES: Wave[] = [
     intro: 'Sell to people who already know us — and onboard properly from the first enrolment. Baseline, prices and definitions come before broad activation.',
     plays: [
       { title: 'Baseline & terms first', engine: 'Data', owner: 'Gautam + finance/ops (to confirm)', detail: 'Enrolments, payment status, plan mix, usage, cancellations; benefit-delivery costs; clinic prices; membership terms. The savings examples and funnel definitions come from this — nothing scales before it exists.' },
-      { title: 'High-intent triggered contact — replaces the broad CRM test', engine: 'CRM / WhatsApp', owner: 'Fahad + ZAVIS + contact centre', detail: 'LEARNING APPLIED (12 Sep update): five campaign sends (3 doctor-led + retry + follow-up; 1,280 non-unique reach, 863 delivered, 71 replies) proved broadcast engagement comes back appointment-led, not membership-led — so no further broadcast testing. Instead: event-triggered, 1-to-1 consented contact at high-intent moments — open treatment plans, due preventive recalls, completed SOS follow-ups, website abandoners — each source-coded.' },
+      { title: 'High-intent triggered contact — replaces the broad CRM test', engine: 'CRM / WhatsApp', owner: 'Fahad + CRM-DN + contact centre', detail: 'LEARNING APPLIED (12 Sep update): five campaign sends (3 doctor-led + retry + follow-up; 1,280 non-unique reach, 863 delivered, 71 replies) proved broadcast engagement comes back appointment-led, not membership-led — so no further broadcast testing. Instead: event-triggered, 1-to-1 consented contact at high-intent moments — open treatment plans, due preventive recalls, completed SOS follow-ups, website abandoners — each source-coded.' },
       { title: 'Front-desk route', engine: 'In-clinic', owner: 'Front desk + Dr Luvi', detail: 'The enablement already exists from the programme build: Reception Conversion Guide (Ask → Match → Value → Clarify → Close), reception member deck, objection handling and Emirati Arabic scripts, plus value-discovery training completed. Wave 1 executes it: QR at the three branches, the offer at checkout, and a structured objection log from day one.' },
-      { title: 'Relevant placements only', engine: 'Owned web', owner: 'ZAVIS + W3Layouts', detail: 'Membership placements on the most relevant pages with demonstrated traffic, prioritised by actual local intent and conversion potential — page count alone is not opportunity. Relevant cost-guide readers are a testable prospect audience.' },
+      { title: 'Relevant placements only', engine: 'Owned web', owner: 'CRM-DN + W3Layouts', detail: 'Membership placements on the most relevant pages with demonstrated traffic, prioritised by actual local intent and conversion potential — page count alone is not opportunity. Relevant cost-guide readers are a testable prospect audience.' },
       { title: 'Onboarding & activation — in Wave 1', engine: 'Member experience', owner: 'Fahad + Gautam + front desk', detail: 'Welcome and clear benefits/terms; help arranging the first clinically appropriate appointment; first booking and first completed visit tracked separately; care-plan reminders; payment-failure follow-up; cancellation reasons; renewal prep; a member value statement showing actual benefits received.' },
       { title: 'Corporate discovery in parallel', engine: 'B2B', owner: 'Fahad + Mr Akbar', detail: 'Warm HR conversations start now (Michael Page contact, RBS, existing partners) — discovery does not wait for a finished case study.' },
     ],
@@ -79,9 +79,9 @@ const WAVES: Wave[] = [
     intro: 'Budget follows measured conversion — and every paid audience passes the eligibility check first.',
     plays: [
       { title: 'Paid acquisition tests', engine: 'Paid', owner: 'Fahad', detail: 'After the audience-eligibility check: eligible search-intent and geographic tests first; patient-list targeting only where confirmed appropriate. Offer-led CTWA and Google Search on cost/offer intent.' },
-      { title: 'SEO membership cluster', engine: 'SEO', owner: 'ZAVIS', detail: 'Dedicated EN/AR membership pages plus a membership module on the highest-traffic relevant cost and treatment pages.' },
+      { title: 'SEO membership cluster', engine: 'SEO', owner: 'CRM-DN', detail: 'Dedicated EN/AR membership pages plus a membership module on the highest-traffic relevant cost and treatment pages.' },
       { title: 'One defined corporate pilot', engine: 'B2B', owner: 'Fahad + Mr Akbar', detail: 'One employer, explicit commitments and economics — full specification in the Corporate playbook.' },
-      { title: 'Creative production', engine: 'Creative OS', owner: 'ZAVIS', detail: 'Automation supports asset production; offer accuracy, clinical review, suitability and performance still need validation before scale.' },
+      { title: 'Creative production', engine: 'Creative OS', owner: 'CRM-DN', detail: 'Automation supports asset production; offer accuracy, clinical review, suitability and performance still need validation before scale.' },
       { title: 'Referral mechanic — as a test', engine: 'CRM', owner: 'Fahad + Gautam', detail: 'Build member-get-member and measure its contribution. Referral is a channel to test, not an assumed winner.' },
     ],
   },
@@ -91,7 +91,7 @@ const WAVES: Wave[] = [
     plays: [
       { title: 'Corporate expansion', engine: 'B2B', owner: 'Fahad + Mr Akbar', detail: 'Outbound to a named employer list opened with the pilot case study; benefits platforms, chambers, HR communities.' },
       { title: 'Insurance-gap positioning', engine: 'Messaging', owner: 'Fahad', detail: 'Positioned against verified dental-coverage gaps for the specific audience — not an assumption about all employees.' },
-      { title: 'LinkedIn corporate lane', engine: 'Content OS', owner: 'ZAVIS', detail: 'A corporate-benefits content lane aimed at HR titles, warming the outbound list.' },
+      { title: 'LinkedIn corporate lane', engine: 'Content OS', owner: 'CRM-DN', detail: 'A corporate-benefits content lane aimed at HR titles, warming the outbound list.' },
       { title: 'Selective offline', engine: 'Offline', owner: 'Fahad', detail: 'Judged case by case on audience fit, total delivery cost, attributable enrolments and feasibility — see the offline verdict. Radio and billboards stay deferred.' },
       { title: 'Retention economics', engine: 'CRM', owner: 'Fahad + Gautam', detail: 'Monthly-payment persistence and renewal by cohort. Renewal and lifetime value are not validated by a short pilot — cohorts must mature first.' },
     ],
@@ -116,7 +116,7 @@ const WAVE_RESULTS: Record<string, { verdict: string; items: string[] }> = {
     verdict: 'Partially entered — partnership GTM is built and activating; paid scale waits on the creative unlock.',
     items: [
       'Partnership go-to-market: bilingual community-partnership decks and an organisation-specific proposal complete; partner outreach active, first activations being scheduled (12 Sep update).',
-      'Paid + owned: ZAVIS pilot landing page live with search ads following; the membership SEO cluster is tasked. Meta dynamic/smart-creative formats are HELD by the creative blocker (see the Digital marketing plan) — offer-led statics and search carry paid until the designer unlock.',
+      'Paid + owned: CRM-DN pilot landing page live with search ads following; the membership SEO cluster is tasked. Meta dynamic/smart-creative formats are HELD by the creative blocker (see the Digital marketing plan) — offer-led statics and search carry paid until the designer unlock.',
       'No paid-channel conversion results exist yet — the first source-coded funnel reads arrive with the 23 Sep Day-7 checkpoint.',
     ],
   },
@@ -131,7 +131,7 @@ const WAVE_RESULTS: Record<string, { verdict: string; items: string[] }> = {
 
 const FACTS: { cat: string; color: string; items: string }[] = [
   { cat: 'Established (our own platform)', color: '#2C5E3F', items: 'Smile Club product + admin console live · 4.9★ across 62 GMB reviews · patient audience lists exist in both ad accounts · warm corporate contacts (Michael Page HR contact, RBS, current partners)' },
-  { cat: 'Source-reported (ZAVIS — not independently verified)', color: BLUE, items: '25 WhatsApp segments with automated creative generation · 19,500+ programmatic SEO pages · Patient Intelligence ↔ Content OS API integration' },
+  { cat: 'Source-reported (CRM-DN — not independently verified)', color: BLUE, items: '25 WhatsApp segments with automated creative generation · 19,500+ programmatic SEO pages · Patient Intelligence ↔ Content OS API integration' },
   { cat: 'Public-page observations (12 Sep — recheck before use)', color: '#7a6420', items: 'Essential AED 99/month or 999/year · Plus AED 139/month or 1,399/year · displayed savings compare payment frequencies, not savings vs buying care separately · several FAQs defer to the Member Terms. Content review only — not a checkout or functionality audit' },
   { cat: 'Data still needed', color: CORAL, items: 'Member baseline — enrolments, payment status, sign-up dates, plan mix, usage, cancellations (owner: Gautam) · clinic prices and benefit-delivery costs (owner: finance/ops, to confirm) · page-level traffic and conversion data' },
 ];
@@ -190,8 +190,8 @@ const FORTNIGHT = [
   { d: 'Day 3', t: 'Baseline: enrolments, payment status, sign-up dates, plan mix, usage, cancellations; traffic/conversion data', o: 'Gautam (data) · Fahad (traffic)' },
   { d: 'Day 5', t: 'Benefit-delivery costs, clinic prices, capacity and membership terms confirmed; realistic savings examples built', o: 'Finance/ops — owner to confirm' },
   { d: 'Day 5', t: 'Funnel, tracking, cohort definitions, objection log, pilot budget and initial expansion criteria defined', o: 'Fahad' },
-  { d: 'Day 8', t: 'Front-desk explanation, targeted CRM messages, relevant website placements and onboarding journey prepared', o: 'Fahad + ZAVIS + front desk (Dr Luvi)' },
-  { d: 'Day 10', t: 'Limited patient test live with a comparison group where practical; conversion, objections, bookings, capacity monitored', o: 'Fahad + ZAVIS' },
+  { d: 'Day 8', t: 'Front-desk explanation, targeted CRM messages, relevant website placements and onboarding journey prepared', o: 'Fahad + CRM-DN + front desk (Dr Luvi)' },
+  { d: 'Day 10', t: 'Limited patient test live with a comparison group where practical; conversion, objections, bookings, capacity monitored', o: 'Fahad + CRM-DN' },
   { d: 'Day 12', t: 'Warm corporate discovery held (Michael Page contact, RBS, partners); one pilot defined with explicit commitments and economics', o: 'Fahad + Mr Akbar' },
   { d: 'Day 14', t: 'Fortnight review: fix, continue testing, or expand provisionally', o: 'Fahad → Mr Akbar' },
 ];
@@ -228,7 +228,7 @@ const REGISTER = [
 const MANDATE_MAP = [
   { req: 'Existing DN clinics — 60', ours: 'Wave 1 front-desk route + onboarding (front desk + Dr Luvi): one consistent explanation, QR at three branches, first-appointment help, objection log.' },
   { req: 'Corporate — 24 (pipeline ≥ 72)', ours: 'Corporate playbook: warm doors (Michael Page HR contact, RBS, partners) + the three warm introductions the mandate asks Mr Akbar to provide (CEO approval item 6).' },
-  { req: 'Website — 12 (150 qualified @ 8%)', ours: 'Wave 1 relevant placements + Wave 2 SEO membership cluster and eligibility-checked paid tests; ZAVIS pilot LP live.' },
+  { req: 'Website — 12 (150 qualified @ 8%)', ours: 'Wave 1 relevant placements + Wave 2 SEO membership cluster and eligibility-checked paid tests; CRM-DN pilot LP live.' },
   { req: 'Reseller / affiliate / broker / distributor / CSR — 24', ours: 'NEW commercial-access lane the mandate adds beyond rev. 2 — folds into the B2B mechanics (partner codes, QR links, referral agreements) with per-partner source codes.' },
   { req: 'Bulk CRM: target 0, budget 0', ours: 'Aligned with our audience-eligibility and consent rule. The Wave 1 CRM test stays limited, consented and non-bulk — scope confirmed against the CRM hold.' },
   { req: 'CAC ≤ Finance ceiling · daily spend/forecast', ours: 'Our economics gate — "allowable CAC from measured economics" — now given its owner: Finance sets the ceiling, Mr Akbar signs it.' },
@@ -369,9 +369,9 @@ const RESPONSE_ROWS: ResponseRow[] = [
   },
   {
     source: 'Website', target: 12,
-    demand: '150 qualified opportunities by Day 30 at 8% conversion (mandate assumption). Sources: membership placements on demonstrated-traffic pages, cost-guide module, ZAVIS pilot LP traffic.',
-    method: 'Membership placements + Smile Club module on top cost/treatment pages (ZAVIS); eligibility-checked paid support — search-intent tests and offer-led CTWA; 10-minute contact-centre follow-up on qualified enquiries.',
-    launch: '19 Sep (with the portfolio)', code: 'UTM + source field per placement/campaign', owner: 'Fahad + ZAVIS · contact centre for follow-up',
+    demand: '150 qualified opportunities by Day 30 at 8% conversion (mandate assumption). Sources: membership placements on demonstrated-traffic pages, cost-guide module, CRM-DN pilot LP traffic.',
+    method: 'Membership placements + Smile Club module on top cost/treatment pages (CRM-DN); eligibility-checked paid support — search-intent tests and offer-led CTWA; 10-minute contact-centre follow-up on qualified enquiries.',
+    launch: '19 Sep (with the portfolio)', code: 'UTM + source field per placement/campaign', owner: 'Fahad + CRM-DN · contact centre for follow-up',
   },
   {
     source: 'Clinic resellers', target: 7,
@@ -554,7 +554,7 @@ function ResponseTab() {
           </table>
         </div>
         <p className="mt-2 rounded-lg px-3 py-2 text-[11px] font-medium" style={{ backgroundColor: '#FDF9EC', color: '#6d5a1d' }}>
-          Asset production owners: copy + templates — Fahad; automated statics — Creative OS (ZAVIS); ◆ items need the
+          Asset production owners: copy + templates — Fahad; automated statics — Creative OS (CRM-DN); ◆ items need the
           in-house designer — the launch set ships without them, they upgrade the mix when the hire lands.
         </p>
       </section>
@@ -606,7 +606,7 @@ interface DmChannel {
 const DM_CHANNELS: DmChannel[] = [
   {
     channel: 'Google Search', role: 'Capture existing intent — membership, dental-cost and treatment queries, EN/AR, geo around the three branches.',
-    execution: 'Responsive search ads → ZAVIS pilot LP / membership LP variant → lead (CPL measured here) → 10-minute contact-centre follow-up. Negative lists to keep booking intent separate from membership intent.',
+    execution: 'Responsive search ads → CRM-DN pilot LP / membership LP variant → lead (CPL measured here) → 10-minute contact-centre follow-up. Negative lists to keep booking intent separate from membership intent.',
     budget: 'AED 12,000', status: 'LIVE', statusColor: '#2C5E3F',
   },
   {
@@ -626,12 +626,12 @@ const DM_CHANNELS: DmChannel[] = [
   },
   {
     channel: 'Website sticky banner', role: 'NEW traffic opportunity: a persistent, dismissible site-wide banner routes ALL existing traffic — booking intent, cost-guide readers, entrances across the 19,500+ SEO pages — to the Smile Club page at zero media cost.',
-    execution: '“Smile Club — dental care from AED 99/month → Join” EN/AR; UTM sc-banner; built by ZAVIS/W3Layouts; click-through and paid conversions read from the funnel spine.',
+    execution: '“Smile Club — dental care from AED 99/month → Join” EN/AR; UTM sc-banner; built by CRM-DN/W3Layouts; click-through and paid conversions read from the funnel spine.',
     budget: 'No media cost', status: 'TO BUILD — w/c 22 Sep', statusColor: CORAL,
   },
   {
     channel: 'SEO — membership cluster', role: 'Own the organic membership and cost-comparison queries the paid lane is bidding on.',
-    execution: 'Dedicated EN/AR membership pages + Smile Club modules on the highest-traffic cost/treatment pages (ZAVIS); compounding, not checkpoint-dependent.',
+    execution: 'Dedicated EN/AR membership pages + Smile Club modules on the highest-traffic cost/treatment pages (CRM-DN); compounding, not checkpoint-dependent.',
     budget: 'No media cost', status: 'IN PROGRESS', statusColor: BLUE,
   },
   {
@@ -670,7 +670,7 @@ const DM_OUTREACH = [
 ];
 
 const DM_TIMELINE = [
-  { wk: 'w/c 19 Sep · Days 1–7', paid: 'Search live · LinkedIn organic starts · sticky banner briefed to ZAVIS · Meta statics prepped', corp: 'Outreach emails drafted for Assembly Global + Michael Page · ArabyAds go-live agenda extended to Smile Club', gate: 'Day-7 checkpoint 23 Sep — 36 plan / 30 minimum' },
+  { wk: 'w/c 19 Sep · Days 1–7', paid: 'Search live · LinkedIn organic starts · sticky banner briefed to CRM-DN · Meta statics prepped', corp: 'Outreach emails drafted for Assembly Global + Michael Page · ArabyAds go-live agenda extended to Smile Club', gate: 'Day-7 checkpoint 23 Sep — 36 plan / 30 minimum' },
   { wk: 'w/c 22 Sep · Days 8–14', paid: 'Sticky banner LIVE · Meta statics live · ArabyAds CPL scope agreed · LinkedIn sponsored test brief ready', corp: 'Assembly Global + Michael Page meetings held · ArabyAds double-ask made', gate: 'Day-14 checkpoint 30 Sep — 60/50 · Day-15–30 funding review' },
   { wk: 'w/c 29 Sep · Days 15–21', paid: 'Reallocate ±10% to the winning lanes · LinkedIn sponsored test live if creative allows', corp: 'First corporate pilot agreed, coded and speced (the “one defined pilot”)', gate: 'Day-21 checkpoint 7 Oct — 88/75, reviewed with Gautam' },
   { wk: 'w/c 6 Oct · Days 22–28', paid: 'Scale proven sources only · dynamic/smart creatives live IF the designer hire has landed', corp: 'Corporate pilot enrolments running under its employer code', gate: 'CAC vs ceiling + ≥98% attribution checked before any scale-up' },
@@ -738,7 +738,7 @@ function DmPlan() {
               While paid is capped, the cheapest traffic is the traffic we already have. A persistent site-wide
               banner puts Smile Club in front of every visitor — booking pages, cost guides, the 19,500+ SEO page
               entrances — and needs one build, no media and no new creative formats. Dismissible, EN/AR, UTM-coded
-              (sc-banner) so its contribution reads directly in the funnel spine. Owner: ZAVIS/W3Layouts, live w/c
+              (sc-banner) so its contribution reads directly in the funnel spine. Owner: CRM-DN/W3Layouts, live w/c
               22 Sep.
             </p>
           </Card>

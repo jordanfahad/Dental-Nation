@@ -108,7 +108,7 @@ export function ClinicJourneyView({
               <span className="tnum text-[16px] font-semibold text-ink">{int(report.enquiries)}</span>
             </div>
             <div className="text-[11.5px] leading-snug text-ink-faint">
-              The enquiry → booking link isn&apos;t captured yet (lead phones match Zavis ~1%), so this is top-of-funnel
+              The enquiry → booking link isn&apos;t captured yet (lead phones match CRM-DN ~1%), so this is top-of-funnel
               context — <strong>not</strong> a traced conversion.
             </div>
           </div>
@@ -141,8 +141,8 @@ export function ClinicJourneyView({
         {!compact ? (
           <>
             <Takeaway>
-              The per-patient journey we can trace — matched from the Zavis appointment to the Practo bill by{' '}
-              <strong>file number</strong>. <strong>Showed up</strong> = Zavis <em>completed</em> or a bill (proof of
+              The per-patient journey we can trace — matched from the CRM-DN appointment to the Practo bill by{' '}
+              <strong>file number</strong>. <strong>Showed up</strong> = CRM-DN <em>completed</em> or a bill (proof of
               attendance). <strong>Channel</strong> is how the booking was made; the marketing platform
               (WhatsApp/Instagram) isn&apos;t on the booking record, so it stays an aggregate on the Platforms view.
               <strong>Revenue</strong> is the <em>invoiced</em> bill amount (the same basis as the headline clinic

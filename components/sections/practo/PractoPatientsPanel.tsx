@@ -118,7 +118,7 @@ export function PractoPatientsPanel({ data }: { data: CrmPatientBookings }) {
           <>
             <span className="rounded-full bg-ink/10 px-1.5 py-0.5 text-[10px] font-medium text-ink">Practo DB</span>{' '}
             {int(data.matchedPracto)} matched to the Practo patient database (phone) → counted as existing regardless
-            of Zavis history.{' '}
+            of CRM-DN history.{' '}
           </>
         ) : null}
         {data.notYetVisited > 0 ? (

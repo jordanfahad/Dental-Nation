@@ -69,7 +69,7 @@ export function ExecKpiBand({ report }: { report: ExecutiveReport }) {
       label: 'Conversations handled',
       value: kpis.conversationsHandled == null ? null : fmtInt(kpis.conversationsHandled),
       sparkColor: TOKENS.accent400,
-      hint: 'Zavis CRM',
+      hint: 'CRM-DN',
       gapDetail: 'no conversation summary ingested',
       gapOwner: ownerFor('pac'),
     },

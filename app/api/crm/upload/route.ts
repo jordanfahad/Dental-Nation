@@ -6,7 +6,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 /**
- * Admin-only re-ingest of a fresh Zavis CSV export. Accepts a multipart file
+ * Admin-only re-ingest of a fresh CRM-DN CSV export. Accepts a multipart file
  * field ("file") OR a raw "text" field. Detects the report type, parses, and
  * upserts into the matching lane_e.crm_* table. Viewers are rejected (same gate
  * as the Impact import routes). Never crashes — always returns JSON.
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
 
     if (!text || !text.trim()) {
       return NextResponse.json(
-        { error: 'Choose a Zavis CSV export to upload (or paste its contents).' },
+        { error: 'Choose a CRM-DN CSV export to upload (or paste its contents).' },
         { status: 400 },
       );
     }

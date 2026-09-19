@@ -130,7 +130,7 @@ export const GA4_WHATSAPP_EVENT = process.env.GA4_WHATSAPP_EVENT?.trim() || 'wha
 export const GA4_CALL_EVENT = process.env.GA4_CALL_EVENT?.trim() || 'call_click';
 /**
  * All event names that count as a phone-call click. `phone_click` is the
- * site-wide tel:-link listener Zavis shipped on dentalnation.com (30 Jul 2026,
+ * site-wide tel:-link listener CRM-DN shipped on dentalnation.com (30 Jul 2026,
  * with a phone_number custom dimension); `call_click` was the previously
  * assumed GTM name and is kept so any historical data still counts. The env
  * override joins the list rather than replacing it.

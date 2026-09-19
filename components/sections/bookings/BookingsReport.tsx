@@ -61,7 +61,7 @@ async function BookingsWidgetView({ report }: { report: RangeReport }) {
   const range = report.range;
   const isEmpty = b.empty;
 
-  // Live widget submissions from the Zavis feed (incl. test orders, flagged) —
+  // Live widget submissions from the CRM-DN feed (incl. test orders, flagged) —
   // scoped to the same window as the rest of the tab.
   const widget = await getRecentWidgetBookings({ from: range.from, to: range.to });
   // GA4 on-site booking funnel + events, per offer landing page.

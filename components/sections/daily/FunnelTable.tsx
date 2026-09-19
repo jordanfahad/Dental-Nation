@@ -123,7 +123,7 @@ export function FunnelTable({ view }: { view: ReportView }) {
         <Takeaway>
           Most stages are now measured live: clicks / impressions from the ad platforms, landing-page
           visits + WhatsApp / call clicks from GA4, bookings from the website widget, show-ups from the
-          Zavis CRM and reviews from CSAT (see each row&rsquo;s source). Reach still needs a live Meta
+          CRM-DN and reviews from CSAT (see each row&rsquo;s source). Reach still needs a live Meta
           feed (its token is stale), and Proof capture has no source yet — those stay owned data gaps,
           never zeros.
         </Takeaway>

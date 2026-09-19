@@ -1,7 +1,7 @@
 /**
  * Marketing OS — static reference data from the build spec (31 Jul 2026):
  * measurement-integrity flags, the risk register, and the standing asks from
- * Zavis. Time-series and queue data live in lane_e.mos_* tables; this file
+ * CRM-DN. Time-series and queue data live in lane_e.mos_* tables; this file
  * holds what is POLICY rather than data, so changing a flag's status is a
  * reviewed code change, not a quiet DB edit.
  */
@@ -22,7 +22,7 @@ export interface IntegrityFlag {
 }
 
 /** §9.3 — artifacts in the current benchmark window that would corrupt any
- *  Marketing OS evaluation. Rendered on the Overview BEFORE any Zavis verdict. */
+ *  Marketing OS evaluation. Rendered on the Overview BEFORE any CRM-DN verdict. */
 export const INTEGRITY_FLAGS: IntegrityFlag[] = [
   {
     key: 'enquiry-denominator',
@@ -57,7 +57,7 @@ export const INTEGRITY_FLAGS: IntegrityFlag[] = [
     detail:
       'GSC property access landed 17 Aug (service account added, API enabled) — impressions, CTR, position and queries now feed the Digital tab and the investor deck. Remaining gap: no sitemap submitted, so the indexed-pages count is a floor, not exact.',
     status: 'fixed',
-    owner: 'Zavis',
+    owner: 'CRM-DN',
     affects: [],
   },
 ];
@@ -77,7 +77,7 @@ export const MOS_RISKS: RiskItem[] = [
     title: '14,000 pSEO pages claimed, unverified',
     detail: 'No GSC export yet — published vs indexed vs impressions unproven. Until verified, page counts are vendor claims, not assets.',
     severity: 'high',
-    owner: 'Zavis',
+    owner: 'CRM-DN',
   },
   {
     key: 'thin-content',
@@ -91,7 +91,7 @@ export const MOS_RISKS: RiskItem[] = [
     title: 'Vendor-domain mirror is indexable',
     detail: 'dn-concierge.zavisinternaltools.in serves index,follow with canonical only — mitigated, not fixed. Needs noindex or an agreed sunset date.',
     severity: 'medium',
-    owner: 'Zavis',
+    owner: 'CRM-DN',
   },
   {
     key: 'list-burn',
@@ -102,7 +102,7 @@ export const MOS_RISKS: RiskItem[] = [
   },
 ];
 
-/** §8 — standing asks from Zavis, surfaced as a checklist on the Risk Register. */
+/** §8 — standing asks from CRM-DN, surfaced as a checklist on the Risk Register. */
 export const ZAVIS_ASKS: { key: string; ask: string }[] = [
   { key: 'gsc', ask: 'GSC property access + full pSEO indexation export (published vs indexed vs impressions)' },
   { key: 'segments', ask: 'Segment usage log — which of 105 used in live campaigns, with dates' },

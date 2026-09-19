@@ -48,11 +48,11 @@ interface ChannelDef {
 const CHANNELS: ChannelDef[] = [
   { key: 'performance', label: 'Performance / Paid', lens: 'Platform', leadNoun: 'reported leads', partners: 'In-house · agency slot open', note: 'Meta + Google paid — spend and platform-reported conversions.' },
   { key: 'affiliates', label: 'Affiliates', lens: 'Bookings', leadNoun: 'confirmed bookings', partners: 'ArabyAds · Platformance soon', note: 'Pay-per-confirmed-booking network deals; cost accrues only on results.' },
-  { key: 'seo', label: 'SEO / Organic Search', lens: 'GA4', leadNoun: 'site leads', partners: 'ZAVIS (in-house)', note: 'GA4 site-tagged leads whose first channel was organic search.' },
+  { key: 'seo', label: 'SEO / Organic Search', lens: 'GA4', leadNoun: 'site leads', partners: 'CRM-DN (in-house)', note: 'GA4 site-tagged leads whose first channel was organic search.' },
   { key: 'social', label: 'Social / Organic', lens: 'GA4', leadNoun: 'site leads', partners: 'In-house', note: 'GA4 leads from unpaid social; posting detail lives in Social & Local.' },
   { key: 'referrals', label: 'Referrals', lens: 'GA4', leadNoun: 'site leads', partners: 'In-house', note: 'GA4 leads arriving from other sites (incl. the W3Layouts backlink).' },
   { key: 'direct', label: 'Direct', lens: 'GA4', leadNoun: 'site leads', partners: 'In-house', note: 'GA4 leads with no attributed source — brand demand and untagged links.' },
-  { key: 'crm', label: 'Email / WhatsApp', lens: 'Tracker', leadNoun: 'tracked leads', partners: 'In-house (ZAVIS CRM)', note: 'In-house tracker leads logged from consented WhatsApp/CRM contact.' },
+  { key: 'crm', label: 'CRM', lens: 'Tracker', leadNoun: 'tracked leads', partners: 'CRM-DN (in-house)', note: 'Email / WhatsApp — in-house tracker leads logged from consented 1-to-1 contact.' },
 ];
 
 const OFFLINE: { label: string; verdict: string; note: string }[] = [
@@ -193,6 +193,70 @@ function PlatformPill({ p }: { p: 'Meta' | 'Google' }) {
   return <span className="rounded px-1.5 py-0.5 text-[9.5px] font-bold" style={{ backgroundColor: tone.bg, color: tone.fg }}>{p}</span>;
 }
 
+/**
+ * The campaign ladder — every campaign, ranked by spend. The top ten carry a
+ * share-of-spend bar; the long tail folds into a native <details> so the page
+ * stays scannable without JavaScript. One row shape at every rank.
+ */
+function CampaignRow({ c, rank, totalSpend }: { c: MktCampaign; rank: number; totalSpend: number }) {
+  const share = totalSpend > 0 ? c.spend / totalSpend : 0;
+  return (
+    <tr className="border-t align-middle" style={{ borderColor: '#EEEFE1' }}>
+      <td className="px-3 py-1.5 text-right text-[10px] font-bold tabular-nums" style={{ color: OLIVE }}>{rank}</td>
+      <td className="px-3 py-1.5"><PlatformPill p={c.platform} /></td>
+      <td className="px-3 py-1.5">
+        <span className="block max-w-[300px] truncate text-[11px] font-semibold" style={{ color: NAVY }} title={c.campaign}>{c.campaign}</span>
+        <span className="mt-1 block h-1.5 w-full max-w-[300px] rounded-full" style={{ backgroundColor: TRACK }}>
+          <span className="block h-1.5 rounded-full" style={{ width: `${Math.max(2, Math.round(share * 100))}%`, backgroundColor: c.platform === 'Google' ? NAVY : BLUE }} />
+        </span>
+      </td>
+      <td className="px-3 py-1.5 text-right text-[11px] tabular-nums" style={{ color: INK }}>{aed(c.spend)}</td>
+      <td className="px-3 py-1.5 text-right text-[11px] tabular-nums" style={{ color: OLIVE }}>{pct(share)}</td>
+      <td className="px-3 py-1.5 text-right text-[11px] tabular-nums" style={{ color: INK }}>{int(c.reportedLeads)}</td>
+      <td className="px-3 py-1.5 text-right text-[11px] tabular-nums" style={{ color: INK }}>{c.costPerReported != null ? aed(c.costPerReported) : '—'}</td>
+    </tr>
+  );
+}
+
+function CampaignLadder({ campaigns, totalSpend }: { campaigns: MktCampaign[]; totalSpend: number }) {
+  const top = campaigns.slice(0, 10);
+  const rest = campaigns.slice(10);
+  const restSpend = rest.reduce((a, c) => a + c.spend, 0);
+  const head = (
+    <tr className="text-left text-[9.5px] uppercase tracking-wide" style={{ color: OLIVE, backgroundColor: '#F7F7F0' }}>
+      <th className="px-3 py-2 text-right font-bold">#</th>
+      <th className="px-3 py-2 font-bold">Type</th>
+      <th className="px-3 py-2 font-bold">Campaign · share of paid spend</th>
+      <th className="px-3 py-2 text-right font-bold">Spend</th>
+      <th className="px-3 py-2 text-right font-bold">Share</th>
+      <th className="px-3 py-2 text-right font-bold">Leads</th>
+      <th className="px-3 py-2 text-right font-bold">Cost / lead</th>
+    </tr>
+  );
+  return (
+    <div className="overflow-x-auto rounded-xl border bg-white" style={{ borderColor: LINE }}>
+      <table className="w-full border-collapse">
+        <thead>{head}</thead>
+        <tbody>
+          {top.map((c, i) => <CampaignRow key={`${c.platform}|${c.campaign}`} c={c} rank={i + 1} totalSpend={totalSpend} />)}
+        </tbody>
+      </table>
+      {rest.length > 0 ? (
+        <details>
+          <summary className="cursor-pointer border-t px-3 py-2 text-[11px] font-bold" style={{ borderColor: '#EEEFE1', color: BLUE }}>
+            Show the remaining {int(rest.length)} campaigns ({aed(restSpend)} · {pct(totalSpend > 0 ? restSpend / totalSpend : 0)} of paid spend)
+          </summary>
+          <table className="w-full border-collapse">
+            <tbody>
+              {rest.map((c, i) => <CampaignRow key={`${c.platform}|${c.campaign}`} c={c} rank={i + 11} totalSpend={totalSpend} />)}
+            </tbody>
+          </table>
+        </details>
+      ) : null}
+    </div>
+  );
+}
+
 function PerformanceDrill({ mkt, rangeQs }: { mkt: Mkt; rangeQs: string }) {
   const meta = mkt.platforms.find((p) => p.platform === 'Meta');
   const google = mkt.platforms.find((p) => p.platform === 'Google');
@@ -208,26 +272,25 @@ function PerformanceDrill({ mkt, rangeQs }: { mkt: Mkt; rangeQs: string }) {
         <Stat v={mkt.ga4.available ? int(mkt.ga4.paidLeads) : null} l="GA4 paid leads" s="independent site check" gap={mkt.ga4.note ?? 'GA4 unavailable'} />
       </div>
 
+      {google || meta ? (
+        <div>
+          <p className="mb-2 text-[10.5px] font-bold uppercase tracking-wide" style={{ color: OLIVE }}>Where the paid money sits</p>
+          {google ? <BarRow label={`Paid Search — Google (${int(gCount)} campaigns)`} value={google.spend} max={Math.max(google?.spend ?? 0, meta?.spend ?? 0)} color={NAVY} display={aed(google.spend)} /> : null}
+          {meta ? <BarRow label={`Paid Social — Meta (${int(mCount)} campaigns)`} value={meta.spend} max={Math.max(google?.spend ?? 0, meta?.spend ?? 0)} color={BLUE} display={aed(meta.spend)} /> : null}
+        </div>
+      ) : null}
+
       <div>
         <PartnerHeading name="In-house" status="live" />
         <p className="mb-2 text-[11px]" style={{ color: OLIVE }}>
           <span className="font-bold" style={{ color: NAVY }}>{int(mkt.campaigns.length)} campaigns</span> in the
-          selected window — Google {int(gCount)} · Meta {int(mCount)} — every one listed, spend-sorted. Campaign
-          type: Google = Paid Search, Meta = Paid Social.
+          selected window — Google {int(gCount)} · Meta {int(mCount)} — spend-sorted; the ladder shows the top
+          ten, the rest expand below. Campaign type: Google = Paid Search, Meta = Paid Social.
         </p>
         {mkt.campaigns.length === 0 ? (
           <GapNote>No campaign rows in the synced window — owner: {ownerFor('spend')}.</GapNote>
         ) : (
-          <McTable
-            head={['Type', 'Campaign', 'Spend', 'Leads', 'Cost / lead']}
-            rows={mkt.campaigns.map((c: MktCampaign) => [
-              <span key="t" className="flex items-center gap-1.5 whitespace-nowrap"><PlatformPill p={c.platform} />{c.platform === 'Google' ? 'Paid Search' : 'Paid Social'}</span>,
-              <span key="n" className="block max-w-[320px] truncate font-semibold" title={c.campaign}>{c.campaign}</span>,
-              aed(c.spend),
-              int(c.reportedLeads),
-              c.costPerReported != null ? aed(c.costPerReported) : '—',
-            ])}
-          />
+          <CampaignLadder campaigns={mkt.campaigns} totalSpend={mkt.totals.adSpend} />
         )}
         <DeepDive links={[
           { label: 'Google Ads deep-dive', href: `?tab=marketing&mtab=google${rangeQs}` },
@@ -344,13 +407,13 @@ function CrmDrill({ mkt }: { mkt: Mkt }) {
         <Stat v="AED 0" l="Media cost" s="consented 1-to-1 contact only" />
       </div>
       <div>
-        <PartnerHeading name="In-house (ZAVIS CRM)" status="live" />
+        <PartnerHeading name="CRM-DN (in-house)" status="live" />
         {rows.length > 0 ? (
           <div>{rows.map((r) => <BarRow key={r.label} label={r.label} value={r.value} max={max} color={LENS_COLOR.Tracker} display={int(r.value)} />)}</div>
         ) : (
           <GapNote>No channel-attributed tracker rows in this window — owner: {ownerFor('channel')}.</GapNote>
         )}
-        <DeepDive links={[{ label: 'CRM — Zavis tab', href: '?tab=crm' }]} />
+        <DeepDive links={[{ label: 'CRM-DN tab', href: '?tab=crm' }]} />
       </div>
     </div>
   );
@@ -417,7 +480,7 @@ export async function ChannelTree({ range, grp, chan }: { range: { from: string;
 
       {group === 'online' ? (
         <>
-          <section>
+          <section id="tree" className="scroll-mt-4">
             <Exhibit n="T2" title="The tree — seven online channels, one shape" />
             <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
               {CHANNELS.map((c) => {
@@ -426,7 +489,7 @@ export async function ChannelTree({ range, grp, chan }: { range: { from: string;
                 return (
                   <a
                     key={c.key}
-                    href={`?tab=marketing&mtab=overview&mchan=${c.key}${rangeQs}`}
+                    href={`?tab=marketing&mtab=overview&mchan=${c.key}${rangeQs}#drill`}
                     aria-current={isActive ? 'page' : undefined}
                     className="block rounded-xl border-2 bg-white p-3.5 transition"
                     style={isActive ? { borderColor: NAVY, boxShadow: `0 0 0 3px ${GOLD}44` } : { borderColor: LINE }}
@@ -463,11 +526,11 @@ export async function ChannelTree({ range, grp, chan }: { range: { from: string;
           </section>
 
           {active ? (
-            <section>
+            <section id="drill" className="scroll-mt-4">
               <Exhibit
                 n="T3"
                 title={`Online › ${active.label} — partners & campaign types`}
-                right={<a href={`?tab=marketing&mtab=overview${rangeQs}`} className="text-[11px] font-bold hover:underline" style={{ color: BLUE }}>← all channels</a>}
+                right={<a href={`?tab=marketing&mtab=overview${rangeQs}#tree`} className="text-[11px] font-bold hover:underline" style={{ color: BLUE }}>← all channels</a>}
               />
               <div className="rounded-xl border bg-white p-4" style={{ borderColor: LINE }}>
                 {active.key === 'performance' ? (

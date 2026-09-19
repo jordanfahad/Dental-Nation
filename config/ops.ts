@@ -117,7 +117,7 @@ export const UPTIME_ALERT_EMAILS: string[] = csv(process.env.UPTIME_ALERT_EMAILS
   'gautam.n@dentalnation.com', // Gautam
   DR_LUVI,
   ...FAHAD,
-  'syed@zavis.ai', // Zavis (vendor)
+  'syed@zavis.ai', // CRM-DN (vendor)
 ]);
 
 /**

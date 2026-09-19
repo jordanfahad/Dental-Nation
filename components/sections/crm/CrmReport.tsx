@@ -15,10 +15,10 @@ import { CrmPractoRevenue } from './CrmPractoRevenue';
 import { CrmEmptyState } from './CrmEmptyState';
 
 /**
- * CRM — Zavis tab. Async server component: reads the CRM report directly via
+ * CRM-DN tab. Async server component: reads the CRM report directly via
  * getSupabaseAdmin() (degrades to honest empty/data-gap states when the DB is
  * unreachable) and renders an answer-first, McKinsey-style page. Admins also see
- * the Zavis CSV re-ingest control at the top.
+ * the CRM-DN CSV re-ingest control at the top.
  *
  * Honesty (CLAUDE.md): every unsourced metric renders an explicit owned data gap
  * — never a fabricated 0. When the whole report is empty we show a calm

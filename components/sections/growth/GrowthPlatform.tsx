@@ -334,8 +334,8 @@ const CROSS_LINKS: Record<string, { label: string; href: string }> = {
   website: { label: 'Open Website Bookings', href: '?tab=bookings' },
   gmb: { label: 'Open Social & Local', href: '?tab=social' },
   'social-organic': { label: 'Open Social & Local', href: '?tab=social' },
-  whatsapp: { label: 'Open CRM — Zavis', href: '?tab=crm' },
-  'ai-concierge': { label: 'Open CRM — Zavis', href: '?tab=crm' },
+  whatsapp: { label: 'Open CRM-DN', href: '?tab=crm' },
+  'ai-concierge': { label: 'Open CRM-DN', href: '?tab=crm' },
   retention: { label: 'Open Practo Insta', href: '?tab=practo' },
 };
 

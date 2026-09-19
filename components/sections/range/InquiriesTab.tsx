@@ -10,7 +10,7 @@ import { ownerFor } from '@/config/data-gap-owners';
 
 /**
  * Inquiries tab — the lead tracker over the range: total + channel attribution
- * (WhatsApp / ZAVIS / Instagram / …), by-clinic, and §C tracking integrity
+ * (WhatsApp / CRM-DN / Instagram / …), by-clinic, and §C tracking integrity
  * (attributed vs unattributed + flagged leads). PAC feedback (§F) is mock-only
  * (no real source) and shown here with its honest data-gap state.
  */

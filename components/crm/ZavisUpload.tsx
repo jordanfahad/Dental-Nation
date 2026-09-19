@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/Button';
 import { cn } from '@/components/ui/cn';
 
 /**
- * Admin-only Zavis CSV re-ingest control. Drag/drop or pick a file, POST it to
+ * Admin-only CRM-DN CSV re-ingest control. Drag/drop or pick a file, POST it to
  * /api/crm/upload (admin-gated), and surface the {type, rowsIngested} result or
  * the error. Styled to the existing Card/Button idiom. Rendered only for admins.
  */
@@ -63,10 +63,10 @@ export function ZavisUpload() {
       <div className="px-5 pt-5">
         <p className="eyebrow">Admin · Re-ingest</p>
         <h2 className="mt-0.5 text-[15px] font-semibold tracking-tight text-ink">
-          Upload a fresh Zavis export
+          Upload a fresh CRM-DN export
         </h2>
         <p className="mt-1 text-[12.5px] leading-snug text-ink-soft">
-          Drop any Zavis CSV — appointments, CSAT, conversation summary/traffic, inbox/agent/label reports, or a
+          Drop any CRM-DN CSV — appointments, CSAT, conversation summary/traffic, inbox/agent/label reports, or a
           patient master (existing patients). The type is
           detected automatically and rows are upserted (existing records update, not duplicate).
         </p>
@@ -104,7 +104,7 @@ export function ZavisUpload() {
           <p className="mt-0.5 text-[11px] text-ink-faint">
             {file
               ? `${(file.size / 1024).toFixed(1)} KB`
-              : 'Zavis appointments / CSAT / conversation summary / traffic export'}
+              : 'CRM-DN appointments / CSAT / conversation summary / traffic export'}
           </p>
         </div>
 

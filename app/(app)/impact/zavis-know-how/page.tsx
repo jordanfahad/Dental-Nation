@@ -9,10 +9,10 @@ import { Markdown } from '@/components/docs/Markdown';
 import { ZavisKnowHowApp } from '@/components/docs/zavis/ZavisKnowHowApp';
 
 export const dynamic = 'force-dynamic';
-export const metadata: Metadata = { title: 'ZAVIS — Marketing Knowledge Graph' };
+export const metadata: Metadata = { title: 'CRM-DN — Marketing Knowledge Graph' };
 
 /**
- * The full ZAVIS marketing knowledge base — every platform, channel, asset,
+ * The full CRM-DN marketing knowledge base — every platform, channel, asset,
  * campaign and strategy in the Dental Nation marketing system, structured as
  * a knowledge graph source document. Lives under Growth Projects (/impact)
  * with the same access rule as the rest of that dashboard.
@@ -31,17 +31,17 @@ export default async function ZavisKnowHowPage() {
           items={[
             { label: 'Dashboard', href: '/' },
             { label: 'Growth Projects', href: '/impact' },
-            { label: 'ZAVIS Knowledge Graph' },
+            { label: 'CRM-DN Knowledge Graph' },
           ]}
         />
-        <p className="eyebrow text-accent">Growth Projects · ZAVIS</p>
+        <p className="eyebrow text-accent">Growth Projects · CRM-DN</p>
         <h1 className="mt-1 text-xl font-semibold tracking-tight text-ink">
           Dental Nation Marketing Knowledge Graph
         </h1>
         <p className="mt-1 max-w-[680px] text-[12.5px] leading-snug text-ink-soft">
-          The ZAVIS Marketing OS — the platform suite with live links and delivery status, the automated
+          The CRM-DN Marketing OS — the platform suite with live links and delivery status, the automated
           segment-to-broadcast loop, the paid and organic lead engines, the programmatic SEO factory and the pilot
-          plan. Knowledge graph prepared by ZAVIS 11 Sep 2026; delivery status updated 12 Sep 2026.
+          plan. Knowledge graph prepared by CRM-DN 11 Sep 2026; delivery status updated 12 Sep 2026.
         </p>
       </header>
       <ZavisKnowHowApp />

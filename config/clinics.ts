@@ -3,7 +3,7 @@
  *   - Dental Nation (the original)
  *   - Dr Tosun Dental Clinic (added later)
  *
- * There is NO clinic column in the source data (both share Zavis account 13 and
+ * There is NO clinic column in the source data (both share CRM-DN account 13 and
  * the same dentalnation.com website), so clinic is DERIVED:
  *   - CRM appointments  → by conducting doctor (the six Dr Tosun doctors below)
  *   - Practo bills       → by the bill's `center_name`
