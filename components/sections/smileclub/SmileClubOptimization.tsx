@@ -651,22 +651,75 @@ const DM_CHANNELS: DmChannel[] = [
   },
 ];
 
-const DM_OUTREACH = [
+const DM_OUTREACH: { org: string; door: string; code: string; ask: string; timeline: string; status: 'open' | 'awaiting' | 'closed-no' ; statusNote: string }[] = [
   {
     org: 'Assembly Global', door: 'Fahad’s direct contact', code: 'SC-ASG',
     ask: 'Employer-paid (Model 3) or subsidized (Model 2) memberships for their Dubai team; on-site dental day as the opener.',
-    timeline: 'Intro email w/c 22 Sep → meeting by 30 Sep → pilot decision by 7 Oct',
+    timeline: 'Contacted → awaiting their update → pilot decision by 7 Oct',
+    status: 'awaiting', statusNote: 'Contacted · awaiting response (as of 21 Sep)',
   },
   {
-    org: 'Michael Page', door: 'Fahad’s HR contact (already on the warm list)', code: 'SC-MPG',
-    ask: 'Same pilot package; as a recruiter they are also a multiplier — their client HR network if the pilot lands.',
-    timeline: 'Intro email w/c 22 Sep → meeting by 30 Sep → pilot decision by 7 Oct',
+    org: 'Michael Page', door: 'Matt Jones — Head of Operations (Fahad’s contact)', code: 'SC-MPG',
+    ask: 'Pilot package offered 21 Sep via WhatsApp.',
+    timeline: 'CLOSED 21 Sep — “We have dental included in our medical”. Referral ask made and accepted (“Will do!”).',
+    status: 'closed-no', statusNote: 'No — dental already covered in their medical policy · referral ask live',
   },
   {
     org: 'ArabyAds', door: 'Existing partner relationship (pre-launch meeting held)', code: 'SC-ARB',
     ask: 'Two asks in one meeting: staff memberships for their own team (Model 3/2) AND the CPL distribution lane above.',
     timeline: 'Raised at the go-live meeting w/c 22 Sep → decision by 30 Sep',
+    status: 'open', statusNote: 'Ask scheduled for the go-live meeting',
   },
+];
+
+/**
+ * CEO-granularity investment theses — per paid channel: WHY the dirham goes
+ * there, the expected CPL WITH ITS ARITHMETIC (never a bare number), and HOW
+ * it is tracked. All CPL/CPC figures are PLANNING ESTIMATES (Google Keyword
+ * Planner ranges for Dubai dental + our own live campaign reads, Sep 2026);
+ * the daily scorecard replaces every estimate with actuals from day one.
+ */
+const DM_THESES: { ch: string; why: string; cpl: string; track: string }[] = [
+  {
+    ch: 'Google Search · AED ~4–6K working',
+    why: 'Nobody searches “dental membership” at volume — search demand is COST intent. We bid where the membership is the answer to sticker shock, plus branded capture so a told-about-us searcher never lands on a competitor. Treatment intent (“dentist near me”) is deliberately EXCLUDED — that demand belongs to clinic campaigns, not membership.',
+    cpl: 'CPL = CPC ÷ LP conversion. Cost-intent cluster: est. CPC AED 6–14 ÷ 8–10% LP CVR → CPL ≈ AED 70–175 (inside the 150 target / 200 ceiling). Branded: CPC AED 1–3, CVR 20%+ → CPL ≈ AED 5–15.',
+    track: 'One UTM per cluster → LP → enquiry enters the spine (enquiry → qualified → checkout → paid); live CPC/CPL on the Marketing tab daily; kill rule: cluster paused if CPL > 200 after 25 clicks.',
+  },
+  {
+    ch: 'Meta · AED ~3–5K working',
+    why: 'Our own live proof: appointment campaigns are delivering at AED 3–6/lead (Tooth Gap 123 leads @ ~AED 3). Learning applied — that engagement is APPOINTMENT-led, so Meta’s membership job is narrow: retargeting site visitors and the offer lane at high-intent moments, not cold membership prospecting.',
+    cpl: 'Membership CTWA est. CPL AED 15–40 (narrower intent than appointment ads → 3–6× the appointment CPL; estimate until the first coded cohort). Retargeting pool: site visitors + engaged non-converters.',
+    track: 'CTWA source codes per ad set → spine; contact-centre tags membership-intent vs appointment-intent on first reply — the split that killed the broadcast test is measured from message one.',
+  },
+  {
+    ch: 'LinkedIn · AED ~2–3K test',
+    why: 'Not a CPL channel — a door-opener. Air-cover for the corporate asks: HR/People/Benefits titles see the one-pager before and after outreach. The Michael Page “no” sharpens the ICP: qualify for companies WITHOUT dental in their medical policy (SMEs, startups, blue-collar employers) before spending a meeting.',
+    cpl: 'Measured as cost per corporate MEETING, not per lead: est. AED 150–400/meeting on a bounded sponsored test. No membership CPL is claimed for LinkedIn — that would be invented.',
+    track: 'UTM → corporate enquiry form + a meeting log (door, date, model discussed, outcome) reviewed at each checkpoint; SC-corporate codes on any resulting pilot.',
+  },
+  {
+    ch: 'ArabyAds · pay-per-result',
+    why: 'The creative blocker cannot bind here — we pay per confirmed booking on their rate card, so downside is priced. Extends a live contract; zero fixed media risk.',
+    cpl: 'Contractual: rate card AED 97–121 per confirmed booking (lanes SOS/Scan/Glow-Up); Smile Club scope priced inside the 150/200 lane targets at the go-live meeting.',
+    track: 'Per-lane source codes reconciled weekly against invoices AND the funnel spine — a booking only counts when both agree.',
+  },
+  {
+    ch: 'Zero-media lanes (banner · SEO · GMB · triggered CRM)',
+    why: 'The cheapest lead is one we already paid for: site-wide banner catches existing traffic (incl. 19,500+ SEO entrances), GMB catches local discovery on the 4.9★ profile, triggered 1-to-1 contact works the high-intent moments. Staffed work, not free — but no media downside while paid is creative-capped.',
+    cpl: 'Media CPL = AED 0 by construction; owner time is the real cost and is tracked in the daily rhythm. Banner contribution read directly from its sc-banner code.',
+    track: 'sc-banner / GMB link / per-template CRM codes → spine; bulk sends remain 0 per the mandate.',
+  },
+];
+
+/** Google Search — the exact keyword plan the CEO asked to see. Estimates
+ *  labelled as estimates; live CPCs replace them from the first day of spend. */
+const DM_KEYWORDS: { cluster: string; kws: string; cpc: string; cpl: string; role: string }[] = [
+  { cluster: 'Branded (always-on)', kws: '“smile club dental nation” · “dental nation membership” · “smile club dubai”', cpc: '1–3', cpl: '≈5–15 @ 20%+ CVR', role: 'Capture told-about-us demand; never lose it to a competitor bid.' },
+  { cluster: 'Cost intent (core test)', kws: '“teeth cleaning price dubai” · “dental checkup cost dubai” · “scaling polishing offer dubai” · “cheap dentist dubai”', cpc: '6–14', cpl: '≈70–175 @ 8–10% CVR', role: 'Membership as the ANSWER to price shock — the pilot LP thesis.' },
+  { cluster: 'Plan intent (thin volume)', kws: '“dental plan dubai” · “dental membership dubai” · “dental discount card uae”', cpc: '8–18', cpl: '≈100–225 @ 8% CVR', role: 'Exact match only, low cap — tiny but perfectly qualified.' },
+  { cluster: 'Insurance gap', kws: '“dental insurance dubai individuals” · “dentist without insurance dubai” · “dental cover self employed uae”', cpc: '10–20', cpl: '≈100–250 @ 8% CVR', role: 'The uninsured segment the Michael Page learning points at.' },
+  { cluster: 'EXCLUDED: treatment intent', kws: '“dentist near me” · “root canal dubai” · “veneers price” → negative-matched', cpc: '—', cpl: '—', role: 'Booking demand — belongs to clinic campaigns; bidding it here would double-pay for the same click.' },
 ];
 
 const DM_TIMELINE = [
@@ -719,6 +772,66 @@ function DmPlan() {
       </section>
 
       <section>
+        <Exhibit n="D1b" title="Why each dirham — investment thesis, expected CPL with its math, tracking" />
+        <p className="mb-2 text-[11px]" style={{ color: OLIVE }}>
+          Every CPL below is shown WITH its arithmetic and labelled estimate vs contractual vs measured — the
+          daily scorecard replaces estimates with actuals from the first dirham of spend.
+        </p>
+        <div className="space-y-2">
+          {DM_THESES.map((r) => (
+            <div key={r.ch} className="rounded-xl border bg-white p-3.5" style={{ borderColor: LINE }}>
+              <p className="text-[12px] font-bold" style={{ color: NAVY }}>{r.ch}</p>
+              <div className="mt-1.5 grid gap-2 md:grid-cols-3">
+                <div>
+                  <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: BLUE }}>Why invest</p>
+                  <p className="mt-0.5 text-[11px] leading-snug" style={{ color: '#3a4148' }}>{r.why}</p>
+                </div>
+                <div>
+                  <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: BLUE }}>Expected CPL — and its math</p>
+                  <p className="mt-0.5 text-[11px] leading-snug" style={{ color: '#3a4148' }}>{r.cpl}</p>
+                </div>
+                <div>
+                  <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: BLUE }}>How we track</p>
+                  <p className="mt-0.5 text-[11px] leading-snug" style={{ color: '#3a4148' }}>{r.track}</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section>
+        <Exhibit n="D1c" title="Google Search — the keyword plan (planning estimates, AED)" />
+        <div className="overflow-x-auto rounded-xl border bg-white" style={{ borderColor: LINE }}>
+          <table className="w-full border-collapse text-[10.5px]">
+            <thead>
+              <tr className="text-left text-[9.5px] uppercase tracking-wide" style={{ color: OLIVE, backgroundColor: '#F7F7F0' }}>
+                <th className="px-2.5 py-2 font-bold">Cluster</th><th className="px-2.5 py-2 font-bold">Keywords we bid</th>
+                <th className="px-2.5 py-2 text-right font-bold">Est. avg CPC</th><th className="px-2.5 py-2 text-right font-bold">Est. CPL</th>
+                <th className="px-2.5 py-2 font-bold">Role</th>
+              </tr>
+            </thead>
+            <tbody>
+              {DM_KEYWORDS.map((k) => (
+                <tr key={k.cluster} className="border-t align-top" style={{ borderColor: '#EEEFE1' }}>
+                  <td className="px-2.5 py-1.5 font-bold whitespace-nowrap" style={{ color: k.cluster.startsWith('EXCLUDED') ? CORAL : NAVY }}>{k.cluster}</td>
+                  <td className="px-2.5 py-1.5" style={{ color: '#3a4148' }}>{k.kws}</td>
+                  <td className="px-2.5 py-1.5 text-right tabular-nums" style={{ color: '#3a4148' }}>{k.cpc}</td>
+                  <td className="px-2.5 py-1.5 text-right tabular-nums" style={{ color: '#3a4148' }}>{k.cpl}</td>
+                  <td className="px-2.5 py-1.5" style={{ color: OLIVE }}>{k.role}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="mt-2 rounded-lg px-3 py-2 text-[11px] font-medium" style={{ backgroundColor: '#FDF9EC', color: '#6d5a1d' }}>
+          CPC ranges are Keyword Planner planning estimates for Dubai dental (Sep 2026), not promises; CPL = CPC ÷
+          landing-page conversion. Kill rule per cluster: paused above CPL 200 after 25 clicks. Live actuals replace
+          this table’s estimates in the daily scorecard from day one.
+        </p>
+      </section>
+
+      <section>
         <Exhibit n="D2" title="The blocker — smart/dynamic creatives — and the two zero-media unlocks" />
         <div className="grid gap-3 md:grid-cols-3">
           <Card accent={CORAL}>
@@ -767,7 +880,8 @@ function DmPlan() {
             <thead>
               <tr className="text-left text-[9.5px] uppercase tracking-wide" style={{ color: OLIVE, backgroundColor: '#F7F7F0' }}>
                 <th className="px-3 py-2 font-bold">Target</th><th className="px-3 py-2 font-bold">Door</th>
-                <th className="px-3 py-2 font-bold">The ask</th><th className="px-3 py-2 font-bold">Timeline</th><th className="px-3 py-2 font-bold">Code</th>
+                <th className="px-3 py-2 font-bold">Status</th>
+                <th className="px-3 py-2 font-bold">The ask</th><th className="px-3 py-2 font-bold">Timeline / outcome</th><th className="px-3 py-2 font-bold">Code</th>
               </tr>
             </thead>
             <tbody>
@@ -775,6 +889,15 @@ function DmPlan() {
                 <tr key={o.org} className="border-t align-top" style={{ borderColor: '#EEEFE1' }}>
                   <td className="px-3 py-1.5 font-bold whitespace-nowrap" style={{ color: NAVY }}>{o.org}</td>
                   <td className="px-3 py-1.5" style={{ color: '#3a4148' }}>{o.door}</td>
+                  <td className="px-3 py-1.5">
+                    <span
+                      className="inline-block whitespace-nowrap rounded px-1.5 py-0.5 text-[9.5px] font-bold"
+                      style={o.status === 'closed-no' ? { backgroundColor: '#f7e8e4', color: '#a04a38' } : o.status === 'awaiting' ? { backgroundColor: '#f5ecd8', color: '#8a6a1e' } : { backgroundColor: '#e7efe6', color: '#2C5E3F' }}
+                    >
+                      {o.status === 'closed-no' ? 'Closed — No' : o.status === 'awaiting' ? 'Awaiting reply' : 'Open'}
+                    </span>
+                    <span className="mt-0.5 block text-[9.5px]" style={{ color: OLIVE }}>{o.statusNote}</span>
+                  </td>
                   <td className="px-3 py-1.5" style={{ color: '#3a4148' }}>{o.ask}</td>
                   <td className="px-3 py-1.5" style={{ color: OLIVE }}>{o.timeline}</td>
                   <td className="px-3 py-1.5 whitespace-nowrap font-semibold" style={{ color: CORAL }}>{o.code}</td>
@@ -782,6 +905,17 @@ function DmPlan() {
               ))}
             </tbody>
           </table>
+        </div>
+        <div className="mt-2 space-y-2">
+          <Note tone="coral">
+            LEARNING (21 Sep, Michael Page): companies whose medical policy already includes dental say no in one
+            message — the ICP is companies WITHOUT dental in their cover: SMEs, startups, blue-collar and
+            hospitality employers. Every future corporate door gets the qualifier question FIRST (“does your
+            medical include dental?”) before a pitch is spent — and each “no” converts to a referral
+            ask, exactly as done with Matt Jones. Pipeline effect: one of three named doors closed; the ≥72
+            pipeline requirement now needs replacement doors from the qualified segment — the corporate
+            playbook’s warm list and the LinkedIn lane both re-aim at it.
+          </Note>
         </div>
       </section>
 
