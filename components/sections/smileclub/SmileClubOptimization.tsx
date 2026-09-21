@@ -12,7 +12,27 @@
  * patient data; unknowns are marked "baseline pending", never invented.
  */
 
-import { useState } from 'react';
+import { createContext, useContext, useState } from 'react';
+
+/** Cross-panel navigation: goto() jumps to another sub-tab and remembers where
+ *  the reader came from; back() returns there — so Mr Akbar can follow any
+ *  cross-reference and jump straight back. */
+const SubNavContext = createContext<{ goto: (s: string) => void }>({ goto: () => {} });
+
+function Jump({ to, children }: { to: string; children: React.ReactNode }) {
+  const { goto } = useContext(SubNavContext);
+  return (
+    <button
+      type="button"
+      onClick={() => goto(to)}
+      className="inline font-bold underline decoration-dotted underline-offset-2 hover:decoration-solid"
+      style={{ color: '#5793A3' }}
+      title="Opens that panel — a Back chip appears to return here"
+    >
+      {children} ↗
+    </button>
+  );
+}
 
 const NAVY = '#244260';
 const BLUE = '#5793A3';
@@ -26,11 +46,14 @@ type Sub = 'reco' | 'mandate' | 'response' | 'dm' | 'offer' | 'waves' | 'corpora
 
 /* ── atoms ─────────────────────────────────────────────────────── */
 
-function Exhibit({ n, title }: { n: number | string; title: string }) {
+function Exhibit({ n, title, right }: { n: number | string; title: string; right?: React.ReactNode }) {
   return (
-    <div className="mb-1.5 flex items-baseline gap-2">
-      <span className="text-[9.5px] font-bold uppercase tracking-widest" style={{ color: CORAL }}>Exhibit {n}</span>
-      <h2 className="text-[14px] font-semibold" style={{ color: NAVY, fontFamily: 'Georgia, serif' }}>{title}</h2>
+    <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-2">
+      <span className="flex items-baseline gap-2">
+        <span className="text-[9.5px] font-bold uppercase tracking-widest" style={{ color: CORAL }}>Exhibit {n}</span>
+        <h2 className="text-[14px] font-semibold" style={{ color: NAVY, fontFamily: 'Georgia, serif' }}>{title}</h2>
+      </span>
+      {right ?? null}
     </div>
   );
 }
@@ -225,15 +248,15 @@ const REGISTER = [
   { act: 'Complete the mandate', dl: '16 Oct', who: 'Gautam → Mr Akbar', out: '120 paid, active, non-refunded, source-coded; ≥98% data and attribution; Finance-validated.' },
 ];
 
-const MANDATE_MAP = [
-  { req: 'Existing DN clinics — 60', ours: 'Wave 1 front-desk route + onboarding (front desk + Dr Luvi): one consistent explanation, QR at three branches, first-appointment help, objection log.' },
-  { req: 'Corporate — 24 (pipeline ≥ 72)', ours: 'Corporate playbook: warm doors (Michael Page HR contact, RBS, partners) + the three warm introductions the mandate asks Mr Akbar to provide (CEO approval item 6).' },
-  { req: 'Website — 12 (150 qualified @ 8%)', ours: 'Wave 1 relevant placements + Wave 2 SEO membership cluster and eligibility-checked paid tests; CRM-DN pilot LP live.' },
-  { req: 'Reseller / affiliate / broker / distributor / CSR — 24', ours: 'NEW commercial-access lane the mandate adds beyond rev. 2 — folds into the B2B mechanics (partner codes, QR links, referral agreements) with per-partner source codes.' },
-  { req: 'Bulk CRM: target 0, budget 0', ours: 'Aligned with our audience-eligibility and consent rule. The Wave 1 CRM test stays limited, consented and non-bulk — scope confirmed against the CRM hold.' },
-  { req: 'CAC ≤ Finance ceiling · daily spend/forecast', ours: 'Our economics gate — "allowable CAC from measured economics" — now given its owner: Finance sets the ceiling, Mr Akbar signs it.' },
-  { req: '≥ 98% data & attribution · dashboard spine (enquiry → qualified → checkout → paid → card active → booked → attended)', ours: 'Exactly the measurement machinery of rev. 2 — activation tracked as first booking AND first completed visit; the spine answers the console-tracking question we posed to Gautam.' },
-  { req: '3× pipeline coverage · 09:00 review · 16:00 recovery · EOD scorecard', ours: 'The daily operating rhythm the pilot reports into; the objection log and comparison-group reads feed the same reviews.' },
+const MANDATE_MAP: { req: string; ours: string; to: Sub; toLabel: string }[] = [
+  { req: 'Existing DN clinics — 60', ours: 'Wave 1 front-desk route + onboarding (front desk + Dr Luvi): one consistent explanation, QR at three branches, first-appointment help, objection log.', to: 'waves', toLabel: 'Three waves' },
+  { req: 'Corporate — 24 (pipeline ≥ 72)', ours: 'Corporate playbook: qualified doors (see the live outreach status — Michael Page closed 21 Sep, ICP sharpened) + the three warm introductions the mandate asks Mr Akbar to provide (CEO approval item 6).', to: 'corporate', toLabel: 'Corporate playbook' },
+  { req: 'Website — 12 (150 qualified @ 8%)', ours: 'Wave 1 relevant placements + Wave 2 SEO membership cluster and eligibility-checked paid tests; CRM-DN pilot LP live.', to: 'dm', toLabel: 'DM plan' },
+  { req: 'Reseller / affiliate / broker / distributor / CSR — 24', ours: 'NEW commercial-access lane the mandate adds beyond rev. 2 — folds into the B2B mechanics (partner codes, QR links, referral agreements) with per-partner source codes.', to: 'response', toLabel: 'Delivery plan R1' },
+  { req: 'Bulk CRM: target 0, budget 0', ours: 'Aligned with our audience-eligibility and consent rule. The Wave 1 CRM test stays limited, consented and non-bulk — scope confirmed against the CRM hold.', to: 'waves', toLabel: 'Wave 1 results' },
+  { req: 'CAC ≤ Finance ceiling · daily spend/forecast', ours: 'Our economics gate — "allowable CAC from measured economics" — now given its owner: Finance sets the ceiling, Mr Akbar signs it.', to: 'response', toLabel: 'Budget R2' },
+  { req: '≥ 98% data & attribution · dashboard spine (enquiry → qualified → checkout → paid → card active → booked → attended)', ours: 'Exactly the measurement machinery of rev. 2 — activation tracked as first booking AND first completed visit; the spine answers the console-tracking question we posed to Gautam.', to: 'kpis', toLabel: 'Measurement' },
+  { req: '3× pipeline coverage · 09:00 review · 16:00 recovery · EOD scorecard', ours: 'The daily operating rhythm the pilot reports into; the objection log and comparison-group reads feed the same reviews.', to: 'kpis', toLabel: 'Controls' },
 ];
 
 /* ── sub-views ─────────────────────────────────────────────────── */
@@ -323,7 +346,9 @@ function MandateTab() {
               {MANDATE_MAP.map((m) => (
                 <tr key={m.req} className="border-t align-top" style={{ borderColor: '#EEEFE1' }}>
                   <td className="px-3 py-1.5 font-semibold" style={{ color: NAVY }}>{m.req}</td>
-                  <td className="px-3 py-1.5" style={{ color: '#3a4148' }}>{m.ours}</td>
+                  <td className="px-3 py-1.5" style={{ color: '#3a4148' }}>
+                    {m.ours} <Jump to={m.to}>{m.toLabel}</Jump>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -681,25 +706,25 @@ const DM_OUTREACH: { org: string; door: string; code: string; ask: string; timel
  */
 const DM_THESES: { ch: string; why: string; cpl: string; track: string }[] = [
   {
-    ch: 'Google Search · AED ~4–6K working',
+    ch: 'Google Search · AED 12K slice (of the 27K committed + 3K reserve = 30K)',
     why: 'Nobody searches “dental membership” at volume — search demand is COST intent. We bid where the membership is the answer to sticker shock, plus branded capture so a told-about-us searcher never lands on a competitor. Treatment intent (“dentist near me”) is deliberately EXCLUDED — that demand belongs to clinic campaigns, not membership.',
-    cpl: 'CPL = CPC ÷ LP conversion. Cost-intent cluster: est. CPC AED 6–14 ÷ 8–10% LP CVR → CPL ≈ AED 70–175 (inside the 150 target / 200 ceiling). Branded: CPC AED 1–3, CVR 20%+ → CPL ≈ AED 5–15.',
+    cpl: 'CPL = CPC ÷ LP conversion. Cost-intent cluster: est. CPC AED 6–14 ÷ 8–10% LP CVR → CPL ≈ AED 70–175 (inside the 150 target / 200 ceiling). The 12K slice ÷ CPL 70–175 → ≈70–170 leads toward the 150-qualified requirement of the website lane. Branded: CPC AED 1–3, CVR 20%+ → CPL ≈ AED 5–15.',
     track: 'One UTM per cluster → LP → enquiry enters the spine (enquiry → qualified → checkout → paid); live CPC/CPL on the Marketing tab daily; kill rule: cluster paused if CPL > 200 after 25 clicks.',
   },
   {
-    ch: 'Meta · AED ~3–5K working',
+    ch: 'Meta · AED 9K slice',
     why: 'Our own live proof: appointment campaigns are delivering at AED 3–6/lead (Tooth Gap 123 leads @ ~AED 3). Learning applied — that engagement is APPOINTMENT-led, so Meta’s membership job is narrow: retargeting site visitors and the offer lane at high-intent moments, not cold membership prospecting.',
     cpl: 'Membership CTWA est. CPL AED 15–40 (narrower intent than appointment ads → 3–6× the appointment CPL; estimate until the first coded cohort). Retargeting pool: site visitors + engaged non-converters.',
     track: 'CTWA source codes per ad set → spine; contact-centre tags membership-intent vs appointment-intent on first reply — the split that killed the broadcast test is measured from message one.',
   },
   {
-    ch: 'LinkedIn · AED ~2–3K test',
+    ch: 'LinkedIn · AED 3K slice (bounded test)',
     why: 'Not a CPL channel — a door-opener. Air-cover for the corporate asks: HR/People/Benefits titles see the one-pager before and after outreach. The Michael Page “no” sharpens the ICP: qualify for companies WITHOUT dental in their medical policy (SMEs, startups, blue-collar employers) before spending a meeting.',
     cpl: 'Measured as cost per corporate MEETING, not per lead: est. AED 150–400/meeting on a bounded sponsored test. No membership CPL is claimed for LinkedIn — that would be invented.',
     track: 'UTM → corporate enquiry form + a meeting log (door, date, model discussed, outcome) reviewed at each checkpoint; SC-corporate codes on any resulting pilot.',
   },
   {
-    ch: 'ArabyAds · pay-per-result',
+    ch: 'ArabyAds · AED 3K slice, pay-per-result',
     why: 'The creative blocker cannot bind here — we pay per confirmed booking on their rate card, so downside is priced. Extends a live contract; zero fixed media risk.',
     cpl: 'Contractual: rate card AED 97–121 per confirmed booking (lanes SOS/Scan/Glow-Up); Smile Club scope priced inside the 150/200 lane targets at the go-live meeting.',
     track: 'Per-lane source codes reconciled weekly against invoices AND the funnel spine — a booking only counts when both agree.',
@@ -914,7 +939,8 @@ function DmPlan() {
             medical include dental?”) before a pitch is spent — and each “no” converts to a referral
             ask, exactly as done with Matt Jones. Pipeline effect: one of three named doors closed; the ≥72
             pipeline requirement now needs replacement doors from the qualified segment — the corporate
-            playbook’s warm list and the LinkedIn lane both re-aim at it.
+            playbook’s warm list and the LinkedIn lane both re-aim at it. Pilot specification and the three
+            payment models: <Jump to="corporate">Corporate playbook</Jump>.
           </Note>
         </div>
       </section>
@@ -958,7 +984,9 @@ function Recommendation() {
         <span className="font-bold">Recommendation: proceed with a focused, measurable pilot; expand when the evidence supports it.</span>{' '}
         Start with existing patients and clinic touchpoints, validate the offer and its economics, run one clearly
         defined corporate pilot through a warm door, and defer expensive awareness media. Scale is a decision we earn
-        with data at the end of the pilot — not a calendar commitment we make today.
+        with data at the end of the pilot — not a calendar commitment we make today. The owner has since fixed
+        the outcome (<Jump to="mandate">30-day mandate</Jump>) and the funded response is quantified in the{' '}
+        <Jump to="response">30-day delivery plan</Jump>.
       </p>
 
       <section>
@@ -1157,8 +1185,10 @@ function Corporate() {
           </ul>
           <div className="mt-3">
             <Note tone="blue">
-              Warm discovery runs in parallel from day one — Michael Page (named HR contact), RBS, existing partners.
-              Discovery conversations do not wait for a finished patient case study; only the broad outbound push does.
+              Warm discovery runs in parallel from day one. Live door status — Michael Page closed 21 Sep
+              (dental already in their medical; referral secured), Assembly Global awaiting, ArabyAds scheduled —
+              is tracked in <Jump to="dm">Corporate outreach (Exhibit D3)</Jump>. Discovery conversations do not
+              wait for a finished patient case study; only the broad outbound push does.
             </Note>
           </div>
         </Card>
@@ -1321,7 +1351,7 @@ function Kpis() {
       </section>
 
       <section>
-        <Exhibit n={12} title="The first fortnight — preparation and measurement before broad activation" />
+        <Exhibit n={12} title="The first fortnight — preparation and measurement before broad activation" right={<Jump to="mandate">Deadlines register (M2)</Jump>} />
         <div className="overflow-x-auto rounded-xl border bg-white" style={{ borderColor: LINE }}>
           <table className="w-full border-collapse text-[11px]">
             <thead>
@@ -1359,8 +1389,28 @@ const SUBS: { id: Sub; label: string }[] = [
   { id: 'kpis', label: 'Measurement & fortnight' },
 ];
 
+const SUB_LABELS: Record<string, string> = Object.fromEntries(SUBS.map((s) => [s.id, s.label]));
+
 export function SmileClubOptimization() {
   const [sub, setSub] = useState<Sub>('reco');
+  // The return trail: cross-reference jumps remember their origin so the
+  // reader (Mr Akbar) can follow any thread and come straight back.
+  const [trail, setTrail] = useState<Sub[]>([]);
+  const goto = (s: string) => {
+    const target = s as Sub;
+    if (target === sub) return;
+    setTrail((tr) => [...tr, sub]);
+    setSub(target);
+  };
+  const back = () => {
+    setTrail((tr) => {
+      const nt = [...tr];
+      const prev = nt.pop();
+      if (prev) setSub(prev);
+      return nt;
+    });
+  };
+  const navTo = (s: Sub) => { setSub(s); setTrail([]); };
   return (
     <section className="mx-auto max-w-[980px]">
       <header className="mb-3 border-b border-line pb-3">
@@ -1379,7 +1429,7 @@ export function SmileClubOptimization() {
       <div className="flex flex-wrap gap-1.5 border-b pb-2" style={{ borderColor: LINE }}>
         {SUBS.map((s) => (
           <button
-            key={s.id} type="button" onClick={() => setSub(s.id)}
+            key={s.id} type="button" onClick={() => navTo(s.id)}
             className="rounded-full px-3 py-1.5 text-[11px] font-bold transition"
             style={sub === s.id ? { backgroundColor: NAVY, color: 'white' } : { backgroundColor: '#F1F1EA', color: OLIVE }}
           >
@@ -1387,6 +1437,35 @@ export function SmileClubOptimization() {
           </button>
         ))}
       </div>
+      {/* The argument, in order — one governing chain, each link clickable. */}
+      <div className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[10.5px]" style={{ color: OLIVE }}>
+        <span className="font-bold uppercase tracking-widest" style={{ color: CORAL }}>The argument</span>
+        {([
+          ['reco', 'Diagnosis'], ['mandate', 'Mandate'], ['response', 'Funding & targets'],
+          ['dm', 'Channel machinery'], ['waves', 'Evidence to date'], ['kpis', 'Controls'],
+        ] as [Sub, string][]).map(([id, label], i) => (
+          <span key={id} className="flex items-center gap-1.5">
+            {i > 0 ? <span>→</span> : null}
+            <button
+              type="button" onClick={() => goto(id)}
+              className="rounded-full px-2 py-0.5 font-bold transition"
+              style={sub === id ? { backgroundColor: NAVY, color: 'white' } : { backgroundColor: '#F1F1EA', color: OLIVE }}
+            >
+              {label}
+            </button>
+          </span>
+        ))}
+      </div>
+      {trail.length > 0 ? (
+        <button
+          type="button" onClick={back}
+          className="mt-2 inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-bold transition hover:shadow-sm"
+          style={{ borderColor: GOLD, backgroundColor: '#FDF9EC', color: '#6d5a1d' }}
+        >
+          ← Back to {SUB_LABELS[trail[trail.length - 1]]}
+        </button>
+      ) : null}
+      <SubNavContext.Provider value={{ goto }}>
       <div className="mt-3">
         {sub === 'reco' && <Recommendation />}
         {sub === 'mandate' && <MandateTab />}
@@ -1398,6 +1477,7 @@ export function SmileClubOptimization() {
         {sub === 'channels' && <Channels />}
         {sub === 'kpis' && <Kpis />}
       </div>
+      </SubNavContext.Provider>
     </section>
   );
 }
