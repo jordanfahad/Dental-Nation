@@ -68,9 +68,30 @@ P&L pathway block complete on all 24 capabilities, pending finance ticks.
   deletions), matching the public profile. LEARNING for future specs: never
   gate writes on Google's own aggregate counters.
 
+- DN-003 (21 Sep) — adversarial rigor review of the Smile Club plan.
+  Astra reviewed as a McKinsey EM would (16 findings F01–F16, 9 P1:
+  incompatible scenario-table math, CPL ranges not following from their own
+  CPC÷CVR inputs, inverted 98% control, timeline/day-count drift, stale
+  62-review count, unlabelled estimates, immature kill rules, unsupported
+  banner reach). Claude QA'd each finding against the file, applied all
+  factual/arithmetic corrections as plan rev. 3, and relabelled structural
+  gaps honestly — the big structural deliverables (demand forecast per
+  source, fully loaded cost bridge, sized corporate replacement doors, gate
+  register) are assigned to the 23 Sep checkpoint, not faked. Review file:
+  .agent-bus/reviews/DN-003-smileclub-rigor.md (on codex/DN-003).
+
+## Pending merge
+
+- codex/DN-002 (Astra's hardening of the Meta ad-level work: range-end-
+  anchored recency, persisted RunningMetaAds resilient to live-API failure,
+  sanitized errors, 4 test files, ContentOS structural reference — commit
+  c248ee5) exists only on Fahad's PC. Needs `git push origin codex/DN-002`
+  from him before Claude can cherry-pick and QA.
+
 ## Next
 
-- Day-7 mandate checkpoint (23 Sep): first source-coded funnel reads.
+- Day-7 mandate checkpoint (23 Sep): first source-coded funnel reads +
+  the DN-003 structural deliverables listed above.
 - Marketing channel tree shipped 19 Sep (Group > Channel > Partner >
   Campaign type; agencies never channels) — gather Fahad's feedback, then
   consider wiring the Reconciliation lenses into the tree cards.
