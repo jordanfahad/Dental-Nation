@@ -426,62 +426,217 @@ function MandateTab() {
 /* ── Fahad's 30-day delivery plan (the quantified response, v1 · 17 Sep) ── */
 
 interface ResponseRow {
-  source: string; target: number; demand: string; method: string; launch: string; code: string; owner: string;
+  source: string; target: number; summary: string; owner: string; launch: string; code: string;
+  approach: string; proposition: string; steps: string[]; demand: string; budget: string;
+  to: Sub; toLabel: string;
 }
 
+/** R1 rebuilt (22 Sep): every source opens into a structured drill-down —
+ *  approach, proposition, owner, steps, demand basis and where every dirham
+ *  goes — and links to its deep section. */
 const RESPONSE_ROWS: ResponseRow[] = [
   {
     source: 'Existing DN clinics', target: 60,
-    demand: '20 per branch. Demand basis: live patient flow at Al Wasl, Dr Tosun, AMC — conversion assumption to be validated against branch footfall in week 1.',
-    method: 'Front-desk script + QR standee at all three branches; the offer made at the checkout moment with the savings example; onboarding (first appointment help) from day one. Daily per-branch count in the 09:00 review.',
-    launch: '18–19 Sep', code: 'SC-ALW / SC-TOS / SC-AMC (QR per branch)', owner: 'Front desk + Dr Luvi · reported by Smile Club Coordinator',
+    summary: 'Front desk sells at the checkout moment — 20 per branch, the biggest engine.',
+    owner: 'Front desk + Dr Luvi · reported by Smile Club Coordinator',
+    launch: 'LIVE since 18–19 Sep', code: 'SC-ALW / SC-TOS / SC-AMC (QR per branch)',
+    approach: 'The patient is already in the chair and already trusts us — the cheapest acquisition there is. The sale happens at the CHECKOUT moment, when the bill is in front of them and membership is visibly the cheaper way to keep coming back. No media, no cold pitch: a scripted conversation by trained reception staff, with a structured objection log when it is a no.',
+    proposition: '“You’re already part of Dental Nation. Smile Club makes staying with us easier — your check-ups and hygiene are planned for the year and members pay preferred rates.” (Demand state 8 · CTA: join from your DN record.)',
+    steps: [
+      'Patient checks out after treatment or hygiene',
+      'Front desk runs the Reception Conversion Guide: Ask → Match → Value → Clarify → Close',
+      'Savings example shown against TODAY’s bill — not a generic leaflet',
+      'QR standee → enrolment page under the branch code',
+      'Onboarding: first member appointment booked before the patient leaves',
+      'Declines logged in the objection log — reviewed at the 09:00 daily',
+    ],
+    demand: '20 per branch across Al Wasl, Dr Tosun and AMC. The conversion assumption is validated against branch footfall at the Day-7 checkpoint (28 Sep).',
+    budget: 'AED 0 media. Real costs are staffed minutes per pitch and the printed QR standees (already produced by the programme build); all staffed cost is priced in the Finance fully-loaded bridge, not hidden.',
+    to: 'waves', toLabel: 'Front-desk route · Wave 1',
   },
   {
     source: 'Corporate', target: 24,
-    demand: 'Pipeline ≥ 72 membership-equivalent required (~33% assumed close). SIZING PENDING: surviving doors — Assembly Global (awaiting reply), ArabyAds (ask scheduled), RBS + existing partners (unsized) + the 3 introductions requested from Mr Akbar. Michael Page closed 21 Sep. Replacement-door bridge with per-employer contract equivalents: due 28 Sep.',
-    method: 'Pilot package per employer: company code + on-site dental day + quarterly aggregated usage report. Discovery meetings this week; door-to-door field sales per the DM plan (D1 — 40–60 qualified doors, Fahad carries the bag in-window, agent sourced for scale); model (employee-paid / subsidized / employer-paid) agreed per employer.',
-    launch: 'Discovery now · first pilot live w/c 22 Sep', code: 'One code per employer', owner: 'Fahad + Mr Akbar',
+    summary: 'Sold employer-by-employer: warm doors + door-to-door field sales. Needs a ≥72-equivalent pipeline.',
+    owner: 'Fahad (carries the bag in-window) + Mr Akbar (economic-buyer doors) · agent sourced for scale',
+    launch: 'Discovery live · doors from w/c 22 Sep', code: 'One code per employer',
+    approach: 'A subscription for a whole team is SOLD in meetings, not clicked. Two motions run together. (1) WARM DOORS: Assembly Global (awaiting reply), ArabyAds (staff-membership ask at the go-live meeting), RBS and existing partners, plus the three introductions requested from Mr Akbar. (2) DOOR-TO-DOOR: 40–60 qualified SME doors across JLT, Business Bay, DIFC and Al Quoz. Every door is qualified FIRST with “does your medical insurance include dental?” — the Michael Page learning (closed 21 Sep precisely because their medical already covers dental). A dedicated sales agent cannot land inside 30 days, so Fahad sells in-window while agent sourcing starts now for the scale phase.',
+    proposition: '“Your health insurance probably doesn’t provide meaningful dental. Smile Club sits BESIDE it — a visible employee benefit at a defined per-employee cost, with activation, booking, employee communications and aggregated reporting run by us, not by HR.” The employer then picks a funding model — employer-paid, subsidized or voluntary employee-paid — agreed per employer and never blurred.',
+    steps: [
+      'Pick the door trigger-first (insurance-renewal month, employee complaints, rapid hiring) — never alphabetically',
+      'Qualify: dental in their medical? headcount? who is the economic buyer?',
+      'Discovery meeting with the one-pager + savings table (LinkedIn air-cover touch before and after)',
+      'Benefits Gap Assessment (5 questions) → a numbers-based business case',
+      'Pilot proposal: company code + on-site dental day + quarterly aggregated usage report',
+      'Sign → employee launch (CEO/HR email + QR) → activation drive — activation rate is the KPI, not the signature',
+    ],
+    demand: 'To close 24 contracts at the ~33% assumed close rate the pipeline must hold ≥72 membership-equivalents. SIZING PENDING: the replacement-door bridge (which doors, how many contract-equivalents each) is due 28 Sep, after Michael Page’s closure removed one of three named doors.',
+    budget: 'AED 6,000 enablement — production and distribution only: on-site dental-day kits 2 × 1,500 = 3,000 · printed one-pagers + savings tables EN/AR 1,000 · LinkedIn boost on the door territories 1,000 · employer-code enrolment pages + QR 500 · door-plan logistics 500. No salaries, commissions or agency fees in this figure (Finance bridge). LinkedIn adds a separate AED 3,000 bounded test, measured as cost per held meeting.',
+    to: 'corporate', toLabel: 'Corporate playbook (B2B2C system)',
   },
   {
     source: 'Website', target: 12,
-    demand: '150 qualified opportunities by Day 30 at 8% conversion (mandate assumption). Sources: membership placements on demonstrated-traffic pages, cost-guide module, CRM-DN pilot LP traffic.',
-    method: 'Membership placements + Smile Club module on top cost/treatment pages (CRM-DN); eligibility-checked paid support — search-intent tests and offer-led CTWA; 10-minute contact-centre follow-up on qualified enquiries.',
-    launch: '19 Sep (with the portfolio)', code: 'UTM + source field per placement/campaign', owner: 'Fahad + CRM-DN · contact centre for follow-up',
+    summary: '150 qualified enquiries × 8% close — Google + Meta + owned surfaces feeding one funnel.',
+    owner: 'Fahad + CRM-DN · contact centre works the queue within 10 minutes',
+    launch: 'LIVE since 19 Sep (with the portfolio)', code: 'UTM + source field per placement/campaign',
+    approach: 'Capture demand that already exists and route traffic we already have — never cold membership prospecting. Paid: Google on cost-intent and branded queries, Meta on retargeting + the CTWA offer lane. Owned: sticky banner, cost-guide placements, triggered CRM. Every enquiry gets a 10-minute contact-centre follow-up and an intent tag on first reply.',
+    proposition: 'Per demand state, never one speech: cost-anxious searcher → “know where you stand before problems become expensive”; insurance-frustrated → “your medical insurance and your dental membership do different jobs”; retargeted visitor → the offer at the moment of return.',
+    steps: [
+      'Ad or placement carries its per-cluster UTM',
+      'Membership landing page (EN/AR)',
+      'Enquiry enters the spine: enquiry → qualified → checkout → paid',
+      'Contact centre responds within 10 minutes and tags membership-intent vs appointment-intent',
+      'Cluster kill rules pause anything whose matured CPQL exceeds 200; Day-14 gate decides Google’s second tranche',
+    ],
+    demand: '150 qualified opportunities by Day 30 at the mandate’s 8% close. Paid is planned to deliver ≥120 (Google est. 24–66 qualified + Meta 90–180, pool-capped) and owned lanes ≥30 (banner · placements · triggered CRM).',
+    budget: 'AED 15,000 direct-response: Google 6,000 pilot (branded 500 · cost-intent 4,500 · plan-intent 500 · insurance-gap 500; second tranche only via the Day-14 gate) + Meta 9,000 (retargeting + CTWA). Blended CPQL target ≤ 125, kill line 200. Full dirham-to-subscription funnel in the DM plan (D1d).',
+    to: 'dm', toLabel: 'DM plan (D1–D1d)',
   },
   {
     source: 'Clinic resellers', target: 7,
-    demand: '2 resellers active and source-coded (mandate requirement).',
-    method: 'Reseller agreements + per-partner codes and QR links (the B2B mechanics already tasked: partner codes, QR links, referral agreements).',
-    launch: 'Agreements w/c 22 Sep', code: 'Per-partner code', owner: 'Fahad',
+    summary: '≥2 local partners selling under their own code, paid per result.',
+    owner: 'Fahad',
+    launch: 'Agreements w/c 22 Sep', code: 'Per-partner code',
+    approach: 'Local businesses with aligned audiences near the branches — pharmacies, gyms, salons, GP clinics without dental — refer or sell memberships under a written agreement. They already own the customer’s trust; we pay only for results.',
+    proposition: '“Offer your customers a dental membership from a 4.9★, three-branch network — and earn a commission on every PAID membership, tracked to your code.”',
+    steps: [
+      'Shortlist partners inside branch catchments',
+      'One-page agreement: commission per paid membership only — never per referral or click',
+      'Partner receives code + QR + counter material',
+      'Monthly reconciliation against the funnel spine before any payout',
+    ],
+    demand: '7 subscriptions through ≥2 active, source-coded resellers (mandate requirement).',
+    budget: 'No media. Commission per paid membership priced inside the CAC ceiling once Finance sets it; counter material rides the field-sales print run at marginal cost.',
+    to: 'corporate', toLabel: 'Distribution engine (C7)',
   },
   {
     source: 'Affiliates', target: 7,
-    demand: '7 paid subscriptions via ≥3 active, source-coded affiliates (mandate requirement). Affiliates = third-party promoters paid per RESULT, not per post: local micro-influencers, community and mums’ groups, deal/lifestyle platforms, gym & wellness partners — each promoting Smile Club to their own audience through a tracked link or code.',
-    method: 'One written agreement per affiliate: unique tracked link/code → commission per PAID membership only (never per click or lead), payable after the member’s first qualifying payment clears, priced within the CAC ceiling once Finance sets it; monthly reconciliation of affiliate claims against the funnel spine before any payout.',
-    launch: 'Agreements w/c 22 Sep', code: 'Per-affiliate code', owner: 'Fahad',
+    summary: '≥3 result-paid promoters — micro-influencers, community groups, deal platforms.',
+    owner: 'Fahad',
+    launch: 'Agreements w/c 22 Sep', code: 'Per-affiliate tracked link/code',
+    approach: 'Third parties promote Smile Club to their own audience through tracked links — local micro-influencers, parenting and community groups, deal/lifestyle platforms, gym and wellness partners. Paid per RESULT: a commission only when a promoted member’s first qualifying payment clears.',
+    proposition: 'Family-layer creative carries this lane: “one membership, one dental home for the family” — the creator shows the visit, the tracked code does the attribution. (Demand state 7 · CTA: explore Family membership.)',
+    steps: [
+      'Recruit ≥3 affiliates (family/community creators first — the layer map says this is their lane)',
+      'Written agreement per affiliate: commission per PAID membership, payable after first payment clears',
+      'Unique tracked link/code each',
+      'Monthly reconciliation of affiliate claims against the spine before payout',
+    ],
+    demand: '7 subscriptions via ≥3 active, source-coded affiliates (mandate requirement).',
+    budget: 'No fixed media — pure performance commission inside the CAC ceiling (Finance sets it). Nothing is paid for posts, reach or clicks.',
+    to: 'layers', toLabel: 'Layer map (L1 · family state)',
   },
   {
     source: 'CSR (community events)', target: 4,
-    demand: 'Corporate Social Responsibility — community activations near the branches (schools, community centres, sports & wellness events), NOT customer-service representatives. 4 paid subscriptions.',
-    method: 'On-the-spot enrolment with the QR flow at community events; costed per event before commitment.',
-    launch: 'First event by early Oct', code: 'Per-event code', owner: 'Fahad',
+    summary: 'Community activations near the branches with on-the-spot QR enrolment.',
+    owner: 'Fahad',
+    launch: 'First event by early Oct', code: 'Per-event code',
+    approach: 'Corporate Social Responsibility — community, not customer service: schools, community centres, sports and wellness events inside branch catchments. A table, a clinician, a free smile check and a QR code. Each event is costed BEFORE commitment; nothing is assumed low-cost.',
+    proposition: 'Prevention and family framing: free smile check → “stay ahead of your smile” → enrol on the spot with the event code.',
+    steps: [
+      'Pick an event near a branch (school terms and community calendars first)',
+      'Cost it before committing: staff, clinical time, materials',
+      'Per-event source code + QR enrolment flow',
+      'Run the activation; enrol on the spot',
+      'Post-event attribution review — the event only repeats if the code shows enrolments',
+    ],
+    demand: '4 subscriptions from community activations.',
+    budget: 'No standing budget line — each event is costed and approved individually; staffing and clinical time are the real costs and sit in the Finance bridge.',
+    to: 'channels', toLabel: 'Offline verdict',
   },
   {
     source: 'Brokers', target: 3,
-    demand: 'Source-coded broker agreements.',
-    method: 'Same mechanics as resellers; terms within the CAC ceiling.',
-    launch: 'w/c 22 Sep', code: 'Per-broker code', owner: 'Fahad',
+    summary: 'Insurance brokers recommend Smile Club beside the medical policies they already sell.',
+    owner: 'Fahad',
+    launch: 'w/c 22 Sep', code: 'Per-broker code',
+    approach: 'The broker already owns the employer relationship and, crucially, its insurance-renewal calendar — the single biggest corporate demand moment. Smile Club becomes an add-on benefit they can recommend, never a competitor to their medical book.',
+    proposition: '“Add a differentiated dental benefit to your client proposition without building dental delivery yourself — we run the membership, the network and the reporting; you keep the relationship.”',
+    steps: [
+      'Identify 2–3 brokers through existing relationships',
+      'Broker terms: referral fee per paid membership/account, inside the CAC ceiling',
+      'Broker receives the one-pager + the Benefits Gap Assessment as a conversation tool',
+      'Per-broker code on every resulting enrolment; the full “Smile Club Partner” broker product is a scale-phase build',
+    ],
+    demand: '3 subscriptions through source-coded broker agreements.',
+    budget: 'No media — referral fee per result, priced inside the CAC ceiling once Finance sets it.',
+    to: 'corporate', toLabel: 'Distribution engine (C7)',
   },
   {
     source: 'Distributors', target: 3,
-    demand: 'Source-coded distributor agreements.',
-    method: 'Same mechanics as resellers; terms within the CAC ceiling.',
-    launch: 'w/c 22 Sep', code: 'Per-distributor code', owner: 'Fahad',
+    summary: 'Benefit platforms and aggregators listing Smile Club under tracked codes.',
+    owner: 'Fahad',
+    launch: 'w/c 22 Sep', code: 'Per-distributor code',
+    approach: 'Employee-benefit marketplaces and community aggregators list the membership where employees and households already browse benefits; the same result-paid mechanics as resellers.',
+    proposition: '“A dental benefit your users can actually see, understand and use” — listed with plain-language inclusions, never insurance vocabulary.',
+    steps: [
+      'Shortlist benefit platforms and aggregators',
+      'Listing agreement with a per-distributor code',
+      'Result-paid terms inside the CAC ceiling',
+      'Monthly reconciliation against the spine before payout',
+    ],
+    demand: '3 subscriptions through source-coded distributor agreements.',
+    budget: 'No media — per-result terms inside the CAC ceiling once Finance sets it.',
+    to: 'corporate', toLabel: 'Distribution engine (C7)',
   },
 ];
 
+function R1Row({ r, open, onToggle }: { r: ResponseRow; open: boolean; onToggle: () => void }) {
+  return (
+    <div className="rounded-xl border bg-white" style={{ borderColor: open ? BLUE : LINE }}>
+      <button type="button" onClick={onToggle} className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left">
+        <span className="flex h-7 w-9 shrink-0 items-center justify-center rounded-lg text-[13px] font-bold tabular-nums text-white" style={{ backgroundColor: CORAL }}>{r.target}</span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[12px] font-bold" style={{ color: NAVY }}>{r.source}</span>
+          <span className="block truncate text-[10.5px]" style={{ color: OLIVE }}>{r.summary}</span>
+        </span>
+        <span className="hidden shrink-0 text-right text-[9.5px] leading-tight md:block" style={{ color: OLIVE }}>
+          {r.launch}
+        </span>
+        <span className="shrink-0 text-[13px] font-bold" style={{ color: BLUE }}>{open ? '▾' : '▸'}</span>
+      </button>
+      {open ? (
+        <div className="border-t px-3.5 py-3" style={{ borderColor: '#EEEFE1' }}>
+          <div className="grid gap-3 md:grid-cols-2">
+            <div>
+              <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: BLUE }}>How we approach & sell</p>
+              <p className="mt-0.5 text-[11px] leading-snug" style={{ color: '#3a4148' }}>{r.approach}</p>
+              <p className="mt-2 text-[9px] font-bold uppercase tracking-widest" style={{ color: BLUE }}>The proposition — what we say</p>
+              <p className="mt-0.5 text-[11px] italic leading-snug" style={{ color: NAVY }}>{r.proposition}</p>
+            </div>
+            <div>
+              <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: BLUE }}>The steps</p>
+              <ol className="mt-0.5 space-y-1">
+                {r.steps.map((s, i) => (
+                  <li key={s} className="flex gap-2 text-[11px] leading-snug" style={{ color: '#3a4148' }}>
+                    <span className="mt-[1px] flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] font-bold text-white" style={{ backgroundColor: NAVY }}>{i + 1}</span>
+                    {s}
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </div>
+          <div className="mt-3 grid gap-3 md:grid-cols-2">
+            <div className="rounded-lg px-3 py-2" style={{ backgroundColor: '#F7F7F0' }}>
+              <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: OLIVE }}>Demand basis & assumption</p>
+              <p className="mt-0.5 text-[10.5px] leading-snug" style={{ color: '#3a4148' }}>{r.demand}</p>
+            </div>
+            <div className="rounded-lg px-3 py-2" style={{ backgroundColor: '#FDF9EC' }}>
+              <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: '#6d5a1d' }}>Budget — where it goes and how</p>
+              <p className="mt-0.5 text-[10.5px] leading-snug" style={{ color: '#3a4148' }}>{r.budget}</p>
+            </div>
+          </div>
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[10.5px]" style={{ color: OLIVE }}>
+            <span><span className="font-bold" style={{ color: NAVY }}>Owner:</span> {r.owner} · <span className="font-bold" style={{ color: NAVY }}>Tracking:</span> {r.code}</span>
+            <Jump to={r.to}>{r.toLabel}</Jump>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function ResponseTab() {
   const total = RESPONSE_ROWS.reduce((a, r) => a + r.target, 0);
+  const [openSrc, setOpenSrc] = useState<string | null>('Corporate');
   return (
     <div className="space-y-5">
       <p className="rounded-xl border-l-4 bg-white px-4 py-3 text-[12.5px] font-medium leading-snug" style={{ borderColor: GOLD, color: NAVY, fontFamily: 'Georgia, serif' }}>
@@ -494,30 +649,15 @@ function ResponseTab() {
       </p>
 
       <section>
-        <Exhibit n="R1" title={`The 120 — paid subscriptions by source (${total}/120 mapped) · demand forecast pending`} />
-        <div className="overflow-x-auto rounded-xl border bg-white" style={{ borderColor: LINE }}>
-          <table className="w-full border-collapse text-[10.5px]">
-            <thead>
-              <tr className="text-left text-[9.5px] uppercase tracking-wide" style={{ color: OLIVE, backgroundColor: '#F7F7F0' }}>
-                <th className="px-2.5 py-2 font-bold">Source</th><th className="px-2.5 py-2 text-center font-bold">Paid subs</th>
-                <th className="px-2.5 py-2 font-bold">Qualified demand & assumption</th><th className="px-2.5 py-2 font-bold">Method</th>
-                <th className="px-2.5 py-2 font-bold">Launch</th><th className="px-2.5 py-2 font-bold">Tracking</th><th className="px-2.5 py-2 font-bold">Owner</th>
-              </tr>
-            </thead>
-            <tbody>
-              {RESPONSE_ROWS.map((r) => (
-                <tr key={r.source} className="border-t align-top" style={{ borderColor: '#EEEFE1' }}>
-                  <td className="px-2.5 py-1.5 font-bold whitespace-nowrap" style={{ color: NAVY }}>{r.source}</td>
-                  <td className="px-2.5 py-1.5 text-center font-bold tabular-nums" style={{ color: CORAL }}>{r.target}</td>
-                  <td className="px-2.5 py-1.5" style={{ color: '#3a4148' }}>{r.demand}</td>
-                  <td className="px-2.5 py-1.5" style={{ color: '#3a4148' }}>{r.method}</td>
-                  <td className="px-2.5 py-1.5 whitespace-nowrap" style={{ color: OLIVE }}>{r.launch}</td>
-                  <td className="px-2.5 py-1.5" style={{ color: OLIVE }}>{r.code}</td>
-                  <td className="px-2.5 py-1.5" style={{ color: OLIVE }}>{r.owner}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <Exhibit n="R1" title={`The 120 — paid subscriptions by source (${total}/120 mapped) · click any source to drill down`} />
+        <p className="mb-2 text-[11px]" style={{ color: OLIVE }}>
+          Each source opens into its full playbook: how we approach and sell, the proposition, the steps, who
+          owns it, the demand assumption and where every dirham goes — with a link to its deep section.
+        </p>
+        <div className="space-y-2">
+          {RESPONSE_ROWS.map((r) => (
+            <R1Row key={r.source} r={r} open={openSrc === r.source} onToggle={() => setOpenSrc(openSrc === r.source ? null : r.source)} />
+          ))}
         </div>
       </section>
 
