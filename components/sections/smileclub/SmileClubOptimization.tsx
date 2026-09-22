@@ -313,6 +313,12 @@ function MandateTab() {
 
       <section>
         <Exhibit n="M2" title="Action register — re-based to the 22 Sep kick-start" />
+        <p className="mb-2 text-[11px]" style={{ color: OLIVE }}>
+          Accountability rule: Gautam ISSUES and owns the mandate — he provides the baseline data and reports
+          completion to Mr Akbar; Fahad owns DELIVERY. Acceptance therefore sits with Fahad: it is the delivery
+          owner&apos;s written commitment to the targets, deadlines and guardrails — an issuer cannot accept his
+          own mandate.
+        </p>
         <div className="overflow-x-auto rounded-xl border bg-white" style={{ borderColor: LINE }}>
           <table className="w-full border-collapse text-[11px]">
             <thead>
