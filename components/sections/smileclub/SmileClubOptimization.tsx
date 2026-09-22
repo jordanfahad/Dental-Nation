@@ -82,11 +82,11 @@ function Note({ tone, children }: { tone: 'gold' | 'coral' | 'blue'; children: R
 /* ── data ──────────────────────────────────────────────────────── */
 
 interface Play { title: string; detail: string; owner: string; engine: string }
-interface Wave { id: string; label: string; tag: string; horizon: string; color: string; intro: string; plays: Play[] }
+interface Wave { id: string; label: string; tag: string; horizon: string; color: string; status: string; statusColor: string; intro: string; plays: Play[] }
 
 const WAVES: Wave[] = [
   {
-    id: 'wave1', label: 'Wave 1 · Prepare + limited test', tag: 'Low incremental media spend — staff and delivery costs tracked', horizon: 'Indicative: first fortnight', color: '#2C5E3F',
+    id: 'wave1', label: 'Wave 1 · Prepare + limited test', tag: 'Low incremental media spend — staff and delivery costs tracked', horizon: 'Indicative: first fortnight', color: '#2C5E3F', status: 'EXECUTED — its plays now run daily as the operating engine (front desk carries the 60)', statusColor: '#2C5E3F',
     intro: 'Sell to people who already know us — and onboard properly from the first enrolment. Baseline, prices and definitions come before broad activation.',
     plays: [
       { title: 'Baseline & terms first', engine: 'Data', owner: 'Gautam + finance/ops (to confirm)', detail: 'Enrolments, payment status, plan mix, usage, cancellations; benefit-delivery costs; clinic prices; membership terms. The savings examples and funnel definitions come from this — nothing scales before it exists.' },
@@ -98,7 +98,7 @@ const WAVES: Wave[] = [
     ],
   },
   {
-    id: 'wave2', label: 'Wave 2 · Scale what the evidence supports', tag: 'Paid tests + SEO + one defined corporate pilot', horizon: 'Indicative: weeks 3–8', color: BLUE,
+    id: 'wave2', label: 'Wave 2 · Scale what the evidence supports', tag: 'Paid tests + SEO + one defined corporate pilot', horizon: 'Indicative: weeks 3–8', color: BLUE, status: 'IN PROGRESS — paid pilot + partnerships live; dynamic formats held by the creative blocker', statusColor: '#7a6420',
     intro: 'Budget follows measured conversion — and every paid audience passes the eligibility check first.',
     plays: [
       { title: 'Paid acquisition tests', engine: 'Paid', owner: 'Fahad', detail: 'After the audience-eligibility check: eligible search-intent and geographic tests first; patient-list targeting only where confirmed appropriate. Offer-led CTWA and Google Search on cost/offer intent.' },
@@ -109,7 +109,7 @@ const WAVES: Wave[] = [
     ],
   },
   {
-    id: 'wave3', label: 'Wave 3 · Compound, if the gate opens', tag: 'Corporate expansion + selective offline, funded by measured contribution', horizon: 'Indicative: quarter +', color: NAVY,
+    id: 'wave3', label: 'Wave 3 · Compound, if the gate opens', tag: 'Corporate expansion + selective offline, funded by measured contribution', horizon: 'Indicative: quarter +', color: NAVY, status: 'NOT STARTED — by design; opens only on measured Wave 1–2 contribution', statusColor: CORAL,
     intro: 'With measured economics and a pilot case study, widen the funnel. Reinvest only after considering contribution, cash requirements and future benefit obligations.',
     plays: [
       { title: 'Corporate expansion', engine: 'B2B', owner: 'Fahad + Mr Akbar', detail: 'Outbound to a named employer list opened with the pilot case study; benefits platforms, chambers, HR communities.' },
@@ -1259,7 +1259,9 @@ function Waves() {
     <div>
       <Exhibit n={5} title="Three waves — indicative dates, evidence-gated expansion" />
       <p className="mb-2 text-[11px]" style={{ color: OLIVE }}>
-        Expansion at each step depends on: reliable measurement and clear offer terms · evidence of conversion and
+        How to read the waves: they are gates, not a calendar — Wave 1 is EXECUTED and keeps running (its plays
+        became the daily operating engine), Wave 2 is the CURRENT phase (entered where evidence allows), Wave 3
+        is PLANNED and deliberately not started until the evidence gate opens. Expansion at each step depends on: reliable measurement and clear offer terms · evidence of conversion and
         appropriate activation · acceptable acquisition cost and expected contribution (with sensitivity to
         utilization and cancellation) · sufficient appointment capacity and acceptable member experience. Early
         expansion can be limited and provisional while longer-term cohorts mature.
@@ -1273,6 +1275,7 @@ function Waves() {
           >
             <p className="text-[11.5px] font-bold" style={{ color: x.color }}>{x.label}</p>
             <p className="text-[9.5px] font-semibold uppercase tracking-wide" style={{ color: OLIVE }}>{x.horizon}</p>
+            <p className="mt-0.5 text-[10px] font-bold leading-tight" style={{ color: x.statusColor }}>{x.status}</p>
             <p className="mt-0.5 text-[10px] leading-tight" style={{ color: '#3a4148' }}>{x.tag}</p>
           </button>
         ))}
