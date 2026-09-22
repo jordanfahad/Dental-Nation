@@ -140,7 +140,7 @@ const WAVE_RESULTS: Record<string, { verdict: string; items: string[] }> = {
     items: [
       'Partnership go-to-market: bilingual community-partnership decks and an organisation-specific proposal complete; partner outreach active, first activations being scheduled (12 Sep update).',
       'Paid + owned: CRM-DN pilot landing page live with search ads following; the membership SEO cluster is tasked. Meta dynamic/smart-creative formats are HELD by the creative blocker (see the Digital marketing plan) — offer-led statics and search carry paid until the designer unlock.',
-      'No paid-channel conversion results exist yet — the first source-coded funnel reads arrive with the 23 Sep Day-7 checkpoint.',
+      'No paid-channel conversion results exist yet — the first source-coded funnel reads arrive with the 28 Sep Day-7 checkpoint.',
     ],
   },
   wave3: {
@@ -233,26 +233,26 @@ const MANDATE_MIX = [
 ];
 
 const CHECKPOINTS = [
-  { d: '23 Sep · Day 7', plan: 36, min: 30 },
-  { d: '30 Sep · Day 14', plan: 60, min: 50 },
-  { d: '7 Oct · Day 21', plan: 88, min: 75 },
-  { d: '16 Oct · Day 30', plan: 120, min: 120 },
+  { d: '28 Sep · Day 7', plan: 36, min: 30 },
+  { d: '5 Oct · Day 14', plan: 60, min: 50 },
+  { d: '12 Oct · Day 21', plan: 88, min: 75 },
+  { d: '21 Oct · Day 30', plan: 120, min: 120 },
 ];
 
 const REGISTER = [
-  { act: 'Accept the commercial mandate', dl: '17 Sep 10:00', who: 'Fahad', out: '120 by 16 Oct; bulk CRM target 0 — targets, deadlines and guardrails acknowledged in writing.' },
-  { act: 'Submit the quantified marketing response', dl: '17 Sep EOD', who: 'Fahad', out: '100% of the 120 mapped: source forecast, qualified demand, conversion, spend, CAC, launch date, owner.' },
-  { act: 'Close the historical CRM test', dl: '18 Sep EOD', who: 'Gautam shares data · Fahad reviews', out: '71 replies classified, 417 failures coded, new bulk sends 0 — reconciled to payment and membership records. Campaign-level numbers received via the 12 Sep progress update (5 sends, 1,280 non-unique reach, 863 delivered); the payment-record reconciliation review remains.' },
-  { act: 'Activate the first acquisition portfolio', dl: '19 Sep EOD', who: 'Fahad', out: 'Every live activity has source, spend, forecast, destination and response owner.' },
-  { act: 'Checkpoints (Day 7 / 14 / 21)', dl: '23 Sep · 30 Sep · 7 Oct', who: 'Fahad + Smile Club Coordinator; Day 21 with Gautam', out: '36/30 → 60/50 → 88/75 cumulative paid; recovery plan next business day if missed.' },
-  { act: 'Complete the mandate', dl: '16 Oct', who: 'Gautam → Mr Akbar', out: '120 paid, active, non-refunded, source-coded; ≥98% data and attribution; Finance-validated.' },
+  { act: 'Accept the commercial mandate', dl: '22 Sep 10:00', who: 'Fahad', out: '120 by 21 Oct; bulk CRM target 0 — targets, deadlines and guardrails acknowledged in writing.' },
+  { act: 'Submit the quantified marketing response', dl: '22 Sep EOD', who: 'Fahad', out: '100% of the 120 mapped: source forecast, qualified demand, conversion, spend, CAC, launch date, owner.' },
+  { act: 'Close the historical CRM test', dl: '23 Sep EOD', who: 'Gautam shares data · Fahad reviews', out: '71 replies classified, 417 failures coded, new bulk sends 0 — reconciled to payment and membership records. Campaign-level numbers received via the 12 Sep progress update (5 sends, 1,280 non-unique reach, 863 delivered); the payment-record reconciliation review remains.' },
+  { act: 'Activate the first acquisition portfolio', dl: '24 Sep EOD', who: 'Fahad', out: 'Every live activity has source, spend, forecast, destination and response owner.' },
+  { act: 'Checkpoints (Day 7 / 14 / 21)', dl: '28 Sep · 5 Oct · 12 Oct', who: 'Fahad + Smile Club Coordinator; Day 21 with Gautam', out: '36/30 → 60/50 → 88/75 cumulative paid; recovery plan next business day if missed.' },
+  { act: 'Complete the mandate', dl: '21 Oct', who: 'Gautam → Mr Akbar', out: '120 paid, active, non-refunded, source-coded; ≥98% data and attribution; Finance-validated.' },
 ];
 
 const MANDATE_MAP: { req: string; ours: string; to: Sub; toLabel: string }[] = [
-  { req: 'Existing DN clinics — 60', ours: 'Wave 1 front-desk route + onboarding (front desk + Dr Luvi): one consistent explanation, QR at three branches, first-appointment help, objection log.', to: 'waves', toLabel: 'Three waves' },
-  { req: 'Corporate — 24 (pipeline ≥ 72)', ours: 'Corporate playbook: qualified doors (see the live outreach status — Michael Page closed 21 Sep, ICP sharpened) + the three warm introductions the mandate asks Mr Akbar to provide (CEO approval item 6).', to: 'corporate', toLabel: 'Corporate playbook' },
-  { req: 'Website — 12 (150 qualified @ 8%)', ours: 'Wave 1 relevant placements + Wave 2 SEO membership cluster and eligibility-checked paid tests; CRM-DN pilot LP live.', to: 'dm', toLabel: 'DM plan' },
-  { req: 'Reseller / affiliate / broker / distributor / CSR — 24', ours: 'NEW commercial-access lane the mandate adds beyond rev. 2 — folds into the B2B mechanics (partner codes, QR links, referral agreements) with per-partner source codes.', to: 'response', toLabel: 'Delivery plan R1' },
+  { req: 'Existing DN clinics — 60 paid subscriptions', ours: 'Wave 1 front-desk route + onboarding (front desk + Dr Luvi): one consistent explanation, QR at three branches, first-appointment help, objection log.', to: 'waves', toLabel: 'Three waves' },
+  { req: 'Corporate — 24 paid subscriptions (needs a pipeline of ≥72 membership-equivalents at ~33% close)', ours: 'Corporate playbook: qualified doors (see the live outreach status — Michael Page closed 21 Sep, ICP sharpened) + the three warm introductions the mandate asks Mr Akbar to provide (CEO approval item 6).', to: 'corporate', toLabel: 'Corporate playbook' },
+  { req: 'Website — 12 paid subscriptions (150 qualified enquiries × 8% close)', ours: 'Wave 1 relevant placements + Wave 2 SEO membership cluster and eligibility-checked paid tests; CRM-DN pilot LP live.', to: 'dm', toLabel: 'DM plan' },
+  { req: 'Reseller / affiliate / broker / distributor / CSR (community events) — 24 paid subscriptions combined', ours: 'NEW commercial-access lane the mandate adds beyond rev. 2 — folds into the B2B mechanics (partner codes, QR links, referral agreements) with per-partner source codes.', to: 'response', toLabel: 'Delivery plan R1' },
   { req: 'Bulk CRM: target 0, budget 0', ours: 'Aligned with our audience-eligibility and consent rule. The Wave 1 CRM test stays limited, consented and non-bulk — scope confirmed against the CRM hold.', to: 'waves', toLabel: 'Wave 1 results' },
   { req: 'CAC ≤ Finance ceiling · daily spend/forecast', ours: 'Our economics gate — "allowable CAC from measured economics" — now given its owner: Finance sets the ceiling, Mr Akbar signs it.', to: 'response', toLabel: 'Budget R2' },
   { req: '≥ 98% data & attribution · dashboard spine (enquiry → qualified → checkout → paid → card active → booked → attended)', ours: 'Exactly the measurement machinery of rev. 2 — activation tracked as first booking AND first completed visit; the spine answers the console-tracking question we posed to Gautam.', to: 'kpis', toLabel: 'Measurement' },
@@ -266,12 +266,12 @@ function MandateTab() {
   return (
     <div className="space-y-5">
       <p className="rounded-xl border-l-4 bg-white px-4 py-3 text-[12.5px] font-medium leading-snug" style={{ borderColor: GOLD, color: NAVY, fontFamily: 'Georgia, serif' }}>
-        <span className="font-bold">The owner has set the outcome: 120 paid memberships by 16 October.</span>{' '}
+        <span className="font-bold">The owner has set the outcome: 120 paid memberships in 30 days — clock re-based 22 Sep (kick-start) → 21 Oct (Day 30); day-count, targets and guardrails unchanged.</span>{' '}
         Gautam&apos;s Marketing Activation Action Map (v4, 16 Sep) mandates the result and delegates the method —
-        which is precisely the ownership split rev. 2 called for. This page maps his requirements onto this plan&apos;s
-        machinery, one to one. Guardrails: ≥3× pipeline coverage · CAC within the Finance ceiling · ≥98% data &amp;
+        which is precisely the ownership split rev. 2 called for. This page maps Gautam&apos;s mandate requirements
+        onto Fahad&apos;s delivery machinery, one to one. Guardrails: ≥3× pipeline coverage · CAC within the Finance ceiling · ≥98% data &amp;
         attribution · bulk CRM at zero. Output definition: 120 DISTINCT NEW membership contracts whose first
-        qualifying payment falls in the 17 Sep – 16 Oct cohort, card active and not refunded at the reporting
+        qualifying payment falls in the 22 Sep – 21 Oct cohort, card active and not refunded at the reporting
         cutoff; a family contract counts once (beneficiaries reported separately); one primary acquisition source
         per contract.
       </p>
@@ -280,7 +280,7 @@ function MandateTab() {
         <Exhibit n="M1" title="The 120, by source — and the checkpoint line" />
         <div className="grid gap-4 lg:grid-cols-2">
           <Card>
-            <p className="mb-2 text-[11px] font-semibold" style={{ color: NAVY }}>Paid membership target by channel</p>
+            <p className="mb-2 text-[11px] font-semibold" style={{ color: NAVY }}>Target paid membership SUBSCRIPTIONS by channel — every number on this page is a count of paid subscriptions</p>
             {MANDATE_MIX.map((m) => (
               <div key={m.ch} className="mb-1.5 flex items-center gap-2">
                 <span className="w-[118px] shrink-0 text-[10.5px]" style={{ color: '#3a4148' }}>{m.ch}</span>
@@ -306,13 +306,13 @@ function MandateTab() {
                 </div>
               ))}
             </div>
-            <p className="mt-2 text-[10px]" style={{ color: OLIVE }}>A missed minimum triggers a recovery plan the next business day. Day-15–30 funding releases after the 30 Sep review.</p>
+            <p className="mt-2 text-[10px]" style={{ color: OLIVE }}>A missed minimum triggers a recovery plan the next business day. Day-15–30 funding releases after the 5 Oct review.</p>
           </Card>
         </div>
       </section>
 
       <section>
-        <Exhibit n="M2" title="Action register — deadlines this week" />
+        <Exhibit n="M2" title="Action register — re-based to the 22 Sep kick-start" />
         <div className="overflow-x-auto rounded-xl border bg-white" style={{ borderColor: LINE }}>
           <table className="w-full border-collapse text-[11px]">
             <thead>
@@ -336,7 +336,7 @@ function MandateTab() {
       </section>
 
       <section>
-        <Exhibit n="M3" title="The logical map — his requirement, our machinery" />
+        <Exhibit n="M3" title="The logical map — Gautam's mandate requirement → Fahad's delivery machinery" />
         <div className="overflow-x-auto rounded-xl border bg-white" style={{ borderColor: LINE }}>
           <table className="w-full border-collapse text-[11px]">
             <thead>
@@ -363,12 +363,12 @@ function MandateTab() {
             derivation remain open deliverables (owners: Gautam — member baseline; Finance — fully loaded
             ceiling), due before scale spending. Fixed checkpoints replace this plan&apos;s indicative dates. The measurement definitions, consent rules and economics gates of rev. 2 remain the
             control system the mandate is tracked with. First hard funnel data also arrives with it: the historical
-            CRM test (71 replies, 417 failures to reconcile) closes 18 Sep.
+            CRM test (71 replies, 417 failures to reconcile) closes 23 Sep.
           </Note>
           <Note tone="coral">
-            Open before launch (17 Sep): Mr Akbar&apos;s sign-off — 30-day budget ceiling, allowable CAC and initial
+            Open before launch (22 Sep): Mr Akbar&apos;s sign-off — 30-day budget ceiling, allowable CAC and initial
             release are blank in the mandate; plus the three warm corporate introductions and confirmation of the
-            CRM hold. Fahad&apos;s quantified response is due 17 Sep EOD.
+            CRM hold. Fahad&apos;s quantified response is due 22 Sep EOD.
           </Note>
         </div>
       </section>
@@ -391,7 +391,7 @@ const RESPONSE_ROWS: ResponseRow[] = [
   },
   {
     source: 'Corporate', target: 24,
-    demand: 'Pipeline ≥ 72 membership-equivalent required (~33% assumed close). SIZING PENDING: surviving doors — Assembly Global (awaiting reply), ArabyAds (ask scheduled), RBS + existing partners (unsized) + the 3 introductions requested from Mr Akbar. Michael Page closed 21 Sep. Replacement-door bridge with per-employer contract equivalents: due 23 Sep.',
+    demand: 'Pipeline ≥ 72 membership-equivalent required (~33% assumed close). SIZING PENDING: surviving doors — Assembly Global (awaiting reply), ArabyAds (ask scheduled), RBS + existing partners (unsized) + the 3 introductions requested from Mr Akbar. Michael Page closed 21 Sep. Replacement-door bridge with per-employer contract equivalents: due 28 Sep.',
     method: 'Pilot package per employer: company code + on-site dental day + quarterly aggregated usage report. Discovery meetings this week; door-to-door field sales per the DM plan (D1 — 40–60 qualified doors, Fahad carries the bag in-window, agent sourced for scale); model (employee-paid / subsidized / employer-paid) agreed per employer.',
     launch: 'Discovery now · first pilot live w/c 22 Sep', code: 'One code per employer', owner: 'Fahad + Mr Akbar',
   },
@@ -409,13 +409,13 @@ const RESPONSE_ROWS: ResponseRow[] = [
   },
   {
     source: 'Affiliates', target: 7,
-    demand: '3 affiliates active and source-coded (mandate requirement).',
-    method: 'Affiliate agreements with tracked links/codes; commission structure priced within the CAC ceiling once Finance sets it.',
+    demand: '7 paid subscriptions via ≥3 active, source-coded affiliates (mandate requirement). Affiliates = third-party promoters paid per RESULT, not per post: local micro-influencers, community and mums’ groups, deal/lifestyle platforms, gym & wellness partners — each promoting Smile Club to their own audience through a tracked link or code.',
+    method: 'One written agreement per affiliate: unique tracked link/code → commission per PAID membership only (never per click or lead), payable after the member’s first qualifying payment clears, priced within the CAC ceiling once Finance sets it; monthly reconciliation of affiliate claims against the funnel spine before any payout.',
     launch: 'Agreements w/c 22 Sep', code: 'Per-affiliate code', owner: 'Fahad',
   },
   {
-    source: 'CSR', target: 4,
-    demand: 'Community/CSR activation near the branches.',
+    source: 'CSR (community events)', target: 4,
+    demand: 'Corporate Social Responsibility — community activations near the branches (schools, community centres, sports & wellness events), NOT customer-service representatives. 4 paid subscriptions.',
     method: 'On-the-spot enrolment with the QR flow at community events; costed per event before commitment.',
     launch: 'First event by early Oct', code: 'Per-event code', owner: 'Fahad',
   },
@@ -447,12 +447,12 @@ function ResponseTab() {
       </p>
 
       <section>
-        <Exhibit n="R1" title={`The 120 — target allocation (${total}/120 mapped) · demand forecast pending`} />
+        <Exhibit n="R1" title={`The 120 — paid subscriptions by source (${total}/120 mapped) · demand forecast pending`} />
         <div className="overflow-x-auto rounded-xl border bg-white" style={{ borderColor: LINE }}>
           <table className="w-full border-collapse text-[10.5px]">
             <thead>
               <tr className="text-left text-[9.5px] uppercase tracking-wide" style={{ color: OLIVE, backgroundColor: '#F7F7F0' }}>
-                <th className="px-2.5 py-2 font-bold">Source</th><th className="px-2.5 py-2 text-center font-bold">Paid</th>
+                <th className="px-2.5 py-2 font-bold">Source</th><th className="px-2.5 py-2 text-center font-bold">Paid subs</th>
                 <th className="px-2.5 py-2 font-bold">Qualified demand & assumption</th><th className="px-2.5 py-2 font-bold">Method</th>
                 <th className="px-2.5 py-2 font-bold">Launch</th><th className="px-2.5 py-2 font-bold">Tracking</th><th className="px-2.5 py-2 font-bold">Owner</th>
               </tr>
@@ -524,7 +524,7 @@ function ResponseTab() {
             placements · triggered CRM) contributing ≥30 at zero media cost. At the 200 ceiling the 15K buys
             only 75 qualified → 6 expected paid — recovery is owned lanes + the reserve, not silent overspend.
             The mandate’s own direct-media formula (12 × 250 = 3,000) is 5× smaller than these slices — the
-            budget-classification question flagged at sign-off, restated here so it is settled at the 23 Sep
+            budget-classification question flagged at sign-off, restated here so it is settled at the 28 Sep
             review, not discovered later.
           </Note>
           <Note tone="coral">
@@ -604,7 +604,7 @@ function ResponseTab() {
             {[
               'Working-media ceiling = paid-media acquisition target × allowable CAC (Finance sets the CAC; Mr Akbar signs the 30-day ceiling and initial release — the blanks on the mandate’s sign-off page).',
               'Forecast CAC by activity + blended total submitted the day the ceiling lands; spend and forecast then update daily.',
-              'Funding gates: 17 Sep initial launch funding → 30 Sep Day-15–30 funding after pace, CAC and data review → 16 Oct next-period funding for proven sources.',
+              'Funding gates: 22 Sep initial launch funding → 5 Oct Day-15–30 funding after pace, CAC and data review → 21 Oct next-period funding for proven sources.',
               'Reallocation: up to 10% may move within the ceiling, reported the same day. Scale / optimize / hold rules as mandated (hold if attribution < 98% or CAC breaches the ceiling).',
             ].map((t) => (
               <li key={t} className="flex gap-2 text-[11.5px] leading-snug" style={{ color: '#3a4148' }}>
@@ -620,7 +620,7 @@ function ResponseTab() {
               'Tracking: every activity source-coded (QR / employer code / partner code / UTM); the dashboard spine — enquiry → qualified → checkout → paid → card active → booked → attended — is the single report. Attribution BELOW 98% holds new spend; on paid contracts that means ≥30/30, 49/50, 74/75 and 118/120 attributed at the four checkpoints.',
               'Rhythm: 09:00 outcome review · 16:00 recovery queue · EOD scorecard · weekly resource decision, run with the Smile Club Coordinator.',
               'Risk 1 — creative assets: the designer gap limits paid creative volume. Mitigation: Creative OS output + offer-led formats; the hire decision (19 Sep) is the unlock.',
-              'Risk 2 — corporate pipeline: the 24 depends on sized, surviving doors — Michael Page closed 21 Sep; Assembly Global awaiting; the ≥72 coverage is unquantified until the 23 Sep replacement-door bridge lands. Mr Akbar’s three intros requested at sign-off.',
+              'Risk 2 — corporate pipeline: the 24 depends on sized, surviving doors — Michael Page closed 21 Sep; Assembly Global awaiting; the ≥72 coverage is unquantified until the 28 Sep replacement-door bridge lands. Mr Akbar’s three intros requested at sign-off.',
               'Risk 3 — clinic capacity: 60 clinic conversions must be servable; branch appointment availability is checked in the daily review before pushing harder.',
               'Recovery rule: any missed checkpoint minimum → recovery plan the next business day, as mandated.',
             ].map((t) => (
@@ -675,7 +675,7 @@ const DM_CHANNELS: DmChannel[] = [
     status: 'NEW — doors from w/c 22 Sep', statusColor: CORAL, thesis: 'th-fieldsales',
   },
   {
-    channel: 'Awareness air cover — Dental Nation brand', role: 'Targeted air cover, deliberately NOT called brand awareness: AED 3,000 cannot buy brand awareness and does not claim to. It warms exactly where the other lanes harvest — geo cells around the three branches and the agent’s door territories. The full DN brand-awareness campaign is a costed scale-phase proposal for the 16 Oct review (D1b).',
+    channel: 'Awareness air cover — Dental Nation brand', role: 'Targeted air cover, deliberately NOT called brand awareness: AED 3,000 cannot buy brand awareness and does not claim to. It warms exactly where the other lanes harvest — geo cells around the three branches and the agent’s door territories. The full DN brand-awareness campaign is a costed scale-phase proposal for the 21 Oct review (D1b).',
     execution: 'Bounded geo burst: IG/FB reach around the three branches + LinkedIn boost on the agent’s door territories; organic IG proof content rides here (TikTok deferred, asset-blocked). Judged on ENABLER metrics only — branded-search lift, direct traffic, GMB profile views, meeting-acceptance rate — never on CPL.',
     budget: 'AED 3,000 (air cover, bounded)',
     contrib: 'No subscription claim — declared enabler: 30 days of subs cannot judge awareness',
@@ -751,13 +751,13 @@ const DM_THESES: { id: string; ch: string; why: string; cpl: string; track: stri
     id: 'th-fieldsales',
     ch: 'Corporate field sales · AED 6,000 enablement — THE 70% ENGINE',
     why: 'The doctrine in practice: 70% of the mandate (In-clinic 60 + Corporate 24 = 84 of 120) is sold face-to-face, and corporate needs a bag-carrier, not a banner. A considered AED 99/month commitment for a whole team is bought in a meeting where the savings table is walked through — so the plan funds a door-to-door motion: 40–60 qualified doors across JLT, Business Bay, DIFC and Al Quoz, “does your medical include dental?” asked first. Inside the 30-day window Fahad carries the bag; a dedicated agent CANNOT contribute in-window (hiring takes 2–4 weeks), so sourcing starts now and the agent onboards for the scale phase — priced into the Finance fully-loaded bridge (salary + commission are staffed cost, not media).',
-    cpl: 'What the 6,000 buys, line by line (indicative, re-costed per event before commitment): on-site dental-day kits for the first two employer pilots 2 × 1,500 = 3,000 (banner stand, screening forms, chair-side collateral, giveaways) · printed one-pagers + savings tables EN/AR 1,000 · LinkedIn boost on the door territories 1,000 · employer-code enrolment pages + QR materials 500 · door-plan logistics 500. Media-side arithmetic: 6,000 ÷ 24 target contracts = AED 250/contract — exactly the mandate’s own per-contract figure. The controlling number is pipeline: ≥72 membership-equivalent at ~33% close → 24.',
-    track: 'The meeting log (door, date, model, outcome) + one employer code per door → spine; pipeline coverage reviewed at every checkpoint; the 23 Sep replacement-door bridge sizes the doors.',
+    cpl: 'What the 6,000 buys, line by line (indicative, re-costed per event before commitment): on-site dental-day kits for the first two employer pilots 2 × 1,500 = 3,000 (banner stand, screening forms, chair-side collateral, giveaways) · printed one-pagers + savings tables EN/AR 1,000 · LinkedIn boost on the door territories 1,000 · employer-code enrolment pages + QR materials 500 · door-plan logistics 500. What the 6,000 is NOT: no salaries, no commissions, no agency fees (those sit in the Finance fully-loaded bridge) and no new design spend — artwork and content come from the programme’s existing enablement assets (corporate one-pager, savings math, HR email kit, reception deck) plus Creative OS templates; the 6,000 buys only their production and distribution: printing, kit materials, the territory boost and logistics. Media-side arithmetic: 6,000 ÷ 24 target contracts = AED 250/contract — exactly the mandate’s own per-contract figure. The controlling number is pipeline: ≥72 membership-equivalent at ~33% close → 24.',
+    track: 'The meeting log (door, date, model, outcome) + one employer code per door → spine; pipeline coverage reviewed at every checkpoint; the 28 Sep replacement-door bridge sizes the doors.',
   },
   {
     id: 'th-awareness',
     ch: 'Awareness air cover · AED 3,000 — targeted, and honestly NOT brand awareness',
-    why: 'Honest sizing first: AED 3,000 cannot buy brand awareness — a credible Dental Nation brand campaign runs AED 25–60K/month sustained over 3+ months and is judged on brand tracking, which a 30-day acquisition mandate cannot fund or measure. So this slice claims only the smaller job it can actually do: targeted air cover exactly where the other lanes harvest — geo cells around the three branches (warms cost-intent search and the retargeting pool) and the agent’s door territories (warms the knock before it lands). The full brand-awareness question — media mix, budget, brand tracking — goes to Mr Akbar as a costed, stand-alone scale-phase proposal at the 16 Oct review.',
+    why: 'Honest sizing first: AED 3,000 cannot buy brand awareness — a credible Dental Nation brand campaign runs AED 25–60K/month sustained over 3+ months and is judged on brand tracking, which a 30-day acquisition mandate cannot fund or measure. So this slice claims only the smaller job it can actually do: targeted air cover exactly where the other lanes harvest — geo cells around the three branches (warms cost-intent search and the retargeting pool) and the agent’s door territories (warms the knock before it lands). The full brand-awareness question — media mix, budget, brand tracking — goes to Mr Akbar as a costed, stand-alone scale-phase proposal at the 21 Oct review.',
     cpl: 'No CPL and no CAC are claimed — enabler metrics only: branded-search impression lift, direct traffic, GMB profile views, door/meeting acceptance rate, all read week-over-week against the pre-burst baseline.',
     track: 'Reach/frequency per geo cell + the enabler metrics on the weekly scorecard; if no lift is visible by Day-21, the remaining burst stops (its own kill rule).',
   },
@@ -789,7 +789,7 @@ const DM_KEYWORDS: { cluster: string; slice: string; kws: string; cpc: string; c
 
 /** D1d — every dirham to a subscription: the full funnel per lane. Planning
  *  estimates; the 60% gross→qualified rate is an assumption validated at the
- *  Day-7 checkpoint (23 Sep); qualified→paid 8% is the mandate assumption. */
+ *  Day-7 checkpoint (28 Sep); qualified→paid 8% is the mandate assumption. */
 const DM_FUNNEL: { lane: string; budget: string; gross: string; qual: string; subs: string; costPerSub: string }[] = [
   { lane: 'Google Search (pilot)', budget: '6,000', gross: '40–110', qual: '24–66', subs: '2–5', costPerSub: '1,200–3,000' },
   { lane: 'Meta (retargeting + CTWA)', budget: '9,000', gross: '150–300 (pool-capped)', qual: '90–180', subs: '7–14', costPerSub: '640–1,290' },
@@ -802,11 +802,11 @@ const DM_FUNNEL: { lane: string; budget: string; gross: string; qual: string; su
 ];
 
 const DM_TIMELINE = [
-  { wk: '17–23 Sep · mandate days 1–7', paid: 'Search live · LinkedIn organic starts · sticky banner briefed to CRM-DN · Meta statics prepped', corp: 'Outreach opened — Assembly Global contacted · Michael Page closed 21 Sep (referral live) · ArabyAds staff-membership ask scheduled', gate: 'Day-7 checkpoint 23 Sep — 36 plan / 30 minimum' },
-  { wk: '24–30 Sep · days 8–14', paid: 'Sticky banner LIVE · Meta statics live · awareness burst starts · LinkedIn sponsored test brief ready', corp: 'Assembly Global follow-up · ArabyAds staff-membership ask made · field-sales door plan live (JLT / Business Bay / DIFC) · agent sourcing starts', gate: 'Day-14 checkpoint 30 Sep — 60/50 · Google gate: matured CPQL ≤ 150 releases the second tranche' },
-  { wk: '1–7 Oct · days 15–21', paid: 'Reallocate ±10% to the winning lanes · LinkedIn sponsored test live if creative allows · awareness kill check (lift visible or burst stops)', corp: 'First corporate pilot agreed, coded and speced (the “one defined pilot”) · 40+ doors walked cumulative', gate: 'Day-21 checkpoint 7 Oct — 88/75, reviewed with Gautam' },
-  { wk: '8–14 Oct · days 22–28', paid: 'Scale proven sources only · dynamic/smart creatives live IF the designer hire has landed', corp: 'Corporate pilot enrolments running under its employer code · agent offer out for the scale phase', gate: 'CAC vs ceiling + ≥98% attribution checked before any scale-up' },
-  { wk: '15–16 Oct · days 29–30', paid: 'Final push through proven lanes only — no new experiments', corp: 'Pipeline handover notes for the next period', gate: '16 Oct — 120 paid, active, non-refunded, Finance-validated' },
+  { wk: '22–28 Sep · mandate days 1–7', paid: 'Search live · LinkedIn organic starts · sticky banner briefed to CRM-DN · Meta statics prepped', corp: 'Outreach opened — Assembly Global contacted · Michael Page closed 21 Sep (referral live) · ArabyAds staff-membership ask scheduled', gate: 'Day-7 checkpoint 28 Sep — 36 plan / 30 minimum' },
+  { wk: '29 Sep – 5 Oct · days 8–14', paid: 'Sticky banner LIVE · Meta statics live · awareness burst starts · LinkedIn sponsored test brief ready', corp: 'Assembly Global follow-up · ArabyAds staff-membership ask made · field-sales door plan live (JLT / Business Bay / DIFC) · agent sourcing starts', gate: 'Day-14 checkpoint 5 Oct — 60/50 · Google gate: matured CPQL ≤ 150 releases the second tranche' },
+  { wk: '6–12 Oct · days 15–21', paid: 'Reallocate ±10% to the winning lanes · LinkedIn sponsored test live if creative allows · awareness kill check (lift visible or burst stops)', corp: 'First corporate pilot agreed, coded and speced (the “one defined pilot”) · 40+ doors walked cumulative', gate: 'Day-21 checkpoint 12 Oct — 88/75, reviewed with Gautam' },
+  { wk: '13–19 Oct · days 22–28', paid: 'Scale proven sources only · dynamic/smart creatives live IF the designer hire has landed', corp: 'Corporate pilot enrolments running under its employer code · agent offer out for the scale phase', gate: 'CAC vs ceiling + ≥98% attribution checked before any scale-up' },
+  { wk: '20–21 Oct · days 29–30', paid: 'Final push through proven lanes only — no new experiments', corp: 'Pipeline handover notes for the next period', gate: '21 Oct — 120 paid, active, non-refunded, Finance-validated' },
 ];
 
 function DmPlan() {
@@ -1012,7 +1012,7 @@ function DmPlan() {
           <Note tone="blue">
             Website-12 reconciliation: direct paid 9–19 subs + owned 2–3 = 11–22 band, with the 12 target at its
             low-mid — headroom, not slack. Qualified check: paid 114–246 + owned ≥30 against the 150 the mandate
-            requires. Assumptions on show: gross→qualified ~60% (validated at the 23 Sep checkpoint) and
+            requires. Assumptions on show: gross→qualified ~60% (validated at the 28 Sep Day-7 checkpoint) and
             qualified→paid 8% (the mandate&apos;s own rate). Blended direct CPQL must land ≤125 target
             (15,000 ÷ 120) with 200 as the kill line.
           </Note>
@@ -1109,7 +1109,7 @@ function DmPlan() {
             qualification (“does your medical include dental?” asked FIRST). The referral is promised,
             introduction pending — it enters the pipeline only when a named door exists. Pipeline effect: one
             of three named doors closed; the ≥72 requirement needs a sized replacement-door bridge, due at
-            the 23 Sep review. The field-sales door plan (D1) is the replacement engine. Pilot specification
+            the 28 Sep review. The field-sales door plan (D1) is the replacement engine. Pilot specification
             and payment models:{' '}
             <Jump to="corporate">Corporate playbook</Jump>.
           </Note>
@@ -1117,7 +1117,7 @@ function DmPlan() {
       </section>
 
       <section>
-        <Exhibit n="D4" title="Timeline — five weeks to 16 October" />
+        <Exhibit n="D4" title="Timeline — 30 days to 21 October" />
         <div className="overflow-x-auto rounded-xl border bg-white" style={{ borderColor: LINE }}>
           <table className="w-full border-collapse text-[10.5px]">
             <thead>
@@ -1296,7 +1296,7 @@ function Waves() {
         <Exhibit n="5b" title="Results to date — Gautam's shared updates, mapped onto this wave" />
         {wid === 'wave1' ? (
           <div className="mb-2 flex flex-wrap gap-1.5">
-            {['5 broadcast sends', '1,280 non-unique reach', '863 delivered', '71 replies', '417 failures to code', '0 broadcast memberships confirmed (reconciliation 18 Sep)'].map((s) => (
+            {['5 broadcast sends', '1,280 non-unique reach', '863 delivered', '71 replies', '417 failures to code', '0 broadcast memberships confirmed (reconciliation pending — 23 Sep)'].map((s) => (
               <Tag key={s} color={CORAL}>{s}</Tag>
             ))}
           </div>
@@ -1598,7 +1598,7 @@ export function SmileClubOptimization() {
           activation mandate (v4, 16 Sep) mapped in. A focused, measurable pilot — offer validation, contribution
           economics and capacity as expansion gates, one defined corporate pilot through warm doors, offline
           deferred until the evidence earns it — now running against the owner&apos;s mandated outcome: 120 paid
-          memberships by 16 October.
+          memberships by 21 October (clock re-based to the 22 Sep kick-start).
         </p>
       </header>
       <div className="flex flex-wrap gap-1.5 border-b pb-2" style={{ borderColor: LINE }}>
