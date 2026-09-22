@@ -380,6 +380,45 @@ function MandateTab() {
           </Note>
         </div>
       </section>
+
+      <section>
+        <Exhibit n="M4" title="Alignment — Mr Akbar's two blueprints ↔ this 30-day plan" />
+        <p className="mb-2 text-[11px]" style={{ color: OLIVE }}>
+          Checked line by line against the Smile Club Strategic Blueprint and the Corporate Strategy (both Sep
+          2026). This 30-day plan is their execution slice: blueprint phases 0–2 for consumers plus the corporate
+          &quot;2–5 pilot accounts&quot; motion. One tension is named honestly rather than hidden.
+        </p>
+        <div className="overflow-x-auto rounded-xl border bg-white" style={{ borderColor: LINE }}>
+          <table className="w-full border-collapse text-[10.5px]">
+            <thead>
+              <tr className="text-left text-[9.5px] uppercase tracking-wide" style={{ color: OLIVE, backgroundColor: '#F7F7F0' }}>
+                <th className="px-2.5 py-2 font-bold">Blueprint requirement</th><th className="px-2.5 py-2 font-bold">Where it lives in this plan</th>
+                <th className="px-2.5 py-2 font-bold">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {([
+                ['Demand architecture before economics; personalised message per demand state', 'Why & proposition + Layers tabs lead the plan; every DM lane carries a named layer and CTA', 'ALIGNED', '#2C5E3F'],
+                ['Wave-1 priority: existing patients + families first (strongest trust, fastest learning)', 'In-clinic-60 = 50% of the target; family layer served by creators/CSR; states 7–8 are the largest engines', 'ALIGNED', '#2C5E3F'],
+                ['DTC growth phased, gated on CAC and activation thresholds', 'Paid capped at 15K direct, Google gated at Day-14, kill rules per cluster, no scale past a failed gate', 'ALIGNED', '#2C5E3F'],
+                ['North Star: Active (Preventively Engaged / Corporate Smile) Members — not subscriptions or contracts', 'K0 on Measurement; activation rate is the corporate primary KPI (C8)', 'ALIGNED', '#2C5E3F'],
+                ['Membership language, never insurance; legal sign-off as a launch gate', 'W4 regulatory dictionary incl. DHA 2026 context; legal review flagged before any new wording ships', 'ALIGNED', '#2C5E3F'],
+                ['No random broad awareness; offline only where precise and attributable', 'Billboards/radio deferred; awareness is a bounded geo air cover on enabler metrics with a Day-21 kill', 'ALIGNED', '#2C5E3F'],
+                ['Corporate B2B2C system: segments, triggers, funding models, ABM, brokers, HR portal', 'Corporate playbook C1–C10 carries the full system; the 30-day window runs only its seed (warm-door pilots + door plan)', 'ALIGNED — full build sequenced to scale phase', '#2C5E3F'],
+                ['Corporate roadmap cadence: pilot employers in months 2–4, brokers 6–9, scale 9–12', 'The mandate asks for Corporate-24 by Day 30 — more aggressive than the blueprint cadence. Resolution: the 30-day corporate lane is ONLY the blueprint’s “2–5 pilot accounts through warm doors”; broad ABM and brokers stay scale-phase; if the 28 Sep door bridge cannot support 24, the recovery plan reallocates toward in-clinic/family per Wave-1 priority — decided at the Day-14 gate, not discovered at Day 30', 'TENSION — managed, decision 5 Oct', '#7a6420'],
+                ['Product architecture: launch simple (Individual / Family / Plus)', 'The live public page shows four plans; reconciling the live tier set with the blueprint’s three-tier launch principle is a product decision for Gautam at the 28 Sep review', 'TO RECONCILE — Gautam, 28 Sep', '#7a6420'],
+                ['Smile Score · My Smile Plan · annual value statement · activation cadence (Day 0–30)', 'Marked as BUILD items with owner assignment at the 28 Sep review; onboarding/first-booking already runs in Wave 1', 'ALIGNED — sequenced', '#2C5E3F'],
+              ] as [string, string, string, string][]).map(([req, ours, st, col]) => (
+                <tr key={req} className="border-t align-top" style={{ borderColor: '#EEEFE1' }}>
+                  <td className="px-2.5 py-1.5 font-semibold" style={{ color: NAVY }}>{req}</td>
+                  <td className="px-2.5 py-1.5" style={{ color: '#3a4148' }}>{ours}</td>
+                  <td className="px-2.5 py-1.5 font-bold" style={{ color: col }}>{st}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
   );
 }
@@ -1242,6 +1281,13 @@ function OfferEconomics() {
 
       <section>
         <Exhibit n={4} title="Economics, incrementality and capacity — the expansion gate" />
+        <p className="mb-2 rounded-lg px-3 py-2 text-[11px] font-medium" style={{ backgroundColor: '#EEF4F6', color: NAVY }}>
+          The blueprint&apos;s equation: membership revenue + incremental treatment revenue + retention value +
+          family expansion + corporate revenue − included clinical cost − acquisition cost − benefit cost −
+          service cost = Smile Club contribution. The governing comparison is member LTV vs non-member LTV, not
+          subscription margin alone. And the breakage rule: a plan that is profitable because members fail to use
+          preventive care undermines the whole thesis — the objective is economically sustainable UTILISATION.
+        </p>
         <div className="grid gap-2 md:grid-cols-2">
           {([
             ['Contribution, not revenue', 'Membership contribution after the cost of delivering included care, discounts, payment processing, support, refunds and acquisition. If treatment revenue is already net of discounts, they are not deducted twice.'],
@@ -1271,7 +1317,10 @@ function Waves() {
       <p className="mb-2 text-[11px]" style={{ color: OLIVE }}>
         How to read the waves: they are gates, not a calendar — Wave 1 is EXECUTED and keeps running (its plays
         became the daily operating engine), Wave 2 is the CURRENT phase (entered where evidence allows), Wave 3
-        is PLANNED and deliberately not started until the evidence gate opens. Expansion at each step depends on: reliable measurement and clear offer terms · evidence of conversion and
+        is PLANNED and deliberately not started until the evidence gate opens. Mapping to the Strategic
+        Blueprint&apos;s launch phases: Wave 1 ≈ phases 0–2 (validate · internal pilot · existing-patient
+        launch), Wave 2 ≈ phases 3–5 (DTC growth · family scale · B2B pilot), Wave 3 ≈ phase 6 (optimise /
+        platform). Expansion at each step depends on: reliable measurement and clear offer terms · evidence of conversion and
         appropriate activation · acceptable acquisition cost and expected contribution (with sensitivity to
         utilization and cancellation) · sufficient appointment capacity and acceptable member experience. Early
         expansion can be limited and provisional while longer-term cohorts mature.
@@ -1346,6 +1395,8 @@ const CONSUMER_JOBS: { job: string; thought: string; answer: string }[] = [
   { job: 'Make it simple', thought: '“I don’t understand dental pricing.”', answer: 'Clear member pricing — no decoding, no claims journey for membership benefits.' },
   { job: 'Look after my family', thought: '“I want someone responsible for our teeth.”', answer: 'Family membership: one dental home managing everyone’s oral health.' },
   { job: 'Give me access', thought: '“When I need a dentist, I want someone good, quickly.”', answer: 'DN network + priority appointment access.' },
+  { job: 'Help me decide', thought: '“I don’t know what needs doing now vs later.”', answer: 'My Smile Plan: prioritised, clinically grounded recommendations — now / soon / monitor.' },
+  { job: 'Reward loyalty', thought: '“I already use Dental Nation.”', answer: 'Member privileges and value recognition — the patient-to-member conversion engine.' },
 ]
 
 const LANG_DICT: { avoid: string; use: string }[] = [
@@ -1357,13 +1408,15 @@ const LANG_DICT: { avoid: string; use: string }[] = [
   { avoid: 'Claim', use: 'Member service' },
   { avoid: '“We cover your treatment up to AED X”', use: 'Specified included services + preferred member rates' },
   { avoid: '“Dental insurance without calling it insurance”', use: 'Complementary employee dental benefit beside existing insurance' },
+  { avoid: 'Annual coverage limit', use: 'Membership-year inclusions / limits' },
+  { avoid: '“Guaranteed protection from dental costs”', use: 'More predictable routine dental care / member value' },
 ]
 
 function WhyTab() {
   return (
     <div className="space-y-5">
       <p className="rounded-xl border-l-4 bg-white px-4 py-3 text-[13px] font-medium leading-snug" style={{ borderColor: GOLD, color: NAVY, fontFamily: 'Georgia, serif' }}>
-        <span className="font-bold">The single source of truth (Mr Akbar, 22 Sep):</span>{' '}
+        <span className="font-bold">The single source of truth (Mr Akbar&apos;s Strategic Blueprint + Corporate Strategy, Sep 2026 — this plan is their 30-day execution slice):</span>{' '}
         Smile Club is not Dental Nation selling cheaper dentistry. It is Dental Nation converting episodic
         dental patients into continuously cared-for members by making prevention, access and dental spending
         simpler, more predictable and more valuable. The product economics come AFTER this demand
@@ -1419,8 +1472,8 @@ function WhyTab() {
         <Exhibit n="W3" title="The proposition — four pillars, one sentence" />
         <div className="grid gap-2 md:grid-cols-4">
           {([
-            ['PREVENT', 'Routine oral-health maintenance — don’t wait for problems.'],
-            ['PROTECT', 'Reduce the probability of expensive neglected problems.'],
+            ['PREVENT', 'Do not wait for pain to be the trigger — scheduled exams, hygiene, risk-based recalls.'],
+            ['PLAN', 'Understand what is happening and what comes next — baseline, Smile Score, My Smile Plan, transparent priorities.'],
             ['SAVE', 'Transparent preferred-member economics — privilege, not “30% off everything”.'],
             ['BELONG', 'An ongoing relationship: patient → MEMBER. Dental Nation knows your history year after year.'],
           ] as [string, string][]).map(([t, d]) => (
@@ -1447,7 +1500,10 @@ function WhyTab() {
           mandatory health insurance. Health-insurance activity requires authorisation in Dubai, and renaming
           &quot;insurance&quot; to &quot;subscription&quot; does not change regulatory classification — the benefit
           architecture stays on specified services, access rights and preferred rates, never open-ended promises
-          to pay uncertain treatment costs. Final vocabulary is legal-approved before launch.
+          to pay uncertain treatment costs. Final vocabulary is legal-approved before launch. 2026 context
+          raising the bar: DHA published updated Dubai Dental Guidelines (v2, Mar 2026) and continues
+          health-insurance claims-audit activity — formal legal/compliance sign-off is a launch GATE, not a
+          marketing-led interpretation.
         </p>
         <div className="overflow-x-auto rounded-xl border bg-white" style={{ borderColor: LINE }}>
           <table className="w-full border-collapse text-[11px]">
@@ -1485,15 +1541,15 @@ function WhyTab() {
 
 /* Consumer layers × demand states — different layer, different message,
  * different channel. The direct answer to "single speech for all". */
-const DEMAND_STATES: { state: string; who: string; message: string; channel: string }[] = [
-  { state: '1 · Unaware', who: '“My teeth are fine.” No immediate demand.', message: 'Create prevention awareness: “Small problems become expensive problems. Stay ahead of them.”', channel: 'Awareness air cover (geo) · organic proof content · GMB presence — never a hard sell' },
-  { state: '2 · Neglect / procrastination', who: 'Knows they should go; postpones. Our biggest competitor.', message: '“Your dental care is already planned for the year.” Reduce friction, pre-commitment.', channel: 'Reactivation CRM (lapsed DN patients, personalised 1-to-1) · recall triggers · sticky banner' },
-  { state: '3 · Cost anxiety', who: 'Afraid of the AED 10,000 verdict.', message: '“Know where you stand before problems become expensive.” Loss-aversion frame, not savings %.', channel: 'Google cost-intent search (the paid core test) · cost-guide pages + membership module' },
-  { state: '4 · Insurance frustration', who: '“I have insurance but dental isn’t covered.”', message: '“Your medical insurance and your dental membership do different jobs.” Complement — never attack insurance.', channel: 'Insurance-gap search cluster · content answering coverage questions → consult → membership' },
-  { state: '5 · Active dental need', who: 'Toothache, broken filling, cleaning due — already high intent.', message: 'Solve TODAY’S problem first; introduce Smile Club as continuity at the point of care — never lead with “buy Smile Club”.', channel: 'Clinic campaigns → front desk at checkout (the In-clinic-60 engine) · triggered WhatsApp follow-up' },
-  { state: '6 · Planned treatment', who: 'Implants, ortho, veneers — “I’m spending anyway; does membership add value?”', message: 'Membership as the economic accelerator on treatment already planned.', channel: 'Chair-side + treatment-plan trigger (open-plan CRM template) · consult close' },
-  { state: '7 · Family responsibility', who: 'Parents — “someone should manage the family’s teeth.”', message: '“One membership. One dental home for the family.” Belonging, not saving.', channel: 'Family/parent creators & influencers (per-code tracked) · school/community activations (CSR) · Meta family creative' },
-  { state: '8 · Existing DN patient', who: 'Already trusts DN — the cheapest acquisition there is.', message: '“You’re already part of Dental Nation. Smile Club makes staying with us easier.”', channel: 'Front desk · recall · post-treatment touch · personalised CRM — the installed base carries the 60' },
+const DEMAND_STATES: { state: string; who: string; message: string; channel: string; cta: string }[] = [
+  { state: '1 · Unaware', who: '“My teeth are fine.” No immediate demand.', message: 'Create prevention awareness: “Small problems become expensive problems. Stay ahead of them.”', channel: 'Awareness air cover (geo) · organic proof content · GMB presence — never a hard sell', cta: 'Check your smile status' },
+  { state: '2 · Neglect / procrastination', who: 'Knows they should go; postpones. Our biggest competitor.', message: '“Your dental care is already planned for the year.” Reduce friction, pre-commitment.', channel: 'Reactivation CRM (lapsed DN patients, personalised 1-to-1) · recall triggers · sticky banner', cta: 'Book your baseline visit' },
+  { state: '3 · Cost anxiety', who: 'Afraid of the AED 10,000 verdict.', message: '“Know where you stand before problems become expensive.” Loss-aversion frame, not savings %.', channel: 'Google cost-intent search (the paid core test) · cost-guide pages + membership module', cta: 'See member benefits' },
+  { state: '4 · Insurance frustration', who: '“I have insurance but dental isn’t covered.”', message: '“Your medical insurance and your dental membership do different jobs.” Complement — never attack insurance.', channel: 'Insurance-gap search cluster · content answering coverage questions → consult → membership', cta: 'Compare your options' },
+  { state: '5 · Active dental need', who: 'Toothache, broken filling, cleaning due — already high intent.', message: 'Solve TODAY’S problem first; introduce Smile Club as continuity at the point of care — never lead with “buy Smile Club”.', channel: 'Clinic campaigns → front desk at checkout (the In-clinic-60 engine) · triggered WhatsApp follow-up', cta: 'Book urgent visit — membership comes after' },
+  { state: '6 · Planned treatment', who: 'Implants, ortho, veneers — “I’m spending anyway; does membership add value?”', message: 'Membership as the economic accelerator on treatment already planned.', channel: 'Chair-side + treatment-plan trigger (open-plan CRM template) · consult close', cta: 'Ask about member rates' },
+  { state: '7 · Family responsibility', who: 'Parents — “someone should manage the family’s teeth.”', message: '“One membership. One dental home for the family.” Belonging, not saving.', channel: 'Family/parent creators & influencers (per-code tracked) · school/community activations (CSR) · Meta family creative', cta: 'Explore Family membership' },
+  { state: '8 · Existing DN patient', who: 'Already trusts DN — the cheapest acquisition there is.', message: '“You’re already part of Dental Nation. Smile Club makes staying with us easier.”', channel: 'Front desk · recall · post-treatment touch · personalised CRM — the installed base carries the 60', cta: 'Join from your DN record' },
 ]
 
 function LayersTab() {
@@ -1515,6 +1571,7 @@ function LayersTab() {
               <tr className="text-left text-[9.5px] uppercase tracking-wide" style={{ color: OLIVE, backgroundColor: '#F7F7F0' }}>
                 <th className="px-2.5 py-2 font-bold">Demand state (layer)</th><th className="px-2.5 py-2 font-bold">Who this is</th>
                 <th className="px-2.5 py-2 font-bold">The message (personalised)</th><th className="px-2.5 py-2 font-bold">Best activity & channel</th>
+                <th className="px-2.5 py-2 font-bold">CTA</th>
               </tr>
             </thead>
             <tbody>
@@ -1524,6 +1581,7 @@ function LayersTab() {
                   <td className="px-2.5 py-1.5" style={{ color: '#3a4148' }}>{d.who}</td>
                   <td className="px-2.5 py-1.5" style={{ color: '#3a4148' }}>{d.message}</td>
                   <td className="px-2.5 py-1.5" style={{ color: OLIVE }}>{d.channel}</td>
+                  <td className="px-2.5 py-1.5 whitespace-nowrap font-semibold" style={{ color: BLUE }}>{d.cta}</td>
                 </tr>
               ))}
             </tbody>
@@ -1539,12 +1597,17 @@ function LayersTab() {
 
       <section>
         <Exhibit n="L2" title="The psychology doing the work" />
-        <div className="grid gap-2 md:grid-cols-4">
+        <div className="grid gap-2 md:grid-cols-3">
           {([
-            ['Loss aversion', 'People hate a surprise AED 3,000 bill more than they dislike AED 75/month. Communicate “fewer unpleasant surprises”, not only savings.'],
+            ['Loss aversion', 'A surprise AED 3,000 bill hurts more than AED 75/month. Lead with “fewer unpleasant surprises”, not only savings.'],
             ['Mental accounting', 'AED 900 at once feels painful; AED 75/month feels manageable — economically similar, psychologically different.'],
-            ['Prevention paradox', 'Prevention’s benefit feels distant, so people postpone. Membership creates pre-commitment: “I’ve joined, so I should use my check-up.”'],
-            ['Endowment effect', 'Once someone is “a Smile Club member”, they move from transactional patient to belonging. This is why it is never called a discount plan.'],
+            ['Present bias', 'Prevention is postponed because the reward feels distant. Included preventive visits + reminders create commitment.'],
+            ['Inertia', 'People delay booking even after deciding — so the first appointment is booked during onboarding, not left to the member.'],
+            ['Endowment effect', 'Once someone is “a Smile Club member”, they move from transactional patient to belonging. Never a discount plan.'],
+            ['Ambiguity aversion', 'Unclear dental pricing creates avoidance — explicit inclusions, exclusions and member rates.'],
+            ['Trust transfer', 'People act on recommendations from a known clinician — continuity and a named care team where possible.'],
+            ['Social proof', 'Households choose providers through friends and family — family add-ons and referrals built into the lifecycle.'],
+            ['Goal gradient', 'Visible progress increases adherence — Smile Score and milestones, used responsibly as communication tools.'],
           ] as [string, string][]).map(([t, d]) => (
             <div key={t} className="rounded-xl border bg-white p-3" style={{ borderColor: LINE }}>
               <p className="text-[10.5px] font-bold uppercase tracking-wide" style={{ color: BLUE }}>{t}</p>
