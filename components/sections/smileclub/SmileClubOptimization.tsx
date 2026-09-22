@@ -638,61 +638,62 @@ function ResponseTab() {
 /* ── Digital marketing plan (rev. 4, 22 Sep — Fahad) ── */
 
 interface DmChannel {
-  channel: string; role: string; execution: string; budget: string; contrib: string; status: string; statusColor: string;
+  channel: string; role: string; execution: string; budget: string; contrib: string; status: string; statusColor: string; thesis: string;
 }
 
 /** Final rev. 4 channel set under the 70% offline / 30% online doctrine.
  *  Every lane carries its estimated gross-lead → subscription contribution
- *  so no dirham is unaccounted. */
+ *  so no dirham is unaccounted; each channel name links to its full
+ *  investment thesis (D1b) and back. */
 const DM_CHANNELS: DmChannel[] = [
   {
     channel: 'Google Search', role: 'Capture the only search demand that exists for this product — cost/price intent plus branded protection. There is no membership-query volume to buy; treatment intent stays excluded (it belongs to clinic campaigns).',
-    execution: 'Responsive search ads EN/AR → membership LP → lead → 10-minute contact-centre follow-up. Per-cluster budgets in D1c; the second tranche is released ONLY through the Day-14 gate (reserve + reallocation rule) if matured CPQL ≤ 150.',
+    execution: 'Responsive search ads EN/AR → membership LP → lead → 10-minute contact-centre follow-up. Per-cluster budgets and the confirmation status of every keyword in D1c; the second tranche is released ONLY through the Day-14 gate (reserve + reallocation rule) if matured CPQL ≤ 150.',
     budget: 'AED 6,000 pilot (+ gated second tranche at Day-14)',
     contrib: 'Est. 40–110 gross → 24–66 qualified → 2–5 subs (inside Website-12)',
-    status: 'LIVE', statusColor: '#2C5E3F',
+    status: 'LIVE', statusColor: '#2C5E3F', thesis: 'th-google',
   },
   {
     channel: 'Meta — paid (FB/IG)', role: 'Retargeting site visitors + CTWA offer lane at high-intent moments — NOT cold membership prospecting (the broadcast learning). Patient-list audiences only after the documented eligibility check.',
     execution: 'Offer-led statics from Creative OS launch now; Advantage+/dynamic formats HELD by the smart/dynamic-creatives blocker. Contact centre tags membership-intent vs appointment-intent on first reply.',
     budget: 'AED 9,000',
     contrib: 'Est. 150–300 gross (pool-capped) → 90–180 qualified → 7–14 subs (inside Website-12)',
-    status: 'PARTIAL — creative-capped', statusColor: '#7a6420',
+    status: 'PARTIAL — creative-capped', statusColor: '#7a6420', thesis: 'th-meta',
   },
   {
     channel: 'LinkedIn — corporate air-cover', role: 'Door-opener, not a CPL channel: HR, People/Culture, Benefits and Office-Manager titles in Dubai see the one-pager before and after the field-sales knock and the intro emails.',
     execution: 'Founder-led organic posts (Fahad) at zero media cost + one bounded sponsored test on the corporate one-pager; every corporate meeting preceded by a connection touch.',
     budget: 'AED 3,000 (test)',
     contrib: 'Est. 8–20 held meetings — feeds Corporate-24; no membership CPL is claimed',
-    status: 'READY — w/c 22 Sep', statusColor: BLUE,
+    status: 'READY — w/c 22 Sep', statusColor: BLUE, thesis: 'th-linkedin',
   },
   {
     channel: 'Corporate field sales — door-to-door', role: 'THE 70% ENGINE. A committed monthly subscription this considered is SOLD in meetings, not clicked: a dedicated agent walks SME/startup/blue-collar doors WITHOUT dental in their medical cover (the Michael Page learning) and signs employer codes.',
-    execution: 'Inside the mandate window Fahad carries the bag (a hire cannot land within 30 days — agent sourcing starts now, onboards for the scale phase). Door plan: JLT, Business Bay, DIFC, Al Quoz clusters; “does your medical include dental?” asked first. Enablement: on-site day kit, one-pager, HR email kit, employer codes.',
-    budget: 'AED 6,000 enablement (media-side = 250/contract at the 24 target)',
+    execution: 'Inside the mandate window Fahad carries the bag (a hire cannot land within 30 days — agent sourcing starts now, onboards for the scale phase). Door plan: JLT, Business Bay, DIFC, Al Quoz clusters; “does your medical include dental?” asked first. The 6,000 enablement is itemized line by line in D1b.',
+    budget: 'AED 6,000 enablement (itemized in D1b)',
     contrib: '40–60 doors → 12–20 held meetings → pipeline toward ≥72 equivalent → 24 subs (Corporate-24)',
-    status: 'NEW — doors from w/c 22 Sep', statusColor: CORAL,
+    status: 'NEW — doors from w/c 22 Sep', statusColor: CORAL, thesis: 'th-fieldsales',
   },
   {
-    channel: 'Awareness layer — Dental Nation brand', role: 'A unique product nobody searches for needs demand CREATION, not just capture: make DN + the Smile Club offer recognizable so branded search, door-knocks and retargeting all get warmer. Organic IG proof content rides here; TikTok stays deferred (asset-blocked).',
-    execution: 'Bounded geo burst: IG/FB reach around the three branches + LinkedIn boost on the agent’s door territories. Judged on ENABLER metrics only — branded-search lift, direct traffic, GMB profile views, meeting-acceptance rate — never on CPL.',
-    budget: 'AED 3,000 (bounded burst)',
+    channel: 'Awareness air cover — Dental Nation brand', role: 'Targeted air cover, deliberately NOT called brand awareness: AED 3,000 cannot buy brand awareness and does not claim to. It warms exactly where the other lanes harvest — geo cells around the three branches and the agent’s door territories. The full DN brand-awareness campaign is a costed scale-phase proposal for the 16 Oct review (D1b).',
+    execution: 'Bounded geo burst: IG/FB reach around the three branches + LinkedIn boost on the agent’s door territories; organic IG proof content rides here (TikTok deferred, asset-blocked). Judged on ENABLER metrics only — branded-search lift, direct traffic, GMB profile views, meeting-acceptance rate — never on CPL.',
+    budget: 'AED 3,000 (air cover, bounded)',
     contrib: 'No subscription claim — declared enabler: 30 days of subs cannot judge awareness',
-    status: 'NEW — w/c 22 Sep', statusColor: BLUE,
+    status: 'NEW — w/c 22 Sep', statusColor: BLUE, thesis: 'th-awareness',
   },
   {
     channel: 'Website sticky banner', role: 'Traffic opportunity: a persistent, dismissible banner routes eligible OBSERVED traffic on selected surfaces to the Smile Club page at zero media cost. The 19,500-page count is supplier-reported inventory, not measured sessions — volume pending measurement, with a clinic-booking displacement guardrail.',
     execution: '“Smile Club — dental care from AED 99/month → Join” EN/AR; UTM sc-banner; built by CRM-DN/W3Layouts; click-through and paid conversions read from the funnel spine.',
     budget: 'No media cost',
     contrib: 'Part of the owned ≥30-qualified floor → ~2–3 subs (inside Website-12), read from sc-banner',
-    status: 'TO BUILD — w/c 22 Sep', statusColor: CORAL,
+    status: 'TO BUILD — w/c 22 Sep', statusColor: CORAL, thesis: 'th-zero',
   },
   {
-    channel: 'WhatsApp / CRM — triggered', role: 'High-intent 1-to-1 contact only: open treatment plans, due recalls, SOS follow-ups, website abandoners. Bulk sends: target 0, budget 0, per the mandate.',
-    execution: 'Consented, source-coded templates; the contact centre works the qualified queue within 10 minutes.',
+    channel: 'WhatsApp / CRM — triggered', role: 'High-intent 1-to-1 contact only, redesigned on the Wave 1 broadcast evidence (full before/after in D1b). Bulk sends: target 0, budget 0, per the mandate.',
+    execution: 'Four triggers, each with its own consented template and source code: open treatment plan (membership as the way to afford it) · due recall · SOS follow-up · website abandoner. The contact centre works the qualified queue within 10 minutes and tags membership-intent vs appointment-intent on first reply.',
     budget: 'No media cost',
     contrib: 'Counts inside In-clinic-60 or Website-12 by origin code — no separate target, no double-count',
-    status: 'LIVE', statusColor: '#2C5E3F',
+    status: 'LIVE', statusColor: '#2C5E3F', thesis: 'th-crm',
   },
 ];
 
@@ -724,53 +725,66 @@ const DM_OUTREACH: { org: string; door: string; code: string; ask: string; timel
  * Planner ranges for Dubai dental + our own live campaign reads, Sep 2026);
  * the daily scorecard replaces every estimate with actuals from day one.
  */
-const DM_THESES: { ch: string; why: string; cpl: string; track: string }[] = [
+const DM_THESES: { id: string; ch: string; why: string; cpl: string; track: string }[] = [
   {
+    id: 'th-google',
     ch: 'Google Search · AED 6,000 pilot — second tranche only via the Day-14 gate',
     why: 'Search can only CAPTURE demand that already exists — and measured volume for “dental membership” queries is near zero, so a large membership search budget has nothing to buy. What Dubai does search is PRICE: “teeth cleaning price dubai”, “dental checkup cost”. That searcher sees a price, flinches, and the membership is presented as the cheaper way in — the one non-branded pool worth paying for, and a HYPOTHESIS until the first coded cohort matures. Branded terms are protected separately at trivial cost so a told-about-us searcher never lands on a competitor. “Dentist near me” stays negative-matched: that click books an appointment either way, so paying for it here would charge the membership plan for revenue the clinic campaigns already earn.',
     cpl: 'Penny accounting of the 6,000 — branded 500 (CPC 1–3, CVR 20%+ → CPL ≈5–15; volume-capped ≈10–25 leads) · cost-intent 4,500 (CPC 6–14 ÷ 8–10% LP CVR → CPL ≈60–175 → ≈26–75 leads) · plan-intent 500 + insurance-gap 500 (CPL ≈100–250 → ≈4–10 leads). Slice total: est. 40–110 gross → 24–66 qualified → 2–5 subscriptions (full funnel in D1d).',
-    track: 'One UTM per cluster → LP → enquiry enters the spine (enquiry → qualified → checkout → paid); live CPC/CPL on the Marketing tab daily; per-cluster kill rule below; Day-14 gate decides the second tranche.',
+    track: 'One UTM per cluster → LP → enquiry enters the spine (enquiry → qualified → checkout → paid); live CPC/CPL on the Marketing tab daily; per-cluster kill rule below; Day-14 gate decides the second tranche. Live keyword coverage is confirmed cluster by cluster in D1c — owner Fahad, by 23 Sep.',
   },
   {
+    id: 'th-meta',
     ch: 'Meta · AED 9,000 slice',
     why: 'Our own live proof: appointment campaigns deliver at AED 3–6/lead (Tooth Gap 123 leads @ ~AED 3). Learning applied — that engagement is APPOINTMENT-led, so Meta’s membership job is narrow: retargeting site visitors and the CTWA offer lane at high-intent moments, not cold membership prospecting.',
     cpl: 'Membership CTWA est. CPL AED 15–40 — an independent planning range, NOT derived from the appointment CPL. The retargeting + CTWA pool is FINITE (site visitors + engaged non-converters), so volume is planning-capped at 150–300 gross → 90–180 qualified → 7–14 subscriptions (D1d); a raw CPL far below 15 would signal junk volume, not success.',
     track: 'CTWA source codes per ad set → spine; contact-centre tags membership-intent vs appointment-intent on first reply — the split that killed the broadcast test is measured from message one.',
   },
   {
+    id: 'th-linkedin',
     ch: 'LinkedIn · AED 3,000 slice (bounded test)',
     why: 'Not a CPL channel — a door-opener. Air-cover for the field-sales knocks and corporate asks: HR/People/Benefits titles see the one-pager before and after outreach. The Michael Page “no” sharpens the ICP: qualify for companies WITHOUT dental in their medical policy (SMEs, startups, blue-collar employers) before spending a meeting.',
     cpl: 'Measured as cost per corporate MEETING, not per lead: est. AED 150–400/meeting on a bounded sponsored test → est. 8–20 held meetings feeding Corporate-24. No membership CPL is claimed for LinkedIn — that would be invented.',
     track: 'UTM → corporate enquiry form + the meeting log (door, date, model discussed, outcome) reviewed at each checkpoint; SC-corporate codes on any resulting pilot.',
   },
   {
+    id: 'th-fieldsales',
     ch: 'Corporate field sales · AED 6,000 enablement — THE 70% ENGINE',
-    why: 'The doctrine made flesh: 70% of the mandate (In-clinic 60 + Corporate 24 = 84 of 120) is sold face-to-face, and corporate needs a bag-carrier, not a banner. A considered AED 99/month commitment for a whole team is bought in a meeting where the savings table is walked through — so the plan funds a door-to-door motion: 40–60 qualified doors across JLT, Business Bay, DIFC and Al Quoz, “does your medical include dental?” asked first. Inside the 30-day window Fahad carries the bag; a dedicated agent CANNOT contribute in-window (hiring takes 2–4 weeks), so sourcing starts now and the agent onboards for the scale phase — priced into the Finance fully-loaded bridge (salary + commission are staffed cost, not media).',
-    cpl: 'Media-side arithmetic: 6,000 ÷ 24 target contracts = AED 250/contract — exactly the mandate’s own per-contract figure. The controlling number is pipeline: ≥72 membership-equivalent at ~33% close → 24. Enablement buys the kit that makes doors close: on-site day kit, one-pagers, HR email kit, employer codes, LinkedIn boost on the door territories.',
+    why: 'The doctrine in practice: 70% of the mandate (In-clinic 60 + Corporate 24 = 84 of 120) is sold face-to-face, and corporate needs a bag-carrier, not a banner. A considered AED 99/month commitment for a whole team is bought in a meeting where the savings table is walked through — so the plan funds a door-to-door motion: 40–60 qualified doors across JLT, Business Bay, DIFC and Al Quoz, “does your medical include dental?” asked first. Inside the 30-day window Fahad carries the bag; a dedicated agent CANNOT contribute in-window (hiring takes 2–4 weeks), so sourcing starts now and the agent onboards for the scale phase — priced into the Finance fully-loaded bridge (salary + commission are staffed cost, not media).',
+    cpl: 'What the 6,000 buys, line by line (indicative, re-costed per event before commitment): on-site dental-day kits for the first two employer pilots 2 × 1,500 = 3,000 (banner stand, screening forms, chair-side collateral, giveaways) · printed one-pagers + savings tables EN/AR 1,000 · LinkedIn boost on the door territories 1,000 · employer-code enrolment pages + QR materials 500 · door-plan logistics 500. Media-side arithmetic: 6,000 ÷ 24 target contracts = AED 250/contract — exactly the mandate’s own per-contract figure. The controlling number is pipeline: ≥72 membership-equivalent at ~33% close → 24.',
     track: 'The meeting log (door, date, model, outcome) + one employer code per door → spine; pipeline coverage reviewed at every checkpoint; the 23 Sep replacement-door bridge sizes the doors.',
   },
   {
-    ch: 'Awareness layer · AED 3,000 bounded burst — declared enabler',
-    why: 'The product is unique, which cuts both ways: no competition in the query box, but also NO DEMAND in the query box — demand must be created before capture. A bounded burst makes Dental Nation + the offer recognizable exactly where the other lanes harvest: geo reach around the three branches (warms cost-intent search + retargeting pools) and the agent’s door territories (warms the knock). HONESTY CLAUSE: 30 days of subscriptions cannot judge awareness — so this slice claims zero subs and is judged on enabler metrics, with the full awareness question (media mix, budget, brand tracking) a scale-phase decision AFTER the mandate.',
+    id: 'th-awareness',
+    ch: 'Awareness air cover · AED 3,000 — targeted, and honestly NOT brand awareness',
+    why: 'Honest sizing first: AED 3,000 cannot buy brand awareness — a credible Dental Nation brand campaign runs AED 25–60K/month sustained over 3+ months and is judged on brand tracking, which a 30-day acquisition mandate cannot fund or measure. So this slice claims only the smaller job it can actually do: targeted air cover exactly where the other lanes harvest — geo cells around the three branches (warms cost-intent search and the retargeting pool) and the agent’s door territories (warms the knock before it lands). The full brand-awareness question — media mix, budget, brand tracking — goes to Mr Akbar as a costed, stand-alone scale-phase proposal at the 16 Oct review.',
     cpl: 'No CPL and no CAC are claimed — enabler metrics only: branded-search impression lift, direct traffic, GMB profile views, door/meeting acceptance rate, all read week-over-week against the pre-burst baseline.',
     track: 'Reach/frequency per geo cell + the enabler metrics on the weekly scorecard; if no lift is visible by Day-21, the remaining burst stops (its own kill rule).',
   },
   {
-    ch: 'Zero-media lanes (banner · triggered CRM) — incremental contribution only',
-    why: 'The rule is incrementality: these lanes are always-on for the clinic, so the plan claims only their source-coded membership contributions, never their existence. They add no new target; they are how existing targets are met at zero media cost: the banner + page placements + triggered CRM feed the Website-12’s 150-qualified pool (planning floor: ≥30 of the 150, ≈2–3 subs). GMB and SEO stay maintained as clinic infrastructure and claim ZERO membership attribution — their closes happen at the front desk and are already counted in In-clinic-60 (double-count guard).',
-    cpl: 'Media CPL = AED 0 by construction; the real cost is staffed time, priced in the Finance fully-loaded bridge, not hidden. Banner contribution reads directly from sc-banner; triggered CRM from per-template codes.',
-    track: 'sc-banner / per-template CRM codes → spine; anything without a source code counts as nothing; bulk sends remain 0 per the mandate.',
+    id: 'th-crm',
+    ch: 'WhatsApp / CRM — triggered · zero media — redesigned on the Wave 1 evidence',
+    why: 'WHAT HAPPENED BEFORE (Wave 1, measured): a broadcast test — 5 sends (3 doctor-led + a retry + a follow-up) reached 1,280 non-unique recipients, 863 delivered, 71 replies, 417 failures to code — and the engagement came back APPOINTMENT-led, not membership-led: 0 memberships confirmed from broadcast (payment reconciliation still under review). HOW THIS LANE IS DIFFERENT: broadcast is closed (target 0, budget 0, per the mandate). Triggered contact fires 1-to-1 on a specific high-intent EVENT — an open treatment plan (membership as the way to afford the plan), a due recall, an SOS follow-up, a website abandoner — moments where the membership answers a live problem instead of interrupting. Same channel, opposite mechanism: the audience raises its hand first.',
+    cpl: 'Zero media by construction; contribution counts inside the owned ≥30-qualified floor and lands in In-clinic-60 or Website-12 by origin code — never double-counted. The real cost is contact-centre minutes per template, priced in the Finance fully-loaded bridge.',
+    track: 'Consented, per-template source codes → spine; the contact centre works the qualified queue within 10 minutes and tags membership-intent vs appointment-intent on first reply — the exact split the broadcast test taught us to measure. Bulk sends stay 0.',
+  },
+  {
+    id: 'th-zero',
+    ch: 'Zero-media lane (sticky banner + page placements) — incremental contribution only',
+    why: 'The rule is incrementality: these surfaces are always-on for the clinic, so the plan claims only their source-coded membership contributions, never their existence. They add no new target; they are how existing targets are met at zero media cost: the banner + page placements (with triggered CRM, above) feed the Website-12’s 150-qualified pool — planning floor: ≥30 of the 150, ≈2–3 subs. GMB and SEO stay maintained as clinic infrastructure and claim ZERO membership attribution — their closes happen at the front desk and are already counted in In-clinic-60 (double-count guard).',
+    cpl: 'Media CPL = AED 0 by construction; the real cost is staffed time, priced in the Finance fully-loaded bridge, not hidden. Banner contribution reads directly from sc-banner.',
+    track: 'sc-banner / per-placement codes → spine; anything without a source code counts as nothing.',
   },
 ];
 
 /** Google Search — the keyword plan with its slice of the 6,000. Estimates
  *  labelled as estimates; live CPCs replace them from the first day of spend. */
-const DM_KEYWORDS: { cluster: string; slice: string; kws: string; cpc: string; cpl: string; role: string }[] = [
-  { cluster: 'Branded (always-on)', slice: 'AED 500', kws: '“smile club dental nation” · “dental nation membership” · “smile club dubai”', cpc: '1–3', cpl: '≈5–15 at 20% CVR', role: 'Capture told-about-us demand; never lose it to a competitor bid. Volume-capped ≈10–25 leads.' },
-  { cluster: 'Cost intent (core test)', slice: 'AED 4,500', kws: '“teeth cleaning price dubai” · “dental checkup cost dubai” · “scaling polishing offer dubai” · “cheap dentist dubai”', cpc: '6–14', cpl: '≈60–175 @ 8–10% CVR', role: 'Membership as the ANSWER to price shock — the pilot LP thesis. ≈26–75 leads.' },
-  { cluster: 'Plan intent (thin volume)', slice: 'AED 500', kws: '“dental plan dubai” · “dental membership dubai” · “dental discount card uae”', cpc: '8–18', cpl: '≈100–225 @ 8% CVR', role: 'Exact match only, low cap — tiny but perfectly qualified.' },
-  { cluster: 'Insurance gap', slice: 'AED 500', kws: '“dental insurance dubai individuals” · “dentist without insurance dubai” · “dental cover self employed uae”', cpc: '10–20', cpl: '≈125–250 @ 8% CVR', role: 'The uninsured segment the Michael Page learning points at.' },
-  { cluster: 'EXCLUDED: treatment intent', slice: '—', kws: '“dentist near me” · “root canal dubai” · “veneers price” → negative-matched', cpc: '—', cpl: '—', role: 'Booking demand — belongs to clinic campaigns; bidding it here would double-pay for the same click.' },
+const DM_KEYWORDS: { cluster: string; slice: string; kws: string; cpc: string; cpl: string; live: string; role: string }[] = [
+  { cluster: 'Branded (always-on)', slice: 'AED 500', kws: '“smile club dental nation” · “dental nation membership” · “smile club dubai”', cpc: '1–3', cpl: '≈5–15 at 20% CVR', live: 'TO CONFIRM — 23 Sep', role: 'Capture told-about-us demand; never lose it to a competitor bid. Volume-capped ≈10–25 leads.' },
+  { cluster: 'Cost intent (core test)', slice: 'AED 4,500', kws: '“teeth cleaning price dubai” · “dental checkup cost dubai” · “scaling polishing offer dubai” · “cheap dentist dubai”', cpc: '6–14', cpl: '≈60–175 @ 8–10% CVR', live: 'TO CONFIRM — 23 Sep', role: 'Membership as the ANSWER to price shock — the pilot LP thesis. ≈26–75 leads.' },
+  { cluster: 'Plan intent (thin volume)', slice: 'AED 500', kws: '“dental plan dubai” · “dental membership dubai” · “dental discount card uae”', cpc: '8–18', cpl: '≈100–225 @ 8% CVR', live: 'TO CONFIRM — 23 Sep', role: 'Exact match only, low cap — tiny but perfectly qualified.' },
+  { cluster: 'Insurance gap', slice: 'AED 500', kws: '“dental insurance dubai individuals” · “dentist without insurance dubai” · “dental cover self employed uae”', cpc: '10–20', cpl: '≈125–250 @ 8% CVR', live: 'TO CONFIRM — 23 Sep', role: 'The uninsured segment the Michael Page learning points at.' },
+  { cluster: 'EXCLUDED: treatment intent', slice: '—', kws: '“dentist near me” · “root canal dubai” · “veneers price” → negative-matched', cpc: '—', cpl: '—', live: 'Negative list TO CONFIRM', role: 'Booking demand — belongs to clinic campaigns; bidding it here would double-pay for the same click.' },
 ];
 
 /** D1d — every dirham to a subscription: the full funnel per lane. Planning
@@ -783,7 +797,7 @@ const DM_FUNNEL: { lane: string; budget: string; gross: string; qual: string; su
   { lane: 'Owned (banner · placements · triggered CRM)', budget: '0 media', gross: 'measured, not forecast', qual: '≥30 (planning floor)', subs: '2–3', costPerSub: '0 media (staffed cost in Finance bridge)' },
   { lane: 'LinkedIn (air-cover)', budget: '3,000', gross: 'meetings, not leads: 8–20', qual: '—', subs: 'feeds Corporate-24', costPerSub: '150–400 per held meeting' },
   { lane: 'Corporate field sales', budget: '6,000', gross: '40–60 doors', qual: '12–20 held meetings', subs: '24 (via ≥72 pipeline @ ~33%)', costPerSub: '250/contract media-side' },
-  { lane: 'Awareness burst', budget: '3,000', gross: 'no claim', qual: '—', subs: '0 claimed', costPerSub: 'enabler metrics only' },
+  { lane: 'Awareness air cover', budget: '3,000', gross: 'no claim', qual: '—', subs: '0 claimed', costPerSub: 'enabler metrics only' },
   { lane: 'Reserve', budget: '3,000', gross: '—', qual: '—', subs: '—', costPerSub: 'unallocated until the Day-14 gate' },
 ];
 
@@ -796,6 +810,16 @@ const DM_TIMELINE = [
 ];
 
 function DmPlan() {
+  const [dmBack, setDmBack] = useState<string | null>(null);
+  const jump = (target: string, from: string) => {
+    setDmBack(from);
+    document.getElementById(target)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+  const backTo = () => {
+    if (!dmBack) return;
+    document.getElementById(dmBack)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setDmBack(null);
+  };
   return (
     <div className="space-y-5">
       <p className="rounded-xl border-l-4 bg-white px-4 py-3 text-[12.5px] font-medium leading-snug" style={{ borderColor: GOLD, color: NAVY, fontFamily: 'Georgia, serif' }}>
@@ -804,7 +828,7 @@ function DmPlan() {
         face-to-face — rev. 4 names it and funds it. Media money is inherently an online instrument (offline lanes
         run on staffed cost, priced in the Finance bridge), so the split lives in outcomes and effort, not in the
         media ledger. The AED 30,000, sliced: Google 6 · Meta 9 · LinkedIn 3 · field-sales enablement
-        6 · awareness 3 · reserve 3. Every lane feeds the same spine (enquiry → qualified → checkout → paid → card
+        6 · awareness air cover 3 · reserve 3. Every lane feeds the same spine (enquiry → qualified → checkout → paid → card
         active → booked → attended) under its own source code; the smart/dynamic-creatives blocker stands and is
         worked around, not wished away.
       </p>
@@ -823,8 +847,18 @@ function DmPlan() {
             </thead>
             <tbody>
               {DM_CHANNELS.map((c) => (
-                <tr key={c.channel} className="border-t align-top" style={{ borderColor: '#EEEFE1' }}>
-                  <td className="px-2.5 py-1.5 font-bold" style={{ color: NAVY }}>{c.channel}</td>
+                <tr key={c.channel} id={`dmrow-${c.thesis}`} className="border-t align-top" style={{ borderColor: '#EEEFE1' }}>
+                  <td className="px-2.5 py-1.5 font-bold" style={{ color: NAVY }}>
+                    <button
+                      type="button"
+                      onClick={() => jump(c.thesis, `dmrow-${c.thesis}`)}
+                      className="text-left font-bold underline decoration-dotted underline-offset-2 hover:decoration-solid"
+                      style={{ color: NAVY }}
+                      title="Opens this channel's full investment thesis — a back link returns here"
+                    >
+                      {c.channel} ↓
+                    </button>
+                  </td>
                   <td className="px-2.5 py-1.5" style={{ color: '#3a4148' }}>{c.role}</td>
                   <td className="px-2.5 py-1.5" style={{ color: '#3a4148' }}>{c.execution}</td>
                   <td className="px-2.5 py-1.5 tabular-nums" style={{ color: OLIVE }}>{c.budget}</td>
@@ -854,8 +888,30 @@ function DmPlan() {
         </p>
         <div className="space-y-2">
           {DM_THESES.map((r) => (
-            <div key={r.ch} className="rounded-xl border bg-white p-3.5" style={{ borderColor: LINE }}>
-              <p className="text-[12px] font-bold" style={{ color: NAVY }}>{r.ch}</p>
+            <div key={r.ch} id={r.id} className="rounded-xl border bg-white p-3.5" style={{ borderColor: LINE }}>
+              <div className="flex items-start justify-between gap-2">
+                <p className="text-[12px] font-bold" style={{ color: NAVY }}>{r.ch}</p>
+                {dmBack === `dmrow-${r.id}` && (
+                  <button
+                    type="button"
+                    onClick={backTo}
+                    className="whitespace-nowrap rounded-full border px-2 py-0.5 text-[10px] font-bold"
+                    style={{ borderColor: LINE, color: BLUE, backgroundColor: '#F7F7F0' }}
+                  >
+                    ↩ Back to the channel plan
+                  </button>
+                )}
+              </div>
+              {r.id === 'th-google' && (
+                <button
+                  type="button"
+                  onClick={() => jump('dm-keywords', r.id)}
+                  className="mt-1 text-[10.5px] font-bold underline decoration-dotted underline-offset-2 hover:decoration-solid"
+                  style={{ color: BLUE }}
+                >
+                  Full keyword bid list + live-account confirmation → D1c
+                </button>
+              )}
               <div className="mt-1.5 grid gap-2 md:grid-cols-3">
                 <div>
                   <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: BLUE }}>Why invest</p>
@@ -875,8 +931,18 @@ function DmPlan() {
         </div>
       </section>
 
-      <section>
-        <Exhibit n="D1c" title="Google Search — the keyword plan and its slice of the 6,000 (planning estimates, AED)" />
+      <section id="dm-keywords">
+        <Exhibit n="D1c" title="Google Search — the keyword bid list shared with Mr Akbar (planning estimates, AED)" />
+        {dmBack === 'th-google' && (
+          <button
+            type="button"
+            onClick={backTo}
+            className="mb-2 rounded-full border px-2 py-0.5 text-[10px] font-bold"
+            style={{ borderColor: LINE, color: BLUE, backgroundColor: '#F7F7F0' }}
+          >
+            ↩ Back to the Google thesis
+          </button>
+        )}
         <div className="overflow-x-auto rounded-xl border bg-white" style={{ borderColor: LINE }}>
           <table className="w-full border-collapse text-[10.5px]">
             <thead>
@@ -884,6 +950,7 @@ function DmPlan() {
                 <th className="px-2.5 py-2 font-bold">Cluster</th><th className="px-2.5 py-2 text-right font-bold">Slice</th>
                 <th className="px-2.5 py-2 font-bold">Keywords we bid</th>
                 <th className="px-2.5 py-2 text-right font-bold">Est. avg CPC</th><th className="px-2.5 py-2 text-right font-bold">Est. CPL</th>
+                <th className="px-2.5 py-2 font-bold">In live account?</th>
                 <th className="px-2.5 py-2 font-bold">Role</th>
               </tr>
             </thead>
@@ -895,6 +962,7 @@ function DmPlan() {
                   <td className="px-2.5 py-1.5" style={{ color: '#3a4148' }}>{k.kws}</td>
                   <td className="px-2.5 py-1.5 text-right tabular-nums" style={{ color: '#3a4148' }}>{k.cpc}</td>
                   <td className="px-2.5 py-1.5 text-right tabular-nums" style={{ color: '#3a4148' }}>{k.cpl}</td>
+                  <td className="px-2.5 py-1.5 whitespace-nowrap font-bold" style={{ color: k.live.startsWith('TO CONFIRM') || k.live.startsWith('Negative') ? '#7a6420' : '#2C5E3F' }}>{k.live}</td>
                   <td className="px-2.5 py-1.5" style={{ color: OLIVE }}>{k.role}</td>
                 </tr>
               ))}
@@ -902,7 +970,11 @@ function DmPlan() {
           </table>
         </div>
         <p className="mt-2 rounded-lg px-3 py-2 text-[11px] font-medium" style={{ backgroundColor: '#FDF9EC', color: '#6d5a1d' }}>
-          Slices sum to the 6,000 pilot (500 + 4,500 + 500 + 500). CPC ranges are Keyword Planner planning
+          Slices sum to the 6,000 pilot (500 + 4,500 + 500 + 500). The campaign is LIVE but live keyword
+          coverage is NOT assumed: our sync reads campaign-level data only, so every cluster above — including
+          “dental checkup cost dubai” — is confirmed inside the Google Ads account itself (owner: Fahad, by 23
+          Sep); any missing keyword is added at confirmation and the status column flips to CONFIRMED, dated.
+          This table is the definitive bid list shared with Mr Akbar. CPC ranges are Keyword Planner planning
           estimates for Dubai dental (Sep 2026), not promises; CPL = CPC ÷ landing-page conversion. Kill rule per
           cluster: evaluated at minimum AED 300 spend AND a 7-day maturity lag for qualification; zero matured
           qualified leads reads “no result yet”, never CPL 0; a cluster pauses when its matured CPQL exceeds 200.
