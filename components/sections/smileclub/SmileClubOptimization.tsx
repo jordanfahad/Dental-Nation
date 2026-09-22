@@ -2165,15 +2165,14 @@ export function SmileClubOptimization() {
           Smile Club — membership growth plan
         </h1>
         <p className="mt-1 max-w-[720px] text-[12px] leading-snug text-ink-soft">
-          Prepared for Mr Akbar · rev. 5, 22 Sep 2026 — restructured on Mr Akbar&apos;s strategy review:
-          demand architecture before economics (Why &amp; proposition), personalised messaging per layer and
-          demand state (no single speech), and corporate rebuilt as a B2B2C system whose North Star is
-          activated members, not signed contracts · rev. 4 (channel sense check, 70/30 doctrine) · rev. 3
-          (adversarial review, 16 findings) · rev. 2, 12 Sep (external review) · Gautam&apos;s 30-day
-          activation mandate (v4, 16 Sep) mapped in. A focused, measurable pilot — offer validation, contribution
-          economics and capacity as expansion gates, one defined corporate pilot through warm doors, offline
-          deferred until the evidence earns it — now running against the owner&apos;s mandated outcome: 120 paid
-          memberships by 21 October (clock re-based to the 22 Sep kick-start).
+          Prepared for Mr Akbar · rev. 5 · 22 Sep 2026. Demand architecture first, economics second:
+          personalised messaging by layer, corporate run as a B2B2C system, engaged members as the North Star.
+          Delivering Gautam&apos;s 30-day mandate — <span className="font-semibold">120 paid memberships by
+          21 October</span> (kick-start 22 Sep) — through a focused, evidence-gated pilot.
+        </p>
+        <p className="mt-1 max-w-[720px] text-[10px] leading-snug" style={{ color: OLIVE }}>
+          Revision trail: rev. 5 strategy restructure (Mr Akbar) · rev. 4 channel sense check &amp; 70/30
+          doctrine · rev. 3 adversarial review (16 findings) · rev. 2 external review · mandate v4, 16 Sep.
         </p>
       </header>
       <div className="flex flex-wrap gap-1.5 border-b pb-2" style={{ borderColor: LINE }}>
