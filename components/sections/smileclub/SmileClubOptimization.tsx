@@ -239,13 +239,13 @@ const CHECKPOINTS = [
   { d: '21 Oct · Day 30', plan: 120, min: 120 },
 ];
 
-const REGISTER = [
-  { act: 'Accept the commercial mandate', dl: '22 Sep 10:00', who: 'Fahad', out: '120 by 21 Oct; bulk CRM target 0 — targets, deadlines and guardrails acknowledged in writing.' },
-  { act: 'Submit the quantified marketing response', dl: '22 Sep EOD', who: 'Fahad', out: '100% of the 120 mapped: source forecast, qualified demand, conversion, spend, CAC, launch date, owner.' },
-  { act: 'Close the historical CRM test', dl: '23 Sep EOD', who: 'Gautam shares data · Fahad reviews', out: '71 replies classified, 417 failures coded, new bulk sends 0 — reconciled to payment and membership records. Campaign-level numbers received via the 12 Sep progress update (5 sends, 1,280 non-unique reach, 863 delivered); the payment-record reconciliation review remains.' },
-  { act: 'Activate the first acquisition portfolio', dl: '24 Sep EOD', who: 'Fahad', out: 'Every live activity has source, spend, forecast, destination and response owner.' },
-  { act: 'Checkpoints (Day 7 / 14 / 21)', dl: '28 Sep · 5 Oct · 12 Oct', who: 'Fahad + Smile Club Coordinator; Day 21 with Gautam', out: '36/30 → 60/50 → 88/75 cumulative paid; recovery plan next business day if missed.' },
-  { act: 'Complete the mandate', dl: '21 Oct', who: 'Gautam → Mr Akbar', out: '120 paid, active, non-refunded, source-coded; ≥98% data and attribution; Finance-validated.' },
+const REGISTER: { act: string; dl: string; who: string; out: string; to: Sub; toLabel: string }[] = [
+  { act: 'Accept the commercial mandate', dl: '22 Sep 10:00', who: 'Fahad', out: '120 by 21 Oct; bulk CRM target 0 — targets, deadlines and guardrails acknowledged in writing. The acceptance in practice is the delivery plan itself:', to: 'response', toLabel: 'Delivery plan' },
+  { act: 'Submit the quantified marketing response', dl: '22 Sep EOD', who: 'Fahad', out: '100% of the 120 mapped: source forecast, qualified demand, conversion, spend, CAC, launch date, owner — ALREADY IN THIS DOCUMENT:', to: 'response', toLabel: 'Delivery plan R1' },
+  { act: 'Close the historical CRM test', dl: '23 Sep EOD', who: 'Gautam shares data · Fahad reviews', out: '71 replies classified, 417 failures coded, new bulk sends 0 — reconciled to payment and membership records. Campaign-level numbers received via the 12 Sep progress update (5 sends, 1,280 non-unique reach, 863 delivered); the payment-record reconciliation review remains. Evidence to date:', to: 'waves', toLabel: 'Wave 1 results (5b)' },
+  { act: 'Activate the first acquisition portfolio', dl: '24 Sep EOD', who: 'Fahad', out: 'Every live activity has source, spend, forecast, destination and response owner — the portfolio is the channel plan:', to: 'dm', toLabel: 'DM plan D1' },
+  { act: 'Checkpoints (Day 7 / 14 / 21)', dl: '28 Sep · 5 Oct · 12 Oct', who: 'Fahad + Smile Club Coordinator; Day 21 with Gautam', out: '36/30 → 60/50 → 88/75 cumulative paid; recovery plan next business day if missed. Cadence and gates:', to: 'kpis', toLabel: 'Controls' },
+  { act: 'Complete the mandate', dl: '21 Oct', who: 'Gautam → Mr Akbar', out: '120 paid, active, non-refunded, source-coded; ≥98% data and attribution; Finance-validated. How each condition is measured:', to: 'kpis', toLabel: 'Measurement' },
 ];
 
 const MANDATE_MAP: { req: string; ours: string; to: Sub; toLabel: string }[] = [
@@ -333,7 +333,9 @@ function MandateTab() {
                   <td className="px-3 py-1.5 font-semibold" style={{ color: NAVY }}>{r.act}</td>
                   <td className="px-3 py-1.5 whitespace-nowrap font-bold" style={{ color: CORAL }}>{r.dl}</td>
                   <td className="px-3 py-1.5" style={{ color: OLIVE }}>{r.who}</td>
-                  <td className="px-3 py-1.5" style={{ color: '#3a4148' }}>{r.out}</td>
+                  <td className="px-3 py-1.5" style={{ color: '#3a4148' }}>
+                    {r.out} <Jump to={r.to}>{r.toLabel}</Jump>
+                  </td>
                 </tr>
               ))}
             </tbody>
