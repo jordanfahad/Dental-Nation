@@ -42,7 +42,7 @@ const MINT = '#A9C3A6';
 const OLIVE = '#767769';
 const LINE = '#D8D8CC';
 
-type Sub = 'reco' | 'mandate' | 'response' | 'dm' | 'offer' | 'waves' | 'corporate' | 'channels' | 'kpis';
+type Sub = 'why' | 'layers' | 'reco' | 'mandate' | 'response' | 'dm' | 'offer' | 'waves' | 'corporate' | 'channels' | 'kpis';
 
 /* ── atoms ─────────────────────────────────────────────────────── */
 
@@ -838,7 +838,9 @@ function DmPlan() {
         media ledger. The AED 30,000, sliced: Google 6 · Meta 9 · LinkedIn 3 · field-sales enablement
         6 · awareness air cover 3 · reserve 3. Every lane feeds the same spine (enquiry → qualified → checkout → paid → card
         active → booked → attended) under its own source code; the smart/dynamic-creatives blocker stands and is
-        worked around, not wished away.
+        worked around, not wished away. Every lane serves named audience layers and demand states — the
+        personalised message map is in <Jump to="layers">Layers &amp; demand states</Jump>; a message aimed at
+        no state does not run.
       </p>
 
       <section>
@@ -1336,28 +1338,556 @@ function Waves() {
   );
 }
 
-function Corporate() {
+/* ── rev. 5: demand architecture (Mr Akbar's strategy review, 22 Sep) ── */
+
+const CONSUMER_JOBS: { job: string; thought: string; answer: string }[] = [
+  { job: 'Protect me', thought: '“I don’t want a surprise dental bill.”', answer: 'Predictable annual membership — fewer unpleasant surprises.' },
+  { job: 'Keep me healthy', thought: '“I want to avoid expensive problems.”', answer: 'Preventive care built in: small problems caught before they become expensive ones.' },
+  { job: 'Make it simple', thought: '“I don’t understand dental pricing.”', answer: 'Clear member pricing — no decoding, no claims journey for membership benefits.' },
+  { job: 'Look after my family', thought: '“I want someone responsible for our teeth.”', answer: 'Family membership: one dental home managing everyone’s oral health.' },
+  { job: 'Give me access', thought: '“When I need a dentist, I want someone good, quickly.”', answer: 'DN network + priority appointment access.' },
+]
+
+const LANG_DICT: { avoid: string; use: string }[] = [
+  { avoid: 'Dental insurance / corporate dental insurance', use: 'Dental membership / corporate dental membership' },
+  { avoid: 'Premium', use: 'Membership fee' },
+  { avoid: 'Policy / policy limit', use: 'Membership programme / membership entitlement' },
+  { avoid: 'Insured / covered employees', use: 'Member / eligible employees → activated members' },
+  { avoid: 'Coverage', use: 'Included benefits / included member services' },
+  { avoid: 'Claim', use: 'Member service' },
+  { avoid: '“We cover your treatment up to AED X”', use: 'Specified included services + preferred member rates' },
+  { avoid: '“Dental insurance without calling it insurance”', use: 'Complementary employee dental benefit beside existing insurance' },
+]
+
+function WhyTab() {
   return (
     <div className="space-y-5">
+      <p className="rounded-xl border-l-4 bg-white px-4 py-3 text-[13px] font-medium leading-snug" style={{ borderColor: GOLD, color: NAVY, fontFamily: 'Georgia, serif' }}>
+        <span className="font-bold">The single source of truth (Mr Akbar, 22 Sep):</span>{' '}
+        Smile Club is not Dental Nation selling cheaper dentistry. It is Dental Nation converting episodic
+        dental patients into continuously cared-for members by making prevention, access and dental spending
+        simpler, more predictable and more valuable. The product economics come AFTER this demand
+        architecture — not before.
+      </p>
+
       <section>
-        <Exhibit n={6} title="Three corporate models — reported separately, never blurred" />
-        <div className="grid gap-2 md:grid-cols-3">
-          {MODELS.map((m) => (
-            <div key={m.n} className="rounded-xl border-2 bg-white p-3" style={{ borderColor: LINE }}>
-              <p className="text-[11px] font-bold" style={{ color: NAVY }}><span className="mr-1.5 inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] text-white" style={{ backgroundColor: NAVY }}>{m.n}</span>{m.name}</p>
-              <p className="mt-1.5 text-[10.5px] leading-snug" style={{ color: OLIVE }}>{m.text}</p>
-            </div>
+        <Exhibit n="W1" title="The need — nobody wakes up wanting a dental subscription" />
+        <p className="mb-2 text-[11px]" style={{ color: OLIVE }}>
+          “I need a dental subscription” is our product language, not the customer&apos;s. The actual demand pool
+          sounds like this — and UAE insurance structure creates it: basic plans often carry little or no routine
+          dental benefit, and enhanced plans add sub-limits, co-pays and exclusions.
+        </p>
+        <div className="flex flex-wrap gap-1.5">
+          {[
+            '“Dentists are expensive.”', '“I don’t know what my insurance covers.”',
+            '“Every time I go, they find something.”', '“I don’t want a AED 5,000 surprise.”',
+            '“I have kids — something is always happening.”', '“I haven’t been in a year.”',
+            '“I want good dentists without premium prices every time.”', '“My insurance covers medical; dental is terrible.”',
+          ].map((s) => (
+            <span key={s} className="rounded-full border px-2.5 py-1 text-[10.5px] italic" style={{ borderColor: LINE, color: NAVY, backgroundColor: 'white' }}>{s}</span>
           ))}
         </div>
-        <p className="mt-2 text-[11px]" style={{ color: OLIVE }}>
-          Vocabulary: <span className="font-semibold" style={{ color: NAVY }}>eligible employees → paid enrolments → activated members</span> (plus
-          registered beneficiaries on family plans) — never &quot;employees covered&quot;. The promise is{' '}
-          <span className="font-semibold" style={{ color: NAVY }}>low administration with responsibilities agreed upfront</span>, not &quot;zero admin&quot;.
+        <p className="mt-2 text-[11.5px] font-semibold" style={{ color: NAVY }}>
+          So Smile Club does not fundamentally sell dentistry. It sells: predictability + prevention + access +
+          privilege + trust.
         </p>
       </section>
 
       <section>
-        <Exhibit n={7} title="One defined pilot — the full specification" />
+        <Exhibit n="W2" title="Five jobs-to-be-done — what the member hires Smile Club to do" />
+        <div className="overflow-x-auto rounded-xl border bg-white" style={{ borderColor: LINE }}>
+          <table className="w-full border-collapse text-[11px]">
+            <thead>
+              <tr className="text-left text-[9.5px] uppercase tracking-wide" style={{ color: OLIVE, backgroundColor: '#F7F7F0' }}>
+                <th className="px-3 py-2 font-bold">Job</th><th className="px-3 py-2 font-bold">The consumer thought</th><th className="px-3 py-2 font-bold">Smile Club answer</th>
+              </tr>
+            </thead>
+            <tbody>
+              {CONSUMER_JOBS.map((j) => (
+                <tr key={j.job} className="border-t align-top" style={{ borderColor: '#EEEFE1' }}>
+                  <td className="px-3 py-1.5 font-bold whitespace-nowrap" style={{ color: NAVY }}>{j.job}</td>
+                  <td className="px-3 py-1.5 italic" style={{ color: '#3a4148' }}>{j.thought}</td>
+                  <td className="px-3 py-1.5" style={{ color: '#3a4148' }}>{j.answer}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <Exhibit n="W3" title="The proposition — four pillars, one sentence" />
+        <div className="grid gap-2 md:grid-cols-4">
+          {([
+            ['PREVENT', 'Routine oral-health maintenance — don’t wait for problems.'],
+            ['PROTECT', 'Reduce the probability of expensive neglected problems.'],
+            ['SAVE', 'Transparent preferred-member economics — privilege, not “30% off everything”.'],
+            ['BELONG', 'An ongoing relationship: patient → MEMBER. Dental Nation knows your history year after year.'],
+          ] as [string, string][]).map(([t, d]) => (
+            <div key={t} className="rounded-xl border bg-white p-3" style={{ borderColor: LINE }}>
+              <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: BLUE }}>{t}</p>
+              <p className="mt-1 text-[10.5px] leading-snug" style={{ color: '#3a4148' }}>{d}</p>
+            </div>
+          ))}
+        </div>
+        <p className="mt-2 rounded-lg px-3 py-2 text-[11.5px] font-medium" style={{ backgroundColor: '#F4F7F6', color: NAVY }}>
+          “Smile Club gives you a simple way to stay ahead of dental problems, access Dental Nation throughout
+          the year and enjoy preferred member benefits — without the complexity normally associated with dental
+          care.” Brand idea: <span className="font-bold">Stay Ahead of Your Smile.</span> The membership journey
+          the product must deliver after purchase: activate → baseline assessment → Smile Score → My Smile Plan →
+          prevention → recall → annual value statement → renewal → family extension (Smile Score, My Smile Plan
+          and the annual value statement are BUILD items, owner assignment at the 28 Sep review).
+        </p>
+      </section>
+
+      <section>
+        <Exhibit n="W4" title="Regulatory language dictionary — before any word goes to market" />
+        <p className="mb-2 text-[11px]" style={{ color: OLIVE }}>
+          Smile Club is a Dental Nation membership programme, NOT an insurance policy or a substitute for
+          mandatory health insurance. Health-insurance activity requires authorisation in Dubai, and renaming
+          &quot;insurance&quot; to &quot;subscription&quot; does not change regulatory classification — the benefit
+          architecture stays on specified services, access rights and preferred rates, never open-ended promises
+          to pay uncertain treatment costs. Final vocabulary is legal-approved before launch.
+        </p>
+        <div className="overflow-x-auto rounded-xl border bg-white" style={{ borderColor: LINE }}>
+          <table className="w-full border-collapse text-[11px]">
+            <thead>
+              <tr className="text-left text-[9.5px] uppercase tracking-wide" style={{ color: OLIVE, backgroundColor: '#F7F7F0' }}>
+                <th className="px-3 py-2 font-bold" style={{ width: '50%' }}>Avoid (until legally cleared)</th><th className="px-3 py-2 font-bold">Use</th>
+              </tr>
+            </thead>
+            <tbody>
+              {LANG_DICT.map((r) => (
+                <tr key={r.avoid} className="border-t align-top" style={{ borderColor: '#EEEFE1' }}>
+                  <td className="px-3 py-1.5" style={{ color: CORAL }}>{r.avoid}</td>
+                  <td className="px-3 py-1.5 font-semibold" style={{ color: '#2C5E3F' }}>{r.use}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="mt-2 text-[10.5px]" style={{ color: OLIVE }}>
+          Positioning to test: “A benefit employees can actually see, understand and use” · “Dental Nation care,
+          built into your employee experience” (corporate) · “Stay ahead of your smile” (consumer). Never:
+          “Dental insurance for your employees without insurance.”
+        </p>
+      </section>
+
+      <p className="text-[11px]" style={{ color: OLIVE }}>
+        This architecture governs everything downstream: the audience layers and demand states it serves are in{' '}
+        <Jump to="layers">Layers &amp; demand states</Jump>, the B2B2C system it powers is the{' '}
+        <Jump to="corporate">Corporate playbook</Jump>, and the 30-day machinery executing against it is the{' '}
+        <Jump to="dm">Digital marketing plan</Jump>.
+      </p>
+    </div>
+  );
+}
+
+/* Consumer layers × demand states — different layer, different message,
+ * different channel. The direct answer to "single speech for all". */
+const DEMAND_STATES: { state: string; who: string; message: string; channel: string }[] = [
+  { state: '1 · Unaware', who: '“My teeth are fine.” No immediate demand.', message: 'Create prevention awareness: “Small problems become expensive problems. Stay ahead of them.”', channel: 'Awareness air cover (geo) · organic proof content · GMB presence — never a hard sell' },
+  { state: '2 · Neglect / procrastination', who: 'Knows they should go; postpones. Our biggest competitor.', message: '“Your dental care is already planned for the year.” Reduce friction, pre-commitment.', channel: 'Reactivation CRM (lapsed DN patients, personalised 1-to-1) · recall triggers · sticky banner' },
+  { state: '3 · Cost anxiety', who: 'Afraid of the AED 10,000 verdict.', message: '“Know where you stand before problems become expensive.” Loss-aversion frame, not savings %.', channel: 'Google cost-intent search (the paid core test) · cost-guide pages + membership module' },
+  { state: '4 · Insurance frustration', who: '“I have insurance but dental isn’t covered.”', message: '“Your medical insurance and your dental membership do different jobs.” Complement — never attack insurance.', channel: 'Insurance-gap search cluster · content answering coverage questions → consult → membership' },
+  { state: '5 · Active dental need', who: 'Toothache, broken filling, cleaning due — already high intent.', message: 'Solve TODAY’S problem first; introduce Smile Club as continuity at the point of care — never lead with “buy Smile Club”.', channel: 'Clinic campaigns → front desk at checkout (the In-clinic-60 engine) · triggered WhatsApp follow-up' },
+  { state: '6 · Planned treatment', who: 'Implants, ortho, veneers — “I’m spending anyway; does membership add value?”', message: 'Membership as the economic accelerator on treatment already planned.', channel: 'Chair-side + treatment-plan trigger (open-plan CRM template) · consult close' },
+  { state: '7 · Family responsibility', who: 'Parents — “someone should manage the family’s teeth.”', message: '“One membership. One dental home for the family.” Belonging, not saving.', channel: 'Family/parent creators & influencers (per-code tracked) · school/community activations (CSR) · Meta family creative' },
+  { state: '8 · Existing DN patient', who: 'Already trusts DN — the cheapest acquisition there is.', message: '“You’re already part of Dental Nation. Smile Club makes staying with us easier.”', channel: 'Front desk · recall · post-treatment touch · personalised CRM — the installed base carries the 60' },
+]
+
+function LayersTab() {
+  return (
+    <div className="space-y-5">
+      <p className="rounded-xl border-l-4 bg-white px-4 py-3 text-[12.5px] font-medium leading-snug" style={{ borderColor: GOLD, color: NAVY, fontFamily: 'Georgia, serif' }}>
+        <span className="font-bold">One speech for all is dead.</span>{' '}
+        Smile Club serves different layers in different demand states — an unaware scroller, a lapsed patient to
+        reactivate, a parent, an insurance-frustrated searcher and a patient in the chair need different messages
+        on different channels. Every campaign, template and landing page below is tagged to one state; a message
+        aimed at no state does not run.
+      </p>
+
+      <section>
+        <Exhibit n="L1" title="The demand-state map — layer → message → best activity & channel" />
+        <div className="overflow-x-auto rounded-xl border bg-white" style={{ borderColor: LINE }}>
+          <table className="w-full border-collapse text-[10.5px]">
+            <thead>
+              <tr className="text-left text-[9.5px] uppercase tracking-wide" style={{ color: OLIVE, backgroundColor: '#F7F7F0' }}>
+                <th className="px-2.5 py-2 font-bold">Demand state (layer)</th><th className="px-2.5 py-2 font-bold">Who this is</th>
+                <th className="px-2.5 py-2 font-bold">The message (personalised)</th><th className="px-2.5 py-2 font-bold">Best activity & channel</th>
+              </tr>
+            </thead>
+            <tbody>
+              {DEMAND_STATES.map((d) => (
+                <tr key={d.state} className="border-t align-top" style={{ borderColor: '#EEEFE1' }}>
+                  <td className="px-2.5 py-1.5 font-bold whitespace-nowrap" style={{ color: NAVY }}>{d.state}</td>
+                  <td className="px-2.5 py-1.5" style={{ color: '#3a4148' }}>{d.who}</td>
+                  <td className="px-2.5 py-1.5" style={{ color: '#3a4148' }}>{d.message}</td>
+                  <td className="px-2.5 py-1.5" style={{ color: OLIVE }}>{d.channel}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="mt-2 text-[10.5px]" style={{ color: OLIVE }}>
+          Rule: different channel = different message. A searcher asking “does my insurance cover root canal?”
+          never sees “JOIN SMILE CLUB TODAY” — they see help understanding their options, then a consult, then
+          membership as continuity. Instagram may ask “when was your last check-up?” — different intent,
+          different creative, different landing page, different CTA.
+        </p>
+      </section>
+
+      <section>
+        <Exhibit n="L2" title="The psychology doing the work" />
+        <div className="grid gap-2 md:grid-cols-4">
+          {([
+            ['Loss aversion', 'People hate a surprise AED 3,000 bill more than they dislike AED 75/month. Communicate “fewer unpleasant surprises”, not only savings.'],
+            ['Mental accounting', 'AED 900 at once feels painful; AED 75/month feels manageable — economically similar, psychologically different.'],
+            ['Prevention paradox', 'Prevention’s benefit feels distant, so people postpone. Membership creates pre-commitment: “I’ve joined, so I should use my check-up.”'],
+            ['Endowment effect', 'Once someone is “a Smile Club member”, they move from transactional patient to belonging. This is why it is never called a discount plan.'],
+          ] as [string, string][]).map(([t, d]) => (
+            <div key={t} className="rounded-xl border bg-white p-3" style={{ borderColor: LINE }}>
+              <p className="text-[10.5px] font-bold uppercase tracking-wide" style={{ color: BLUE }}>{t}</p>
+              <p className="mt-1 text-[10px] leading-snug" style={{ color: '#3a4148' }}>{d}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section>
+        <Exhibit n="L3" title="How the 30-day machinery maps to the layers" />
+        <p className="text-[11.5px] leading-snug" style={{ color: '#3a4148' }}>
+          The delivery plan already runs one engine per high-value layer: state 8 (existing patients) is the{' '}
+          <Jump to="response">In-clinic-60</Jump>, state 5 is the front-desk close + triggered WhatsApp, state 3
+          is the Google cost-intent pilot, state 4 is the insurance-gap cluster, state 7 is the affiliate/creator
+          and CSR lanes, state 2 is reactivation CRM, and state 1 gets only the bounded awareness air cover.
+          Corporate buyers are a different market entirely — B2B demand states, triggers and journeys live in the{' '}
+          <Jump to="corporate">Corporate playbook</Jump>. Budget stays where the mandate put it; what changes is
+          that every dirham now carries a named layer and a personalised message instead of one speech.
+        </p>
+      </section>
+    </div>
+  );
+}
+
+/* ── Corporate rebuilt as a B2B2C system (Mr Akbar's architecture, 22 Sep) ── */
+
+const CORP_MESSAGES: { who: string; message: string }[] = [
+  { who: 'CEO', message: '“Strengthen the employee experience with a healthcare benefit people can actually use.”' },
+  { who: 'CHRO', message: '“Add a visible dental benefit without redesigning your entire medical insurance programme.”' },
+  { who: 'Benefits manager', message: '“Simple administration, clear eligibility and measurable utilisation.”' },
+  { who: 'CFO', message: '“Defined per-employee cost with controllable benefit architecture.”' },
+  { who: 'Procurement', message: '“Clear SLA, pricing, governance and contractual structure.”' },
+  { who: 'Employee', message: '“Your company is making dental care easier.”' },
+]
+
+const EMP_JOBS: { job: string; hr: string; answer: string }[] = [
+  { job: 'Improve benefits', hr: '“Our benefits feel basic.”', answer: 'Add a visible dental benefit' },
+  { job: 'Control cost', hr: '“Insurance upgrades are expensive.”', answer: 'Defined membership economics' },
+  { job: 'Retain talent', hr: '“Benefits matter to employees.”', answer: 'Tangible everyday benefit' },
+  { job: 'Support wellbeing', hr: '“We want preventive programmes.”', answer: 'Preventive dental pathway' },
+  { job: 'Simplify access', hr: '“Employees don’t know where to go.”', answer: 'Preferred DN network' },
+  { job: 'Differentiate employer', hr: '“We need EVP advantages.”', answer: 'Branded employee membership' },
+]
+
+const CORP_SEGMENTS: { seg: string; size: string; traits: string; prop: string }[] = [
+  { seg: 'A · SMEs', size: '20–200', traits: 'Limited benefits sophistication, price-sensitive, fast decisions, owner/GM involved.', prop: '“Give your employees a meaningful dental benefit without upgrading your entire medical policy.” Easiest initial market — the field-sales door plan starts here.' },
+  { seg: 'B · Mid-market', size: '200–1,000', traits: 'Formal HR; needs engagement, reporting, procurement, employee categories.', prop: '“A measurable preventive dental benefit integrated into your employee-benefits programme.”' },
+  { seg: 'C · Enterprise', size: '1,000+', traits: 'Banks, developers, airlines, GREs, hospitality. Ask for SLAs, capacity, governance, data protection.', prop: 'Longer sale, dramatically larger accounts — enters the pipeline via brokers and warm doors, not cold knocks.' },
+  { seg: 'D · Frontline-heavy', size: 'Any', traits: 'Hospitality, retail, logistics, security, F&B — employees often on basic medical benefits.', prop: '“High perceived employee value at controlled employer cost.” Prime Essential-tier territory.' },
+  { seg: 'E · Premium talent', size: 'Any', traits: 'Consulting, finance, tech, law. Different psychology — never “cheap dental care”.', prop: '“Premium preventive dental access as part of a sophisticated employee experience.”' },
+  { seg: 'F · Schools', size: 'Staff first', traits: 'Staff programme initially; later staff + families + wider family initiatives.', prop: 'Staff benefit now, family funnel later.' },
+]
+
+const CORP_STATES: { state: string; signal: string; play: string }[] = [
+  { state: '1 · No perceived problem', signal: '“Our insurance is fine.”', play: 'Don’t sell — create the category: “How much dental protection does your current employee health plan actually provide?”' },
+  { state: '2 · Benefits gap recognised', signal: '“Our dental coverage is weak.”', play: 'High-potential: “You don’t need to redesign your medical plan to improve dental access.”' },
+  { state: '3 · Insurance renewal', signal: 'Reviewing premiums, networks, exclusions.', play: 'THE biggest B2B demand moment — renewal month goes on every account record.' },
+  { state: '4 · Employee complaints', signal: '“My dental isn’t covered.”', play: 'Immediate HR pain — fastest sales cycle.' },
+  { state: '5 · Benefits benchmarking', signal: '“What are competitors providing?”', play: 'Sell Smile Club as an EVP product.' },
+  { state: '6 · Cost pressure', signal: 'More perceived benefit without premium increases.', play: 'The cost-control story: defined per-employee economics.' },
+  { state: '7 · Talent / retention initiative', signal: 'EVP, wellness, retention programmes.', play: 'Position inside the total-rewards architecture.' },
+  { state: '8 · Wellness programme', signal: 'Health checks, mental wellbeing, fitness running already.', play: 'Dental slots in naturally as the next pillar.' },
+]
+
+const CORP_LADDER: { tier: string; who: string; inside: string }[] = [
+  { tier: 'Corporate Essential', who: 'Large populations / frontline workforces (segments A, D)', inside: 'Annual dental assessment · preventive check-up · defined diagnostic benefits · member rates · priority access · recall.' },
+  { tier: 'Corporate Plus', who: 'Mid-market standard (segment B)', inside: 'Essential + additional hygiene/prevention · enhanced member rates · expanded services · better access privileges.' },
+  { tier: 'Corporate Premium', who: 'Executives / premium talent (segment E)', inside: 'Higher preventive utilisation · premium appointment access · concierge · executive oral-health assessment · cosmetic consultation.' },
+  { tier: 'Family Add-On', who: 'Every tier', inside: 'Employer pays employee; employee upgrades to spouse/family — DN revenue without employer funding it. Employee → Employee + Spouse → Family.' },
+]
+
+const CORP_IMPL: { t: string; what: string }[] = [
+  { t: 'T-30', what: 'Contract signed' },
+  { t: 'T-21', what: 'Employee eligibility data received' },
+  { t: 'T-14', what: 'Employee communications prepared (radically simple: “Your company has given you Smile Club — activate in 60 seconds”, never an eight-page PDF)' },
+  { t: 'T-7', what: 'HR briefing (FAQ, launch pack, support line, clear exclusions — internal political safety)' },
+  { t: 'Launch', what: 'CEO/HR announcement + QR + landing page' },
+  { t: 'Weeks 1–4', what: 'Activation drive + on-site/virtual onboarding' },
+  { t: 'Month 1 / 3', what: 'First activation report / first utilisation report' },
+  { t: 'Quarterly', what: 'Business review — aggregated dashboard' },
+  { t: 'Month 9–10', what: 'Renewal strategy begins — NEVER waiting until month 12; the annual value report leads the conversation' },
+]
+
+function Corporate() {
+  return (
+    <div className="space-y-5">
+      <p className="rounded-xl border-l-4 bg-white px-4 py-3 text-[12.5px] font-medium leading-snug" style={{ borderColor: GOLD, color: NAVY, fontFamily: 'Georgia, serif' }}>
+        <span className="font-bold">Smile Club Corporate is a B2B2C system, run almost as its own business unit — not a bulk discount on the consumer product.</span>{' '}
+        The person who buys it (employer) is not the person who uses it (employee), so there are two
+        transformations to engineer: Employer → Distribution Partner, and Employee → Member. It sells a practical
+        employee dental benefit that sits BESIDE employer health insurance — never pretending to be insurance —
+        because HR&apos;s real problems are “our health insurance doesn&apos;t provide meaningful dental”,
+        “upgrading everyone&apos;s package is expensive” and “we want benefits employees actually use”. The
+        strategic prize is institutional distribution: employers, brokers and schools continuously feeding
+        members into the DN network — worth far more than the membership fee alone.
+      </p>
+
+      <section>
+        <Exhibit n="C1" title="Two simultaneous journeys — the fundamental design fact" />
+        <div className="grid gap-3 md:grid-cols-2">
+          <Card accent={NAVY}>
+            <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: NAVY }}>Employer journey (the sale)</p>
+            <p className="mt-1.5 text-[11px] leading-relaxed" style={{ color: '#3a4148' }}>
+              Need → Trigger → Discovery (“How is dental currently handled within your employee health
+              benefits?”) → Benefits Gap Assessment → Business case → Proposal (16-section standard) →
+              Procurement / legal → Implementation → Launch → Adoption → Reporting → Business review → Renewal →
+              Expansion (family, subsidiaries, tiers).
+            </p>
+          </Card>
+          <Card accent={BLUE}>
+            <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: BLUE }}>Employee journey (the value)</p>
+            <p className="mt-1.5 text-[11px] leading-relaxed" style={{ color: '#3a4148' }}>
+              Company launch → “What is Smile Club / is it included for me?” → Activate (60 seconds) → Book →
+              First assessment → Smile Score → My Smile Plan → Prevention → Treatment if required → Recall →
+              Ongoing membership → Family upgrade → Advocacy.
+            </p>
+            <p className="mt-1.5 text-[10.5px] font-bold" style={{ color: CORAL }}>
+              The contract means nothing if employees don&apos;t activate — ACTIVATION RATE is the primary KPI.
+            </p>
+          </Card>
+        </div>
+      </section>
+
+      <section>
+        <Exhibit n="C2" title="Three customers, six messages — never one speech" />
+        <p className="mb-2 text-[11px]" style={{ color: OLIVE }}>
+          Economic buyer (CEO/CFO/HR Director/Procurement — “why should our company pay?”), programme owner
+          (HR/People &amp; Culture/Benefits — “how hard is this to run?”) and employee (“why should I care?”)
+          need completely different communication. This is where most B2B healthcare offers fail.
+        </p>
+        <div className="grid gap-2 md:grid-cols-3">
+          {CORP_MESSAGES.map((m) => (
+            <div key={m.who} className="rounded-xl border bg-white p-3" style={{ borderColor: LINE }}>
+              <p className="text-[10px] font-bold uppercase tracking-wide" style={{ color: BLUE }}>{m.who}</p>
+              <p className="mt-1 text-[10.5px] italic leading-snug" style={{ color: NAVY }}>{m.message}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section>
+        <Exhibit n="C3" title="The six employer jobs-to-be-done" />
+        <div className="overflow-x-auto rounded-xl border bg-white" style={{ borderColor: LINE }}>
+          <table className="w-full border-collapse text-[11px]">
+            <thead>
+              <tr className="text-left text-[9.5px] uppercase tracking-wide" style={{ color: OLIVE, backgroundColor: '#F7F7F0' }}>
+                <th className="px-3 py-2 font-bold">Employer job</th><th className="px-3 py-2 font-bold">What HR/CFO thinks</th><th className="px-3 py-2 font-bold">Smile Club answer</th>
+              </tr>
+            </thead>
+            <tbody>
+              {EMP_JOBS.map((j) => (
+                <tr key={j.job} className="border-t align-top" style={{ borderColor: '#EEEFE1' }}>
+                  <td className="px-3 py-1.5 font-bold whitespace-nowrap" style={{ color: NAVY }}>{j.job}</td>
+                  <td className="px-3 py-1.5 italic" style={{ color: '#3a4148' }}>{j.hr}</td>
+                  <td className="px-3 py-1.5" style={{ color: '#3a4148' }}>{j.answer}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="mt-2 text-[10.5px]" style={{ color: OLIVE }}>
+          So the product is simultaneously: healthcare benefit + employee experience + HR tool + retention tool +
+          wellbeing programme + distribution channel for DN. It never sells “two cleanings + 20% discount”.
+        </p>
+      </section>
+
+      <section>
+        <Exhibit n="C4" title="Market map — six segments, sold differently" />
+        <div className="overflow-x-auto rounded-xl border bg-white" style={{ borderColor: LINE }}>
+          <table className="w-full border-collapse text-[10.5px]">
+            <thead>
+              <tr className="text-left text-[9.5px] uppercase tracking-wide" style={{ color: OLIVE, backgroundColor: '#F7F7F0' }}>
+                <th className="px-2.5 py-2 font-bold">Segment</th><th className="px-2.5 py-2 font-bold">Headcount</th>
+                <th className="px-2.5 py-2 font-bold">Characteristics</th><th className="px-2.5 py-2 font-bold">Proposition & route in</th>
+              </tr>
+            </thead>
+            <tbody>
+              {CORP_SEGMENTS.map((s) => (
+                <tr key={s.seg} className="border-t align-top" style={{ borderColor: '#EEEFE1' }}>
+                  <td className="px-2.5 py-1.5 font-bold whitespace-nowrap" style={{ color: NAVY }}>{s.seg}</td>
+                  <td className="px-2.5 py-1.5 whitespace-nowrap tabular-nums" style={{ color: OLIVE }}>{s.size}</td>
+                  <td className="px-2.5 py-1.5" style={{ color: '#3a4148' }}>{s.traits}</td>
+                  <td className="px-2.5 py-1.5" style={{ color: '#3a4148' }}>{s.prop}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <Exhibit n="C5" title="Corporate demand states + the trigger map that goes into CRM" />
+        <div className="overflow-x-auto rounded-xl border bg-white" style={{ borderColor: LINE }}>
+          <table className="w-full border-collapse text-[10.5px]">
+            <thead>
+              <tr className="text-left text-[9.5px] uppercase tracking-wide" style={{ color: OLIVE, backgroundColor: '#F7F7F0' }}>
+                <th className="px-2.5 py-2 font-bold">Demand state</th><th className="px-2.5 py-2 font-bold">Signal</th><th className="px-2.5 py-2 font-bold">Play</th>
+              </tr>
+            </thead>
+            <tbody>
+              {CORP_STATES.map((s) => (
+                <tr key={s.state} className="border-t align-top" style={{ borderColor: '#EEEFE1' }}>
+                  <td className="px-2.5 py-1.5 font-bold whitespace-nowrap" style={{ color: NAVY }}>{s.state}</td>
+                  <td className="px-2.5 py-1.5 italic" style={{ color: '#3a4148' }}>{s.signal}</td>
+                  <td className="px-2.5 py-1.5" style={{ color: '#3a4148' }}>{s.play}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="mt-2 grid gap-2 md:grid-cols-4">
+          {([
+            ['Calendar triggers', 'Insurance renewal · annual budgeting · new financial year · open enrollment · Ramadan wellbeing · World Oral Health Day · back-to-school · year-end HR planning'],
+            ['Organisational triggers', 'Rapid recruitment · new office · M&A · new HR director · benefits redesign · salary restructuring · engagement programme'],
+            ['Pain triggers', 'Premium increase · employee complaints · poor benefit utilisation · retention difficulty · competitor benefits'],
+            ['Relationship triggers', 'Existing DN corporate client · corporate patient volume · executive patient · DN ambassador · school/community partnership'],
+          ] as [string, string][]).map(([t, d]) => (
+            <div key={t} className="rounded-xl border bg-white p-3" style={{ borderColor: LINE }}>
+              <p className="text-[10px] font-bold uppercase tracking-wide" style={{ color: CORAL }}>{t}</p>
+              <p className="mt-1 text-[10px] leading-snug" style={{ color: '#3a4148' }}>{d}</p>
+            </div>
+          ))}
+        </div>
+        <p className="mt-2 text-[10.5px]" style={{ color: OLIVE }}>
+          Every trigger event is recorded on the account in CRM — the field-sales door plan works trigger-first,
+          not alphabetically.
+        </p>
+      </section>
+
+      <section>
+        <Exhibit n="C6" title="Product ladder + funding flexibility — never one plan, never one price" />
+        <div className="grid gap-2 md:grid-cols-2">
+          {CORP_LADDER.map((l) => (
+            <div key={l.tier} className="rounded-xl border bg-white p-3" style={{ borderColor: LINE }}>
+              <p className="text-[11px] font-bold" style={{ color: NAVY }}>{l.tier}</p>
+              <p className="text-[9.5px] font-semibold uppercase tracking-wide" style={{ color: BLUE }}>{l.who}</p>
+              <p className="mt-1 text-[10.5px] leading-snug" style={{ color: '#3a4148' }}>{l.inside}</p>
+            </div>
+          ))}
+        </div>
+        <div className="mt-2 grid gap-2 md:grid-cols-4">
+          {([
+            ['1 · Employer-funded', 'Company buys membership for everyone.'],
+            ['2 · Employer-subsidised', 'Company pays a share (e.g. 50%); employee pays the remainder.'],
+            ['3 · Voluntary employee-paid', 'Employer gives access to preferential corporate membership at no major employer cost.'],
+            ['4 · Hybrid', 'Core benefit employer-funded; employee upgrades (Plus / Family) on top — the easiest structure to sell.'],
+          ] as [string, string][]).map(([t, d]) => (
+            <div key={t} className="rounded-xl border bg-white p-3" style={{ borderColor: LINE }}>
+              <p className="text-[10px] font-bold uppercase tracking-wide" style={{ color: '#2C5E3F' }}>{t}</p>
+              <p className="mt-1 text-[10px] leading-snug" style={{ color: '#3a4148' }}>{d}</p>
+            </div>
+          ))}
+        </div>
+        <p className="mt-2 text-[10.5px]" style={{ color: OLIVE }}>
+          Benefit architecture stays on specified services, access rights and preferred rates — anything closer
+          to “we cover uncertain future treatment costs” moves toward insurance territory and needs the legal
+          review in <Jump to="why">the regulatory dictionary</Jump> before it is ever written down. A
+          “Smile Credits / Flex” allowance concept is interesting but is legal-review-first, not launch material.
+        </p>
+      </section>
+
+      <section>
+        <Exhibit n="C7" title="Distribution: account-based, broker-friendly — never mass advertising" />
+        <div className="grid gap-3 md:grid-cols-2">
+          <Card accent={NAVY}>
+            <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: NAVY }}>The ABM engine — 100 target accounts</p>
+            <p className="mt-1.5 text-[11px] leading-snug" style={{ color: '#3a4148' }}>
+              No “corporate dental membership available!” advertising. Choose 100 named accounts and hold, per
+              account: company · headcount · locations · industry · decision maker · medical insurer · broker ·
+              insurance-renewal month · current dental provision · relationship owner · opportunity value ·
+              demand state. Communicate according to account state. This is the Smile Club Corporate Account
+              Intelligence Map — the build starts with the ~60 doors of the field-sales plan and grows to 100.
+            </p>
+          </Card>
+          <Card accent={BLUE}>
+            <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: BLUE }}>Channels, in order of expected conversion</p>
+            <p className="mt-1.5 text-[11px] leading-snug" style={{ color: '#3a4148' }}>
+              1 · Existing DN corporate relationships (highest-converting). 2 · Direct sales — founder/CEO
+              network, CHROs, benefits managers (the door plan). 3 · Insurance brokers &amp; benefit consultants —
+              make Smile Club a benefit they can recommend beside medical insurance, not a competitor (a formal
+              “Smile Club Partner” broker product is a scale-phase build). 4 · HR consultancies. 5 · Chambers,
+              business councils, free-zone communities. 6 · Benefits marketplaces / HR platforms. Lead magnet for
+              all of them: the free Dental Benefits Gap Assessment (five questions → “your dental benefits gap
+              score”).
+            </p>
+          </Card>
+        </div>
+      </section>
+
+      <section>
+        <Exhibit n="C8" title="North Star, dashboard and renewal psychology" />
+        <div className="grid gap-3 md:grid-cols-2">
+          <Card accent={CORAL}>
+            <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: CORAL }}>North Star: Active Corporate Smile Members</p>
+            <p className="mt-1.5 text-[11px] leading-snug" style={{ color: '#3a4148' }}>
+              Not signed contracts, not eligible names: eligible members who have ACTIVATED and engaged in
+              preventive care within the period. Ten companies × 10,000 names that never activate are worth less
+              than 10,000 genuinely engaged members. Metric groups: sales (pipeline, win rate, cycle) ·
+              implementation (time-to-launch, activation rate, first-booking rate) · utilisation (preventive
+              visits/member, attendance) · economics (revenue/member, corporate CAC, member LTV) · retention
+              (corporate renewal, family add-ons, NPS).
+            </p>
+          </Card>
+          <Card accent={BLUE}>
+            <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: BLUE }}>The HR dashboard & annual value report</p>
+            <p className="mt-1.5 text-[11px] leading-snug" style={{ color: '#3a4148' }}>
+              HR sees aggregated numbers only: eligibility, activation %, active users, preventive visits,
+              attendance, satisfaction, family upgrades, membership value used — NEVER individual clinical
+              information. Before renewal HR receives “Your Smile Club Year” so the conversation is “here&apos;s
+              what the programme accomplished”, not “do you want to spend another AED 800K?”. Renewal rests on
+              four questions: did employees use it, did they like it, was it easy for HR, can HR defend the
+              spend. The product is dentistry + technology + reporting + account management.
+            </p>
+          </Card>
+        </div>
+      </section>
+
+      <section>
+        <Exhibit n="C9" title="Implementation runbook — contract to renewal" />
+        <div className="overflow-x-auto rounded-xl border bg-white" style={{ borderColor: LINE }}>
+          <table className="w-full border-collapse text-[10.5px]">
+            <tbody>
+              {CORP_IMPL.map((r) => (
+                <tr key={r.t} className="border-t align-top" style={{ borderColor: '#EEEFE1' }}>
+                  <td className="px-2.5 py-1.5 font-bold whitespace-nowrap" style={{ color: CORAL }}>{r.t}</td>
+                  <td className="px-2.5 py-1.5" style={{ color: '#3a4148' }}>{r.what}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="mt-2 text-[10.5px]" style={{ color: OLIVE }}>
+          Once signed, the employer becomes a distribution channel: new-joiner onboarding (“your benefits
+          include Smile Club — activate”), dental check month, family month, recall campaigns — continuous
+          internal demand under the employer&apos;s code. The flywheel: contract → activation → preventive visits
+          → positive experience → HR value visibility → renewal → family upgrades → subsidiary expansion → more
+          members → network value.
+        </p>
+      </section>
+
+      <section>
+        <Exhibit n="C10" title="The 30-day slice of all this — what runs now" />
         <Card>
           <ul className="grid gap-1.5 md:grid-cols-2">
             {PILOT_SPEC.map((s) => (
@@ -1368,42 +1898,46 @@ function Corporate() {
           </ul>
           <div className="mt-3">
             <Note tone="blue">
-              Warm discovery runs in parallel from day one. Live door status — Michael Page closed 21 Sep
-              (dental already in their medical; referral secured), Assembly Global awaiting, ArabyAds scheduled —
-              is tracked in <Jump to="dm">Corporate outreach (Exhibit D3)</Jump>. Discovery conversations do not
-              wait for a finished patient case study; only the broad outbound push does.
+              The mandate window runs the seed of this system: one defined pilot through warm doors, the
+              field-sales door plan (segment A first, trigger-led), and the three funding models offered per
+              employer. Live door status — Michael Page closed 21 Sep (dental already in their medical; referral
+              secured), Assembly Global awaiting, ArabyAds scheduled — tracked in{' '}
+              <Jump to="dm">Corporate outreach (D3)</Jump>. The full B2B2C build-out (broker product, HR portal,
+              ABM tooling, Smile Score) is sequenced for the scale phase with the 21 Oct review.
             </Note>
           </div>
         </Card>
-      </section>
-
-      <section className="grid gap-3 md:grid-cols-2">
-        <Card>
-          <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: CORAL }}>The objection we must beat</p>
-          <p className="mt-2 rounded-lg px-3 py-2 text-[11.5px] italic leading-snug" style={{ backgroundColor: '#FBEFEC', color: NAVY }}>
-            &quot;Why Dental Nation? Our employees could get a membership anywhere.&quot;
-          </p>
-          <p className="mt-2 text-[11.5px] leading-snug" style={{ color: '#3a4148' }}>
-            Answered with the clinic trust signals we hold today (4.9★, 60 public reviews verified 14 Sep, three branches, named
-            doctors) plus membership-specific evidence as the pilot produces it — usage, savings, member experience.
-            Clinic reviews are trust signals; they are not by themselves proof of membership value.
-          </p>
-        </Card>
-        <Card>
-          <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: BLUE }}>Reporting & permissions</p>
-          <ul className="mt-2 space-y-1.5">
-            {[
-              'Aggregated employer reporting only — never individual treatment information; small groups handled so no one is identifiable.',
-              'Employee feedback, photos or testimonials only with appropriate permission.',
-              'No implied employer endorsement or logo use before it is granted.',
-              'On-site day scope, staffing, cost and clinical time estimated per event — not assumed low-cost.',
-            ].map((t) => (
-              <li key={t} className="flex gap-2 text-[11.5px] leading-snug" style={{ color: '#3a4148' }}>
-                <span className="mt-[6px] h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: MINT }} />{t}
-              </li>
-            ))}
-          </ul>
-        </Card>
+        <div className="mt-3 grid gap-3 md:grid-cols-2">
+          <Card>
+            <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: CORAL }}>The objection we must beat</p>
+            <p className="mt-2 rounded-lg px-3 py-2 text-[11.5px] italic leading-snug" style={{ backgroundColor: '#FBEFEC', color: NAVY }}>
+              &quot;Why Dental Nation? Our employees could get a membership anywhere.&quot;
+            </p>
+            <p className="mt-2 text-[11.5px] leading-snug" style={{ color: '#3a4148' }}>
+              Answered with the clinic trust signals we hold today (4.9★, 60 public reviews verified 14 Sep,
+              three branches, named doctors) plus membership-specific evidence as the pilot produces it — usage,
+              savings, member experience — and the category frame: unlike insurance upgrades, clinic discounts or
+              discount platforms, Smile Club is designed-in prevention + predictable employer cost + dental
+              continuity + a member relationship on the DN network.
+            </p>
+          </Card>
+          <Card>
+            <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: BLUE }}>Reporting & permissions</p>
+            <ul className="mt-2 space-y-1.5">
+              {[
+                'Aggregated employer reporting only — never individual treatment information; small groups handled so no one is identifiable.',
+                'Employee feedback, photos or testimonials only with appropriate permission.',
+                'No implied employer endorsement or logo use before it is granted.',
+                'On-site day scope, staffing, cost and clinical time estimated per event — not assumed low-cost.',
+                'Vocabulary: eligible employees → paid enrolments → activated members — never “employees covered”. Low administration with responsibilities agreed upfront, not “zero admin”.',
+              ].map((t) => (
+                <li key={t} className="flex gap-2 text-[11.5px] leading-snug" style={{ color: '#3a4148' }}>
+                  <span className="mt-[6px] h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: MINT }} />{t}
+                </li>
+              ))}
+            </ul>
+          </Card>
+        </div>
       </section>
     </div>
   );
@@ -1494,8 +2028,11 @@ function Channels() {
           </table>
         </div>
         <p className="mt-2 rounded-lg px-3 py-2 text-[11px] font-medium" style={{ backgroundColor: '#FDF9EC', color: '#6d5a1d' }}>
-          The trigger for ever testing broad offline is evidence and a bounded measurement plan — not simply
-          &quot;digital is saturated&quot;.
+          Ruling (Mr Akbar, 22 Sep): random broad awareness — billboards included — makes no sense for a
+          target market that is mostly B2B. Radio and billboards stay deferred; the only offline that runs is
+          precise and attributable (corporate on-site days, door-to-door, community events), and the trigger for
+          ever testing broad offline is evidence and a bounded measurement plan — not &quot;digital is
+          saturated&quot;.
         </p>
       </section>
     </div>
@@ -1505,6 +2042,30 @@ function Channels() {
 function Kpis() {
   return (
     <div className="space-y-5">
+      <section>
+        <Exhibit n="K0" title="North Star (rev. 5) — engaged members, not subscriptions sold" />
+        <div className="grid gap-3 md:grid-cols-2">
+          <Card accent={NAVY}>
+            <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: NAVY }}>Consumer: Active Preventively Engaged Members</p>
+            <p className="mt-1.5 text-[11px] leading-snug" style={{ color: '#3a4148' }}>
+              Members who have activated AND engaged in preventive care within the period — not the raw
+              subscription count. A membership that never books is churn waiting to happen; the mandate&apos;s
+              120 paid contracts remain the 30-day outcome, and this North Star is what makes them worth
+              having at renewal. Supporting metric: % of new members booking their first visit within 30 days.
+            </p>
+          </Card>
+          <Card accent={BLUE}>
+            <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: BLUE }}>Corporate: Active Corporate Smile Members</p>
+            <p className="mt-1.5 text-[11px] leading-snug" style={{ color: '#3a4148' }}>
+              Eligible employees who activated and engaged — never signed contracts or eligible headcount.
+              Primary KPI per account: ACTIVATION RATE. The governing comparison across the whole programme is
+              member LTV vs non-member LTV — a AED 700 membership is extraordinarily valuable if it turns a
+              one-time patient into a five-year DN household. Full metric groups in the{' '}
+              <Jump to="corporate">Corporate playbook (C8)</Jump>.
+            </p>
+          </Card>
+        </div>
+      </section>
       <section>
         <Exhibit n={11} title="Measurement — defined denominators, no invented targets" />
         <div className="overflow-x-auto rounded-xl border bg-white" style={{ borderColor: LINE }}>
@@ -1561,6 +2122,8 @@ function Kpis() {
 /* ── the tab ───────────────────────────────────────────────────── */
 
 const SUBS: { id: Sub; label: string }[] = [
+  { id: 'why', label: 'Why & proposition' },
+  { id: 'layers', label: 'Layers & demand states' },
   { id: 'reco', label: 'The recommendation' },
   { id: 'mandate', label: '30-day mandate' },
   { id: 'response', label: '30-day delivery plan' },
@@ -1575,7 +2138,7 @@ const SUBS: { id: Sub; label: string }[] = [
 const SUB_LABELS: Record<string, string> = Object.fromEntries(SUBS.map((s) => [s.id, s.label]));
 
 export function SmileClubOptimization() {
-  const [sub, setSub] = useState<Sub>('reco');
+  const [sub, setSub] = useState<Sub>('why');
   // The return trail: cross-reference jumps remember their origin so the
   // reader (Mr Akbar) can follow any thread and come straight back.
   const [trail, setTrail] = useState<Sub[]>([]);
@@ -1602,10 +2165,11 @@ export function SmileClubOptimization() {
           Smile Club — membership growth plan
         </h1>
         <p className="mt-1 max-w-[720px] text-[12px] leading-snug text-ink-soft">
-          Prepared for Mr Akbar · rev. 4, 22 Sep 2026 — final channel set under a 70% offline / 30% online
-          doctrine: paid concentrated on a gated Google pilot + Meta, corporate field sales and a bounded
-          awareness layer funded · rev. 3, 21 Sep (adversarial review, 16 findings) · rev. 2, 12 Sep
-          (external review) · Gautam&apos;s 30-day
+          Prepared for Mr Akbar · rev. 5, 22 Sep 2026 — restructured on Mr Akbar&apos;s strategy review:
+          demand architecture before economics (Why &amp; proposition), personalised messaging per layer and
+          demand state (no single speech), and corporate rebuilt as a B2B2C system whose North Star is
+          activated members, not signed contracts · rev. 4 (channel sense check, 70/30 doctrine) · rev. 3
+          (adversarial review, 16 findings) · rev. 2, 12 Sep (external review) · Gautam&apos;s 30-day
           activation mandate (v4, 16 Sep) mapped in. A focused, measurable pilot — offer validation, contribution
           economics and capacity as expansion gates, one defined corporate pilot through warm doors, offline
           deferred until the evidence earns it — now running against the owner&apos;s mandated outcome: 120 paid
@@ -1627,8 +2191,9 @@ export function SmileClubOptimization() {
       <div className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[10.5px]" style={{ color: OLIVE }}>
         <span className="font-bold uppercase tracking-widest" style={{ color: CORAL }}>The argument</span>
         {([
-          ['reco', 'Diagnosis'], ['mandate', 'Mandate'], ['offer', 'Offer & economics'],
-          ['response', 'Funding & targets'], ['dm', 'Channel machinery'], ['channels', 'Eligibility'],
+          ['why', 'Why & proposition'], ['layers', 'Who & when'], ['reco', 'Diagnosis'],
+          ['mandate', 'Mandate'], ['offer', 'Offer & economics'], ['response', 'Funding & targets'],
+          ['dm', 'Channel machinery'], ['corporate', 'B2B2C system'], ['channels', 'Eligibility'],
           ['waves', 'Evidence to date'], ['kpis', 'Controls'],
         ] as [Sub, string][]).map(([id, label], i) => (
           <span key={id} className="flex items-center gap-1.5">
@@ -1654,6 +2219,8 @@ export function SmileClubOptimization() {
       ) : null}
       <SubNavContext.Provider value={{ goto }}>
       <div className="mt-3">
+        {sub === 'why' && <WhyTab />}
+        {sub === 'layers' && <LayersTab />}
         {sub === 'reco' && <Recommendation />}
         {sub === 'mandate' && <MandateTab />}
         {sub === 'response' && <ResponseTab />}
