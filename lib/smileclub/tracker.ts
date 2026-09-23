@@ -11,6 +11,7 @@ import {
   type TaskEvent,
   type TaskProgress,
   type TrackerState,
+  type VerifyResult,
 } from '@/lib/smileclub/team';
 
 /** Calendar day in Dubai — the clinics' day, independent of server timezone. */
@@ -30,7 +31,7 @@ interface TaskRow {
   id: string;
   external_id: string;
   status: string | null;
-  raw: { stage?: number; note?: string | null; updated_by?: string | null } | null;
+  raw: { stage?: number; note?: string | null; updated_by?: string | null; verify?: VerifyResult | null } | null;
   updated_at: string | null;
 }
 
@@ -61,6 +62,7 @@ export async function loadTracker(): Promise<TrackerState> {
       note: r.raw?.note ?? null,
       updatedAt: r.updated_at,
       updatedBy: r.raw?.updated_by ?? null,
+      verify: r.raw?.verify ?? null,
     };
   }
 

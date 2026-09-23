@@ -13,8 +13,11 @@
  */
 
 import { createContext, useContext, useState } from 'react';
-import { updateTeamTaskAction } from '@/app/(app)/smileclub-actions';
+import { updateTeamTaskAction, verifyCrmTestAction } from '@/app/(app)/smileclub-actions';
+import { SEGMENTS, type SegmentId } from '@/lib/smileclub/segments';
 import {
+  CRM_TEST_SPEC,
+  OWNER_LABEL,
   TASK_BY_KEY,
   TEAM_TASKS,
   TOTAL_WEIGHT,
@@ -56,7 +59,7 @@ const MINT = '#A9C3A6';
 const OLIVE = '#767769';
 const LINE = '#D8D8CC';
 
-type Sub = 'why' | 'layers' | 'reco' | 'mandate' | 'response' | 'team' | 'dm' | 'offer' | 'waves' | 'corporate' | 'channels' | 'kpis';
+type Sub = 'segments' | 'why' | 'layers' | 'reco' | 'mandate' | 'response' | 'team' | 'dm' | 'offer' | 'waves' | 'corporate' | 'channels' | 'kpis';
 
 /* ── atoms ─────────────────────────────────────────────────────── */
 
@@ -451,7 +454,7 @@ interface ResponseRow {
 const RESPONSE_ROWS: ResponseRow[] = [
   {
     source: 'Existing DN clinics', target: 60,
-    summary: 'Front desk sells at the checkout moment — 20 per branch, the biggest engine.',
+    summary: 'Rev. 6 split: 36 in the chair (dentist recommends, reception closes — 12 per branch) + 24 from each dentist’s own WhatsApp to their own patients.',
     owner: 'Front desk + Dr Luvi · reported by Smile Club Coordinator',
     launch: 'LIVE since 18–19 Sep', code: 'SC-ALW / SC-TOS / SC-AMC (QR per branch)',
     approach: 'The patient is already in the chair and already trusts us — the cheapest acquisition there is. The sale happens at the CHECKOUT moment, when the bill is in front of them and membership is visibly the cheaper way to keep coming back. No media, no cold pitch: a scripted conversation by trained reception staff, with a structured objection log when it is a no.',
@@ -876,9 +879,9 @@ const DM_CHANNELS: DmChannel[] = [
     status: 'NEW — doors from w/c 22 Sep', statusColor: CORAL, thesis: 'th-fieldsales',
   },
   {
-    channel: 'Awareness air cover — Dental Nation brand', role: 'Targeted air cover, deliberately NOT called brand awareness: AED 3,000 cannot buy brand awareness and does not claim to. It warms exactly where the other lanes harvest — geo cells around the three branches and the agent’s door territories. The full DN brand-awareness campaign is a costed scale-phase proposal for the 21 Oct review (D1b).',
+    channel: 'Community awareness — offline (rev. 6)', role: 'Targeted air cover, deliberately NOT called brand awareness: AED 3,000 cannot buy brand awareness and does not claim to. It warms exactly where the other lanes harvest — geo cells around the three branches and the agent’s door territories. The full DN brand-awareness campaign is a costed scale-phase proposal for the 21 Oct review (D1b).',
     execution: 'Bounded geo burst: IG/FB reach around the three branches + LinkedIn boost on the agent’s door territories; organic IG proof content rides here (TikTok deferred, asset-blocked). Judged on ENABLER metrics only — branded-search lift, direct traffic, GMB profile views, meeting-acceptance rate — never on CPL.',
-    budget: 'AED 3,000 (air cover, bounded)',
+    budget: 'AED 3,000 — moved from digital to schools, buildings, gyms and pharmacies near the branches',
     contrib: 'No subscription claim — declared enabler: 30 days of subs cannot judge awareness',
     status: 'NEW — w/c 22 Sep', statusColor: BLUE, thesis: 'th-awareness',
   },
@@ -2342,6 +2345,7 @@ function Kpis() {
 const TEAM: { id: Person; name: string; role: string; color: string; owns: string }[] = [
   { id: 'fahad', name: 'Fahad', role: 'Growth lead — reports to Mr Akbar', color: '#5B4B8A', owns: 'Runs the marketing machine — Google, Facebook/Instagram, LinkedIn and the partner channels — works the warm corporate introductions, gets Mr Akbar’s sign-offs, and reports progress every checkpoint Monday.' },
   { id: 'crm', name: 'CRM-DN', role: 'WhatsApp, web pages, tracking & contact centre', color: '#7A5C2E', owns: 'Runs the WhatsApp messages, the membership web page and banner, the contact centre’s 10-minute replies, and the tracking that proves where every member came from. Fahad updates these tasks.' },
+  { id: 'doctors', name: 'Treating dentists', role: 'Dr Hasna · Dr Tosun · Dr Maisoon · every treating dentist', color: '#1F6F6B', owns: 'Recommend Smile Club in one sentence at the end of every check-up, and write — in their own name, only to their own patients — the three waves of personal WhatsApp messages. Dr Luvi updates these tasks.' },
   { id: 'gautam', name: 'Gautam', role: 'Project owner & corporate implementer', color: NAVY, owns: 'Owns the mandate and its data, carries the corporate door-to-door bag in-window, and implements every signed employer (proposal → launch → activation).' },
   { id: 'luvi', name: 'Dr Luvi', role: 'Head of Operations', color: '#2C5E3F', owns: 'Owns the front-desk engine behind In-clinic-60, branch capacity, clinical review of every claim, and clinical delivery of on-site days. Updates the receptionists’ tasks on their behalf.' },
   { id: 'mohan', name: 'Mohan', role: 'Videographer & content designer', color: CORAL, owns: 'The creative unlock: produces the asset variety the dynamic formats need, plus every print, video and launch kit the other lanes depend on.' },
@@ -2358,6 +2362,7 @@ const WEEKS: { n: number; label: string; gate: string }[] = [
 
 const RHYTHMS: { who: Person; items: string[] }[] = [
   { who: 'fahad', items: ['Daily: read the end-of-day numbers — members by source, ad spend, enquiries', 'Monday: one-page progress report to Mr Akbar', 'Weekly: ad performance review with Mohan — keep, cut or remake'] },
+  { who: 'doctors', items: ['Every check-up or cleaning: the one-sentence recommendation + the signed invitation card', 'During a wave: up to 20 messages a day to your own patients only; every reply answered the same day', 'Friday: what patients said back, to Dr Luvi'] },
   { who: 'crm', items: ['Every enquiry answered within 10 minutes and tagged “membership” or “appointment”', 'Daily: late replies reviewed at the 09:00 meeting', 'Weekly: tracking spot-check — every new member shows where they came from'] },
   { who: 'gautam', items: ['Mon: checkpoint or weekly resource decision', 'Daily: EOD scorecard read · meeting log updated after every door', 'Weekly: pipeline coverage vs ≥72 equivalents'] },
   { who: 'luvi', items: ['Daily 09:00: per-branch count + objection log review (with the Smile Club Coordinator)', 'Daily 16:00: recovery queue for any branch behind pace', 'Weekly: clinical sign-off on new creative and claims'] },
@@ -2425,9 +2430,76 @@ function fmtAt(iso: string | null): string {
   return new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Dubai', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(iso));
 }
 
-function TaskCard({ t, p, today, color, editable, onSave }: {
+function crmTemplateCsv(): string {
+  const rows = [
+    CRM_TEST_SPEC.columns.join(','),
+    'reply,MSG-0001,appointment,no',
+    'reply,MSG-0002,membership,yes',
+    'failure,MSG-0103,wrong number,',
+    'failure,MSG-0104,opted out,',
+  ];
+  return rows.join('\n');
+}
+
+function EvidenceBox({ p, editable, onVerified }: { p: TaskProgress | undefined; editable: boolean; onVerified: (s: TrackerState) => void }) {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const v = p?.verify ?? null;
+  const download = () => {
+    const blob = new Blob([crmTemplateCsv()], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'smile-club-whatsapp-test-reconciliation-template.csv';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+  const submit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setBusy(true); setErr(null);
+    const r = await verifyCrmTestAction(new FormData(e.currentTarget));
+    setBusy(false);
+    if (!r.ok) setErr(r.error); else onVerified(r.state);
+  };
+  return (
+    <div className="mt-2 rounded-lg border px-2.5 py-2" style={{ borderColor: v?.pass ? '#b8d3bd' : GOLD, backgroundColor: v?.pass ? '#F2F8F3' : '#FFFCF3' }}>
+      <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: '#6d5a1d' }}>Evidence check — completes automatically</p>
+      <p className="mt-0.5 text-[10.5px] leading-snug" style={{ color: '#3a4148' }}>
+        One row per reply ({CRM_TEST_SPEC.replies}) and per failed message ({CRM_TEST_SPEC.failures}). Columns: <b>record_type</b> (reply / failure) ·
+        <b> ref</b> (message or contact ID — no names or phone numbers) · <b>outcome</b> (reply: {CRM_TEST_SPEC.replyOutcomes.join(', ')}; failure: {CRM_TEST_SPEC.failureReasons.join(', ')}) ·
+        <b> paid_membership</b> (replies: yes / no). The file is stored privately.
+      </p>
+      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+        <button type="button" onClick={download} className="rounded-full border px-2.5 py-1 text-[10.5px] font-bold" style={{ borderColor: LINE, color: NAVY }}>⬇ Download the template</button>
+        {editable ? (
+          <form onSubmit={submit} className="flex flex-wrap items-center gap-1.5">
+            <input type="file" name="file" accept=".xlsx,.xls,.csv" required className="text-[10.5px]" />
+            <button type="submit" disabled={busy} className="rounded-full px-2.5 py-1 text-[10.5px] font-bold text-white disabled:opacity-40" style={{ backgroundColor: NAVY }}>{busy ? 'Checking…' : 'Upload and check'}</button>
+          </form>
+        ) : <span className="text-[10px]" style={{ color: OLIVE }}>Gautam uploads; the result appears here for everyone.</span>}
+        {err ? <span className="text-[10px] font-bold" style={{ color: '#a04a38' }}>{err}</span> : null}
+      </div>
+      {v ? (
+        <div className="mt-2">
+          <p className="text-[11px] font-bold" style={{ color: v.pass ? '#2C5E3F' : '#a04a38' }}>
+            {v.pass ? `✓ COMPLETE — the test produced ${v.confirmed} paid membership${v.confirmed === 1 ? '' : 's'}` : '✗ NOT COMPLETE YET — fix the items below and upload again'}
+          </p>
+          <ul className="mt-1 space-y-0.5">
+            {v.checks.map((c) => (
+              <li key={c.label} className="text-[10.5px]" style={{ color: c.ok ? '#2C5E3F' : '#a04a38' }}>{c.ok ? '✓' : '✗'} {c.label} <span style={{ color: OLIVE }}>— {c.detail}</span></li>
+            ))}
+          </ul>
+          {v.warnings.map((w) => <p key={w} className="text-[10px] font-bold" style={{ color: '#8a6a1e' }}>⚠ {w}</p>)}
+          <p className="mt-0.5 text-[9.5px]" style={{ color: OLIVE }}>Checked {fmtAt(v.at)} · {v.file} · uploaded by {v.by}</p>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function TaskCard({ t, p, today, color, editable, onSave, onVerified }: {
   t: TeamTask; p: TaskProgress | undefined; today: string; color: string; editable: boolean;
   onSave: (stage: number, blocked: boolean, note: string) => Promise<string | null>;
+  onVerified: (s: TrackerState) => void;
 }) {
   const stage = p?.stage ?? 0;
   const blocked = p?.status === 'blocked';
@@ -2483,14 +2555,15 @@ function TaskCard({ t, p, today, color, editable, onSave }: {
         </ol>
       </div>
       <p className="mt-2 text-[10.5px] leading-snug" style={{ color: '#3a4148' }}><span className="font-bold" style={{ color: NAVY }}>Done looks like:</span> {t.done}</p>
+      {t.verify ? <EvidenceBox p={p} editable={editable} onVerified={onVerified} /> : null}
       {p?.note ? <p className="mt-1 rounded px-2 py-1 text-[10.5px]" style={{ backgroundColor: '#FDF9EC', color: '#6d5a1d' }}>Latest note: {p.note}</p> : null}
       {p?.updatedAt ? <p className="mt-1 text-[9.5px]" style={{ color: OLIVE }}>Last updated {fmtAt(p.updatedAt)}{p.updatedBy ? ` by ${p.updatedBy}` : ''}</p> : null}
       {editable ? (
         <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t pt-2" style={{ borderColor: '#EEEFE1' }}>
-          <button type="button" disabled={busy || stage === 0} onClick={() => save(stage - 1, false)} className="rounded-full border px-2.5 py-1 text-[10.5px] font-bold disabled:opacity-40" style={{ borderColor: LINE, color: OLIVE }}>◀ Undo step</button>
+          {!t.verify ? <><button type="button" disabled={busy || stage === 0} onClick={() => save(stage - 1, false)} className="rounded-full border px-2.5 py-1 text-[10.5px] font-bold disabled:opacity-40" style={{ borderColor: LINE, color: OLIVE }}>◀ Undo step</button>
           <button type="button" disabled={busy || stage >= t.steps.length} onClick={() => save(stage + 1, false, note)} className="rounded-full px-2.5 py-1 text-[10.5px] font-bold text-white disabled:opacity-40" style={{ backgroundColor: color }}>
             {stage >= t.steps.length ? 'Complete ✓' : `Mark “${t.steps[stage].s}” done ▶`}
-          </button>
+          </button></> : null}
           {stage < t.steps.length ? (
             <button type="button" disabled={busy} onClick={() => save(stage, !blocked, note)} className="rounded-full border px-2.5 py-1 text-[10.5px] font-bold" style={{ borderColor: '#dcb3aa', color: '#a04a38' }}>
               {blocked ? 'Unblock' : 'Flag blocked'}
@@ -2506,9 +2579,8 @@ function TaskCard({ t, p, today, color, editable, onSave }: {
   );
 }
 
-function TeamTab({ tracker }: { tracker: TrackerState }) {
+function TeamTab({ state, setState }: { state: TrackerState; setState: (s: TrackerState) => void }) {
   const [focus, setFocus] = useState<Person | 'all'>('all');
-  const [state, setState] = useState<TrackerState>(tracker);
   const people = focus === 'all' ? TEAM : TEAM.filter((p) => p.id === focus);
   const today = state.today;
   const canEditPerson = (p: Person) => state.canEdit === 'all' || state.canEdit.includes(p);
@@ -2694,6 +2766,7 @@ function TeamTab({ tracker }: { tracker: TrackerState }) {
                     key={x.key} t={x} p={state.progress[x.key]} today={today} color={p.color}
                     editable={canEditPerson(p.id)}
                     onSave={(stage, blocked, note) => save(x.key, stage, blocked, note)}
+                    onVerified={setState}
                   />
                 ))}
               </div>
@@ -2774,14 +2847,14 @@ function TeamTab({ tracker }: { tracker: TrackerState }) {
               {['Al Wasl · SC-ALW', 'Dr Tosun · SC-TOS', 'AMC · SC-AMC'].map((b) => (
                 <tr key={b} className="border-t" style={{ borderColor: '#EEEFE1' }}>
                   <td className="px-3 py-1.5 font-semibold" style={{ color: NAVY }}>{b}</td>
-                  {['6 (min 5)', '10 (min 9)', '15 (min 13)', '20'].map((v) => (
+                  {['4 (min 3)', '7 (min 6)', '10 (min 9)', '12'].map((v) => (
                     <td key={v} className="px-3 py-1.5 text-center tabular-nums" style={{ color: '#3a4148' }}>{v}</td>
                   ))}
                 </tr>
               ))}
               <tr className="border-t font-bold" style={{ borderColor: '#EEEFE1', backgroundColor: '#F7F7F0' }}>
-                <td className="px-3 py-1.5" style={{ color: NAVY }}>In-clinic total</td>
-                {['18', '30', '44', '60'].map((v) => (
+                <td className="px-3 py-1.5" style={{ color: NAVY }}>Chair total (of the existing-patient 60)</td>
+                {['12', '21', '30', '36'].map((v) => (
                   <td key={v} className="px-3 py-1.5 text-center tabular-nums" style={{ color: CORAL }}>{v}</td>
                 ))}
               </tr>
@@ -2789,11 +2862,188 @@ function TeamTab({ tracker }: { tracker: TrackerState }) {
           </table>
         </div>
         <p className="mt-2 text-[10.5px]" style={{ color: OLIVE }}>
-          Pro-rata assumption: in-clinic is 60 of the 120 (50%), so each branch carries half of every
-          checkpoint split three ways — 36 → 18 → 6 per branch; minimums use the checkpoint minimums (30 / 50 /
-          75) the same way, rounded up. A branch below its minimum triggers Dr Luvi&apos;s 16:00 recovery queue
-          the same day.
+          Segmented split (rev. 6): our existing patients bring 60 — 36 from the chair (12 per branch, the
+          dentist recommends and reception closes) and 24 from the dentists&apos; own WhatsApp messages, tracked
+          per dentist. A branch below its minimum triggers Dr Luvi&apos;s 16:00 recovery queue the same day.
         </p>
+      </section>
+    </div>
+  );
+}
+
+/* ── rev. 6: the plan by segment (Mr Akbar, 23 Sep — "no one solution for all") ── */
+
+function SegmentsTab({ state }: { state: TrackerState }) {
+  const [open, setOpen] = useState<SegmentId | null>('patients');
+  const { goto } = useContext(SubNavContext);
+  const today = state.today;
+  const segStats = (id: SegmentId) => {
+    const tasks = TEAM_TASKS.filter((t) => t.seg === id);
+    const w = tasks.reduce((a, t) => a + t.weight, 0);
+    const done = tasks.reduce((a, t) => a + t.weight * Math.min(1, (state.progress[t.key]?.stage ?? 0) / t.steps.length), 0);
+    const late = tasks.filter((t) => ['overdue', 'blocked'].includes(ragFor(t, state.progress[t.key], today))).length;
+    return { tasks, pct: w ? Math.round((done / w) * 100) : 0, late };
+  };
+  const total = SEGMENTS.reduce((a, s) => a + s.target, 0);
+  return (
+    <div className="space-y-5">
+      <p className="rounded-xl border-l-4 bg-white px-4 py-3 text-[13px] font-medium leading-snug" style={{ borderColor: GOLD, color: NAVY, fontFamily: 'Georgia, serif' }}>
+        <span className="font-bold">One plan per segment — never one speech for all.</span>{' '}
+        Five groups of people, each reached by the person they already trust, with its own message, its own
+        channel and its own moment to start. {total} paid memberships by 21 October. Every segment below links
+        to the tasks that deliver it, with live progress.
+      </p>
+
+      <section>
+        <Exhibit n="S1" title="The plan on one page" />
+        <div className="overflow-x-auto rounded-xl border bg-white" style={{ borderColor: LINE }}>
+          <table className="w-full min-w-[820px] border-collapse text-[10.5px]">
+            <thead>
+              <tr className="text-left text-[9.5px] uppercase tracking-wide" style={{ color: OLIVE, backgroundColor: '#F7F7F0' }}>
+                <th className="px-2.5 py-2 font-bold">Segment</th><th className="px-2.5 py-2 font-bold">Who delivers it</th>
+                <th className="px-2.5 py-2 font-bold">When it starts</th><th className="px-2.5 py-2 text-center font-bold">Target</th>
+                <th className="px-2.5 py-2 font-bold" style={{ width: 150 }}>Tasks done</th>
+              </tr>
+            </thead>
+            <tbody>
+              {SEGMENTS.map((s) => {
+                const st = segStats(s.id);
+                return (
+                  <tr key={s.id} className="border-t align-top" style={{ borderColor: '#EEEFE1' }}>
+                    <td className="px-2.5 py-1.5">
+                      <button type="button" onClick={() => { setOpen(s.id); document.getElementById(`seg-${s.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }} className="text-left font-bold underline decoration-dotted underline-offset-2" style={{ color: NAVY }}>{s.name} ↓</button>
+                      <span className="block text-[10px]" style={{ color: OLIVE }}>{s.who}</span>
+                    </td>
+                    <td className="px-2.5 py-1.5" style={{ color: '#3a4148' }}>{s.messenger}</td>
+                    <td className="px-2.5 py-1.5" style={{ color: '#3a4148' }}>{s.unlock}</td>
+                    <td className="px-2.5 py-1.5 text-center">
+                      <span className="text-[15px] font-bold tabular-nums" style={{ color: CORAL, fontFamily: 'Georgia, serif' }}>{s.target}</span>
+                      <span className="block text-[9px]" style={{ color: OLIVE }}>{s.targetNote}</span>
+                    </td>
+                    <td className="px-2.5 py-1.5">
+                      <span className="text-[11px] font-bold tabular-nums" style={{ color: NAVY }}>{st.pct}%</span>
+                      <span className="text-[9.5px]" style={{ color: OLIVE }}> · {st.tasks.length} tasks{st.late ? <b style={{ color: '#a04a38' }}> · {st.late} late</b> : null}</span>
+                      <div className="mt-1"><Bar pct={st.pct} color={st.late ? CORAL : NAVY} /></div>
+                    </td>
+                  </tr>
+                );
+              })}
+              <tr className="border-t font-bold" style={{ borderColor: '#EEEFE1', backgroundColor: '#F7F7F0' }}>
+                <td className="px-2.5 py-1.5" colSpan={3} style={{ color: NAVY }}>Total — paid, active memberships by Wed 21 Oct</td>
+                <td className="px-2.5 py-1.5 text-center text-[15px] tabular-nums" style={{ color: CORAL, fontFamily: 'Georgia, serif' }}>{total}</td>
+                <td className="px-2.5 py-1.5" />
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <Exhibit n="S2" title="Each segment — who, the message, how it is done, when it starts, what we will not do" />
+        <div className="space-y-2">
+          {SEGMENTS.map((s) => {
+            const st = segStats(s.id);
+            const isOpen = open === s.id;
+            return (
+              <div key={s.id} id={`seg-${s.id}`} className="rounded-xl border bg-white" style={{ borderColor: isOpen ? BLUE : LINE }}>
+                <button type="button" onClick={() => setOpen(isOpen ? null : s.id)} className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left">
+                  <span className="flex h-8 w-10 shrink-0 items-center justify-center rounded-lg text-[14px] font-bold tabular-nums text-white" style={{ backgroundColor: CORAL }}>{s.target}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[12.5px] font-bold" style={{ color: NAVY }}>{s.name}</span>
+                    <span className="block truncate text-[10.5px]" style={{ color: OLIVE }}>{s.owner}</span>
+                  </span>
+                  <span className="hidden w-[120px] shrink-0 md:block"><Bar pct={st.pct} color={st.late ? CORAL : NAVY} /></span>
+                  <span className="shrink-0 text-[13px] font-bold" style={{ color: BLUE }}>{isOpen ? '▾' : '▸'}</span>
+                </button>
+                {isOpen ? (
+                  <div className="border-t px-3.5 py-3" style={{ borderColor: '#EEEFE1' }}>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <div>
+                        <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: BLUE }}>Who they are</p>
+                        <p className="mt-0.5 text-[11px] leading-snug" style={{ color: '#3a4148' }}>{s.who}</p>
+                        <p className="mt-2 text-[9px] font-bold uppercase tracking-widest" style={{ color: BLUE }}>Who delivers the message</p>
+                        <p className="mt-0.5 text-[11px] leading-snug" style={{ color: '#3a4148' }}>{s.messenger}</p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: BLUE }}>What they hear</p>
+                        <p className="mt-0.5 text-[11px] italic leading-snug" style={{ color: NAVY }}>{s.message}</p>
+                        <p className="mt-2 text-[9px] font-bold uppercase tracking-widest" style={{ color: CORAL }}>When it starts</p>
+                        <p className="mt-0.5 text-[11px] leading-snug" style={{ color: '#3a4148' }}>{s.unlock}</p>
+                      </div>
+                    </div>
+                    <p className="mt-3 text-[9px] font-bold uppercase tracking-widest" style={{ color: BLUE }}>How it is done</p>
+                    <div className="mt-1 grid gap-2 md:grid-cols-2">
+                      {s.how.map((h) => (
+                        <div key={h.title} className="rounded-lg px-2.5 py-2" style={{ backgroundColor: '#FAFAF6' }}>
+                          <p className="text-[11px] font-bold" style={{ color: NAVY }}>{h.title}</p>
+                          <p className="mt-0.5 text-[10.5px] leading-snug" style={{ color: '#3a4148' }}>{h.body}</p>
+                        </div>
+                      ))}
+                    </div>
+                    {s.scripts ? (
+                      <>
+                        <p className="mt-3 text-[9px] font-bold uppercase tracking-widest" style={{ color: BLUE }}>The words — ready to use</p>
+                        <div className="mt-1 space-y-1.5">
+                          {s.scripts.map((sc) => (
+                            <div key={sc.label} className="rounded-lg border-l-4 bg-white px-2.5 py-1.5" style={{ borderColor: GOLD }}>
+                              <p className="text-[9.5px] font-bold uppercase tracking-wide" style={{ color: '#6d5a1d' }}>{sc.label}</p>
+                              <p className="text-[11px] italic leading-snug" style={{ color: NAVY }}>{sc.text}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    ) : null}
+                    <p className="mt-3 text-[9px] font-bold uppercase tracking-widest" style={{ color: CORAL }}>What we will NOT do</p>
+                    <ul className="mt-0.5 space-y-0.5">
+                      {s.notDo.map((n) => <li key={n} className="text-[10.5px]" style={{ color: '#a04a38' }}>✗ {n}</li>)}
+                    </ul>
+                    <p className="mt-3 text-[9px] font-bold uppercase tracking-widest" style={{ color: BLUE }}>The tasks that deliver it — live</p>
+                    <div className="mt-1 overflow-x-auto">
+                      <table className="w-full border-collapse text-[10.5px]">
+                        <tbody>
+                          {st.tasks.map((t) => {
+                            const pr = state.progress[t.key];
+                            const pct = Math.round(((pr?.stage ?? 0) / t.steps.length) * 100);
+                            const rag = ragFor(t, pr, today);
+                            return (
+                              <tr key={t.key} className="border-t align-middle" style={{ borderColor: '#EEEFE1' }}>
+                                <td className="py-1 pr-2 whitespace-nowrap font-bold" style={{ color: OLIVE }}>{t.due}</td>
+                                <td className="py-1 pr-2 whitespace-nowrap" style={{ color: NAVY }}>{OWNER_LABEL[t.who]}</td>
+                                <td className="py-1 pr-2" style={{ color: '#3a4148' }}>{t.task}{t.subs ? <b style={{ color: '#2C5E3F' }}> · {t.subs} subs</b> : null}</td>
+                                <td className="py-1 pr-2"><RagPill rag={rag} /></td>
+                                <td className="w-[90px] py-1"><Bar pct={pct} color={rag === 'overdue' || rag === 'blocked' ? CORAL : NAVY} /></td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                    <button type="button" onClick={() => goto('team')} className="mt-2 text-[10.5px] font-bold underline decoration-dotted" style={{ color: BLUE }}>Open these tasks in the Team task calendar ↗</button>
+                  </div>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      <section>
+        <Exhibit n="S3" title="What changed from the rejected plan" />
+        <div className="grid gap-2 md:grid-cols-2">
+          {([
+            ['Existing patients split in two', 'The 60 now come from two different moments: 36 in the chair (the dentist recommends, reception closes) and 24 from each dentist writing personally to their own patients — active, inactive and dormant, in that order.'],
+            ['WhatsApp is curated, never blanket', 'Each dentist writes only to their own patients, in their own name, 20 a day at most. This replaces the mass test that produced no confirmed members.'],
+            ['Corporate has a list, a type order and an unlock date', 'Warm doors first; door-to-door only for smaller companies, Tue–Thu, from 29 Sep once the price, kit, list and dental-day offer are ready. The door-opener is a free dental day, not a sales pitch.'],
+            ['Google is three campaigns, not one', 'Brand, price searches and insurance-gap searches — each with its own words and budget. No display, no broad awareness.'],
+            ['Awareness moves offline', 'The AED 3,000 moves from digital ads to schools, residential buildings, gyms and pharmacies near the branches.'],
+            ['Every task carries its segment', 'The task calendar and the progress bars are the plan — Mr Akbar sees each segment’s progress on this page.'],
+          ] as [string, string][]).map(([h, b]) => (
+            <div key={h} className="rounded-xl border bg-white p-3" style={{ borderColor: LINE }}>
+              <p className="text-[11px] font-bold" style={{ color: NAVY }}>{h}</p>
+              <p className="mt-0.5 text-[10.5px] leading-snug" style={{ color: '#3a4148' }}>{b}</p>
+            </div>
+          ))}
+        </div>
       </section>
     </div>
   );
@@ -2802,12 +3052,13 @@ function TeamTab({ tracker }: { tracker: TrackerState }) {
 /* ── the tab ───────────────────────────────────────────────────── */
 
 const SUBS: { id: Sub; label: string }[] = [
+  { id: 'segments', label: 'The plan by segment' },
+  { id: 'team', label: 'Team task calendar' },
   { id: 'why', label: 'Why & proposition' },
   { id: 'layers', label: 'Layers & demand states' },
   { id: 'reco', label: 'The recommendation' },
   { id: 'mandate', label: '30-day mandate' },
   { id: 'response', label: '30-day delivery plan' },
-  { id: 'team', label: 'Team task calendar' },
   { id: 'dm', label: 'Digital marketing plan' },
   { id: 'offer', label: 'Offer & economics' },
   { id: 'waves', label: 'Three waves' },
@@ -2819,7 +3070,8 @@ const SUBS: { id: Sub; label: string }[] = [
 const SUB_LABELS: Record<string, string> = Object.fromEntries(SUBS.map((s) => [s.id, s.label]));
 
 export function SmileClubOptimization({ tracker }: { tracker?: TrackerState } = {}) {
-  const [sub, setSub] = useState<Sub>('why');
+  const [sub, setSub] = useState<Sub>('segments');
+  const [trk, setTrk] = useState<TrackerState>(tracker ?? EMPTY_TRACKER);
   // The return trail: cross-reference jumps remember their origin so the
   // reader (Mr Akbar) can follow any thread and come straight back.
   const [trail, setTrail] = useState<Sub[]>([]);
@@ -2871,7 +3123,7 @@ export function SmileClubOptimization({ tracker }: { tracker?: TrackerState } = 
       <div className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[10.5px]" style={{ color: OLIVE }}>
         <span className="font-bold uppercase tracking-widest" style={{ color: CORAL }}>The argument</span>
         {([
-          ['why', 'Why & proposition'], ['layers', 'Who & when'], ['reco', 'Diagnosis'],
+          ['segments', 'The plan by segment'], ['team', 'Who does what'], ['why', 'Why & proposition'], ['layers', 'Who & when'], ['reco', 'Diagnosis'],
           ['mandate', 'Mandate'], ['offer', 'Offer & economics'], ['response', 'Funding & targets'],
           ['dm', 'Channel machinery'], ['corporate', 'B2B2C system'], ['channels', 'Eligibility'],
           ['waves', 'Evidence to date'], ['kpis', 'Controls'],
@@ -2899,12 +3151,13 @@ export function SmileClubOptimization({ tracker }: { tracker?: TrackerState } = 
       ) : null}
       <SubNavContext.Provider value={{ goto }}>
       <div className="mt-3">
+        {sub === 'segments' && <SegmentsTab state={trk} />}
         {sub === 'why' && <WhyTab />}
         {sub === 'layers' && <LayersTab />}
         {sub === 'reco' && <Recommendation />}
         {sub === 'mandate' && <MandateTab />}
         {sub === 'response' && <ResponseTab />}
-        {sub === 'team' && <TeamTab tracker={tracker ?? EMPTY_TRACKER} />}
+        {sub === 'team' && <TeamTab state={trk} setState={setTrk} />}
         {sub === 'dm' && <DmPlan />}
         {sub === 'offer' && <OfferEconomics />}
         {sub === 'waves' && <Waves />}

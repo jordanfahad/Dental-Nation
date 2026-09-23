@@ -10,7 +10,9 @@
  * (external_id = `sc-team:<key>`) and lane_e.task_events — never here.
  */
 
-export type Person = 'fahad' | 'gautam' | 'luvi' | 'mohan' | 'reception' | 'crm';
+import type { SegmentId } from '@/lib/smileclub/segments';
+
+export type Person = 'fahad' | 'gautam' | 'luvi' | 'doctors' | 'mohan' | 'reception' | 'crm';
 
 export interface Step {
   /** Short label shown in the flow chart. */
@@ -42,6 +44,10 @@ export interface TeamTask {
   subs: number;
   /** What the subscription figure means for this task. */
   subsNote: string;
+  /** The plan segment this task executes (unset = programme management). */
+  seg?: SegmentId;
+  /** Evidence-verified task: completion is decided by checking an uploaded file. */
+  verify?: 'crm-test';
 }
 
 export const TRACKER_SOURCE = 'smileclub-team';
@@ -54,6 +60,7 @@ export const OWNER_LABEL: Record<Person, string> = {
   fahad: 'Fahad',
   gautam: 'Gautam',
   luvi: 'Dr Luvi',
+  doctors: 'Treating dentists',
   mohan: 'Mohan',
   reception: 'Receptionists',
   crm: 'CRM-DN',
@@ -67,11 +74,11 @@ export const OWNER_LABEL: Record<Person, string> = {
  */
 export const EDITORS: Record<string, Person[]> = {
   Gautam: ['gautam'],
-  'Dr Luvi': ['luvi', 'reception'],
+  'Dr Luvi': ['luvi', 'reception', 'doctors'],
   Mohan: ['mohan'],
 };
 
-export const TEAM_TASKS: TeamTask[] = [
+const TASKS_RAW: TeamTask[] = [
   /* ── Fahad — growth lead, owns the marketing machine and reports to Mr Akbar ── */
   { key: 'f-response', who: 'fahad', wk: 1, dueIso: '2026-09-22', due: 'Tue 22 Sep EOD', task: 'Submit the 30-day plan to Gautam and Mr Akbar',
     objective: 'Put every one of the 120 target memberships against a named source, owner, budget and date — so nobody has to guess where the 120 come from.',
@@ -90,16 +97,16 @@ export const TEAM_TASKS: TeamTask[] = [
       { s: 'Approved offers sent', how: 'Send CRM-DN the PDF of offers they are allowed to use; they pick one for the follow-up sequence.' },
     ],
     done: 'Both sent; CRM-DN confirms receipt.', with: 'CRM-DN', weight: 1, subs: 0, subsNote: 'Enabler — unblocks the WhatsApp follow-up' },
-  { key: 'f-keywords', who: 'fahad', wk: 1, dueIso: '2026-09-23', due: 'Wed 23 Sep', task: 'Confirm the Google search words we are paying for',
-    objective: 'Check inside the Google Ads account that we are actually bidding on every search phrase in the plan — for example “dental checkup cost dubai”.',
-    why: 'The dashboard only sees campaign totals, not individual search words. If a planned phrase is missing, we are paying for Google but not reaching the people most likely to join.',
+  { key: 'f-keywords', who: 'fahad', wk: 1, dueIso: '2026-09-25', due: 'Fri 25 Sep', task: 'Rebuild Google into the three search campaigns that work',
+    objective: 'Split Google into three separate campaigns — brand, price searches and insurance-gap searches — each with its own words, message and budget, plus a call button for mobile.',
+    why: 'One campaign for everyone means one message for everyone. Someone searching a cleaning price and someone frustrated with their insurance need different words — and we need to see which works.',
     steps: [
-      { s: 'Open the account', how: 'Open Google Ads and list the words each Smile Club campaign is bidding on.' },
-      { s: 'Compare with the plan', how: 'Tick each phrase on the plan’s keyword list (DM plan, exhibit D1c).' },
-      { s: 'Add what is missing', how: 'Add any missing phrase; block “dentist near me” type searches, which belong to clinic campaigns.' },
-      { s: 'Mark confirmed', how: 'Update the keyword list status to CONFIRMED with today’s date.' },
+      { s: 'Brand campaign', how: '“smile club dental nation”, “dental nation membership” — AED 500.' },
+      { s: 'Price campaign', how: '“teeth cleaning price dubai”, “dental checkup cost dubai” — AED 4,500; the ad answers the price.' },
+      { s: 'Insurance-gap campaign', how: '“dentist without insurance dubai” — AED 1,000; say membership, never insurance.' },
+      { s: 'Checked + call button', how: 'Every planned phrase live in the account, “dentist near me” blocked, call button on; mark the keyword list CONFIRMED.' },
     ],
-    done: 'Every planned phrase is live; the list shows CONFIRMED.', to: 'dm', toLabel: 'Keyword list (D1c)', weight: 2, subs: 3, subsNote: '≈3 of the website 12 come from Google search' },
+    done: 'Three campaigns live, each with its own tracking.', to: 'segments', toLabel: 'Segment: searching online', weight: 2, subs: 3, subsNote: '≈3 of the website 12' },
   { key: 'f-signoff', who: 'fahad', wk: 1, dueIso: '2026-09-24', due: 'Thu 24 Sep', task: 'Get Mr Akbar’s sign-off on money and introductions',
     objective: 'Get four yes/no answers from Mr Akbar: the AED 30,000 budget, the maximum we may spend to win one member, his three corporate introductions, and the free-consultation WhatsApp message.',
     why: 'Spending beyond the first week, and the corporate doors he can open, both wait on him. Without sign-off the paid lanes stay small and corporate loses its warmest leads.',
@@ -155,15 +162,16 @@ export const TEAM_TASKS: TeamTask[] = [
       { s: 'Record', how: 'Note the decision and the reason in the plan.' },
     ],
     done: 'Decision recorded with its numbers.', to: 'dm', toLabel: 'Channel plan (D1)', weight: 2, subs: 0, subsNote: 'Protects the website 12' },
-  { key: 'f-awareness', who: 'fahad', wk: 3, dueIso: '2026-10-12', due: 'Mon 12 Oct', task: 'Run the local awareness ads — and stop them if nothing moves',
-    objective: 'Show Dental Nation and Smile Club to people living near the three branches and in Gautam’s door areas, for AED 3,000.',
-    why: 'Most people have never heard of a dental membership. This warms them up before they search or meet Gautam — but it has to show results or it stops.',
+  { key: 'f-awareness', who: 'fahad', wk: 3, dueIso: '2026-10-09', due: 'Fri 9 Oct', task: 'Community awareness — offline, near the branches',
+    objective: 'Make Smile Club known to families living and working near our three branches through places they already trust — schools, buildings, gyms and pharmacies — instead of digital ads.',
+    why: 'Nobody searches for a dental membership, and online awareness ads are unlikely to move people. Local, physical presence reaches families where they are. The AED 3,000 moves here from digital.',
     steps: [
-      { s: 'Ads live', how: 'Using Mohan’s local designs, around the branches and door areas.' },
-      { s: 'Watch the signals', how: 'More people searching “Dental Nation”, more website visits, more meetings accepted.' },
-      { s: 'Keep or stop', how: 'No movement by Day 21 → stop the rest of the spend.' },
+      { s: 'Schools & nurseries', how: 'Two schools near branches: a dentist-led parent talk and a leaflet home with each child.' },
+      { s: 'Residential buildings', how: 'Lobby posters in buildings near each branch; one message via the building/community WhatsApp admin.' },
+      { s: 'Gyms & pharmacies', how: 'Counter cards with a QR code under each partner’s own code.' },
+      { s: 'Results checked', how: 'Joins by code; keep what brings members, drop the rest.' },
     ],
-    done: 'Ran and was either kept or stopped on the evidence.', with: 'Mohan', to: 'dm', toLabel: 'Channel plan (D1)', weight: 1, subs: 0, subsNote: 'No direct subscriptions — warms every other lane' },
+    done: 'Material placed at every location, each with its own code.', with: 'Mohan · Dr Luvi', to: 'segments', toLabel: 'Segment: families & neighbourhoods', weight: 2, subs: 0, subsNote: 'Feeds the partner and community 24' },
   { key: 'f-report', who: 'fahad', wk: 5, dueIso: '2026-10-21', due: 'Every Monday → Wed 21 Oct', task: 'Weekly progress report to Mr Akbar',
     objective: 'Every checkpoint Monday, tell Mr Akbar in one page how many members have joined, from where, and what is behind.',
     why: 'Mr Akbar needs one reliable picture. This tracker produces it — the report is the tracker plus the membership count.',
@@ -229,6 +237,16 @@ export const TEAM_TASKS: TeamTask[] = [
       { s: 'Spot-check', how: 'Test 10 joins; all 10 show the right source.' },
     ],
     done: '98% or more of joins carry their source.', to: 'kpis', toLabel: 'Measurement', weight: 4, subs: 0, subsNote: 'Protects all 120 — an untracked member does not count' },
+  { key: 'c-doctor-send', who: 'crm', wk: 1, dueIso: '2026-09-28', due: 'Mon 28 Sep', task: 'Send messages in each dentist’s name — small batches',
+    objective: 'Set up WhatsApp so each dentist’s messages go only to that dentist’s patients, in their name, at most 20 a day, with replies routed to their branch.',
+    why: 'This is the opposite of the old mass test: personal, small, and every reply answered.',
+    steps: [
+      { s: 'One code per dentist', how: 'e.g. SC-DR-HASNA, SC-DR-TOSUN, SC-DR-MAISOON.' },
+      { s: 'Batch limit set', how: 'Max 20 per dentist per day.' },
+      { s: 'Replies routed', how: 'To the dentist’s branch desk, answered same day.' },
+      { s: 'Opt-outs honoured', how: 'Any “stop” removes the patient immediately.' },
+    ],
+    done: 'Sending ready for wave 1 on Mon 28 Sep.', with: 'Dr Luvi', to: 'segments', toLabel: 'Segment: our patients', weight: 3, subs: 0, subsNote: 'Unlocks the dentists’ 24' },
   { key: 'c-triggers', who: 'crm', wk: 2, dueIso: '2026-09-30', due: 'Wed 30 Sep', task: 'Four automatic WhatsApp messages at the right moment',
     objective: 'Send one personal message when something happens: a patient has an unfinished treatment plan, a check-up is due, after an emergency visit, or someone leaves the website mid-booking.',
     why: 'The earlier mass WhatsApp test produced no confirmed members. Messages sent at a moment of real need are the replacement.',
@@ -240,16 +258,16 @@ export const TEAM_TASKS: TeamTask[] = [
     done: 'All four messages live, tracked and consent-checked.', weight: 3, subs: 0, subsNote: 'Counts inside the clinic 60 / website 12' },
 
   /* ── Gautam — project owner & corporate implementer ── */
-  { key: 'g-crm-test', who: 'gautam', wk: 1, dueIso: '2026-09-23', due: 'Wed 23 Sep EOD', task: 'Close out the old WhatsApp test',
-    objective: 'Check the old mass WhatsApp test against actual payments, so we know for certain whether it produced any paying members.',
-    why: 'The test reached 1,280 people and got 71 replies, but no confirmed members. Before writing it off, the payment records must confirm it.',
+  { key: 'g-crm-test', who: 'gautam', wk: 1, dueIso: '2026-09-23', due: 'Wed 23 Sep EOD', task: 'Close out the old WhatsApp test — upload the evidence', verify: 'crm-test',
+    objective: 'Prove, from the payment records, whether the old mass WhatsApp test produced any paying members. Upload one spreadsheet and the dashboard checks it automatically and marks this task complete.',
+    why: 'The test reached 1,280 people and got 71 replies, but no confirmed members. Before we write it off — and move to dentist-led messages — the payment records must confirm it.',
     steps: [
-      { s: 'Pull payments', how: 'Get the list of everyone who paid for a membership since the test.' },
-      { s: 'Match the replies', how: 'Check whether any of the 71 people who replied later paid.' },
-      { s: 'Explain failures', how: 'Note why the 417 messages that failed did not arrive (wrong number, opted out, etc.).' },
-      { s: 'Share with Fahad', how: 'Send the short summary.' },
+      { s: 'File uploaded', how: 'Download the template on this card, fill it in, upload it here. Use a message/contact ID — no patient names or phone numbers.' },
+      { s: '71 replies classified', how: 'One row per reply: what the person wanted — membership, appointment, not interested or other.' },
+      { s: '417 failures explained', how: 'One row per failed message with the reason: wrong number, not on WhatsApp, opted out, blocked or other.' },
+      { s: 'Payments matched', how: 'For every reply: did this person go on to pay for a membership — yes or no.' },
     ],
-    done: 'We know how many members the test really produced.', with: 'Fahad', to: 'waves', toLabel: 'Wave 1 results', weight: 2, subs: 0, subsNote: 'Evidence — decides whether mass messaging is ever used again' },
+    done: 'The dashboard’s automatic check passes all four and shows how many members the test really produced.', with: 'Fahad', to: 'waves', toLabel: 'Wave 1 results', weight: 2, subs: 0, subsNote: 'Evidence — decides whether mass messaging is ever used again' },
   { key: 'g-baseline', who: 'gautam', wk: 1, dueIso: '2026-09-24', due: 'Thu 24 Sep', task: 'Share the current Smile Club member numbers',
     objective: 'Give Fahad a simple spreadsheet of today’s Smile Club members: how many there are, which plan each is on, whether they are paying, how often they visit, and who has cancelled.',
     why: 'This is our starting line. It tells us what a member is really worth, which plan sells, and why people cancel — so the “you save AED X” examples we show patients are true, and we can prove growth from a known number.',
@@ -269,16 +287,26 @@ export const TEAM_TASKS: TeamTask[] = [
       { s: 'Sent to Mohan', how: 'Editable versions (not PDFs).' },
     ],
     done: 'Mohan confirms he has all four.', with: 'Mohan', to: 'response', toLabel: 'Corporate (R1)', weight: 2, subs: 0, subsNote: 'Enabler — feeds the corporate 24' },
-  { key: 'g-doors-15', who: 'gautam', wk: 1, dueIso: '2026-09-25', due: 'Fri 25 Sep', task: 'Choose the first 15 companies to visit',
-    objective: 'Pick 15 small and mid-sized companies in JLT and Business Bay most likely to buy Smile Club for their staff.',
-    why: 'Picking the right doors matters more than walking many. Companies whose insurance does not cover dental are the ones who say yes — Michael Page said no because theirs already does.',
+  { key: 'g-doors-15', who: 'gautam', wk: 1, dueIso: '2026-09-25', due: 'Fri 25 Sep', task: 'Build the company list — by type',
+    objective: 'A list of 40–60 companies to approach, grouped by type, with the reason to approach each one now.',
+    why: 'Different companies buy for different reasons and need a different approach. Picking the right doors matters more than walking many.',
     steps: [
-      { s: 'Long list', how: '30–40 companies of 20–200 staff near a branch.' },
-      { s: 'Find a reason to call now', how: 'Insurance renewal coming up, staff complaints, fast hiring.' },
-      { s: 'Ask the key question', how: '“Does your medical insurance include dental?” — prioritise the ones that say no or very little.' },
-      { s: 'Final 15', how: 'Logged with contact name and visit date.' },
+      { s: 'Warm doors', how: 'Assembly Global, ArabyAds, RBS, existing DN partners, Mr Akbar’s three introductions.' },
+      { s: 'Small & mid-sized companies', how: '20–200 staff in JLT, Business Bay, DIFC, Al Quoz — near a branch, ideally several in one tower.' },
+      { s: 'Frontline employers + schools', how: 'Hotels, restaurants, retail, facilities, security; schools near branches.' },
+      { s: 'Reason + dental question', how: 'For each: why now (insurance renewal, complaints, hiring) and “does your insurance include dental?”.' },
     ],
-    done: '15 companies logged with a reason and a visit date.', with: 'Fahad', to: 'corporate', toLabel: 'Corporate playbook', weight: 4, subs: 0, subsNote: 'Builds the pipeline for the corporate 24' },
+    done: '40–60 companies listed by type with a reason each.', with: 'Fahad', to: 'segments', toLabel: 'Segment: companies', weight: 4, subs: 0, subsNote: 'Builds the pipeline for the corporate 24' },
+  { key: 'g-unlock', who: 'gautam', wk: 1, dueIso: '2026-09-28', due: 'Mon 28 Sep', task: 'Door-to-door go / no-go',
+    objective: 'Confirm the four things door-to-door needs before the first knock on Tue 29 Sep.',
+    why: 'Walking in without a price, a leave-behind or a dental-day offer wastes the one chance we get at each door.',
+    steps: [
+      { s: 'Price + funding options', how: 'Company pays / shares / staff pay — approved.' },
+      { s: 'Print kit in hand', how: 'One-pager, savings table, QR cards from Mohan.' },
+      { s: 'Company list ready', how: 'By type, with visit days (Tue–Thu, 10–12 and 14–16).' },
+      { s: 'Dental day costed', how: 'The free on-site check day offer, costed with Dr Luvi.' },
+    ],
+    done: 'All four ready — door-to-door starts Tue 29 Sep.', with: 'Fahad · Dr Luvi · Mohan', to: 'segments', toLabel: 'Segment: companies', weight: 2, subs: 0, subsNote: 'Unlocks the corporate 24' },
   { key: 'g-bridge', who: 'gautam', wk: 1, dueIso: '2026-09-28', due: 'Mon 28 Sep', task: 'Show how corporate reaches 24 — and settle two product questions',
     objective: 'List every company in play and roughly how many memberships each could bring, to show we have enough (about 72 in play to win 24). Also decide: 4 plans or 3, and who builds the member health score.',
     why: 'Losing Michael Page cut the pipeline. If the numbers do not add up, we must know now — not at Day 30.',
@@ -407,6 +435,16 @@ export const TEAM_TASKS: TeamTask[] = [
       { s: 'AMC session', how: 'Same, plus: book the first member appointment before the patient leaves.' },
     ],
     done: 'All receptionists at all three branches trained.', with: 'Receptionists', to: 'why', toLabel: 'Words to use', weight: 4, subs: 0, subsNote: 'Protects the clinic 60' },
+  { key: 'l-doctor-lists', who: 'luvi', wk: 1, dueIso: '2026-09-25', due: 'Fri 25 Sep', task: 'Split each dentist’s patients into three groups',
+    objective: 'With CRM-DN, produce one list per treating dentist — Dr Hasna, Dr Tosun, Dr Maisoon and every other dentist — split into active-but-due, inactive (6–18 months) and dormant (18+ months).',
+    why: 'Mr Akbar’s rule: no blanket messages. Each dentist writes only to their own patients, and a patient due a check-up needs a different message from one we have not seen in two years.',
+    steps: [
+      { s: 'List the dentists', how: 'Every treating dentist at the three branches, with their branch.' },
+      { s: 'Patients per dentist', how: 'Each patient under the dentist who last treated them, with last visit date.' },
+      { s: 'Consent check', how: 'Keep only patients who agreed to be contacted; remove anyone who opted out.' },
+      { s: 'Three groups each', how: 'Active-but-due · inactive 6–18 months · dormant 18+ months — counts per dentist.' },
+    ],
+    done: 'One consent-checked list per dentist, in three groups.', with: 'CRM-DN', to: 'segments', toLabel: 'Segment: our patients', weight: 3, subs: 0, subsNote: 'Unlocks the dentists’ 24' },
   { key: 'l-capacity', who: 'luvi', wk: 1, dueIso: '2026-09-25', due: 'Fri 25 Sep', task: 'Make sure new members can get appointments',
     objective: 'Check each branch has enough appointment slots for new members, and set a simple rule so members are booked quickly.',
     why: 'Selling memberships we cannot serve leads to cancellations and complaints.',
@@ -501,17 +539,75 @@ export const TEAM_TASKS: TeamTask[] = [
       { s: 'Draft shared', how: 'With Gautam and Fahad for the build decision.' },
     ],
     done: 'Draft shared.', to: 'why', toLabel: 'Member journey', weight: 1, subs: 0, subsNote: 'Protects renewals after the 30 days' },
-  { key: 'l-in60', who: 'luvi', wk: 5, dueIso: '2026-10-21', due: 'Wed 21 Oct', task: 'Deliver the clinic 60 and check refunds',
-    objective: 'Confirm 20 members at each branch, and make sure none has cancelled or been refunded.',
+  { key: 'l-in60', who: 'luvi', wk: 5, dueIso: '2026-10-21', due: 'Wed 21 Oct', task: 'Deliver the existing-patient 60 and check refunds',
+    objective: 'Confirm the 60 from our existing patients — 36 from the chair and 24 from the dentists’ messages — and make sure none has cancelled or been refunded.',
     why: 'Only paid, active members count toward the 120.',
     steps: [
-      { s: 'Branch totals', how: '20 at each desk.' },
+      { s: 'Totals', how: '12 per branch from the chair + 24 from the dentists’ messages, by dentist code.' },
       { s: 'Refund check', how: 'Remove any cancelled or refunded.' },
       { s: 'Sent to Finance', how: 'For the final confirmation.' },
     ],
     done: '60 confirmed and handed to Finance.', to: 'mandate', toLabel: 'What counts as a member', weight: 3, subs: 0, subsNote: 'Confirms the clinic 60' },
 
+  /* ── Treating dentists — Dr Hasna, Dr Tosun, Dr Maisoon and every other treating dentist (Dr Luvi updates) ── */
+  { key: 'd-pitch', who: 'doctors', wk: 1, dueIso: '2026-09-24', due: 'Thu 24 Sep', task: 'The one-sentence recommendation in the chair',
+    objective: 'At the end of every check-up or cleaning, each dentist recommends Smile Club in one sentence tailored to what they just saw, and hands over a signed invitation card.',
+    why: 'Patients act on their own dentist’s advice far more than on a receptionist or a poster. This one sentence is what makes the checkout conversation easy.',
+    steps: [
+      { s: 'Learn the sentences', how: 'Three versions with Dr Luvi: after a cleaning, treatment still to do, parent with a child.' },
+      { s: 'Use it every visit', how: 'End of every check-up and cleaning — never mid-treatment or with a patient in pain.' },
+      { s: 'Hand the card', how: 'The signed invitation card; the receptionist takes it from there.' },
+    ],
+    done: 'Every dentist using the recommendation daily.', with: 'Dr Luvi · receptionists', to: 'segments', toLabel: 'Segment: in the chair', weight: 4, subs: 0, subsNote: 'Drives the chair 36 (counted at the desk)' },
+  { key: 'd-approve', who: 'doctors', wk: 1, dueIso: '2026-09-25', due: 'Fri 25 Sep', task: 'Approve your own three WhatsApp messages',
+    objective: 'Each dentist reads and approves, in their own words, the three messages that will go to their own patients: due a check-up, not seen in a while, not seen for a long time.',
+    why: 'The message comes from the dentist the patient knows. Nothing goes out in a dentist’s name that the dentist has not approved.',
+    steps: [
+      { s: 'Drafts received', how: 'From Dr Luvi, using the plan’s examples.' },
+      { s: 'Own words', how: 'Adjust the tone so it sounds like you.' },
+      { s: 'Approved', how: 'Reply “approved” to Dr Luvi.' },
+    ],
+    done: 'Every dentist has approved their three messages.', with: 'Dr Luvi', to: 'segments', toLabel: 'Segment: our patients', weight: 2, subs: 0, subsNote: 'Unlocks the dentists’ 24' },
+  { key: 'd-active', who: 'doctors', wk: 2, dueIso: '2026-10-02', due: 'Mon 28 Sep → Fri 2 Oct', task: 'Wave 1 — your patients who are due a check-up',
+    objective: 'Each dentist messages their own active patients who are due a check-up — at most 20 a day — and every reply is answered and booked the same day.',
+    why: 'These patients are the warmest: they visit, they trust their dentist, and a check-up is due anyway. We learn here before writing to colder groups.',
+    steps: [
+      { s: 'Dr Hasna’s list sent', how: 'In daily batches of up to 20; code SC-DR-HASNA.' },
+      { s: 'Dr Tosun’s list sent', how: 'Same; code SC-DR-TOSUN.' },
+      { s: 'Dr Maisoon’s list sent', how: 'Same; code SC-DR-MAISOON.' },
+      { s: 'Every other dentist sent', how: 'Same, each with their own code.' },
+      { s: 'Replies booked', how: 'Every reply answered and booked the same day by the branch.' },
+    ],
+    done: 'All active-due lists messaged; replies booked.', with: 'CRM-DN · receptionists', to: 'segments', toLabel: 'Segment: our patients', weight: 5, subs: 10, subsNote: '10 of the dentists’ 24' },
+  { key: 'd-inactive', who: 'doctors', wk: 3, dueIso: '2026-10-09', due: 'Mon 5 → Fri 9 Oct', task: 'Wave 2 — your patients not seen in 6–18 months',
+    objective: 'Each dentist sends a “welcome back” message to their own patients who have drifted away, adjusted using what worked in wave 1.',
+    why: 'They know us but have lapsed. A personal note from their own dentist is the most natural way back — and Smile Club keeps them coming.',
+    steps: [
+      { s: 'Message adjusted', how: 'Using the replies and joins from wave 1.' },
+      { s: 'All dentists sent', how: 'Daily batches of up to 20, each dentist’s own code.' },
+      { s: 'Replies booked', how: 'Same-day answer and booking.' },
+    ],
+    done: 'All inactive lists messaged; replies booked.', with: 'CRM-DN', to: 'segments', toLabel: 'Segment: our patients', weight: 4, subs: 8, subsNote: '8 of the dentists’ 24' },
+  { key: 'd-dormant', who: 'doctors', wk: 4, dueIso: '2026-10-16', due: 'Mon 12 → Fri 16 Oct', task: 'Wave 3 — your patients not seen for over 18 months',
+    objective: 'Each dentist sends a gentle, no-pressure note to their own long-lapsed patients, offering a fresh start with the first check-up included.',
+    why: 'The coldest group, so it goes last and softest. Even a small share returning adds members and patients.',
+    steps: [
+      { s: 'Message softened', how: 'No pressure; first check-up included.' },
+      { s: 'All dentists sent', how: 'Daily batches, own codes.' },
+      { s: 'Replies booked', how: 'Same-day answer and booking.' },
+    ],
+    done: 'All dormant lists messaged; replies booked.', with: 'CRM-DN', to: 'segments', toLabel: 'Segment: our patients', weight: 3, subs: 6, subsNote: '6 of the dentists’ 24' },
+
   /* ── Mohan — videographer & content designer ── */
+  { key: 'm-invite', who: 'mohan', wk: 1, dueIso: '2026-09-24', due: 'Thu 24 Sep', task: 'Dentist-signed invitation cards',
+    objective: 'A small printed card — “Dr ___ recommends Smile Club for you” — that each dentist signs and hands to the patient, with a QR code to join.',
+    why: 'It turns the dentist’s spoken recommendation into something the patient carries to the desk and home.',
+    steps: [
+      { s: 'Designed', how: 'English and Arabic, space for the dentist’s name and signature.' },
+      { s: 'Checked', how: 'By Dr Luvi.' },
+      { s: 'Printed per branch', how: 'A stack in every treatment room.' },
+    ],
+    done: 'Cards in every treatment room.', with: 'Dr Luvi', to: 'segments', toLabel: 'Segment: in the chair', weight: 2, subs: 0, subsNote: 'Supports the chair 36' },
   { key: 'm-onboard', who: 'mohan', wk: 1, dueIso: '2026-09-23', due: 'Wed 23 Sep', task: 'Learn the brief and the words to use',
     objective: 'Read the plan’s “Why” and “Customer situations” pages so every design speaks to one kind of customer and never uses insurance words.',
     why: 'A parent, a patient worried about cost and an HR manager each need a different message. One message for everyone does not work.',
@@ -589,15 +685,15 @@ export const TEAM_TASKS: TeamTask[] = [
       { s: 'Approved', how: 'By Gautam and Fahad.' },
     ],
     done: 'Posts and checklist approved.', with: 'Gautam · Fahad', to: 'corporate', toLabel: 'Selling to companies (C7)', weight: 1, subs: 0, subsNote: 'Supports the corporate 24' },
-  { key: 'm-geo', who: 'mohan', wk: 3, dueIso: '2026-10-09', due: 'Fri 9 Oct', task: 'Local awareness ad designs',
-    objective: 'Designs for the small local ads shown around the three branches.',
-    why: 'Introduces Dental Nation to neighbours who have not yet visited.',
+  { key: 'm-geo', who: 'mohan', wk: 3, dueIso: '2026-10-07', due: 'Wed 7 Oct', task: 'Printed community material',
+    objective: 'Lobby posters, pharmacy/gym counter cards and a school leaflet — each with a QR code.',
+    why: 'Awareness now happens offline, near the branches. Each piece needs its own code so we can see which places bring members.',
     steps: [
-      { s: 'Designed', how: 'For each branch area.' },
+      { s: 'Designed', how: 'Poster, counter card, school leaflet — English and Arabic.' },
       { s: 'Clinically checked', how: 'By Dr Luvi.' },
-      { s: 'Sent to Fahad', how: 'For launch.' },
+      { s: 'Printed', how: 'Within the AED 3,000 community budget; handed to Fahad.' },
     ],
-    done: 'Designs with Fahad.', with: 'Fahad', to: 'dm', toLabel: 'Channel plan (D1)', weight: 1, subs: 0, subsNote: 'Warms every other lane' },
+    done: 'All three printed with QR codes.', with: 'Fahad', to: 'segments', toLabel: 'Segment: families & neighbourhoods', weight: 1, subs: 0, subsNote: 'Supports the community lane' },
   { key: 'm-v2', who: 'mohan', wk: 4, dueIso: '2026-10-15', due: 'Thu 15 Oct', task: 'Second set of ads — more of what worked',
     objective: 'Re-make the ads that performed best and drop the ones that did not.',
     why: 'Money should go only behind designs that are proven to bring members.',
@@ -637,33 +733,33 @@ export const TEAM_TASKS: TeamTask[] = [
       { s: 'AMC attended', how: 'All receptionists on shift.' },
     ],
     done: 'Every receptionist trained.', with: 'Dr Luvi', to: 'why', toLabel: 'Words to use', weight: 2, subs: 0, subsNote: 'Prepares the clinic 60' },
-  { key: 'r-pace-6', who: 'reception', wk: 1, dueIso: '2026-09-28', due: 'Mon 28 Sep', task: '6 new members per branch',
-    objective: 'Each branch signs 6 paying members (5 at the very least) in the first week.',
+  { key: 'r-pace-6', who: 'reception', wk: 1, dueIso: '2026-09-28', due: 'Mon 28 Sep', task: '4 new members per branch',
+    objective: 'Each branch signs 4 paying members (3 at the very least) in the first week — the dentist recommends in the chair, you close at checkout.',
     why: 'An early, steady pace is what makes 20 per branch possible.',
     steps: [
-      { s: 'Al Wasl: 6', how: 'Offer at every checkout; show the saving on the patient’s own bill; book the first member visit.' },
-      { s: 'Dr Tosun: 6', how: 'Same; note every “no” and why.' },
-      { s: 'AMC: 6', how: 'Same; report the count at the 09:00 meeting.' },
+      { s: 'Al Wasl: 4', how: 'Pick up the dentist’s recommendation; show the saving on today’s bill; book the first member visit.' },
+      { s: 'Dr Tosun: 4', how: 'Same; note every “no” and why.' },
+      { s: 'AMC: 4', how: 'Same; report the count at the 09:00 meeting.' },
     ],
-    done: 'Each branch at 6 or more.', to: 'response', toLabel: 'Clinic lane (R1)', weight: 5, subs: 18, subsNote: '18 of the clinic 60 (6 per branch)' },
-  { key: 'r-pace-10', who: 'reception', wk: 2, dueIso: '2026-10-05', due: 'Mon 5 Oct', task: '10 new members per branch',
-    objective: 'Each branch reaches 10 members in total (9 at the very least). New this week: offer the Family plan to parents.',
+    done: 'Each branch at 4 or more.', to: 'response', toLabel: 'Clinic lane (R1)', weight: 5, subs: 12, subsNote: '12 → 12 of the chair 36 (dentist recommends, you close)' },
+  { key: 'r-pace-10', who: 'reception', wk: 2, dueIso: '2026-10-05', due: 'Mon 5 Oct', task: '7 new members per branch',
+    objective: 'Each branch reaches 7 members in total (6 at the very least). New this week: offer the Family plan to parents.',
     why: 'Families are one of the strongest groups for Smile Club.',
     steps: [
-      { s: 'Al Wasl: 10', how: 'Parents hear “one membership for the whole family”.' },
+      { s: 'Al Wasl: 7', how: 'Parents hear “one membership for the whole family”.' },
+      { s: 'Dr Tosun: 7', how: 'Same.' },
+      { s: 'AMC: 7', how: 'Same.' },
+    ],
+    done: 'Each branch at 7 or more.', to: 'layers', toLabel: 'Customer situations', weight: 6, subs: 9, subsNote: '+9 → 21 of the chair 36 (dentist recommends, you close)' },
+  { key: 'r-pace-15', who: 'reception', wk: 3, dueIso: '2026-10-12', due: 'Mon 12 Oct', task: '10 new members per branch',
+    objective: 'Each branch reaches 10 members in total (9 at the very least). New this week: ask patients with a treatment plan whether member rates would help.',
+    why: 'Patients already planning treatment gain the most from member rates.',
+    steps: [
+      { s: 'Al Wasl: 10', how: '“Would member rates help with your treatment plan?”' },
       { s: 'Dr Tosun: 10', how: 'Same.' },
       { s: 'AMC: 10', how: 'Same.' },
     ],
-    done: 'Each branch at 10 or more.', to: 'layers', toLabel: 'Customer situations', weight: 6, subs: 12, subsNote: '+12 → 30 of the clinic 60' },
-  { key: 'r-pace-15', who: 'reception', wk: 3, dueIso: '2026-10-12', due: 'Mon 12 Oct', task: '15 new members per branch',
-    objective: 'Each branch reaches 15 members in total (13 at the very least). New this week: ask patients with a treatment plan whether member rates would help.',
-    why: 'Patients already planning treatment gain the most from member rates.',
-    steps: [
-      { s: 'Al Wasl: 15', how: '“Would member rates help with your treatment plan?”' },
-      { s: 'Dr Tosun: 15', how: 'Same.' },
-      { s: 'AMC: 15', how: 'Same.' },
-    ],
-    done: 'Each branch at 15 or more.', to: 'layers', toLabel: 'Customer situations', weight: 7, subs: 14, subsNote: '+14 → 44 of the clinic 60' },
+    done: 'Each branch at 10 or more.', to: 'layers', toLabel: 'Customer situations', weight: 7, subs: 9, subsNote: '+9 → 30 of the chair 36 (dentist recommends, you close)' },
   { key: 'r-corp-members', who: 'reception', wk: 4, dueIso: '2026-10-14', due: 'Wed 14 Oct', task: 'Welcome staff from signed companies',
     objective: 'When someone arrives with a company code, activate their membership, welcome them and book their first visit.',
     why: 'Their first experience at the desk decides whether company staff keep using Smile Club.',
@@ -673,16 +769,83 @@ export const TEAM_TASKS: TeamTask[] = [
       { s: 'Routine at all desks', how: 'Every branch does the same.' },
     ],
     done: 'Company members recognised at all three desks.', with: 'Gautam', to: 'corporate', toLabel: 'Staff journey (C1)', weight: 2, subs: 0, subsNote: 'Supports the corporate 24' },
-  { key: 'r-target-20', who: 'reception', wk: 5, dueIso: '2026-10-21', due: 'Wed 21 Oct', task: '20 new members per branch',
-    objective: 'Each branch reaches 20 paying members, each with the branch code, an active card and a first visit booked.',
-    why: '20 × 3 branches = 60 — half the whole target.',
+  { key: 'r-target-20', who: 'reception', wk: 5, dueIso: '2026-10-21', due: 'Wed 21 Oct', task: '12 new members per branch',
+    objective: 'Each branch reaches 12 paying members from the chair, each with the branch code, an active card and a first visit booked.',
+    why: '12 × 3 branches = 36. The other 24 of our existing patients come from the dentists’ own WhatsApp messages.',
     steps: [
-      { s: 'Al Wasl: 20', how: 'All with the branch code and a first visit booked.' },
-      { s: 'Dr Tosun: 20', how: 'Same.' },
-      { s: 'AMC: 20', how: 'Same.' },
+      { s: 'Al Wasl: 12', how: 'All with the branch code and a first visit booked.' },
+      { s: 'Dr Tosun: 12', how: 'Same.' },
+      { s: 'AMC: 12', how: 'Same.' },
     ],
-    done: 'Each branch at 20.', to: 'mandate', toLabel: 'What counts as a member', weight: 10, subs: 16, subsNote: '+16 → the full clinic 60' },
+    done: 'Each branch at 12.', to: 'mandate', toLabel: 'What counts as a member', weight: 10, subs: 6, subsNote: '+6 → 36 of the chair 36 (dentist recommends, you close)' },
 ];
+
+const SEG_OF: Record<string, SegmentId> = {
+  'l-audit': 'chair',
+  'l-refresher': 'chair',
+  'l-capacity': 'chair',
+  'l-day7': 'chair',
+  'l-onboarding': 'chair',
+  'l-day14': 'chair',
+  'l-day21': 'chair',
+  'l-in60': 'chair',
+  'l-smilescore': 'chair',
+  'r-refresher': 'chair',
+  'r-pace-6': 'chair',
+  'r-pace-10': 'chair',
+  'r-pace-15': 'chair',
+  'r-target-20': 'chair',
+  'd-pitch': 'chair',
+  'm-invite': 'chair',
+  'l-doctor-lists': 'patients',
+  'd-approve': 'patients',
+  'd-active': 'patients',
+  'd-inactive': 'patients',
+  'd-dormant': 'patients',
+  'c-doctor-send': 'patients',
+  'c-triggers': 'patients',
+  'c-retarget': 'patients',
+  'c-scoring': 'patients',
+  'g-crm-test': 'patients',
+  'f-call-actions': 'patients',
+  'g-assets': 'corporate',
+  'g-doors-15': 'corporate',
+  'g-unlock': 'corporate',
+  'g-bridge': 'corporate',
+  'g-arabyads': 'corporate',
+  'g-doors-20': 'corporate',
+  'g-assembly': 'corporate',
+  'g-pilot': 'corporate',
+  'g-launch': 'corporate',
+  'g-onsite': 'corporate',
+  'f-warm-doors': 'corporate',
+  'f-linkedin': 'corporate',
+  'l-onsite-scope': 'corporate',
+  'l-onsite-deliver': 'corporate',
+  'm-printkit': 'corporate',
+  'm-launchkit': 'corporate',
+  'm-linkedin': 'corporate',
+  'm-film-onsite': 'corporate',
+  'r-corp-members': 'corporate',
+  'f-keywords': 'search',
+  'f-meta': 'search',
+  'f-google-gate': 'search',
+  'c-landing': 'search',
+  'c-contact': 'search',
+  'c-banner': 'search',
+  'm-banner': 'search',
+  'm-dynamic-v1': 'search',
+  'm-videos': 'search',
+  'm-v2': 'search',
+  'l-review-v1': 'search',
+  'f-partners': 'community',
+  'f-awareness': 'community',
+  'l-csr': 'community',
+  'm-creator': 'community',
+  'm-geo': 'community',
+};
+
+export const TEAM_TASKS: TeamTask[] = TASKS_RAW.map((t) => ({ ...t, seg: SEG_OF[t.key] }));
 
 export const TASK_BY_KEY: Record<string, TeamTask> = Object.fromEntries(TEAM_TASKS.map((t) => [t.key, t]));
 
@@ -697,7 +860,29 @@ export interface TaskProgress {
   note: string | null;
   updatedAt: string | null;
   updatedBy: string | null;
+  /** Latest automatic evidence check (verify tasks only). */
+  verify?: VerifyResult | null;
 }
+
+export interface VerifyResult {
+  at: string;
+  by: string;
+  file: string;
+  pass: boolean;
+  checks: { label: string; ok: boolean; detail: string }[];
+  /** Memberships the evidence shows the test produced. */
+  confirmed: number;
+  warnings: string[];
+}
+
+/** CRM-test evidence file: required columns and allowed values. */
+export const CRM_TEST_SPEC = {
+  replies: 71,
+  failures: 417,
+  columns: ['record_type', 'ref', 'outcome', 'paid_membership'],
+  replyOutcomes: ['membership', 'appointment', 'not interested', 'other'],
+  failureReasons: ['wrong number', 'not on whatsapp', 'opted out', 'blocked', 'other'],
+};
 
 export interface TaskEvent {
   key: string;
