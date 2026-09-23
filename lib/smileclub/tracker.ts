@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from '@/lib/supabase/server';
 import { currentUser } from '@/lib/auth/role';
 import {
   EDITORS,
+  OWNER_LABEL,
   TEAM_TASKS,
   TRACKER_SOURCE,
   externalIdFor,
@@ -101,5 +102,5 @@ export function seedRows(projectId: string) {
 }
 
 function ownerText(p: Person): string {
-  return p === 'gautam' ? 'Gautam' : p === 'luvi' ? 'Dr Luvi' : p === 'mohan' ? 'Mohan' : 'Receptionists';
+  return OWNER_LABEL[p];
 }

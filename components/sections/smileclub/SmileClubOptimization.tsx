@@ -17,7 +17,10 @@ import { updateTeamTaskAction } from '@/app/(app)/smileclub-actions';
 import {
   TASK_BY_KEY,
   TEAM_TASKS,
+  TOTAL_WEIGHT,
   ragFor,
+  weightPct,
+  type Step,
   type Person,
   type Rag,
   type TaskProgress,
@@ -2337,6 +2340,8 @@ function Kpis() {
 /* ── Team task calendar + live tracker: who does what, week by week, to Day 30 ── */
 
 const TEAM: { id: Person; name: string; role: string; color: string; owns: string }[] = [
+  { id: 'fahad', name: 'Fahad', role: 'Growth lead — reports to Mr Akbar', color: '#5B4B8A', owns: 'Runs the marketing machine — Google, Facebook/Instagram, LinkedIn and the partner channels — works the warm corporate introductions, gets Mr Akbar’s sign-offs, and reports progress every checkpoint Monday.' },
+  { id: 'crm', name: 'CRM-DN', role: 'WhatsApp, web pages, tracking & contact centre', color: '#7A5C2E', owns: 'Runs the WhatsApp messages, the membership web page and banner, the contact centre’s 10-minute replies, and the tracking that proves where every member came from. Fahad updates these tasks.' },
   { id: 'gautam', name: 'Gautam', role: 'Project owner & corporate implementer', color: NAVY, owns: 'Owns the mandate and its data, carries the corporate door-to-door bag in-window, and implements every signed employer (proposal → launch → activation).' },
   { id: 'luvi', name: 'Dr Luvi', role: 'Head of Operations', color: '#2C5E3F', owns: 'Owns the front-desk engine behind In-clinic-60, branch capacity, clinical review of every claim, and clinical delivery of on-site days. Updates the receptionists’ tasks on their behalf.' },
   { id: 'mohan', name: 'Mohan', role: 'Videographer & content designer', color: CORAL, owns: 'The creative unlock: produces the asset variety the dynamic formats need, plus every print, video and launch kit the other lanes depend on.' },
@@ -2352,6 +2357,8 @@ const WEEKS: { n: number; label: string; gate: string }[] = [
 ];
 
 const RHYTHMS: { who: Person; items: string[] }[] = [
+  { who: 'fahad', items: ['Daily: read the end-of-day numbers — members by source, ad spend, enquiries', 'Monday: one-page progress report to Mr Akbar', 'Weekly: ad performance review with Mohan — keep, cut or remake'] },
+  { who: 'crm', items: ['Every enquiry answered within 10 minutes and tagged “membership” or “appointment”', 'Daily: late replies reviewed at the 09:00 meeting', 'Weekly: tracking spot-check — every new member shows where they came from'] },
   { who: 'gautam', items: ['Mon: checkpoint or weekly resource decision', 'Daily: EOD scorecard read · meeting log updated after every door', 'Weekly: pipeline coverage vs ≥72 equivalents'] },
   { who: 'luvi', items: ['Daily 09:00: per-branch count + objection log review (with the Smile Club Coordinator)', 'Daily 16:00: recovery queue for any branch behind pace', 'Weekly: clinical sign-off on new creative and claims'] },
   { who: 'mohan', items: ['Every asset tagged to one demand state before it ships', 'Weekly: submission batch to Dr Luvi for clinical review', 'Weekly: performance read with Fahad — cut, keep or re-cut'] },
@@ -2383,10 +2390,11 @@ function Bar({ pct, color, h = 6 }: { pct: number; color: string; h?: number }) 
 }
 
 /** The task's flow chart: one chevron per step — done (filled), current (gold), ahead (open). */
-function Flow({ steps, stage, color, blocked }: { steps: string[]; stage: number; color: string; blocked: boolean }) {
+function Flow({ steps, stage, color, blocked }: { steps: Step[]; stage: number; color: string; blocked: boolean }) {
   return (
     <div className="flex flex-wrap items-stretch gap-y-1">
-      {steps.map((s, i) => {
+      {steps.map((st, i) => {
+        const s = st.s;
         const done = i < stage;
         const current = i === stage;
         const bg = done ? color : current ? (blocked ? '#f7e8e4' : '#FDF6E3') : '#F7F7F0';
@@ -2451,7 +2459,29 @@ function TaskCard({ t, p, today, color, editable, onSave }: {
         </div>
       </div>
       <div className="mt-2"><Bar pct={pct} color={rag === 'overdue' || rag === 'blocked' ? CORAL : color} /></div>
+      <div className="mt-2 flex flex-wrap gap-1.5 text-[10px]">
+        <span className="rounded px-1.5 py-0.5 font-bold" style={{ backgroundColor: '#EEF1F6', color: NAVY }}>Weightage {weightPct(t)}%</span>
+        <span className="rounded px-1.5 py-0.5 font-bold" style={{ backgroundColor: t.subs ? '#e7efe6' : '#F1F1EA', color: t.subs ? '#2C5E3F' : OLIVE }}>
+          {t.subs ? `Subscription target: ${t.subs}` : 'Enabler — no direct subscriptions'}
+        </span>
+        <span className="py-0.5" style={{ color: OLIVE }}>{t.subsNote}</span>
+      </div>
+      <div className="mt-2 grid gap-2 md:grid-cols-2">
+        <p className="text-[10.5px] leading-snug" style={{ color: '#3a4148' }}><span className="font-bold" style={{ color: NAVY }}>Objective:</span> {t.objective}</p>
+        <p className="text-[10.5px] leading-snug" style={{ color: '#3a4148' }}><span className="font-bold" style={{ color: NAVY }}>Why it matters:</span> {t.why}</p>
+      </div>
       <div className="mt-2"><Flow steps={t.steps} stage={stage} color={color} blocked={blocked} /></div>
+      <div className="mt-2 rounded-lg px-2.5 py-2" style={{ backgroundColor: '#FAFAF6' }}>
+        <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: BLUE }}>How to do it</p>
+        <ol className="mt-1 space-y-1">
+          {t.steps.map((st, i) => (
+            <li key={st.s} className="flex gap-2 text-[10.5px] leading-snug" style={{ color: i < stage ? OLIVE : '#3a4148', textDecoration: i < stage ? 'line-through' : 'none' }}>
+              <span className="mt-[1px] flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] font-bold text-white" style={{ backgroundColor: i < stage ? color : '#B9B9AC' }}>{i < stage ? '✓' : i + 1}</span>
+              <span><b style={{ color: NAVY }}>{st.s}</b> — {st.how}</span>
+            </li>
+          ))}
+        </ol>
+      </div>
       <p className="mt-2 text-[10.5px] leading-snug" style={{ color: '#3a4148' }}><span className="font-bold" style={{ color: NAVY }}>Done looks like:</span> {t.done}</p>
       {p?.note ? <p className="mt-1 rounded px-2 py-1 text-[10.5px]" style={{ backgroundColor: '#FDF9EC', color: '#6d5a1d' }}>Latest note: {p.note}</p> : null}
       {p?.updatedAt ? <p className="mt-1 text-[9.5px]" style={{ color: OLIVE }}>Last updated {fmtAt(p.updatedAt)}{p.updatedBy ? ` by ${p.updatedBy}` : ''}</p> : null}
@@ -2459,7 +2489,7 @@ function TaskCard({ t, p, today, color, editable, onSave }: {
         <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t pt-2" style={{ borderColor: '#EEEFE1' }}>
           <button type="button" disabled={busy || stage === 0} onClick={() => save(stage - 1, false)} className="rounded-full border px-2.5 py-1 text-[10.5px] font-bold disabled:opacity-40" style={{ borderColor: LINE, color: OLIVE }}>◀ Undo step</button>
           <button type="button" disabled={busy || stage >= t.steps.length} onClick={() => save(stage + 1, false, note)} className="rounded-full px-2.5 py-1 text-[10.5px] font-bold text-white disabled:opacity-40" style={{ backgroundColor: color }}>
-            {stage >= t.steps.length ? 'Complete ✓' : `Mark “${t.steps[stage]}” done ▶`}
+            {stage >= t.steps.length ? 'Complete ✓' : `Mark “${t.steps[stage].s}” done ▶`}
           </button>
           {stage < t.steps.length ? (
             <button type="button" disabled={busy} onClick={() => save(stage, !blocked, note)} className="rounded-full border px-2.5 py-1 text-[10.5px] font-bold" style={{ borderColor: '#dcb3aa', color: '#a04a38' }}>
@@ -2490,18 +2520,20 @@ function TeamTab({ tracker }: { tracker: TrackerState }) {
     return null;
   };
 
+  // Completion is WEIGHTED: each task contributes its weightage × the share of its steps done.
+  const frac = (t: TeamTask) => Math.min(1, (state.progress[t.key]?.stage ?? 0) / t.steps.length);
   const stats = (tasks: TeamTask[]) => {
-    const steps = tasks.reduce((a, t) => a + t.steps.length, 0);
-    const doneSteps = tasks.reduce((a, t) => a + Math.min(t.steps.length, state.progress[t.key]?.stage ?? 0), 0);
+    const w = tasks.reduce((a, t) => a + t.weight, 0);
+    const wDone = tasks.reduce((a, t) => a + t.weight * frac(t), 0);
     const rags = tasks.map((t) => ragFor(t, state.progress[t.key], today));
     const count = (r: Rag) => rags.filter((x) => x === r).length;
-    return { pct: steps ? Math.round((doneSteps / steps) * 100) : 0, done: count('done'), onTrack: count('on_track'), due: count('due'), overdue: count('overdue'), blocked: count('blocked'), notStarted: count('not_started'), n: tasks.length };
+    const subs = tasks.reduce((a, t) => a + t.subs, 0);
+    const subsDone = tasks.filter((t) => frac(t) >= 1).reduce((a, t) => a + t.subs, 0);
+    return { pct: w ? Math.round((wDone / w) * 100) : 0, share: Math.round((w / TOTAL_WEIGHT) * 100), subs, subsDone, done: count('done'), onTrack: count('on_track'), due: count('due'), overdue: count('overdue'), blocked: count('blocked'), notStarted: count('not_started'), n: tasks.length };
   };
   const all = stats(TEAM_TASKS);
-  // Where the plan says we should be by today: share of task-steps whose due date has passed.
-  const expectedSteps = TEAM_TASKS.filter((t) => t.dueIso <= today).reduce((a, t) => a + t.steps.length, 0);
-  const totalSteps = TEAM_TASKS.reduce((a, t) => a + t.steps.length, 0);
-  const expectedPct = Math.round((expectedSteps / totalSteps) * 100);
+  // Where the plan says we should be by today: weight of tasks whose due date has passed.
+  const expectedPct = Math.round((TEAM_TASKS.filter((t) => t.dueIso <= today).reduce((a, t) => a + t.weight, 0) / TOTAL_WEIGHT) * 100);
   const attention = TEAM_TASKS.filter((t) => ['overdue', 'blocked', 'due'].includes(ragFor(t, state.progress[t.key], today)));
 
   return (
@@ -2527,7 +2559,7 @@ function TeamTab({ tracker }: { tracker: TrackerState }) {
               <div className="absolute top-[-3px] h-4 w-[2px]" style={{ left: `${expectedPct}%`, backgroundColor: CORAL }} title="Planned position today" />
             </div>
             <p className="mt-1 text-[10px]" style={{ color: OLIVE }}>
-              <span className="font-bold" style={{ color: CORAL }}>│</span> planned position today: {expectedPct}% of task steps due by {today}. Steps completed across {all.n} tasks.
+              <span className="font-bold" style={{ color: CORAL }}>│</span> planned position today: {expectedPct}%. Completion is weighted — each task counts by its weightage, so the tasks that drive the most subscriptions move the bar most. {all.n} tasks · subscription targets of completed tasks: <b style={{ color: NAVY }}>{all.subsDone} of {all.subs}</b>.
             </p>
             <div className="mt-2 grid grid-cols-3 gap-1.5 md:grid-cols-6">
               {([['done', all.done], ['on_track', all.onTrack], ['due', all.due], ['overdue', all.overdue], ['blocked', all.blocked], ['not_started', all.notStarted]] as [Rag, number][]).map(([r, n]) => (
@@ -2546,7 +2578,7 @@ function TeamTab({ tracker }: { tracker: TrackerState }) {
                 return (
                   <div key={p.id}>
                     <div className="flex items-baseline justify-between text-[10.5px]">
-                      <span className="font-bold" style={{ color: p.color }}>{p.name}</span>
+                      <span className="font-bold" style={{ color: p.color }}>{p.name} <span className="font-normal" style={{ color: OLIVE }}>· {s.share}% weight · {s.subs ? `${s.subs} subs` : 'enabler'}</span></span>
                       <span className="tabular-nums" style={{ color: OLIVE }}>
                         {s.done}/{s.n} done{s.overdue ? <span className="font-bold" style={{ color: '#a04a38' }}> · {s.overdue} overdue</span> : null}{s.blocked ? <span className="font-bold" style={{ color: '#a04a38' }}> · {s.blocked} blocked</span> : null} · <b style={{ color: NAVY }}>{s.pct}%</b>
                       </span>
@@ -2580,7 +2612,7 @@ function TeamTab({ tracker }: { tracker: TrackerState }) {
       </section>
 
       <section>
-        <Exhibit n="T1" title="The calendar — four owners × five weeks, each week closing on its gate" />
+        <Exhibit n="T1" title="The calendar — six owners × five weeks, each week closing on its checkpoint" />
         <div className="mb-2 flex flex-wrap gap-1.5">
           {([['all', 'Everyone'], ...TEAM.map((p) => [p.id, p.name])] as [Person | 'all', string][]).map(([id, label]) => (
             <button
@@ -2645,10 +2677,10 @@ function TeamTab({ tracker }: { tracker: TrackerState }) {
       </section>
 
       <section>
-        <Exhibit n="T2" title="Every task — its flow chart, progress bar and what “done” looks like" />
+        <Exhibit n="T2" title="Every task — objective, why it matters, how to do it, weightage, subscription target and live progress" />
         <p className="mb-2 text-[11px]" style={{ color: OLIVE }}>
           Owners update their own tasks: mark the next step done, flag a block, add a note. Dr Luvi updates the
-          receptionists’ tasks. Everyone else sees the same live picture read-only.
+          receptionists’ tasks; Fahad updates CRM-DN’s. Everyone else sees the same live picture read-only.
           {state.viewer ? <> Signed in as <b style={{ color: NAVY }}>{state.viewer}</b>{state.canEdit === 'all' ? ' — you can update every task.' : state.canEdit.length ? ` — you can update ${state.canEdit.map((x) => TEAM.find((p) => p.id === x)!.name).join(' and ')}’s tasks.` : ' — read-only.'}</> : null}
         </p>
         <div className="space-y-4">
@@ -2686,7 +2718,7 @@ function TeamTab({ tracker }: { tracker: TrackerState }) {
                   const t = TASK_BY_KEY[e.key];
                   if (!t) return null;
                   const change = e.toStage > e.fromStage
-                    ? `✓ ${t.steps.slice(e.fromStage, e.toStage).join(' · ')}`
+                    ? `✓ ${t.steps.slice(e.fromStage, e.toStage).map((x) => x.s).join(' · ')}`
                     : e.toStage < e.fromStage ? `↩ back to step ${e.toStage + 1}` : e.status === 'blocked' ? '⚑ flagged blocked' : 'note';
                   return (
                     <tr key={`${e.at}-${i}`} className="border-t align-top" style={{ borderColor: '#EEEFE1' }}>

@@ -1,14 +1,23 @@
 /**
  * Smile Club team task calendar — the single definition of every tracked
- * task, its owner, due date and the step flow that its progress bar measures.
- * Shared by the plan UI (client) and the progress server action, which
- * validates keys, step bounds and ownership against this list.
+ * task: owner, due date, plain-language objective and reason, the steps that
+ * make up its flow chart (each with how-to guidance), its weight in the
+ * programme score and the subscriptions it drives. Shared by the plan UI
+ * (client) and the progress server action, which validates keys, step bounds
+ * and ownership against this list.
  *
  * Live progress (current step, status, audit trail) lives in lane_e.tasks
  * (external_id = `sc-team:<key>`) and lane_e.task_events — never here.
  */
 
-export type Person = 'gautam' | 'luvi' | 'mohan' | 'reception';
+export type Person = 'fahad' | 'gautam' | 'luvi' | 'mohan' | 'reception' | 'crm';
+
+export interface Step {
+  /** Short label shown in the flow chart. */
+  s: string;
+  /** Plain-language instruction: how to do this step. */
+  how: string;
+}
 
 export interface TeamTask {
   key: string;
@@ -18,12 +27,21 @@ export interface TeamTask {
   dueIso: string;
   due: string;
   task: string;
+  /** What this task achieves, in one or two plain sentences. */
+  objective: string;
+  /** Why it matters to the 120. */
+  why: string;
+  steps: Step[];
   done: string;
   with?: string;
   to?: string;
   toLabel?: string;
-  /** The task's flow: each step is one visible stage of the flow chart. */
-  steps: string[];
+  /** Relative weight in the programme score (normalised to % in the UI). */
+  weight: number;
+  /** Paid subscriptions this task directly delivers (0 = enabler). */
+  subs: number;
+  /** What the subscription figure means for this task. */
+  subsNote: string;
 }
 
 export const TRACKER_SOURCE = 'smileclub-team';
@@ -33,17 +51,19 @@ export const externalIdFor = (key: string) => `sc-team:${key}`;
 export const SMILECLUB_PROJECT_ID = '6802b97d-cfb5-46b3-842f-9d29a5039309';
 
 export const OWNER_LABEL: Record<Person, string> = {
+  fahad: 'Fahad',
   gautam: 'Gautam',
   luvi: 'Dr Luvi',
   mohan: 'Mohan',
   reception: 'Receptionists',
+  crm: 'CRM-DN',
 };
 
 /**
  * Who may move a person's tasks, keyed by dashboard_users.name. Admin
- * sessions may move any task. Receptionists have no Smile Club access (their
- * role is locked to Clinical Operations), so Dr Luvi updates their tasks as
- * their head of operations.
+ * sessions (Fahad) may move any task, including CRM-DN's, which has no login.
+ * Receptionist logins are locked to Clinical Operations, so Dr Luvi updates
+ * their tasks as their head of operations.
  */
 export const EDITORS: Record<string, Person[]> = {
   Gautam: ['gautam'],
@@ -52,108 +72,623 @@ export const EDITORS: Record<string, Person[]> = {
 };
 
 export const TEAM_TASKS: TeamTask[] = [
-  /* ── Gautam ── */
-  { key: 'g-crm-test', who: 'gautam', wk: 1, dueIso: '2026-09-23', due: 'Wed 23 Sep EOD', task: 'Close the historical CRM test', done: 'Payment-record reconciliation shared: 71 replies classified, 417 failures coded, broadcast memberships confirmed or ruled out.', with: 'Fahad reviews', to: 'waves', toLabel: 'Wave 1 results',
-    steps: ['Pull payment records', 'Match the 71 replies', 'Code the 417 failures', 'Share with Fahad'] },
-  { key: 'g-baseline', who: 'gautam', wk: 1, dueIso: '2026-09-24', due: 'Thu 24 Sep', task: 'Hand over the member baseline', done: 'Enrolments, payment status, plan mix, usage and cancellations — the savings examples and funnel definitions are built from it; nothing scales before it exists.', with: 'Fahad', to: 'offer', toLabel: 'Offer & economics',
-    steps: ['Export enrolments + payment status', 'Add plan mix + usage', 'Add cancellations', 'Handed to Fahad'] },
-  { key: 'g-assets', who: 'gautam', wk: 1, dueIso: '2026-09-24', due: 'Thu 24 Sep', task: 'Release enablement assets for print', done: 'Corporate one-pager, savings math, HR email kit and reception deck handed to Mohan in editable form.', with: 'Mohan', to: 'response', toLabel: 'R1 · Corporate',
-    steps: ['Collect the four assets', 'Check they are current', 'Handed to Mohan (editable)'] },
-  { key: 'g-doors-15', who: 'gautam', wk: 1, dueIso: '2026-09-25', due: 'Fri 25 Sep', task: 'Field-sales door plan — first 15 doors', done: 'First 15 SME doors in JLT and Business Bay chosen trigger-first (renewal month, complaints, hiring), each qualified with “does your medical include dental?”.', with: 'Fahad (warm doors)', to: 'corporate', toLabel: 'Corporate playbook',
-    steps: ['Long-list SMEs in JLT + Business Bay', 'Find each trigger', 'Qualify: dental in their medical?', 'Final 15 logged'] },
-  { key: 'g-bridge', who: 'gautam', wk: 1, dueIso: '2026-09-28', due: 'Mon 28 Sep', task: 'Replacement-door bridge + product decisions', done: 'Bridge sizes the ≥72-equivalent pipeline door by door after Michael Page’s closure; decision on 4 live plans vs the blueprint’s 3 tiers; owners named for Smile Score, My Smile Plan and the annual value statement.', with: 'Fahad', to: 'mandate', toLabel: 'M4 alignment',
-    steps: ['Size each door in equivalents', 'Check coverage vs ≥72', 'Decide 4 vs 3 tiers', 'Name build owners'] },
-  { key: 'g-arabyads', who: 'gautam', wk: 2, dueIso: '2026-09-30', due: 'Wed 30 Sep', task: 'ArabyAds staff-membership decision', done: 'If yes: pilot spec + employer code within 48 hours. If no: logged, referral asked.', with: 'Fahad (relationship)', to: 'dm', toLabel: 'Outreach D3',
-    steps: ['Ask made at go-live meeting', 'Decision received', 'Spec + code, or referral logged'] },
-  { key: 'g-cac', who: 'gautam', wk: 2, dueIso: '2026-10-02', due: 'Fri 2 Oct', task: 'Finance fully-loaded CAC ceiling', done: 'Ceiling set via finance/ops (staff, commissions, creative, events, onboarding priced) — required before the Day-14 funding review.', with: 'Finance/ops', to: 'response', toLabel: 'Budget R2',
-    steps: ['Brief finance/ops', 'Price every cost line', 'Ceiling agreed', 'Shared before Day-14'] },
-  { key: 'g-doors-20', who: 'gautam', wk: 2, dueIso: '2026-10-02', due: 'Fri 2 Oct', task: '20 doors walked · first discovery meetings', done: 'Meeting log current (door, date, model discussed, outcome); Benefits Gap Assessment run with every qualified employer.', with: 'Fahad (LinkedIn air-cover)', to: 'corporate', toLabel: 'Corporate playbook',
-    steps: ['10 doors walked', '20 doors walked', 'Discovery meetings held', 'Gap Assessments run'] },
-  { key: 'g-day14', who: 'gautam', wk: 2, dueIso: '2026-10-05', due: 'Mon 5 Oct', task: 'Day-14 gate: funding + corporate viability decision', done: 'Day-15–30 funding released or held; Corporate-24 confirmed against the bridge, or reallocated toward in-clinic/family per Wave-1 priority — decided here, not at Day 30.', with: 'Fahad · Mr Akbar', to: 'mandate', toLabel: 'M4 alignment',
-    steps: ['Read 60/50 + CAC + attribution', 'Check the bridge vs 24', 'Funding + corporate decision', 'Decision recorded'] },
-  { key: 'g-assembly', who: 'gautam', wk: 3, dueIso: '2026-10-07', due: 'Wed 7 Oct', task: 'Assembly Global pilot decision', done: 'Yes/no recorded; if yes, the pilot moves straight into specification.', with: 'Fahad (contact)', to: 'dm', toLabel: 'Outreach D3',
-    steps: ['Follow-up sent', 'Decision received', 'Specification started or closed'] },
-  { key: 'g-pilot', who: 'gautam', wk: 3, dueIso: '2026-10-09', due: 'Fri 9 Oct', task: 'First corporate pilot signed and specified', done: 'The “one defined pilot” with all eight spec points: employer, eligible count, payment model, sponsor, on-site scope and cost, tracking code, success criteria, reporting. 40+ doors walked cumulative.', with: 'Dr Luvi (on-site scope)', to: 'corporate', toLabel: 'Pilot spec (C10)',
-    steps: ['Proposal sent', 'Payment model agreed', 'Eight-point spec complete', 'Signed'] },
-  { key: 'g-day21', who: 'gautam', wk: 3, dueIso: '2026-10-12', due: 'Mon 12 Oct', task: 'Day-21 checkpoint review', done: '88 plan / 75 minimum reviewed with Fahad; recovery plan the next business day if missed.', with: 'Fahad', to: 'kpis', toLabel: 'Controls',
-    steps: ['Read 88/75', 'Review with Fahad', 'Recovery plan if missed'] },
-  { key: 'g-launch', who: 'gautam', wk: 4, dueIso: '2026-10-14', due: 'Wed 14 Oct', task: 'Employee launch of the first pilot', done: 'CEO/HR email + QR + landing page live under the employer code; activation drive running — activation rate, not the signature, is the KPI.', with: 'Mohan (launch kit)', to: 'corporate', toLabel: 'Implementation (C9)',
-    steps: ['Eligibility list received', 'Launch kit approved', 'CEO/HR email sent', 'Activation drive running'] },
-  { key: 'g-onsite', who: 'gautam', wk: 4, dueIso: '2026-10-16', due: 'Fri 16 Oct', task: 'On-site dental day at the pilot employer', done: 'Day delivered at the pre-approved cost; enrolments under the employer code; first bookings made on the day.', with: 'Dr Luvi · Mohan', to: 'corporate', toLabel: 'Corporate playbook',
-    steps: ['Date + cost approved', 'Kit and team confirmed', 'Day delivered', 'Enrolments + bookings logged'] },
-  { key: 'g-complete', who: 'gautam', wk: 5, dueIso: '2026-10-21', due: 'Wed 21 Oct', task: 'Complete the mandate → report to Mr Akbar', done: '120 paid, active, non-refunded, source-coded; ≥98% data and attribution; Finance-validated. Corporate pipeline handover + agent onboarding plan for the scale phase.', with: 'Fahad', to: 'kpis', toLabel: 'Measurement',
-    steps: ['Final count by source', 'Finance validation', 'Pipeline handover', 'Reported to Mr Akbar'] },
+  /* ── Fahad — growth lead, owns the marketing machine and reports to Mr Akbar ── */
+  { key: 'f-response', who: 'fahad', wk: 1, dueIso: '2026-09-22', due: 'Tue 22 Sep EOD', task: 'Submit the 30-day plan to Gautam and Mr Akbar',
+    objective: 'Put every one of the 120 target memberships against a named source, owner, budget and date — so nobody has to guess where the 120 come from.',
+    why: 'The mandate asks for a written, numbered answer on day one. Without it, every later check-in has nothing to measure against.',
+    steps: [
+      { s: 'Map the 120 by source', how: 'Split the 120 across clinics, corporate, website and partners, with the reasoning for each number.' },
+      { s: 'Budget + owners', how: 'Show where every dirham of the AED 30,000 goes and who owns each lane.' },
+      { s: 'Sent', how: 'Share the plan link with Gautam and Mr Akbar.' },
+    ],
+    done: 'The plan is live on the dashboard and shared.', to: 'response', toLabel: '30-day delivery plan', weight: 2, subs: 0, subsNote: 'Enabler — frames all 120' },
+  { key: 'f-call-actions', who: 'fahad', wk: 1, dueIso: '2026-09-23', due: 'Wed 23 Sep', task: 'Close the two open actions from the CRM-DN call',
+    objective: 'Clear the follow-ups promised on the 19 Sep call so CRM-DN can switch on the WhatsApp follow-up sequence.',
+    why: 'CRM-DN cannot send a single follow-up message until they have the list of approved offers — every day of delay is interested patients going cold.',
+    steps: [
+      { s: 'Missed lead flagged', how: 'Send Musamar the unanswered 18 Sep 20:30 booking chat (Syed forwards it) so it is followed up and the gap is fixed.' },
+      { s: 'Approved offers sent', how: 'Send CRM-DN the PDF of offers they are allowed to use; they pick one for the follow-up sequence.' },
+    ],
+    done: 'Both sent; CRM-DN confirms receipt.', with: 'CRM-DN', weight: 1, subs: 0, subsNote: 'Enabler — unblocks the WhatsApp follow-up' },
+  { key: 'f-keywords', who: 'fahad', wk: 1, dueIso: '2026-09-23', due: 'Wed 23 Sep', task: 'Confirm the Google search words we are paying for',
+    objective: 'Check inside the Google Ads account that we are actually bidding on every search phrase in the plan — for example “dental checkup cost dubai”.',
+    why: 'The dashboard only sees campaign totals, not individual search words. If a planned phrase is missing, we are paying for Google but not reaching the people most likely to join.',
+    steps: [
+      { s: 'Open the account', how: 'Open Google Ads and list the words each Smile Club campaign is bidding on.' },
+      { s: 'Compare with the plan', how: 'Tick each phrase on the plan’s keyword list (DM plan, exhibit D1c).' },
+      { s: 'Add what is missing', how: 'Add any missing phrase; block “dentist near me” type searches, which belong to clinic campaigns.' },
+      { s: 'Mark confirmed', how: 'Update the keyword list status to CONFIRMED with today’s date.' },
+    ],
+    done: 'Every planned phrase is live; the list shows CONFIRMED.', to: 'dm', toLabel: 'Keyword list (D1c)', weight: 2, subs: 3, subsNote: '≈3 of the website 12 come from Google search' },
+  { key: 'f-signoff', who: 'fahad', wk: 1, dueIso: '2026-09-24', due: 'Thu 24 Sep', task: 'Get Mr Akbar’s sign-off on money and introductions',
+    objective: 'Get four yes/no answers from Mr Akbar: the AED 30,000 budget, the maximum we may spend to win one member, his three corporate introductions, and the free-consultation WhatsApp message.',
+    why: 'Spending beyond the first week, and the corporate doors he can open, both wait on him. Without sign-off the paid lanes stay small and corporate loses its warmest leads.',
+    steps: [
+      { s: 'One-page ask', how: 'Summarise the four decisions on one page with the plan link.' },
+      { s: 'Meeting held', how: 'Walk him through it; note each answer.' },
+      { s: 'Decisions logged', how: 'Record the answers in the plan and tell Gautam.' },
+    ],
+    done: 'Budget, spend limit, introductions and the WhatsApp message each approved or declined in writing.', with: 'Mr Akbar', to: 'response', toLabel: 'Budget (R2)', weight: 4, subs: 0, subsNote: 'Enabler — releases budget for the paid and corporate lanes' },
+  { key: 'f-warm-doors', who: 'fahad', wk: 2, dueIso: '2026-09-30', due: 'Wed 30 Sep', task: 'Work the warm corporate introductions',
+    objective: 'Turn the companies we already know — Assembly Global, ArabyAds, RBS and Mr Akbar’s three introductions — into meetings for Gautam.',
+    why: 'A company that already knows us signs far faster than a cold one. These doors are the quickest route to the corporate 24.',
+    steps: [
+      { s: 'Follow-ups sent', how: 'Chase Assembly Global; make the staff-membership ask at the ArabyAds meeting.' },
+      { s: 'Introductions made', how: 'Send each of Mr Akbar’s introductions a short note and propose a meeting with Gautam.' },
+      { s: 'Meetings booked', how: 'Put confirmed meetings in Gautam’s calendar with a one-line brief for each.' },
+    ],
+    done: 'Every warm door has a meeting, a decision or a logged “no”.', with: 'Gautam', to: 'dm', toLabel: 'Outreach status (D3)', weight: 4, subs: 0, subsNote: 'Feeds Gautam’s corporate 24' },
+  { key: 'f-partners', who: 'fahad', wk: 2, dueIso: '2026-10-02', due: 'Fri 2 Oct', task: 'Sign the partner channels',
+    objective: 'Sign up the outside partners who sell Smile Club for us and are paid only when someone actually joins: 2 local businesses, 3 promoters, and the first brokers and benefit platforms.',
+    why: 'Partners are 20 of the 120. Each only counts if it has its own tracking code, so we know which partner brought which member and pay only for real results.',
+    steps: [
+      { s: '2 local businesses', how: 'Pharmacies, gyms or salons near a branch; one-page agreement; commission per paid member only.' },
+      { s: '3 promoters', how: 'Family-focused creators or community groups, each with their own link or code.' },
+      { s: 'Brokers + platforms', how: 'Insurance brokers and employee-benefit websites that list Smile Club beside what they already sell.' },
+      { s: 'Codes live', how: 'Each partner receives a tracking code and QR, and is checked monthly before any payment.' },
+    ],
+    done: 'Every partner signed with a working code.', to: 'response', toLabel: 'Partner lanes (R1)', weight: 6, subs: 20, subsNote: '7 local businesses + 7 promoters + 3 brokers + 3 platforms' },
+  { key: 'f-meta', who: 'fahad', wk: 2, dueIso: '2026-10-02', due: 'Fri 2 Oct', task: 'Launch the new Facebook/Instagram ads',
+    objective: 'Put Mohan’s approved ad designs live to reach people who have already visited our website, plus a “chat on WhatsApp” offer.',
+    why: 'Facebook/Instagram is expected to bring 7–14 website members. The better formats need several designs per ad — Mohan’s set is what makes them possible.',
+    steps: [
+      { s: 'Designs approved', how: 'Only after Dr Luvi has checked every claim.' },
+      { s: 'Ads built', how: 'Set up returning-visitor ads and the WhatsApp offer, each with its own tracking.' },
+      { s: 'Live + checked', how: 'Confirm enquiries arrive and the contact centre is replying.' },
+    ],
+    done: 'Ads live, enquiries arriving and being answered.', with: 'Mohan · Dr Luvi', to: 'dm', toLabel: 'Channel plan (D1)', weight: 4, subs: 7, subsNote: '≈7 of the website 12' },
+  { key: 'f-linkedin', who: 'fahad', wk: 2, dueIso: '2026-10-02', due: 'Fri 2 Oct', task: 'Warm up HR managers on LinkedIn',
+    objective: 'Make sure HR and office managers at Gautam’s target companies have seen Smile Club before he walks in.',
+    why: 'A door that recognises us opens more easily. LinkedIn is measured by meetings it helps create, not by clicks.',
+    steps: [
+      { s: 'Weekly posts', how: 'Fahad posts twice a week using Mohan’s HR-facing content.' },
+      { s: 'Small paid test', how: 'Up to AED 3,000 shown to HR titles in Gautam’s areas.' },
+      { s: 'Connect before visits', how: 'Connect with the HR contact before each of Gautam’s visits.' },
+    ],
+    done: 'Posts running; test live; every visit preceded by a connection.', with: 'Mohan · Gautam', weight: 1, subs: 0, subsNote: 'Supports the corporate 24' },
+  { key: 'f-google-gate', who: 'fahad', wk: 2, dueIso: '2026-10-05', due: 'Mon 5 Oct', task: 'Decide whether Google gets more budget',
+    objective: 'After two weeks, look at what one real membership enquiry has cost on Google and decide whether to release the second AED 6,000.',
+    why: 'Google gets more money only if it has proved it works. This stops us pouring budget into a channel that is not producing members.',
+    steps: [
+      { s: 'Read the numbers', how: 'Cost per genuine membership enquiry, allowing 7 days for enquiries to be followed up.' },
+      { s: 'Decide', how: 'AED 150 or less per genuine enquiry → release more; above that → hold.' },
+      { s: 'Record', how: 'Note the decision and the reason in the plan.' },
+    ],
+    done: 'Decision recorded with its numbers.', to: 'dm', toLabel: 'Channel plan (D1)', weight: 2, subs: 0, subsNote: 'Protects the website 12' },
+  { key: 'f-awareness', who: 'fahad', wk: 3, dueIso: '2026-10-12', due: 'Mon 12 Oct', task: 'Run the local awareness ads — and stop them if nothing moves',
+    objective: 'Show Dental Nation and Smile Club to people living near the three branches and in Gautam’s door areas, for AED 3,000.',
+    why: 'Most people have never heard of a dental membership. This warms them up before they search or meet Gautam — but it has to show results or it stops.',
+    steps: [
+      { s: 'Ads live', how: 'Using Mohan’s local designs, around the branches and door areas.' },
+      { s: 'Watch the signals', how: 'More people searching “Dental Nation”, more website visits, more meetings accepted.' },
+      { s: 'Keep or stop', how: 'No movement by Day 21 → stop the rest of the spend.' },
+    ],
+    done: 'Ran and was either kept or stopped on the evidence.', with: 'Mohan', to: 'dm', toLabel: 'Channel plan (D1)', weight: 1, subs: 0, subsNote: 'No direct subscriptions — warms every other lane' },
+  { key: 'f-report', who: 'fahad', wk: 5, dueIso: '2026-10-21', due: 'Every Monday → Wed 21 Oct', task: 'Weekly progress report to Mr Akbar',
+    objective: 'Every checkpoint Monday, tell Mr Akbar in one page how many members have joined, from where, and what is behind.',
+    why: 'Mr Akbar needs one reliable picture. This tracker produces it — the report is the tracker plus the membership count.',
+    steps: [
+      { s: '28 Sep report', how: 'Members joined vs the 36 plan; late tasks; fixes already underway.' },
+      { s: '5 Oct report', how: 'Members vs 60; spend decision; corporate check.' },
+      { s: '12 Oct report', how: 'Members vs 88; what is still at risk.' },
+      { s: '21 Oct final', how: 'The 120 confirmed by Finance, and what happens next.' },
+    ],
+    done: 'Four reports sent on time.', with: 'Gautam', to: 'kpis', toLabel: 'Measurement', weight: 3, subs: 0, subsNote: 'Governance — covers all 120' },
 
-  /* ── Dr Luvi ── */
-  { key: 'l-audit', who: 'luvi', wk: 1, dueIso: '2026-09-23', due: 'Wed 23 Sep', task: 'Front-desk route audit — all three branches', done: 'QR standees placed under SC-ALW / SC-TOS / SC-AMC; Reception Conversion Guide in use; objection log open at each desk.', with: 'Smile Club Coordinator', to: 'response', toLabel: 'R1 · In-clinic',
-    steps: ['Al Wasl checked', 'Dr Tosun checked', 'AMC checked', 'Gaps fixed'] },
-  { key: 'l-refresher', who: 'luvi', wk: 1, dueIso: '2026-09-24', due: 'Thu 24 Sep', task: '30-minute receptionist refresher per branch', done: 'Ask → Match → Value → Clarify → Close rehearsed; language rules (membership, never insurance/coverage/claim); first member appointment booked before the patient leaves.', with: 'Receptionists', to: 'why', toLabel: 'Language dictionary',
-    steps: ['Al Wasl session', 'Dr Tosun session', 'AMC session'] },
-  { key: 'l-capacity', who: 'luvi', wk: 1, dueIso: '2026-09-25', due: 'Fri 25 Sep', task: 'Capacity check + priority-booking rule', done: 'Member appointment availability per branch and daypart confirmed; a priority member-booking rule defined — capacity is an expansion gate.', to: 'offer', toLabel: 'Capacity gate',
-    steps: ['Availability per branch/daypart', 'Priority rule drafted', 'Rule live at all desks'] },
-  { key: 'l-day7', who: 'luvi', wk: 1, dueIso: '2026-09-28', due: 'Mon 28 Sep', task: 'Day-7 in-clinic readout', done: '18 of the 36 from in-clinic (6 per branch, pro-rata); top objection themes; conversion assumption checked against branch footfall.', with: 'Receptionists', to: 'response', toLabel: 'R1 · In-clinic',
-    steps: ['Branch counts pulled', 'Objection themes summarised', 'Footfall check', 'Readout shared'] },
-  { key: 'l-onboarding', who: 'luvi', wk: 2, dueIso: '2026-09-30', due: 'Wed 30 Sep', task: 'Onboarding standard live', done: 'Every new member’s first appointment booked within 7 days of joining; first booking and first completed visit tracked separately.', to: 'layers', toLabel: 'Layer map',
-    steps: ['Standard written', 'Desks briefed', 'Tracking live'] },
-  { key: 'l-review-v1', who: 'luvi', wk: 2, dueIso: '2026-10-01', due: 'Thu 1 Oct', task: 'Clinical review of Mohan’s asset set v1', done: 'Every claim clinically accurate, non-alarmist and free of unsubstantiated savings before any ad goes live; weekly sign-off from here on.', with: 'Mohan', to: 'why', toLabel: 'Regulatory dictionary',
-    steps: ['Set received', 'Claims checked', 'Changes returned', 'Signed off'] },
-  { key: 'l-day14', who: 'luvi', wk: 2, dueIso: '2026-10-05', due: 'Mon 5 Oct', task: 'Day-14 in-clinic + capacity readout', done: '30 from in-clinic (10 per branch); capacity reading feeds the Day-15–30 funding decision.', to: 'kpis', toLabel: 'Controls',
-    steps: ['Branch counts pulled', 'Capacity reading', 'Readout shared'] },
-  { key: 'l-onsite-scope', who: 'luvi', wk: 3, dueIso: '2026-10-08', due: 'Thu 8 Oct', task: 'On-site dental day: clinical scope and cost', done: 'Clinician, chair time, materials and cost estimated for the pilot employer’s day — costed per event, never assumed low-cost.', with: 'Gautam', to: 'corporate', toLabel: 'Pilot spec (C10)',
-    steps: ['Scope agreed with Gautam', 'Clinician + materials', 'Cost estimate signed'] },
-  { key: 'l-csr', who: 'luvi', wk: 3, dueIso: '2026-10-09', due: 'Fri 9 Oct', task: 'First CSR community event — clinician assigned', done: 'Event near a branch costed and staffed; per-event code live.', with: 'Fahad', to: 'response', toLabel: 'R1 · CSR',
-    steps: ['Event chosen', 'Costed', 'Clinician assigned', 'Event code live'] },
-  { key: 'l-day21', who: 'luvi', wk: 3, dueIso: '2026-10-12', due: 'Mon 12 Oct', task: 'Day-21 in-clinic readout', done: '44 from in-clinic (≈15 per branch); branch-level recovery actions if a branch trails.', to: 'kpis', toLabel: 'Controls',
-    steps: ['Branch counts pulled', 'Recovery actions set', 'Readout shared'] },
-  { key: 'l-onsite-deliver', who: 'luvi', wk: 4, dueIso: '2026-10-16', due: 'Fri 16 Oct', task: 'Deliver the corporate on-site day clinically', done: 'Screenings delivered to standard; employees’ first visits booked; member first-visit experience audited (attendance, no-shows).', with: 'Gautam · Mohan', to: 'corporate', toLabel: 'Corporate playbook',
-    steps: ['Team briefed', 'Screenings delivered', 'First visits booked', 'Experience audited'] },
-  { key: 'l-smilescore', who: 'luvi', wk: 4, dueIso: '2026-10-19', due: 'Mon 19 Oct', task: 'Draft clinical definitions for the baseline assessment', done: 'Smile Score dimensions drafted (caries risk, gum health, hygiene, function, preventive adherence) for the build decision — clinical governance, not marketing.', to: 'why', toLabel: 'Member journey (W3)',
-    steps: ['Dimensions listed', 'Status labels defined', 'Draft for the build decision'] },
-  { key: 'l-in60', who: 'luvi', wk: 5, dueIso: '2026-10-21', due: 'Wed 21 Oct', task: 'In-clinic 60 delivered + refund check', done: '20 per branch; cancellations and refunds reconciled so every counted contract is active and non-refunded before Finance validation.', to: 'mandate', toLabel: 'Output definition',
-    steps: ['Branch totals', 'Refunds + cancellations reconciled', 'Handed to Finance'] },
+  /* ── CRM-DN — runs WhatsApp, the landing pages, tracking and the contact centre ── */
+  { key: 'c-scoring', who: 'crm', wk: 1, dueIso: '2026-09-23', due: 'Wed 23 Sep', task: 'Score past campaign chats + give Fahad access',
+    objective: 'Rate every WhatsApp enquiry since November 2025 as high or low interest, and give Fahad access to the results.',
+    why: 'It tells us which old enquiries are worth contacting again — the cheapest leads we have.',
+    steps: [
+      { s: 'All campaigns scored', how: 'Including the ~9 orthodontic chats.' },
+      { s: 'Access given', how: 'Fahad can see the scores on their dashboard.' },
+    ],
+    done: 'Scores visible to Fahad.', with: 'Fahad', weight: 1, subs: 0, subsNote: 'Enabler — finds the warmest past enquiries' },
+  { key: 'c-landing', who: 'crm', wk: 1, dueIso: '2026-09-24', due: 'Thu 24 Sep', task: 'Membership web page in English and Arabic',
+    objective: 'One clear page where anyone clicking an ad or the banner can understand Smile Club and join.',
+    why: 'Every online lane sends people here. A confusing page wastes every dirham spent getting them to it.',
+    steps: [
+      { s: 'English page', how: 'What is included, the price, how to join — no insurance words.' },
+      { s: 'Arabic page', how: 'Same content, properly translated.' },
+      { s: 'Tracking on', how: 'Each visit records which ad or link brought the person.' },
+    ],
+    done: 'Both pages live and recording where visitors come from.', with: 'Mohan', weight: 2, subs: 0, subsNote: 'Enabler — every website subscription passes through it' },
+  { key: 'c-contact', who: 'crm', wk: 1, dueIso: '2026-09-24', due: 'Thu 24 Sep', task: 'Answer every enquiry within 10 minutes',
+    objective: 'The contact centre replies to every Smile Club enquiry within 10 minutes and notes whether the person wants membership or just an appointment.',
+    why: 'Interest fades fast. Last time most replies were really about appointments — tagging the difference tells us what is actually working.',
+    steps: [
+      { s: 'Rule agreed', how: '10-minute reply, 7 days a week, with a script.' },
+      { s: 'Tagging on', how: 'Each first reply marked “membership” or “appointment”.' },
+      { s: 'Checked daily', how: 'Late replies reviewed at the 09:00 meeting.' },
+    ],
+    done: 'Replies under 10 minutes; every enquiry tagged.', weight: 3, subs: 0, subsNote: 'Protects the website 12 and partner leads' },
+  { key: 'c-retarget', who: 'crm', wk: 1, dueIso: '2026-09-24', due: 'Thu 24 Sep', task: 'WhatsApp follow-up for people who enquired but did not book',
+    objective: 'Over 2–3 days, send people who enquired a personal follow-up using the approved offer; a free consultation for the most interested.',
+    why: 'People who already enquired are warm. A timely, personal message converts far better than a new ad.',
+    steps: [
+      { s: 'Offer chosen', how: 'From Fahad’s approved-offers PDF.' },
+      { s: 'Approval', how: 'Mr Akbar approves the free-consultation message.' },
+      { s: 'Sequence live', how: 'Only to interested, consented people — never a mass blast.' },
+    ],
+    done: 'Sequence live to consented, interested enquirers only.', with: 'Fahad', weight: 2, subs: 0, subsNote: 'Counts inside the clinic 60 / website 12' },
+  { key: 'c-banner', who: 'crm', wk: 1, dueIso: '2026-09-25', due: 'Fri 25 Sep', task: 'Put the Smile Club banner on the website',
+    objective: 'A small bar across the website — “Smile Club — dental care from AED 99/month → Join” — that visitors can close.',
+    why: 'The website already has visitors we paid nothing extra for. The banner puts Smile Club in front of them at zero ad cost.',
+    steps: [
+      { s: 'Artwork received', how: 'From Mohan (due 24 Sep).' },
+      { s: 'Built', how: 'On the pages people use most; must not get in the way of appointment booking.' },
+      { s: 'Live + tracked', how: 'Clicks and joins from the banner counted separately.' },
+    ],
+    done: 'Banner live on English and Arabic pages with its own tracking.', with: 'Mohan', to: 'dm', toLabel: 'Channel plan (D1)', weight: 2, subs: 2, subsNote: '≈2 of the website 12' },
+  { key: 'c-tracking', who: 'crm', wk: 1, dueIso: '2026-09-28', due: 'Mon 28 Sep', task: 'Record where every member came from',
+    objective: 'Every enquiry and every new member is recorded with where they came from — which branch, ad, partner or company.',
+    why: 'The mandate only counts a member if we can prove the source (98% or better). Without this, members we win may not count toward the 120.',
+    steps: [
+      { s: 'Codes set up', how: 'One code per branch, ad, partner and company.' },
+      { s: 'Flows into the report', how: 'Each join lands in the dashboard with its code.' },
+      { s: 'Spot-check', how: 'Test 10 joins; all 10 show the right source.' },
+    ],
+    done: '98% or more of joins carry their source.', to: 'kpis', toLabel: 'Measurement', weight: 4, subs: 0, subsNote: 'Protects all 120 — an untracked member does not count' },
+  { key: 'c-triggers', who: 'crm', wk: 2, dueIso: '2026-09-30', due: 'Wed 30 Sep', task: 'Four automatic WhatsApp messages at the right moment',
+    objective: 'Send one personal message when something happens: a patient has an unfinished treatment plan, a check-up is due, after an emergency visit, or someone leaves the website mid-booking.',
+    why: 'The earlier mass WhatsApp test produced no confirmed members. Messages sent at a moment of real need are the replacement.',
+    steps: [
+      { s: 'Four messages written', how: 'Short, personal; membership shown as the easier way to afford the care.' },
+      { s: 'Consent checked', how: 'Only to patients who agreed to be contacted.' },
+      { s: 'Live + tracked', how: 'Each message has its own code.' },
+    ],
+    done: 'All four messages live, tracked and consent-checked.', weight: 3, subs: 0, subsNote: 'Counts inside the clinic 60 / website 12' },
 
-  /* ── Mohan ── */
-  { key: 'm-onboard', who: 'mohan', wk: 1, dueIso: '2026-09-23', due: 'Wed 23 Sep', task: 'Onboard to the brief', done: 'Language dictionary + demand-state map absorbed: every asset is tagged to ONE demand state and never uses insurance vocabulary.', to: 'layers', toLabel: 'Layer map (L1)',
-    steps: ['Dashboard access', 'Brief read', 'Questions answered'] },
-  { key: 'm-banner', who: 'mohan', wk: 1, dueIso: '2026-09-24', due: 'Thu 24 Sep', task: 'Sticky banner artwork EN/AR', done: '“Smile Club — dental care from AED 99/month → Join”, dismissible, handed to CRM-DN/W3Layouts for the build.', with: 'CRM-DN', to: 'dm', toLabel: 'DM plan D1',
-    steps: ['EN design', 'AR design', 'Approved', 'Handed to CRM-DN'] },
-  { key: 'm-printkit', who: 'mohan', wk: 1, dueIso: '2026-09-25', due: 'Fri 25 Sep', task: 'Corporate print kit for Gautam’s doors', done: 'One-pager + savings table EN/AR, on-site day banner, QR materials — print-ready inside the field-sales AED 6,000.', with: 'Gautam', to: 'response', toLabel: 'R1 · Corporate',
-    steps: ['One-pager + savings table', 'On-site banner', 'QR materials', 'Print-ready files'] },
-  { key: 'm-dynamic-v1', who: 'mohan', wk: 1, dueIso: '2026-09-28', due: 'Mon 28 Sep', task: 'Dynamic-format asset set v1 — the blocker unlock', done: '3 ratios (1:1 · 4:5 · 9:16) × 3 demand-state messages (cost anxiety · family · existing patient) for Meta dynamic/Advantage+ formats, submitted for Dr Luvi’s review.', with: 'Dr Luvi (review)', to: 'dm', toLabel: 'Blocker D2',
-    steps: ['Cost-anxiety set', 'Family set', 'Existing-patient set', 'Submitted for review'] },
-  { key: 'm-videos', who: 'mohan', wk: 2, dueIso: '2026-10-02', due: 'Fri 2 Oct', task: 'Three proof videos + cutdowns', done: 'Doctor-trust prevention explainer · 30-second “what’s included” · member story (written consent only) — each with 15s and 6s cutdowns for Reels/Stories.', with: 'Dr Luvi (clinical)', to: 'layers', toLabel: 'Layer map',
-    steps: ['Scripts approved', 'Filmed', 'Edited', 'Cutdowns exported'] },
-  { key: 'm-creator', who: 'mohan', wk: 2, dueIso: '2026-10-02', due: 'Fri 2 Oct', task: 'Family-layer creator brief', done: 'Brief + content template for affiliate creators (tracked codes; “one dental home for the family”).', with: 'Fahad', to: 'response', toLabel: 'R1 · Affiliates',
-    steps: ['Brief drafted', 'Template built', 'Approved by Fahad'] },
-  { key: 'm-launchkit', who: 'mohan', wk: 2, dueIso: '2026-10-05', due: 'Mon 5 Oct', task: 'Employee launch kit template', done: '“Your company has given you Smile Club — activate in 60 seconds”: email, WhatsApp card, QR poster — ready before the first pilot signs.', with: 'Gautam', to: 'corporate', toLabel: 'Implementation (C9)',
-    steps: ['Email', 'WhatsApp card', 'QR poster', 'Approved by Gautam'] },
-  { key: 'm-linkedin', who: 'mohan', wk: 3, dueIso: '2026-10-08', due: 'Thu 8 Oct', task: 'HR-facing LinkedIn content + Gap Assessment design', done: '“Dental Benefits Made Simple” posts for the door territories; the 5-question Dental Benefits Gap Assessment as a one-page leave-behind.', with: 'Gautam · Fahad', to: 'corporate', toLabel: 'Distribution (C7)',
-    steps: ['Post set designed', 'Gap Assessment designed', 'Approved'] },
-  { key: 'm-geo', who: 'mohan', wk: 3, dueIso: '2026-10-09', due: 'Fri 9 Oct', task: 'Awareness air-cover geo creatives', done: 'IG/FB creatives for the geo cells around the three branches — judged on enabler metrics, never CPL.', with: 'Fahad', to: 'dm', toLabel: 'DM plan D1b',
-    steps: ['Designed', 'Clinical sign-off', 'Handed to Fahad'] },
-  { key: 'm-v2', who: 'mohan', wk: 4, dueIso: '2026-10-15', due: 'Thu 15 Oct', task: 'Asset set v2 from Day-14 learnings', done: 'Winning demand states re-cut; losing variants retired — dynamic formats scale on proven creative only.', with: 'Fahad', to: 'dm', toLabel: 'DM plan D1d',
-    steps: ['Performance read with Fahad', 'Winners re-cut', 'Losers retired', 'v2 live'] },
-  { key: 'm-film-onsite', who: 'mohan', wk: 4, dueIso: '2026-10-16', due: 'Fri 16 Oct', task: 'Film the corporate on-site day', done: 'Content captured with permissions; no identifiable employee or patient without written consent; no implied employer endorsement before it is granted.', with: 'Gautam · Dr Luvi', to: 'corporate', toLabel: 'Reporting & permissions',
-    steps: ['Permissions collected', 'Filmed', 'Edited + consent-checked'] },
-  { key: 'm-library', who: 'mohan', wk: 5, dueIso: '2026-10-20', due: 'Tue 20 Oct', task: 'Asset library handover', done: 'Every asset filed with its demand state, format, approval date and performance tag for the scale phase.', to: 'dm', toLabel: 'DM plan',
-    steps: ['Assets filed', 'Tags complete', 'Handed over'] },
+  /* ── Gautam — project owner & corporate implementer ── */
+  { key: 'g-crm-test', who: 'gautam', wk: 1, dueIso: '2026-09-23', due: 'Wed 23 Sep EOD', task: 'Close out the old WhatsApp test',
+    objective: 'Check the old mass WhatsApp test against actual payments, so we know for certain whether it produced any paying members.',
+    why: 'The test reached 1,280 people and got 71 replies, but no confirmed members. Before writing it off, the payment records must confirm it.',
+    steps: [
+      { s: 'Pull payments', how: 'Get the list of everyone who paid for a membership since the test.' },
+      { s: 'Match the replies', how: 'Check whether any of the 71 people who replied later paid.' },
+      { s: 'Explain failures', how: 'Note why the 417 messages that failed did not arrive (wrong number, opted out, etc.).' },
+      { s: 'Share with Fahad', how: 'Send the short summary.' },
+    ],
+    done: 'We know how many members the test really produced.', with: 'Fahad', to: 'waves', toLabel: 'Wave 1 results', weight: 2, subs: 0, subsNote: 'Evidence — decides whether mass messaging is ever used again' },
+  { key: 'g-baseline', who: 'gautam', wk: 1, dueIso: '2026-09-24', due: 'Thu 24 Sep', task: 'Share the current Smile Club member numbers',
+    objective: 'Give Fahad a simple spreadsheet of today’s Smile Club members: how many there are, which plan each is on, whether they are paying, how often they visit, and who has cancelled.',
+    why: 'This is our starting line. It tells us what a member is really worth, which plan sells, and why people cancel — so the “you save AED X” examples we show patients are true, and we can prove growth from a known number.',
+    steps: [
+      { s: 'Member list', how: 'Export all current members from the Smile Club system — no patient names needed, just counts and plan types.' },
+      { s: 'Payments', how: 'For each member: paying, failed payment, or cancelled.' },
+      { s: 'Visits', how: 'How many visits each member has used since joining.' },
+      { s: 'Sent to Fahad', how: 'Share the file; 15-minute call to walk through it.' },
+    ],
+    done: 'Fahad has the numbers and the starting count is agreed.', with: 'Fahad', to: 'offer', toLabel: 'Offer & economics', weight: 4, subs: 0, subsNote: 'Enabler — sets the starting line for the 120' },
+  { key: 'g-assets', who: 'gautam', wk: 1, dueIso: '2026-09-24', due: 'Thu 24 Sep', task: 'Give Mohan the existing sales materials',
+    objective: 'Hand Mohan the editable files for the corporate one-pager, the savings table, the HR email and the reception presentation.',
+    why: 'These already exist. Mohan updates and prints them instead of designing from scratch — your door visits need them by Friday.',
+    steps: [
+      { s: 'Collect the four files', how: 'From the programme folder.' },
+      { s: 'Check they are current', how: 'Prices and plan names match today’s offer.' },
+      { s: 'Sent to Mohan', how: 'Editable versions (not PDFs).' },
+    ],
+    done: 'Mohan confirms he has all four.', with: 'Mohan', to: 'response', toLabel: 'Corporate (R1)', weight: 2, subs: 0, subsNote: 'Enabler — feeds the corporate 24' },
+  { key: 'g-doors-15', who: 'gautam', wk: 1, dueIso: '2026-09-25', due: 'Fri 25 Sep', task: 'Choose the first 15 companies to visit',
+    objective: 'Pick 15 small and mid-sized companies in JLT and Business Bay most likely to buy Smile Club for their staff.',
+    why: 'Picking the right doors matters more than walking many. Companies whose insurance does not cover dental are the ones who say yes — Michael Page said no because theirs already does.',
+    steps: [
+      { s: 'Long list', how: '30–40 companies of 20–200 staff near a branch.' },
+      { s: 'Find a reason to call now', how: 'Insurance renewal coming up, staff complaints, fast hiring.' },
+      { s: 'Ask the key question', how: '“Does your medical insurance include dental?” — prioritise the ones that say no or very little.' },
+      { s: 'Final 15', how: 'Logged with contact name and visit date.' },
+    ],
+    done: '15 companies logged with a reason and a visit date.', with: 'Fahad', to: 'corporate', toLabel: 'Corporate playbook', weight: 4, subs: 0, subsNote: 'Builds the pipeline for the corporate 24' },
+  { key: 'g-bridge', who: 'gautam', wk: 1, dueIso: '2026-09-28', due: 'Mon 28 Sep', task: 'Show how corporate reaches 24 — and settle two product questions',
+    objective: 'List every company in play and roughly how many memberships each could bring, to show we have enough (about 72 in play to win 24). Also decide: 4 plans or 3, and who builds the member health score.',
+    why: 'Losing Michael Page cut the pipeline. If the numbers do not add up, we must know now — not at Day 30.',
+    steps: [
+      { s: 'Size each company', how: 'Staff count × likely take-up.' },
+      { s: 'Add it up', how: 'Is there 72 or more in play? If not, what closes the gap?' },
+      { s: 'Plans: 4 or 3', how: 'Decide whether to simplify the live plans to three.' },
+      { s: 'Name owners', how: 'For the member health score, personal care plan and yearly value statement.' },
+    ],
+    done: 'The list, the total, and both decisions recorded.', with: 'Fahad', to: 'mandate', toLabel: 'Alignment (M4)', weight: 3, subs: 0, subsNote: 'Protects the corporate 24' },
+  { key: 'g-arabyads', who: 'gautam', wk: 2, dueIso: '2026-09-30', due: 'Wed 30 Sep', task: 'Get ArabyAds’ answer on staff memberships',
+    objective: 'A clear yes or no on whether ArabyAds will offer Smile Club to its own team.',
+    why: 'A company we already work with is one of the easiest corporate wins.',
+    steps: [
+      { s: 'Ask made', how: 'At the go-live meeting.' },
+      { s: 'Answer received', how: 'Yes, no, or later.' },
+      { s: 'Next step', how: 'Yes → company code and plan within 48 hours; no → ask them to refer someone.' },
+    ],
+    done: 'Answer recorded with its next step.', with: 'Fahad', to: 'dm', toLabel: 'Outreach status (D3)', weight: 2, subs: 0, subsNote: 'Part of the corporate 24' },
+  { key: 'g-cac', who: 'gautam', wk: 2, dueIso: '2026-10-02', due: 'Fri 2 Oct', task: 'Agree the most we can spend to win one member',
+    objective: 'With Finance, set the maximum total cost — staff time, commissions, ads, events — we can spend to win one member and still make money.',
+    why: 'Without this limit nobody can say whether a channel is worth it. It is needed before the Day-14 spending decision.',
+    steps: [
+      { s: 'Brief Finance', how: 'Explain what we need and why.' },
+      { s: 'Price every cost', how: 'Staff, commissions, printing, events, ads.' },
+      { s: 'Limit agreed', how: 'One number per member, signed off.' },
+      { s: 'Shared', how: 'Sent to Fahad before 5 Oct.' },
+    ],
+    done: 'One agreed number, in writing.', with: 'Finance', to: 'response', toLabel: 'Budget (R2)', weight: 3, subs: 0, subsNote: 'Enabler — decides which lanes get more money' },
+  { key: 'g-doors-20', who: 'gautam', wk: 2, dueIso: '2026-10-02', due: 'Fri 2 Oct', task: 'Visit 20 companies and hold first meetings',
+    objective: 'Walk into 20 companies, meet the HR or office manager, and run the five-question dental benefits check with each interested one.',
+    why: 'Corporate is 24 of the 120, and memberships for a whole team are sold face to face, not online.',
+    steps: [
+      { s: '10 visited', how: 'Take the one-pager; ask the dental question first.' },
+      { s: '20 visited', how: 'Log every visit: company, date, who you met, outcome.' },
+      { s: 'Meetings held', how: 'Walk interested companies through the savings table.' },
+      { s: 'Benefits check done', how: 'The five questions show each company its dental gap.' },
+    ],
+    done: '20 visits logged; checks done with every interested company.', with: 'Fahad', to: 'corporate', toLabel: 'Corporate playbook', weight: 4, subs: 0, subsNote: 'Builds the pipeline for the corporate 24' },
+  { key: 'g-day14', who: 'gautam', wk: 2, dueIso: '2026-10-05', due: 'Mon 5 Oct', task: 'Two-week review: spend and corporate decision',
+    objective: 'At Day 14, decide whether to release the rest of the budget and whether corporate can still reach 24 — or move effort to the clinics.',
+    why: 'Deciding at Day 14 leaves time to recover. Deciding at Day 30 is too late.',
+    steps: [
+      { s: 'Read the numbers', how: 'Members vs 60 planned, cost per member, source tracking.' },
+      { s: 'Corporate check', how: 'Is the company list still big enough for 24?' },
+      { s: 'Decide', how: 'Release or hold money; keep corporate or shift effort.' },
+      { s: 'Record', how: 'Write down the decision and the reason.' },
+    ],
+    done: 'Decision recorded and shared with Mr Akbar.', with: 'Fahad · Mr Akbar', to: 'mandate', toLabel: 'Alignment (M4)', weight: 3, subs: 0, subsNote: 'Governance — protects all 120' },
+  { key: 'g-assembly', who: 'gautam', wk: 3, dueIso: '2026-10-07', due: 'Wed 7 Oct', task: 'Get Assembly Global’s decision',
+    objective: 'A clear yes or no from Assembly Global on a trial for their Dubai team.',
+    why: 'A warm introduction through Fahad — one of the strongest corporate chances.',
+    steps: [
+      { s: 'Follow-up sent', how: 'Short note with the one-pager.' },
+      { s: 'Answer received', how: 'Yes, no or later.' },
+      { s: 'Next step', how: 'Yes → start the trial plan immediately.' },
+    ],
+    done: 'Answer recorded.', with: 'Fahad', to: 'dm', toLabel: 'Outreach status (D3)', weight: 2, subs: 0, subsNote: 'Part of the corporate 24' },
+  { key: 'g-pilot', who: 'gautam', wk: 3, dueIso: '2026-10-09', due: 'Fri 9 Oct', task: 'Sign the first company trial',
+    objective: 'One company signs up for Smile Club for its staff, with everything written down: who is eligible, who pays, the on-site dental day, and how success is judged.',
+    why: 'The first signed company is the proof every later company will ask for — and the first real corporate memberships.',
+    steps: [
+      { s: 'Proposal sent', how: 'Using the standard proposal.' },
+      { s: 'Payment agreed', how: 'Company pays all, pays part, or staff pay at a company rate.' },
+      { s: 'Details written', how: 'Eligible staff, contact person, on-site day and cost, tracking code, review date.' },
+      { s: 'Signed', how: 'Signed agreement filed.' },
+    ],
+    done: 'Agreement signed with all details.', with: 'Dr Luvi · Fahad', to: 'corporate', toLabel: 'Trial checklist (C10)', weight: 6, subs: 12, subsNote: 'First ≈12 of the corporate 24' },
+  { key: 'g-day21', who: 'gautam', wk: 3, dueIso: '2026-10-12', due: 'Mon 12 Oct', task: 'Three-week review',
+    objective: 'Check members joined against 88 planned (75 minimum) and agree fixes the next day if short.',
+    why: 'The last chance to change course with more than a week left.',
+    steps: [
+      { s: 'Read the count', how: 'Members by source vs plan.' },
+      { s: 'Review with Fahad', how: 'Which lanes are behind and why.' },
+      { s: 'Fix plan', how: 'If short, a written fix by the next working day.' },
+    ],
+    done: 'Review held; fix plan written if needed.', with: 'Fahad', to: 'kpis', toLabel: 'Controls', weight: 2, subs: 0, subsNote: 'Governance — protects all 120' },
+  { key: 'g-launch', who: 'gautam', wk: 4, dueIso: '2026-10-14', due: 'Wed 14 Oct', task: 'Launch Smile Club to the company’s staff',
+    objective: 'Staff at the signed company get a simple message from their CEO or HR — “your company has given you Smile Club, join in 60 seconds” — and start joining.',
+    why: 'A signed contract earns nothing until staff actually join. How many staff join is what counts.',
+    steps: [
+      { s: 'Staff list received', how: 'Who is eligible, from HR.' },
+      { s: 'Launch kit approved', how: 'Mohan’s email, WhatsApp card and QR poster.' },
+      { s: 'Message sent', how: 'From the CEO or HR, not from us.' },
+      { s: 'Joining drive', how: 'Reminders on day 3 and day 7; count joins daily.' },
+    ],
+    done: 'Message sent and staff joining under the company code.', with: 'Mohan', to: 'corporate', toLabel: 'Launch steps (C9)', weight: 4, subs: 0, subsNote: 'Converts the signed trial into memberships' },
+  { key: 'g-onsite', who: 'gautam', wk: 4, dueIso: '2026-10-16', due: 'Fri 16 Oct', task: 'Run the on-site dental day at the company',
+    objective: 'A Dental Nation team visits the company for free dental checks and signs staff up on the spot.',
+    why: 'Seeing a dentist in person is what gets hesitant staff to join and book their first visit.',
+    steps: [
+      { s: 'Date and cost approved', how: 'Agreed with the company and Dr Luvi.' },
+      { s: 'Team and kit ready', how: 'Clinician, banner, forms, QR codes.' },
+      { s: 'Day delivered', how: 'Checks done; sign-ups taken.' },
+      { s: 'Results logged', how: 'Sign-ups and bookings recorded under the company code.' },
+    ],
+    done: 'Day delivered; sign-ups and bookings logged.', with: 'Dr Luvi · Mohan', to: 'corporate', toLabel: 'Corporate playbook', weight: 4, subs: 12, subsNote: 'Remaining ≈12 of the corporate 24' },
+  { key: 'g-complete', who: 'gautam', wk: 5, dueIso: '2026-10-21', due: 'Wed 21 Oct', task: 'Close the 30 days and report to Mr Akbar',
+    objective: 'Confirm the 120 paying members with Finance and report the result to Mr Akbar, with a handover for the next phase.',
+    why: 'The mandate counts only members who paid, are active, have not been refunded and can be traced to a source.',
+    steps: [
+      { s: 'Final count', how: 'Members by source.' },
+      { s: 'Finance check', how: 'Finance confirms every member counted.' },
+      { s: 'Handover', how: 'Corporate companies in progress + sales hire plan.' },
+      { s: 'Reported', how: 'Presented to Mr Akbar.' },
+    ],
+    done: 'Finance-confirmed result presented to Mr Akbar.', with: 'Fahad', to: 'kpis', toLabel: 'Measurement', weight: 3, subs: 0, subsNote: 'Confirms all 120' },
 
-  /* ── Receptionists ── */
-  { key: 'r-refresher', who: 'reception', wk: 1, dueIso: '2026-09-24', due: 'Thu 24 Sep', task: 'Attend the refresher', done: 'Pitch, language rules and first-booking step rehearsed with Dr Luvi.', with: 'Dr Luvi', to: 'why', toLabel: 'Language dictionary',
-    steps: ['Al Wasl attended', 'Dr Tosun attended', 'AMC attended'] },
-  { key: 'r-pace-6', who: 'reception', wk: 1, dueIso: '2026-09-28', due: 'Mon 28 Sep', task: 'Branch pace: 6 paid (minimum 5)', done: 'Per-branch count reported at the 09:00 review; every decline in the objection log.', to: 'response', toLabel: 'R1 · In-clinic',
-    steps: ['Al Wasl ≥6', 'Dr Tosun ≥6', 'AMC ≥6'] },
-  { key: 'r-pace-10', who: 'reception', wk: 2, dueIso: '2026-10-05', due: 'Mon 5 Oct', task: 'Branch pace: 10 paid (minimum 9)', done: 'Family prompt added: parents offered Family membership at checkout.', to: 'layers', toLabel: 'Layer map · state 7',
-    steps: ['Al Wasl ≥10', 'Dr Tosun ≥10', 'AMC ≥10'] },
-  { key: 'r-pace-15', who: 'reception', wk: 3, dueIso: '2026-10-12', due: 'Mon 12 Oct', task: 'Branch pace: 15 paid (minimum 13)', done: 'Treatment-plan patients asked “would member rates help with your plan?” (demand state 6).', to: 'layers', toLabel: 'Layer map · state 6',
-    steps: ['Al Wasl ≥15', 'Dr Tosun ≥15', 'AMC ≥15'] },
-  { key: 'r-corp-members', who: 'reception', wk: 4, dueIso: '2026-10-14', due: 'Wed 14 Oct', task: 'Recognise corporate members', done: 'Employees arriving under a pilot employer code are activated, welcomed and booked — the employee journey starts at the desk.', with: 'Gautam', to: 'corporate', toLabel: 'Employee journey (C1)',
-    steps: ['Desks briefed on employer codes', 'First corporate member booked', 'Routine at all three desks'] },
-  { key: 'r-target-20', who: 'reception', wk: 5, dueIso: '2026-10-21', due: 'Wed 21 Oct', task: 'Branch target: 20 paid', done: 'Every enrolment under the branch code, card active, first appointment booked.', to: 'mandate', toLabel: 'Output definition',
-    steps: ['Al Wasl 20', 'Dr Tosun 20', 'AMC 20'] },
+  /* ── Dr Luvi — Head of Operations ── */
+  { key: 'l-audit', who: 'luvi', wk: 1, dueIso: '2026-09-23', due: 'Wed 23 Sep', task: 'Check each reception desk is ready to sell Smile Club',
+    objective: 'Visit or call all three branches and confirm each reception desk has what it needs to offer Smile Club to every patient at checkout.',
+    why: 'Half of the 120 must come from our own patients at the reception desk. If a desk has no QR stand, no script or no way to record a “no”, that branch cannot hit its 20.',
+    steps: [
+      { s: 'Al Wasl checked', how: 'Smile Club QR stand visible at the desk (code SC-ALW); staff know the five-step pitch; a sheet to note why patients say no.' },
+      { s: 'Dr Tosun checked', how: 'Same three checks (code SC-TOS).' },
+      { s: 'AMC checked', how: 'Same three checks (code SC-AMC).' },
+      { s: 'Gaps fixed', how: 'Anything missing is replaced the same day.' },
+    ],
+    done: 'All three desks have the QR stand, the pitch and the “no” sheet.', with: 'Smile Club Coordinator', to: 'response', toLabel: 'Clinic lane (R1)', weight: 3, subs: 0, subsNote: 'Protects the clinic 60' },
+  { key: 'l-refresher', who: 'luvi', wk: 1, dueIso: '2026-09-24', due: 'Thu 24 Sep', task: '30-minute refresher for receptionists at each branch',
+    objective: 'Remind every receptionist how to offer Smile Club at checkout, which words to use and avoid, and to book the new member’s first appointment before they leave.',
+    why: 'Receptionists sell half the target. A short, confident conversation at checkout is the single biggest driver of the 120.',
+    steps: [
+      { s: 'Al Wasl session', how: 'Practise the five steps: ask, match to the patient’s need, show the value, answer questions, close.' },
+      { s: 'Dr Tosun session', how: 'Same, plus: say “membership” and “member rates” — never “insurance”, “coverage” or “claim”.' },
+      { s: 'AMC session', how: 'Same, plus: book the first member appointment before the patient leaves.' },
+    ],
+    done: 'All receptionists at all three branches trained.', with: 'Receptionists', to: 'why', toLabel: 'Words to use', weight: 4, subs: 0, subsNote: 'Protects the clinic 60' },
+  { key: 'l-capacity', who: 'luvi', wk: 1, dueIso: '2026-09-25', due: 'Fri 25 Sep', task: 'Make sure new members can get appointments',
+    objective: 'Check each branch has enough appointment slots for new members, and set a simple rule so members are booked quickly.',
+    why: 'Selling memberships we cannot serve leads to cancellations and complaints.',
+    steps: [
+      { s: 'Count free slots', how: 'Per branch, mornings and evenings.' },
+      { s: 'Write the rule', how: 'For example: every member offered a slot within 7 days.' },
+      { s: 'Rule at every desk', how: 'All receptionists know it.' },
+    ],
+    done: 'Slots counted; rule live at all desks.', to: 'offer', toLabel: 'Capacity', weight: 2, subs: 0, subsNote: 'Protects retention of every member' },
+  { key: 'l-day7', who: 'luvi', wk: 1, dueIso: '2026-09-28', due: 'Mon 28 Sep', task: 'Week-one clinic results',
+    objective: 'Report how many members each branch signed in week one (target 6 each, 18 in total) and the main reasons patients said no.',
+    why: 'The reasons patients say no tell us what to fix in the pitch before week two.',
+    steps: [
+      { s: 'Count by branch', how: 'Members signed at each desk.' },
+      { s: 'Top reasons for no', how: 'From the “no” sheets.' },
+      { s: 'Compare with visits', how: 'Members signed vs patients seen.' },
+      { s: 'Shared', how: 'At the Monday review.' },
+    ],
+    done: 'Counts and reasons shared on Monday.', with: 'Receptionists', to: 'response', toLabel: 'Clinic lane (R1)', weight: 2, subs: 0, subsNote: 'Checks 18 of the clinic 60' },
+  { key: 'l-onboarding', who: 'luvi', wk: 2, dueIso: '2026-09-30', due: 'Wed 30 Sep', task: 'Every new member booked within 7 days',
+    objective: 'Make sure every new member has their first appointment booked within a week of joining, and track who actually attends.',
+    why: 'A member who never visits feels no value and cancels. The first visit turns a sale into a lasting member.',
+    steps: [
+      { s: 'Rule written', how: 'First visit booked within 7 days of joining.' },
+      { s: 'Desks briefed', how: 'All three branches.' },
+      { s: 'Tracking on', how: 'Booked and attended recorded separately.' },
+    ],
+    done: 'Rule live and first visits tracked.', to: 'layers', toLabel: 'Customer situations', weight: 2, subs: 0, subsNote: 'Protects retention of every member' },
+  { key: 'l-review-v1', who: 'luvi', wk: 2, dueIso: '2026-10-01', due: 'Thu 1 Oct', task: 'Clinically check Mohan’s first ad designs',
+    objective: 'Read every claim in Mohan’s ads and make sure each is accurate, not alarming, and makes no savings promise we cannot back up.',
+    why: 'No ad goes live without a clinical check — it protects patients and the Dental Nation name.',
+    steps: [
+      { s: 'Designs received', how: 'From Mohan.' },
+      { s: 'Claims checked', how: 'Accurate, calm, no unproven savings.' },
+      { s: 'Changes sent back', how: 'Clear notes to Mohan.' },
+      { s: 'Approved', how: 'Written OK, then weekly checks after.' },
+    ],
+    done: 'Designs approved in writing.', with: 'Mohan', to: 'why', toLabel: 'Words to use', weight: 2, subs: 0, subsNote: 'Unblocks the Facebook/Instagram ads' },
+  { key: 'l-day14', who: 'luvi', wk: 2, dueIso: '2026-10-05', due: 'Mon 5 Oct', task: 'Two-week clinic results',
+    objective: 'Report members per branch (target 10 each, 30 in total) and whether appointment slots are keeping up.',
+    why: 'Feeds the Day-14 spending decision.',
+    steps: [
+      { s: 'Count by branch', how: 'Members signed at each desk.' },
+      { s: 'Appointment check', how: 'Are members getting slots within 7 days?' },
+      { s: 'Shared', how: 'At the Monday review.' },
+    ],
+    done: 'Shared on Monday.', to: 'kpis', toLabel: 'Controls', weight: 2, subs: 0, subsNote: 'Checks 30 of the clinic 60' },
+  { key: 'l-onsite-scope', who: 'luvi', wk: 3, dueIso: '2026-10-08', due: 'Thu 8 Oct', task: 'Plan the clinical side of the company dental day',
+    objective: 'Decide which clinician goes, what checks are done, what equipment is needed and what it costs.',
+    why: 'Every event is costed before we commit, so it is never assumed to be cheap.',
+    steps: [
+      { s: 'Scope agreed', how: 'With Gautam: number of staff, type of checks.' },
+      { s: 'Team and kit', how: 'Clinician and materials named.' },
+      { s: 'Cost signed', how: 'One number approved.' },
+    ],
+    done: 'Clinician, kit and cost agreed.', with: 'Gautam', to: 'corporate', toLabel: 'Trial checklist (C10)', weight: 2, subs: 0, subsNote: 'Enables the corporate 24' },
+  { key: 'l-csr', who: 'luvi', wk: 3, dueIso: '2026-10-09', due: 'Fri 9 Oct', task: 'First community event near a branch',
+    objective: 'Hold one community event — a school, community centre or sports event — with free smile checks and on-the-spot sign-ups.',
+    why: 'Community events are 4 of the 120 and reach families who may not have visited us yet.',
+    steps: [
+      { s: 'Event chosen', how: 'Near a branch, with families.' },
+      { s: 'Costed', how: 'Staff, time, materials.' },
+      { s: 'Clinician assigned', how: 'Named in advance.' },
+      { s: 'Held', how: 'Sign-ups recorded with the event code.' },
+    ],
+    done: 'Event held; sign-ups recorded.', with: 'Fahad', to: 'response', toLabel: 'Community lane (R1)', weight: 2, subs: 4, subsNote: 'The 4 community-event memberships' },
+  { key: 'l-day21', who: 'luvi', wk: 3, dueIso: '2026-10-12', due: 'Mon 12 Oct', task: 'Three-week clinic results',
+    objective: 'Report members per branch (target 15 each, 44 in total) and fix any branch that is behind.',
+    why: 'Nine days left — a branch that is behind needs help now.',
+    steps: [
+      { s: 'Count by branch', how: 'Members signed at each desk.' },
+      { s: 'Fix actions', how: 'For any branch behind: extra coaching, a daily check-in.' },
+      { s: 'Shared', how: 'At the Monday review.' },
+    ],
+    done: 'Shared with fixes agreed.', to: 'kpis', toLabel: 'Controls', weight: 2, subs: 0, subsNote: 'Checks 44 of the clinic 60' },
+  { key: 'l-onsite-deliver', who: 'luvi', wk: 4, dueIso: '2026-10-16', due: 'Fri 16 Oct', task: 'Run the clinical side of the company dental day',
+    objective: 'Deliver the dental checks to our usual standard and book each interested employee’s first visit.',
+    why: 'A good first experience turns a company deal into staff who actually use Smile Club.',
+    steps: [
+      { s: 'Team briefed', how: 'What to check, what to say.' },
+      { s: 'Checks done', how: 'To clinic standard.' },
+      { s: 'First visits booked', how: 'Before staff leave.' },
+      { s: 'Follow-up', how: 'Check who attended their first visit.' },
+    ],
+    done: 'Checks delivered; first visits booked and followed up.', with: 'Gautam · Mohan', to: 'corporate', toLabel: 'Corporate playbook', weight: 3, subs: 0, subsNote: 'Supports the corporate 24' },
+  { key: 'l-smilescore', who: 'luvi', wk: 4, dueIso: '2026-10-19', due: 'Mon 19 Oct', task: 'Draft the member health check',
+    objective: 'Draft the simple health check each new member gets on their first visit: gums, decay risk, cleaning, bite, and whether they are keeping up with check-ups.',
+    why: 'A clear first-visit result is what makes membership feel valuable — it becomes the member’s personal care plan.',
+    steps: [
+      { s: 'Areas listed', how: 'The five areas to check.' },
+      { s: 'Simple ratings', how: 'For example: good / needs attention / priority.' },
+      { s: 'Draft shared', how: 'With Gautam and Fahad for the build decision.' },
+    ],
+    done: 'Draft shared.', to: 'why', toLabel: 'Member journey', weight: 1, subs: 0, subsNote: 'Protects renewals after the 30 days' },
+  { key: 'l-in60', who: 'luvi', wk: 5, dueIso: '2026-10-21', due: 'Wed 21 Oct', task: 'Deliver the clinic 60 and check refunds',
+    objective: 'Confirm 20 members at each branch, and make sure none has cancelled or been refunded.',
+    why: 'Only paid, active members count toward the 120.',
+    steps: [
+      { s: 'Branch totals', how: '20 at each desk.' },
+      { s: 'Refund check', how: 'Remove any cancelled or refunded.' },
+      { s: 'Sent to Finance', how: 'For the final confirmation.' },
+    ],
+    done: '60 confirmed and handed to Finance.', to: 'mandate', toLabel: 'What counts as a member', weight: 3, subs: 0, subsNote: 'Confirms the clinic 60' },
+
+  /* ── Mohan — videographer & content designer ── */
+  { key: 'm-onboard', who: 'mohan', wk: 1, dueIso: '2026-09-23', due: 'Wed 23 Sep', task: 'Learn the brief and the words to use',
+    objective: 'Read the plan’s “Why” and “Customer situations” pages so every design speaks to one kind of customer and never uses insurance words.',
+    why: 'A parent, a patient worried about cost and an HR manager each need a different message. One message for everyone does not work.',
+    steps: [
+      { s: 'Log in', how: 'Use the dashboard login Fahad sent.' },
+      { s: 'Read the two pages', how: '“Why & proposition” and “Layers & demand states”.' },
+      { s: 'Questions answered', how: '15 minutes with Fahad.' },
+    ],
+    done: 'Brief understood; questions answered.', to: 'layers', toLabel: 'Customer situations', weight: 1, subs: 0, subsNote: 'Enabler — every design depends on it' },
+  { key: 'm-banner', who: 'mohan', wk: 1, dueIso: '2026-09-24', due: 'Thu 24 Sep', task: 'Design the website banner (English and Arabic)',
+    objective: 'A thin banner reading “Smile Club — dental care from AED 99/month → Join” that visitors can close.',
+    why: 'It shows Smile Club to every website visitor at zero ad cost.',
+    steps: [
+      { s: 'English version', how: 'Clear, one line, obvious button.' },
+      { s: 'Arabic version', how: 'Same, properly translated.' },
+      { s: 'Approved', how: 'By Fahad.' },
+      { s: 'Sent to CRM-DN', how: 'For building on the website.' },
+    ],
+    done: 'Both versions with CRM-DN.', with: 'CRM-DN', to: 'dm', toLabel: 'Channel plan (D1)', weight: 2, subs: 0, subsNote: 'Feeds ≈2 of the website 12' },
+  { key: 'm-printkit', who: 'mohan', wk: 1, dueIso: '2026-09-25', due: 'Fri 25 Sep', task: 'Print materials for Gautam’s company visits',
+    objective: 'Update and print the one-page Smile Club summary and savings table (English and Arabic), a banner for dental days, and QR cards.',
+    why: 'Gautam starts visiting companies next week. He needs something professional to leave behind.',
+    steps: [
+      { s: 'One-pager + savings table', how: 'From Gautam’s existing files.' },
+      { s: 'Dental-day banner', how: 'Pull-up banner design.' },
+      { s: 'QR cards', how: 'Linking to the joining page.' },
+      { s: 'Print-ready', how: 'Files sent to print within the AED 6,000 budget.' },
+    ],
+    done: 'Materials printed and with Gautam.', with: 'Gautam', to: 'response', toLabel: 'Corporate (R1)', weight: 3, subs: 0, subsNote: 'Enables the corporate 24' },
+  { key: 'm-dynamic-v1', who: 'mohan', wk: 1, dueIso: '2026-09-28', due: 'Mon 28 Sep', task: 'First set of ad designs — the key unlock',
+    objective: '9 ad designs: 3 shapes (square, portrait, full-screen story) × 3 messages (worried about cost · parents · existing patients).',
+    why: 'Facebook and Instagram’s better ad formats need several designs per ad. Without them the ads stay limited — this set is what unlocks the paid lanes.',
+    steps: [
+      { s: '“Worried about cost” set', how: '3 shapes: “Know where you stand before problems become expensive.”' },
+      { s: 'Parents set', how: '3 shapes: “One membership, one dental home for the family.”' },
+      { s: 'Existing patients set', how: '3 shapes: “You already trust Dental Nation.”' },
+      { s: 'Sent for checking', how: 'To Dr Luvi for the clinical check.' },
+    ],
+    done: '9 designs with Dr Luvi.', with: 'Dr Luvi', to: 'dm', toLabel: 'Creative blocker (D2)', weight: 4, subs: 0, subsNote: 'Unlocks ≈7 of the website 12' },
+  { key: 'm-videos', who: 'mohan', wk: 2, dueIso: '2026-10-02', due: 'Fri 2 Oct', task: 'Three short videos',
+    objective: 'A doctor explaining why prevention matters, a 30-second “what’s included”, and a real member’s story — each also cut to 15 and 6 seconds.',
+    why: 'Video builds the trust a membership needs. Short versions fit Reels and Stories.',
+    steps: [
+      { s: 'Scripts approved', how: 'By Dr Luvi.' },
+      { s: 'Filmed', how: 'Written consent from anyone identifiable.' },
+      { s: 'Edited', how: 'Full versions.' },
+      { s: 'Short cuts', how: '15 and 6 seconds.' },
+    ],
+    done: 'All three videos and short cuts approved.', with: 'Dr Luvi', to: 'layers', toLabel: 'Customer situations', weight: 3, subs: 0, subsNote: 'Supports the website 12 and promoters' },
+  { key: 'm-creator', who: 'mohan', wk: 2, dueIso: '2026-10-02', due: 'Fri 2 Oct', task: 'Guide for family promoters',
+    objective: 'A simple guide and template for the promoters Fahad signs, so their posts are on-message and use their tracking code.',
+    why: 'Promoters are 7 of the 120. A guide keeps them accurate and consistent.',
+    steps: [
+      { s: 'Guide written', how: 'Do’s, don’ts, words to avoid.' },
+      { s: 'Template built', how: 'A ready-made post layout.' },
+      { s: 'Approved', how: 'By Fahad.' },
+    ],
+    done: 'Guide with every promoter.', with: 'Fahad', to: 'response', toLabel: 'Promoters (R1)', weight: 2, subs: 0, subsNote: 'Supports 7 promoter memberships' },
+  { key: 'm-launchkit', who: 'mohan', wk: 2, dueIso: '2026-10-05', due: 'Mon 5 Oct', task: 'Staff launch kit for signed companies',
+    objective: 'An email, a WhatsApp card and a QR poster saying “Your company has given you Smile Club — join in 60 seconds”.',
+    why: 'Must be ready before the first company signs, so staff can start joining the same day.',
+    steps: [
+      { s: 'Email', how: 'Short, from the company’s CEO or HR.' },
+      { s: 'WhatsApp card', how: 'One image, one link.' },
+      { s: 'QR poster', how: 'For the office.' },
+      { s: 'Approved', how: 'By Gautam.' },
+    ],
+    done: 'Kit approved and ready.', with: 'Gautam', to: 'corporate', toLabel: 'Launch steps (C9)', weight: 2, subs: 0, subsNote: 'Enables the corporate 24' },
+  { key: 'm-linkedin', who: 'mohan', wk: 3, dueIso: '2026-10-08', due: 'Thu 8 Oct', task: 'LinkedIn posts for HR managers + benefits checklist',
+    objective: 'A set of LinkedIn posts (“Dental benefits made simple”) and a one-page, five-question dental benefits checklist for Gautam to leave behind.',
+    why: 'Warms up HR managers before Gautam visits and gives him a reason to follow up.',
+    steps: [
+      { s: 'Posts designed', how: '6 posts.' },
+      { s: 'Checklist designed', how: 'The five questions on one page.' },
+      { s: 'Approved', how: 'By Gautam and Fahad.' },
+    ],
+    done: 'Posts and checklist approved.', with: 'Gautam · Fahad', to: 'corporate', toLabel: 'Selling to companies (C7)', weight: 1, subs: 0, subsNote: 'Supports the corporate 24' },
+  { key: 'm-geo', who: 'mohan', wk: 3, dueIso: '2026-10-09', due: 'Fri 9 Oct', task: 'Local awareness ad designs',
+    objective: 'Designs for the small local ads shown around the three branches.',
+    why: 'Introduces Dental Nation to neighbours who have not yet visited.',
+    steps: [
+      { s: 'Designed', how: 'For each branch area.' },
+      { s: 'Clinically checked', how: 'By Dr Luvi.' },
+      { s: 'Sent to Fahad', how: 'For launch.' },
+    ],
+    done: 'Designs with Fahad.', with: 'Fahad', to: 'dm', toLabel: 'Channel plan (D1)', weight: 1, subs: 0, subsNote: 'Warms every other lane' },
+  { key: 'm-v2', who: 'mohan', wk: 4, dueIso: '2026-10-15', due: 'Thu 15 Oct', task: 'Second set of ads — more of what worked',
+    objective: 'Re-make the ads that performed best and drop the ones that did not.',
+    why: 'Money should go only behind designs that are proven to bring members.',
+    steps: [
+      { s: 'Review results', how: 'With Fahad: which designs brought enquiries.' },
+      { s: 'Remake winners', how: 'New versions of the best ones.' },
+      { s: 'Drop losers', how: 'Switch off the weak ones.' },
+      { s: 'Second set live', how: 'After the clinical check.' },
+    ],
+    done: 'Second set live.', with: 'Fahad', to: 'dm', toLabel: 'Channel plan', weight: 2, subs: 0, subsNote: 'Supports the website 12' },
+  { key: 'm-film-onsite', who: 'mohan', wk: 4, dueIso: '2026-10-16', due: 'Fri 16 Oct', task: 'Film the company dental day',
+    objective: 'Capture photos and video of the dental day for future marketing.',
+    why: 'Real footage of a company day is the strongest proof for the next companies.',
+    steps: [
+      { s: 'Permission first', how: 'Written consent from anyone identifiable; the company approves before anything is published.' },
+      { s: 'Filmed', how: 'On the day.' },
+      { s: 'Edited', how: 'Consent checked again before use.' },
+    ],
+    done: 'Footage edited with all permissions.', with: 'Gautam · Dr Luvi', to: 'corporate', toLabel: 'Permissions', weight: 1, subs: 0, subsNote: 'Supports future corporate sales' },
+  { key: 'm-library', who: 'mohan', wk: 5, dueIso: '2026-10-20', due: 'Tue 20 Oct', task: 'Organise all designs for the next phase',
+    objective: 'File every design with who it is for, its format, when it was approved and how it performed.',
+    why: 'The next phase starts from what worked instead of from scratch.',
+    steps: [
+      { s: 'Filed', how: 'One shared folder.' },
+      { s: 'Labelled', how: 'Audience, format, approval date, result.' },
+      { s: 'Handed over', how: 'To Fahad.' },
+    ],
+    done: 'Library handed over.', to: 'dm', toLabel: 'Channel plan', weight: 1, subs: 0, subsNote: 'For the next phase' },
+
+  /* ── Receptionists — all three branches ── */
+  { key: 'r-refresher', who: 'reception', wk: 1, dueIso: '2026-09-24', due: 'Thu 24 Sep', task: 'Attend the 30-minute refresher',
+    objective: 'Every receptionist practises offering Smile Club at checkout with Dr Luvi.',
+    why: 'You are the most important sales channel — half of all the memberships we need.',
+    steps: [
+      { s: 'Al Wasl attended', how: 'All receptionists on shift.' },
+      { s: 'Dr Tosun attended', how: 'All receptionists on shift.' },
+      { s: 'AMC attended', how: 'All receptionists on shift.' },
+    ],
+    done: 'Every receptionist trained.', with: 'Dr Luvi', to: 'why', toLabel: 'Words to use', weight: 2, subs: 0, subsNote: 'Prepares the clinic 60' },
+  { key: 'r-pace-6', who: 'reception', wk: 1, dueIso: '2026-09-28', due: 'Mon 28 Sep', task: '6 new members per branch',
+    objective: 'Each branch signs 6 paying members (5 at the very least) in the first week.',
+    why: 'An early, steady pace is what makes 20 per branch possible.',
+    steps: [
+      { s: 'Al Wasl: 6', how: 'Offer at every checkout; show the saving on the patient’s own bill; book the first member visit.' },
+      { s: 'Dr Tosun: 6', how: 'Same; note every “no” and why.' },
+      { s: 'AMC: 6', how: 'Same; report the count at the 09:00 meeting.' },
+    ],
+    done: 'Each branch at 6 or more.', to: 'response', toLabel: 'Clinic lane (R1)', weight: 5, subs: 18, subsNote: '18 of the clinic 60 (6 per branch)' },
+  { key: 'r-pace-10', who: 'reception', wk: 2, dueIso: '2026-10-05', due: 'Mon 5 Oct', task: '10 new members per branch',
+    objective: 'Each branch reaches 10 members in total (9 at the very least). New this week: offer the Family plan to parents.',
+    why: 'Families are one of the strongest groups for Smile Club.',
+    steps: [
+      { s: 'Al Wasl: 10', how: 'Parents hear “one membership for the whole family”.' },
+      { s: 'Dr Tosun: 10', how: 'Same.' },
+      { s: 'AMC: 10', how: 'Same.' },
+    ],
+    done: 'Each branch at 10 or more.', to: 'layers', toLabel: 'Customer situations', weight: 6, subs: 12, subsNote: '+12 → 30 of the clinic 60' },
+  { key: 'r-pace-15', who: 'reception', wk: 3, dueIso: '2026-10-12', due: 'Mon 12 Oct', task: '15 new members per branch',
+    objective: 'Each branch reaches 15 members in total (13 at the very least). New this week: ask patients with a treatment plan whether member rates would help.',
+    why: 'Patients already planning treatment gain the most from member rates.',
+    steps: [
+      { s: 'Al Wasl: 15', how: '“Would member rates help with your treatment plan?”' },
+      { s: 'Dr Tosun: 15', how: 'Same.' },
+      { s: 'AMC: 15', how: 'Same.' },
+    ],
+    done: 'Each branch at 15 or more.', to: 'layers', toLabel: 'Customer situations', weight: 7, subs: 14, subsNote: '+14 → 44 of the clinic 60' },
+  { key: 'r-corp-members', who: 'reception', wk: 4, dueIso: '2026-10-14', due: 'Wed 14 Oct', task: 'Welcome staff from signed companies',
+    objective: 'When someone arrives with a company code, activate their membership, welcome them and book their first visit.',
+    why: 'Their first experience at the desk decides whether company staff keep using Smile Club.',
+    steps: [
+      { s: 'Briefed on company codes', how: 'Know which companies have signed.' },
+      { s: 'First company member booked', how: 'Activated and welcomed.' },
+      { s: 'Routine at all desks', how: 'Every branch does the same.' },
+    ],
+    done: 'Company members recognised at all three desks.', with: 'Gautam', to: 'corporate', toLabel: 'Staff journey (C1)', weight: 2, subs: 0, subsNote: 'Supports the corporate 24' },
+  { key: 'r-target-20', who: 'reception', wk: 5, dueIso: '2026-10-21', due: 'Wed 21 Oct', task: '20 new members per branch',
+    objective: 'Each branch reaches 20 paying members, each with the branch code, an active card and a first visit booked.',
+    why: '20 × 3 branches = 60 — half the whole target.',
+    steps: [
+      { s: 'Al Wasl: 20', how: 'All with the branch code and a first visit booked.' },
+      { s: 'Dr Tosun: 20', how: 'Same.' },
+      { s: 'AMC: 20', how: 'Same.' },
+    ],
+    done: 'Each branch at 20.', to: 'mandate', toLabel: 'What counts as a member', weight: 10, subs: 16, subsNote: '+16 → the full clinic 60' },
 ];
 
 export const TASK_BY_KEY: Record<string, TeamTask> = Object.fromEntries(TEAM_TASKS.map((t) => [t.key, t]));
+
+/** Total weight — used to express each task's weight as % of the programme. */
+export const TOTAL_WEIGHT = TEAM_TASKS.reduce((a, t) => a + t.weight, 0);
+export const weightPct = (t: TeamTask) => Math.round((t.weight / TOTAL_WEIGHT) * 1000) / 10;
 
 /** Live state of one task, as loaded from lane_e.tasks. */
 export interface TaskProgress {
