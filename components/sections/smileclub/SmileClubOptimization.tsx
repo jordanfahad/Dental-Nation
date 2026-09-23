@@ -13,6 +13,17 @@
  */
 
 import { createContext, useContext, useState } from 'react';
+import { updateTeamTaskAction } from '@/app/(app)/smileclub-actions';
+import {
+  TASK_BY_KEY,
+  TEAM_TASKS,
+  ragFor,
+  type Person,
+  type Rag,
+  type TaskProgress,
+  type TeamTask,
+  type TrackerState,
+} from '@/lib/smileclub/team';
 
 /** Cross-panel navigation: goto() jumps to another sub-tab and remembers where
  *  the reader came from; back() returns there — so Mr Akbar can follow any
@@ -2323,13 +2334,11 @@ function Kpis() {
   );
 }
 
-/* ── Team task calendar (23 Sep): who does what, week by week, to Day 30 ── */
-
-type Person = 'gautam' | 'luvi' | 'mohan' | 'reception';
+/* ── Team task calendar + live tracker: who does what, week by week, to Day 30 ── */
 
 const TEAM: { id: Person; name: string; role: string; color: string; owns: string }[] = [
   { id: 'gautam', name: 'Gautam', role: 'Project owner & corporate implementer', color: NAVY, owns: 'Owns the mandate and its data, carries the corporate door-to-door bag in-window, and implements every signed employer (proposal → launch → activation).' },
-  { id: 'luvi', name: 'Dr Luvi', role: 'Head of Operations', color: '#2C5E3F', owns: 'Owns the front-desk engine behind In-clinic-60, branch capacity, clinical review of every claim, and clinical delivery of on-site days.' },
+  { id: 'luvi', name: 'Dr Luvi', role: 'Head of Operations', color: '#2C5E3F', owns: 'Owns the front-desk engine behind In-clinic-60, branch capacity, clinical review of every claim, and clinical delivery of on-site days. Updates the receptionists’ tasks on their behalf.' },
   { id: 'mohan', name: 'Mohan', role: 'Videographer & content designer', color: CORAL, owns: 'The creative unlock: produces the asset variety the dynamic formats need, plus every print, video and launch kit the other lanes depend on.' },
   { id: 'reception', name: 'Receptionists', role: 'Al Wasl · Dr Tosun · AMC', color: BLUE, owns: 'Sell at the checkout moment, every patient, every day — 20 paid subscriptions per branch by 21 Oct.' },
 ];
@@ -2342,66 +2351,6 @@ const WEEKS: { n: number; label: string; gate: string }[] = [
   { n: 5, label: 'Close · 20–21 Oct', gate: 'Wed 21 Oct · Day-30 · 120 paid' },
 ];
 
-interface TeamTask {
-  who: Person; wk: number; due: string; task: string; done: string; with?: string; to?: Sub; toLabel?: string;
-}
-
-const TEAM_TASKS: TeamTask[] = [
-  /* ── Gautam ── */
-  { who: 'gautam', wk: 1, due: 'Wed 23 Sep EOD', task: 'Close the historical CRM test', done: 'Payment-record reconciliation shared: 71 replies classified, 417 failures coded, broadcast memberships confirmed or ruled out.', with: 'Fahad reviews', to: 'waves', toLabel: 'Wave 1 results' },
-  { who: 'gautam', wk: 1, due: 'Thu 24 Sep', task: 'Hand over the member baseline', done: 'Enrolments, payment status, plan mix, usage and cancellations — the savings examples and funnel definitions are built from it; nothing scales before it exists.', with: 'Fahad', to: 'offer', toLabel: 'Offer & economics' },
-  { who: 'gautam', wk: 1, due: 'Thu 24 Sep', task: 'Release enablement assets for print', done: 'Corporate one-pager, savings math, HR email kit and reception deck handed to Mohan in editable form.', with: 'Mohan', to: 'response', toLabel: 'R1 · Corporate' },
-  { who: 'gautam', wk: 1, due: 'Fri 25 Sep', task: 'Field-sales door plan — first 15 doors', done: 'First 15 SME doors in JLT and Business Bay chosen trigger-first (renewal month, complaints, hiring), each qualified with “does your medical include dental?”.', with: 'Fahad (warm doors)', to: 'corporate', toLabel: 'Corporate playbook' },
-  { who: 'gautam', wk: 1, due: 'Mon 28 Sep', task: 'Replacement-door bridge + product decisions', done: 'Bridge sizes the ≥72-equivalent pipeline door by door after Michael Page’s closure; decision on 4 live plans vs the blueprint’s 3 tiers; owners named for Smile Score, My Smile Plan and the annual value statement.', with: 'Fahad', to: 'mandate', toLabel: 'M4 alignment' },
-  { who: 'gautam', wk: 2, due: 'Wed 30 Sep', task: 'ArabyAds staff-membership decision', done: 'If yes: pilot spec + employer code within 48 hours. If no: logged, referral asked.', with: 'Fahad (relationship)', to: 'dm', toLabel: 'Outreach D3' },
-  { who: 'gautam', wk: 2, due: 'Fri 2 Oct', task: 'Finance fully-loaded CAC ceiling', done: 'Ceiling set via finance/ops (staff, commissions, creative, events, onboarding priced) — required before the Day-14 funding review.', with: 'Finance/ops', to: 'response', toLabel: 'Budget R2' },
-  { who: 'gautam', wk: 2, due: 'Fri 2 Oct', task: '20 doors walked · first discovery meetings', done: 'Meeting log current (door, date, model discussed, outcome); Benefits Gap Assessment run with every qualified employer.', with: 'Fahad (LinkedIn air-cover)', to: 'corporate', toLabel: 'Corporate playbook' },
-  { who: 'gautam', wk: 2, due: 'Mon 5 Oct', task: 'Day-14 gate: funding + corporate viability decision', done: 'Day-15–30 funding released or held; Corporate-24 confirmed against the bridge, or reallocated toward in-clinic/family per Wave-1 priority — decided here, not at Day 30.', with: 'Fahad · Mr Akbar', to: 'mandate', toLabel: 'M4 alignment' },
-  { who: 'gautam', wk: 3, due: 'Wed 7 Oct', task: 'Assembly Global pilot decision', done: 'Yes/no recorded; if yes, the pilot moves straight into specification.', with: 'Fahad (contact)', to: 'dm', toLabel: 'Outreach D3' },
-  { who: 'gautam', wk: 3, due: 'Fri 9 Oct', task: 'First corporate pilot signed and specified', done: 'The “one defined pilot” with all eight spec points: employer, eligible count, payment model, sponsor, on-site scope and cost, tracking code, success criteria, reporting. 40+ doors walked cumulative.', with: 'Dr Luvi (on-site scope)', to: 'corporate', toLabel: 'Pilot spec (C10)' },
-  { who: 'gautam', wk: 3, due: 'Mon 12 Oct', task: 'Day-21 checkpoint review', done: '88 plan / 75 minimum reviewed with Fahad; recovery plan the next business day if missed.', with: 'Fahad', to: 'kpis', toLabel: 'Controls' },
-  { who: 'gautam', wk: 4, due: 'Wed 14 Oct', task: 'Employee launch of the first pilot', done: 'CEO/HR email + QR + landing page live under the employer code; activation drive running — activation rate, not the signature, is the KPI.', with: 'Mohan (launch kit)', to: 'corporate', toLabel: 'Implementation (C9)' },
-  { who: 'gautam', wk: 4, due: 'Fri 16 Oct', task: 'On-site dental day at the pilot employer', done: 'Day delivered at the pre-approved cost; enrolments under the employer code; first bookings made on the day.', with: 'Dr Luvi · Mohan', to: 'corporate', toLabel: 'Corporate playbook' },
-  { who: 'gautam', wk: 5, due: 'Wed 21 Oct', task: 'Complete the mandate → report to Mr Akbar', done: '120 paid, active, non-refunded, source-coded; ≥98% data and attribution; Finance-validated. Corporate pipeline handover + agent onboarding plan for the scale phase.', with: 'Fahad', to: 'kpis', toLabel: 'Measurement' },
-
-  /* ── Dr Luvi ── */
-  { who: 'luvi', wk: 1, due: 'Wed 23 Sep', task: 'Front-desk route audit — all three branches', done: 'QR standees placed under SC-ALW / SC-TOS / SC-AMC; Reception Conversion Guide in use; objection log open at each desk.', with: 'Smile Club Coordinator', to: 'response', toLabel: 'R1 · In-clinic' },
-  { who: 'luvi', wk: 1, due: 'Thu 24 Sep', task: '30-minute receptionist refresher per branch', done: 'Ask → Match → Value → Clarify → Close rehearsed; language rules (membership, never insurance/coverage/claim); first member appointment booked before the patient leaves.', with: 'Receptionists', to: 'why', toLabel: 'Language dictionary' },
-  { who: 'luvi', wk: 1, due: 'Fri 25 Sep', task: 'Capacity check + priority-booking rule', done: 'Member appointment availability per branch and daypart confirmed; a priority member-booking rule defined — capacity is an expansion gate.', to: 'offer', toLabel: 'Capacity gate' },
-  { who: 'luvi', wk: 1, due: 'Mon 28 Sep', task: 'Day-7 in-clinic readout', done: '18 of the 36 from in-clinic (6 per branch, pro-rata); top objection themes; conversion assumption checked against branch footfall.', with: 'Receptionists', to: 'response', toLabel: 'R1 · In-clinic' },
-  { who: 'luvi', wk: 2, due: 'Wed 30 Sep', task: 'Onboarding standard live', done: 'Every new member’s first appointment booked within 7 days of joining; first booking and first completed visit tracked separately.', to: 'layers', toLabel: 'Layer map' },
-  { who: 'luvi', wk: 2, due: 'Thu 1 Oct', task: 'Clinical review of Mohan’s asset set v1', done: 'Every claim clinically accurate, non-alarmist and free of unsubstantiated savings before any ad goes live; weekly sign-off from here on.', with: 'Mohan', to: 'why', toLabel: 'Regulatory dictionary' },
-  { who: 'luvi', wk: 2, due: 'Mon 5 Oct', task: 'Day-14 in-clinic + capacity readout', done: '30 from in-clinic (10 per branch); capacity reading feeds the Day-15–30 funding decision.', to: 'kpis', toLabel: 'Controls' },
-  { who: 'luvi', wk: 3, due: 'Thu 8 Oct', task: 'On-site dental day: clinical scope and cost', done: 'Clinician, chair time, materials and cost estimated for the pilot employer’s day — costed per event, never assumed low-cost.', with: 'Gautam', to: 'corporate', toLabel: 'Pilot spec (C10)' },
-  { who: 'luvi', wk: 3, due: 'Fri 9 Oct', task: 'First CSR community event — clinician assigned', done: 'Event near a branch costed and staffed; per-event code live.', with: 'Fahad', to: 'response', toLabel: 'R1 · CSR' },
-  { who: 'luvi', wk: 3, due: 'Mon 12 Oct', task: 'Day-21 in-clinic readout', done: '44 from in-clinic (≈15 per branch); branch-level recovery actions if a branch trails.', to: 'kpis', toLabel: 'Controls' },
-  { who: 'luvi', wk: 4, due: 'Fri 16 Oct', task: 'Deliver the corporate on-site day clinically', done: 'Screenings delivered to standard; employees’ first visits booked; member first-visit experience audited (attendance, no-shows).', with: 'Gautam · Mohan', to: 'corporate', toLabel: 'Corporate playbook' },
-  { who: 'luvi', wk: 4, due: 'Mon 19 Oct', task: 'Draft clinical definitions for the baseline assessment', done: 'Smile Score dimensions drafted (caries risk, gum health, hygiene, function, preventive adherence) for the build decision — clinical governance, not marketing.', to: 'why', toLabel: 'Member journey (W3)' },
-  { who: 'luvi', wk: 5, due: 'Wed 21 Oct', task: 'In-clinic 60 delivered + refund check', done: '20 per branch; cancellations and refunds reconciled so every counted contract is active and non-refunded before Finance validation.', to: 'mandate', toLabel: 'Output definition' },
-
-  /* ── Mohan ── */
-  { who: 'mohan', wk: 1, due: 'Wed 23 Sep', task: 'Onboard to the brief', done: 'Language dictionary + demand-state map absorbed: every asset is tagged to ONE demand state and never uses insurance vocabulary.', to: 'layers', toLabel: 'Layer map (L1)' },
-  { who: 'mohan', wk: 1, due: 'Thu 24 Sep', task: 'Sticky banner artwork EN/AR', done: '“Smile Club — dental care from AED 99/month → Join”, dismissible, handed to CRM-DN/W3Layouts for the build.', with: 'CRM-DN', to: 'dm', toLabel: 'DM plan D1' },
-  { who: 'mohan', wk: 1, due: 'Fri 25 Sep', task: 'Corporate print kit for Gautam’s doors', done: 'One-pager + savings table EN/AR, on-site day banner, QR materials — print-ready inside the field-sales AED 6,000.', with: 'Gautam', to: 'response', toLabel: 'R1 · Corporate' },
-  { who: 'mohan', wk: 1, due: 'Mon 28 Sep', task: 'Dynamic-format asset set v1 — the blocker unlock', done: '3 ratios (1:1 · 4:5 · 9:16) × 3 demand-state messages (cost anxiety · family · existing patient) for Meta dynamic/Advantage+ formats, submitted for Dr Luvi’s review.', with: 'Dr Luvi (review)', to: 'dm', toLabel: 'Blocker D2' },
-  { who: 'mohan', wk: 2, due: 'Fri 2 Oct', task: 'Three proof videos + cutdowns', done: 'Doctor-trust prevention explainer · 30-second “what’s included” · member story (written consent only) — each with 15s and 6s cutdowns for Reels/Stories.', with: 'Dr Luvi (clinical)', to: 'layers', toLabel: 'Layer map' },
-  { who: 'mohan', wk: 2, due: 'Fri 2 Oct', task: 'Family-layer creator brief', done: 'Brief + content template for affiliate creators (tracked codes; “one dental home for the family”).', with: 'Fahad', to: 'response', toLabel: 'R1 · Affiliates' },
-  { who: 'mohan', wk: 2, due: 'Mon 5 Oct', task: 'Employee launch kit template', done: '“Your company has given you Smile Club — activate in 60 seconds”: email, WhatsApp card, QR poster — ready before the first pilot signs.', with: 'Gautam', to: 'corporate', toLabel: 'Implementation (C9)' },
-  { who: 'mohan', wk: 3, due: 'Thu 8 Oct', task: 'HR-facing LinkedIn content + Gap Assessment design', done: '“Dental Benefits Made Simple” posts for the door territories; the 5-question Dental Benefits Gap Assessment as a one-page leave-behind.', with: 'Gautam · Fahad', to: 'corporate', toLabel: 'Distribution (C7)' },
-  { who: 'mohan', wk: 3, due: 'Fri 9 Oct', task: 'Awareness air-cover geo creatives', done: 'IG/FB creatives for the geo cells around the three branches — judged on enabler metrics, never CPL.', with: 'Fahad', to: 'dm', toLabel: 'DM plan D1b' },
-  { who: 'mohan', wk: 4, due: 'Thu 15 Oct', task: 'Asset set v2 from Day-14 learnings', done: 'Winning demand states re-cut; losing variants retired — dynamic formats scale on proven creative only.', with: 'Fahad', to: 'dm', toLabel: 'DM plan D1d' },
-  { who: 'mohan', wk: 4, due: 'Fri 16 Oct', task: 'Film the corporate on-site day', done: 'Content captured with permissions; no identifiable employee or patient without written consent; no implied employer endorsement before it is granted.', with: 'Gautam · Dr Luvi', to: 'corporate', toLabel: 'Reporting & permissions' },
-  { who: 'mohan', wk: 5, due: 'Tue 20 Oct', task: 'Asset library handover', done: 'Every asset filed with its demand state, format, approval date and performance tag for the scale phase.', to: 'dm', toLabel: 'DM plan' },
-
-  /* ── Receptionists ── */
-  { who: 'reception', wk: 1, due: 'Thu 24 Sep', task: 'Attend the refresher', done: 'Pitch, language rules and first-booking step rehearsed with Dr Luvi.', with: 'Dr Luvi', to: 'why', toLabel: 'Language dictionary' },
-  { who: 'reception', wk: 1, due: 'Mon 28 Sep', task: 'Branch pace: 6 paid (minimum 5)', done: 'Per-branch count reported at the 09:00 review; every decline in the objection log.', to: 'response', toLabel: 'R1 · In-clinic' },
-  { who: 'reception', wk: 2, due: 'Mon 5 Oct', task: 'Branch pace: 10 paid (minimum 9)', done: 'Family prompt added: parents offered Family membership at checkout.', to: 'layers', toLabel: 'Layer map · state 7' },
-  { who: 'reception', wk: 3, due: 'Mon 12 Oct', task: 'Branch pace: 15 paid (minimum 13)', done: 'Treatment-plan patients asked “would member rates help with your plan?” (demand state 6).', to: 'layers', toLabel: 'Layer map · state 6' },
-  { who: 'reception', wk: 4, due: 'Wed 14 Oct', task: 'Recognise corporate members', done: 'Employees arriving under a pilot employer code are activated, welcomed and booked — the employee journey starts at the desk.', with: 'Gautam', to: 'corporate', toLabel: 'Employee journey (C1)' },
-  { who: 'reception', wk: 5, due: 'Wed 21 Oct', task: 'Branch target: 20 paid', done: 'Every enrolment under the branch code, card active, first appointment booked.', to: 'mandate', toLabel: 'Output definition' },
-];
-
 const RHYTHMS: { who: Person; items: string[] }[] = [
   { who: 'gautam', items: ['Mon: checkpoint or weekly resource decision', 'Daily: EOD scorecard read · meeting log updated after every door', 'Weekly: pipeline coverage vs ≥72 equivalents'] },
   { who: 'luvi', items: ['Daily 09:00: per-branch count + objection log review (with the Smile Club Coordinator)', 'Daily 16:00: recovery queue for any branch behind pace', 'Weekly: clinical sign-off on new creative and claims'] },
@@ -2409,17 +2358,226 @@ const RHYTHMS: { who: Person; items: string[] }[] = [
   { who: 'reception', items: ['Every checkout: Ask → Match → Value → Clarify → Close, savings shown against TODAY’s bill', 'Every join: QR under the branch code + first member appointment booked before the patient leaves', 'Every decline: objection log · Friday: objection themes to Dr Luvi', 'Always “membership / included services / member rates” — never insurance, coverage or claim'] },
 ];
 
-function TeamTab() {
+const RAG_STYLE: Record<Rag, { label: string; fg: string; bg: string }> = {
+  done: { label: 'Done', fg: '#2C5E3F', bg: '#e7efe6' },
+  on_track: { label: 'On track', fg: '#2b5a8a', bg: '#e6eef6' },
+  due: { label: 'Due today', fg: '#8a6a1e', bg: '#f5ecd8' },
+  overdue: { label: 'Overdue', fg: '#a04a38', bg: '#f7e8e4' },
+  blocked: { label: 'Blocked', fg: '#ffffff', bg: '#a04a38' },
+  not_started: { label: 'Not started', fg: OLIVE, bg: '#F1F1EA' },
+};
+
+const EMPTY_TRACKER: TrackerState = { progress: {}, events: [], canEdit: [], viewer: null, today: '2026-09-23', live: false };
+
+function RagPill({ rag }: { rag: Rag }) {
+  const s = RAG_STYLE[rag];
+  return <span className="inline-block whitespace-nowrap rounded px-1.5 py-0.5 text-[9.5px] font-bold" style={{ color: s.fg, backgroundColor: s.bg }}>{s.label}</span>;
+}
+
+function Bar({ pct, color, h = 6 }: { pct: number; color: string; h?: number }) {
+  return (
+    <div className="w-full rounded-full" style={{ height: h, backgroundColor: '#EEEFE1' }}>
+      <div className="rounded-full" style={{ height: h, width: `${Math.max(0, Math.min(100, pct))}%`, backgroundColor: color, transition: 'width .3s' }} />
+    </div>
+  );
+}
+
+/** The task's flow chart: one chevron per step — done (filled), current (gold), ahead (open). */
+function Flow({ steps, stage, color, blocked }: { steps: string[]; stage: number; color: string; blocked: boolean }) {
+  return (
+    <div className="flex flex-wrap items-stretch gap-y-1">
+      {steps.map((s, i) => {
+        const done = i < stage;
+        const current = i === stage;
+        const bg = done ? color : current ? (blocked ? '#f7e8e4' : '#FDF6E3') : '#F7F7F0';
+        const fg = done ? 'white' : current ? (blocked ? '#a04a38' : '#6d5a1d') : OLIVE;
+        const border = current ? (blocked ? '#a04a38' : GOLD) : done ? color : LINE;
+        return (
+          <div key={s} className="flex items-center">
+            <div
+              className="flex min-h-[34px] max-w-[170px] items-center gap-1.5 rounded-md border px-2 py-1 text-[10px] leading-tight"
+              style={{ backgroundColor: bg, color: fg, borderColor: border, fontWeight: current ? 700 : 500 }}
+              title={done ? 'Completed' : current ? (blocked ? 'Blocked here' : 'Current step') : 'Ahead'}
+            >
+              <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] font-bold" style={{ backgroundColor: done ? 'rgba(255,255,255,.25)' : 'white', color: done ? 'white' : fg, border: done ? 'none' : `1px solid ${border}` }}>
+                {done ? '✓' : i + 1}
+              </span>
+              {s}
+            </div>
+            {i < steps.length - 1 ? <span className="px-1 text-[12px] font-bold" style={{ color: i < stage ? color : '#C9C9BC' }}>→</span> : null}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function fmtAt(iso: string | null): string {
+  if (!iso) return '';
+  return new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Dubai', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(iso));
+}
+
+function TaskCard({ t, p, today, color, editable, onSave }: {
+  t: TeamTask; p: TaskProgress | undefined; today: string; color: string; editable: boolean;
+  onSave: (stage: number, blocked: boolean, note: string) => Promise<string | null>;
+}) {
+  const stage = p?.stage ?? 0;
+  const blocked = p?.status === 'blocked';
+  const rag = ragFor(t, p, today);
+  const pct = Math.round((stage / t.steps.length) * 100);
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const save = async (s: number, b: boolean, n = '') => {
+    setBusy(true); setErr(null);
+    const e = await onSave(s, b, n);
+    setBusy(false);
+    if (e) setErr(e); else setNote('');
+  };
+  return (
+    <div id={`task-${t.key}`} className="rounded-xl border bg-white p-3" style={{ borderColor: rag === 'overdue' || rag === 'blocked' ? '#dcb3aa' : LINE }}>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <p className="text-[12px] font-bold" style={{ color: NAVY }}>{t.task}</p>
+          <p className="text-[10px]" style={{ color: OLIVE }}>
+            <span className="font-bold" style={{ color }}>{t.due}</span>
+            {t.with ? <> · with {t.with}</> : null}
+            {t.to ? <> · <Jump to={t.to}>{t.toLabel}</Jump></> : null}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <RagPill rag={rag} />
+          <span className="text-[11px] font-bold tabular-nums" style={{ color: NAVY }}>{pct}%</span>
+        </div>
+      </div>
+      <div className="mt-2"><Bar pct={pct} color={rag === 'overdue' || rag === 'blocked' ? CORAL : color} /></div>
+      <div className="mt-2"><Flow steps={t.steps} stage={stage} color={color} blocked={blocked} /></div>
+      <p className="mt-2 text-[10.5px] leading-snug" style={{ color: '#3a4148' }}><span className="font-bold" style={{ color: NAVY }}>Done looks like:</span> {t.done}</p>
+      {p?.note ? <p className="mt-1 rounded px-2 py-1 text-[10.5px]" style={{ backgroundColor: '#FDF9EC', color: '#6d5a1d' }}>Latest note: {p.note}</p> : null}
+      {p?.updatedAt ? <p className="mt-1 text-[9.5px]" style={{ color: OLIVE }}>Last updated {fmtAt(p.updatedAt)}{p.updatedBy ? ` by ${p.updatedBy}` : ''}</p> : null}
+      {editable ? (
+        <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t pt-2" style={{ borderColor: '#EEEFE1' }}>
+          <button type="button" disabled={busy || stage === 0} onClick={() => save(stage - 1, false)} className="rounded-full border px-2.5 py-1 text-[10.5px] font-bold disabled:opacity-40" style={{ borderColor: LINE, color: OLIVE }}>◀ Undo step</button>
+          <button type="button" disabled={busy || stage >= t.steps.length} onClick={() => save(stage + 1, false, note)} className="rounded-full px-2.5 py-1 text-[10.5px] font-bold text-white disabled:opacity-40" style={{ backgroundColor: color }}>
+            {stage >= t.steps.length ? 'Complete ✓' : `Mark “${t.steps[stage]}” done ▶`}
+          </button>
+          {stage < t.steps.length ? (
+            <button type="button" disabled={busy} onClick={() => save(stage, !blocked, note)} className="rounded-full border px-2.5 py-1 text-[10.5px] font-bold" style={{ borderColor: '#dcb3aa', color: '#a04a38' }}>
+              {blocked ? 'Unblock' : 'Flag blocked'}
+            </button>
+          ) : null}
+          <input value={note} onChange={(e) => setNote(e.target.value)} maxLength={500} placeholder="Add a note (what happened, what’s blocking)…" className="min-w-[180px] flex-1 rounded-md border px-2 py-1 text-[10.5px]" style={{ borderColor: LINE }} />
+          <button type="button" disabled={busy || !note.trim()} onClick={() => save(stage, blocked, note)} className="rounded-full border px-2.5 py-1 text-[10.5px] font-bold disabled:opacity-40" style={{ borderColor: LINE, color: NAVY }}>Save note</button>
+          {busy ? <span className="text-[10px]" style={{ color: OLIVE }}>Saving…</span> : null}
+          {err ? <span className="text-[10px] font-bold" style={{ color: '#a04a38' }}>{err}</span> : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function TeamTab({ tracker }: { tracker: TrackerState }) {
   const [focus, setFocus] = useState<Person | 'all'>('all');
+  const [state, setState] = useState<TrackerState>(tracker);
   const people = focus === 'all' ? TEAM : TEAM.filter((p) => p.id === focus);
+  const today = state.today;
+  const canEditPerson = (p: Person) => state.canEdit === 'all' || state.canEdit.includes(p);
+
+  const save = async (key: string, stage: number, blocked: boolean, note: string): Promise<string | null> => {
+    const r = await updateTeamTaskAction({ key, stage, blocked, note });
+    if (!r.ok) return r.error;
+    setState(r.state);
+    return null;
+  };
+
+  const stats = (tasks: TeamTask[]) => {
+    const steps = tasks.reduce((a, t) => a + t.steps.length, 0);
+    const doneSteps = tasks.reduce((a, t) => a + Math.min(t.steps.length, state.progress[t.key]?.stage ?? 0), 0);
+    const rags = tasks.map((t) => ragFor(t, state.progress[t.key], today));
+    const count = (r: Rag) => rags.filter((x) => x === r).length;
+    return { pct: steps ? Math.round((doneSteps / steps) * 100) : 0, done: count('done'), onTrack: count('on_track'), due: count('due'), overdue: count('overdue'), blocked: count('blocked'), notStarted: count('not_started'), n: tasks.length };
+  };
+  const all = stats(TEAM_TASKS);
+  // Where the plan says we should be by today: share of task-steps whose due date has passed.
+  const expectedSteps = TEAM_TASKS.filter((t) => t.dueIso <= today).reduce((a, t) => a + t.steps.length, 0);
+  const totalSteps = TEAM_TASKS.reduce((a, t) => a + t.steps.length, 0);
+  const expectedPct = Math.round((expectedSteps / totalSteps) * 100);
+  const attention = TEAM_TASKS.filter((t) => ['overdue', 'blocked', 'due'].includes(ragFor(t, state.progress[t.key], today)));
+
   return (
     <div className="space-y-5">
       <p className="rounded-xl border-l-4 bg-white px-4 py-3 text-[12.5px] font-medium leading-snug" style={{ borderColor: GOLD, color: NAVY, fontFamily: 'Georgia, serif' }}>
-        <span className="font-bold">Who does what, week by week, to 21 October.</span>{' '}
-        Every task below is lifted from a commitment elsewhere in this plan and links back to it; every week
-        ends on its checkpoint. Four owners outside the marketing lane — Gautam, Dr Luvi, Mohan and the
-        receptionists at all three branches — with Fahad named only where a task depends on him.
+        <span className="font-bold">Who does what, week by week, to 21 October — tracked live.</span>{' '}
+        Every task is lifted from a commitment elsewhere in this plan and links back to it. Each task has its own
+        flow of steps; owners mark steps done as they happen, every change is time-stamped in the activity log,
+        and the status panel below is what Fahad reports to Mr Akbar from.
+        {!state.live ? <span className="font-bold" style={{ color: CORAL }}> (Tracking database unreachable — showing the plan without live progress.)</span> : null}
       </p>
+
+      <section>
+        <Exhibit n="T0" title={`Programme status — as of ${today} (Dubai)`} />
+        <div className="grid gap-3 md:grid-cols-[1.2fr_1fr]">
+          <Card accent={NAVY}>
+            <div className="flex items-baseline justify-between">
+              <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: NAVY }}>Overall completion</p>
+              <p className="text-[22px] font-bold tabular-nums" style={{ color: NAVY, fontFamily: 'Georgia, serif' }}>{all.pct}%</p>
+            </div>
+            <div className="relative mt-1">
+              <Bar pct={all.pct} color={NAVY} h={10} />
+              <div className="absolute top-[-3px] h-4 w-[2px]" style={{ left: `${expectedPct}%`, backgroundColor: CORAL }} title="Planned position today" />
+            </div>
+            <p className="mt-1 text-[10px]" style={{ color: OLIVE }}>
+              <span className="font-bold" style={{ color: CORAL }}>│</span> planned position today: {expectedPct}% of task steps due by {today}. Steps completed across {all.n} tasks.
+            </p>
+            <div className="mt-2 grid grid-cols-3 gap-1.5 md:grid-cols-6">
+              {([['done', all.done], ['on_track', all.onTrack], ['due', all.due], ['overdue', all.overdue], ['blocked', all.blocked], ['not_started', all.notStarted]] as [Rag, number][]).map(([r, n]) => (
+                <div key={r} className="rounded-lg px-2 py-1.5 text-center" style={{ backgroundColor: RAG_STYLE[r].bg }}>
+                  <p className="text-[16px] font-bold tabular-nums" style={{ color: RAG_STYLE[r].fg, fontFamily: 'Georgia, serif' }}>{n}</p>
+                  <p className="text-[9px] font-bold uppercase tracking-wide" style={{ color: RAG_STYLE[r].fg }}>{RAG_STYLE[r].label}</p>
+                </div>
+              ))}
+            </div>
+          </Card>
+          <Card>
+            <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: NAVY }}>By owner</p>
+            <div className="mt-2 space-y-2">
+              {TEAM.map((p) => {
+                const s = stats(TEAM_TASKS.filter((t) => t.who === p.id));
+                return (
+                  <div key={p.id}>
+                    <div className="flex items-baseline justify-between text-[10.5px]">
+                      <span className="font-bold" style={{ color: p.color }}>{p.name}</span>
+                      <span className="tabular-nums" style={{ color: OLIVE }}>
+                        {s.done}/{s.n} done{s.overdue ? <span className="font-bold" style={{ color: '#a04a38' }}> · {s.overdue} overdue</span> : null}{s.blocked ? <span className="font-bold" style={{ color: '#a04a38' }}> · {s.blocked} blocked</span> : null} · <b style={{ color: NAVY }}>{s.pct}%</b>
+                      </span>
+                    </div>
+                    <Bar pct={s.pct} color={p.color} h={8} />
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+        </div>
+        {attention.length ? (
+          <div className="mt-2 rounded-xl border bg-white p-3" style={{ borderColor: '#dcb3aa' }}>
+            <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: '#a04a38' }}>Needs attention ({attention.length})</p>
+            <ul className="mt-1 space-y-1">
+              {attention.map((t) => {
+                const p = TEAM.find((x) => x.id === t.who)!;
+                return (
+                  <li key={t.key} className="flex flex-wrap items-center gap-2 text-[10.5px]" style={{ color: '#3a4148' }}>
+                    <RagPill rag={ragFor(t, state.progress[t.key], today)} />
+                    <span className="font-bold" style={{ color: p.color }}>{p.name}</span>
+                    <span>{t.task}</span>
+                    <span style={{ color: OLIVE }}>· due {t.due} · step {Math.min(t.steps.length, (state.progress[t.key]?.stage ?? 0) + 1)} of {t.steps.length}</span>
+                    <button type="button" onClick={() => { setFocus('all'); document.getElementById(`task-${t.key}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }} className="font-bold underline decoration-dotted" style={{ color: BLUE }}>open ↓</button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ) : null}
+      </section>
 
       <section>
         <Exhibit n="T1" title="The calendar — four owners × five weeks, each week closing on its gate" />
@@ -2457,12 +2615,25 @@ function TeamTab() {
                   {WEEKS.map((w) => (
                     <td key={w.n} className="px-2 py-2">
                       <div className="space-y-1">
-                        {TEAM_TASKS.filter((x) => x.who === p.id && x.wk === w.n).map((x) => (
-                          <div key={x.task} className="rounded-md border-l-2 px-1.5 py-1" style={{ borderColor: p.color, backgroundColor: '#FAFAF6' }}>
-                            <span className="block text-[9px] font-bold" style={{ color: p.color }}>{x.due}</span>
-                            <span className="block leading-tight" style={{ color: '#3a4148' }}>{x.task}</span>
-                          </div>
-                        ))}
+                        {TEAM_TASKS.filter((x) => x.who === p.id && x.wk === w.n).map((x) => {
+                          const pr = state.progress[x.key];
+                          const rag = ragFor(x, pr, today);
+                          const pct = Math.round(((pr?.stage ?? 0) / x.steps.length) * 100);
+                          return (
+                            <button
+                              key={x.key} type="button"
+                              onClick={() => document.getElementById(`task-${x.key}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+                              className="block w-full rounded-md border-l-2 px-1.5 py-1 text-left" style={{ borderColor: p.color, backgroundColor: '#FAFAF6' }}
+                            >
+                              <span className="flex items-center justify-between gap-1">
+                                <span className="text-[9px] font-bold" style={{ color: p.color }}>{x.due}</span>
+                                <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: RAG_STYLE[rag].bg === '#F1F1EA' ? '#C9C9BC' : RAG_STYLE[rag].fg === '#ffffff' ? RAG_STYLE[rag].bg : RAG_STYLE[rag].fg }} title={RAG_STYLE[rag].label} />
+                              </span>
+                              <span className="block leading-tight" style={{ color: '#3a4148' }}>{x.task}</span>
+                              <span className="mt-0.5 block"><Bar pct={pct} color={rag === 'overdue' || rag === 'blocked' ? CORAL : p.color} h={3} /></span>
+                            </button>
+                          );
+                        })}
                       </div>
                     </td>
                   ))}
@@ -2474,32 +2645,25 @@ function TeamTab() {
       </section>
 
       <section>
-        <Exhibit n="T2" title="The task list — what “done” looks like, who it depends on, where it comes from" />
-        <div className="space-y-3">
+        <Exhibit n="T2" title="Every task — its flow chart, progress bar and what “done” looks like" />
+        <p className="mb-2 text-[11px]" style={{ color: OLIVE }}>
+          Owners update their own tasks: mark the next step done, flag a block, add a note. Dr Luvi updates the
+          receptionists’ tasks. Everyone else sees the same live picture read-only.
+          {state.viewer ? <> Signed in as <b style={{ color: NAVY }}>{state.viewer}</b>{state.canEdit === 'all' ? ' — you can update every task.' : state.canEdit.length ? ` — you can update ${state.canEdit.map((x) => TEAM.find((p) => p.id === x)!.name).join(' and ')}’s tasks.` : ' — read-only.'}</> : null}
+        </p>
+        <div className="space-y-4">
           {people.map((p) => (
             <Card key={p.id} accent={p.color}>
               <p className="text-[12px] font-bold" style={{ color: p.color }}>{p.name} <span className="text-[10.5px] font-semibold" style={{ color: OLIVE }}>· {p.role}</span></p>
               <p className="mt-0.5 text-[10.5px] leading-snug" style={{ color: '#3a4148' }}>{p.owns}</p>
-              <div className="mt-2 overflow-x-auto">
-                <table className="w-full border-collapse text-[10.5px]">
-                  <thead>
-                    <tr className="text-left text-[9px] uppercase tracking-wide" style={{ color: OLIVE }}>
-                      <th className="py-1 pr-2 font-bold">Due</th><th className="py-1 pr-2 font-bold">Task</th>
-                      <th className="py-1 pr-2 font-bold">Done looks like</th><th className="py-1 pr-2 font-bold">With</th><th className="py-1 font-bold">Source</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {TEAM_TASKS.filter((x) => x.who === p.id).map((x) => (
-                      <tr key={x.task} className="border-t align-top" style={{ borderColor: '#EEEFE1' }}>
-                        <td className="py-1.5 pr-2 whitespace-nowrap font-bold" style={{ color: p.color }}>{x.due}</td>
-                        <td className="py-1.5 pr-2 font-semibold" style={{ color: NAVY }}>{x.task}</td>
-                        <td className="py-1.5 pr-2" style={{ color: '#3a4148' }}>{x.done}</td>
-                        <td className="py-1.5 pr-2 whitespace-nowrap" style={{ color: OLIVE }}>{x.with ?? '—'}</td>
-                        <td className="py-1.5 whitespace-nowrap">{x.to ? <Jump to={x.to}>{x.toLabel}</Jump> : null}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="mt-2 space-y-2">
+                {TEAM_TASKS.filter((x) => x.who === p.id).map((x) => (
+                  <TaskCard
+                    key={x.key} t={x} p={state.progress[x.key]} today={today} color={p.color}
+                    editable={canEditPerson(p.id)}
+                    onSave={(stage, blocked, note) => save(x.key, stage, blocked, note)}
+                  />
+                ))}
               </div>
             </Card>
           ))}
@@ -2507,7 +2671,43 @@ function TeamTab() {
       </section>
 
       <section>
-        <Exhibit n="T3" title="Standing rhythms — the daily and weekly habits behind the dated tasks" />
+        <Exhibit n="T3" title="Activity log — every update, who made it and when" />
+        {state.events.length ? (
+          <div className="overflow-x-auto rounded-xl border bg-white" style={{ borderColor: LINE }}>
+            <table className="w-full border-collapse text-[10.5px]">
+              <thead>
+                <tr className="text-left text-[9.5px] uppercase tracking-wide" style={{ color: OLIVE, backgroundColor: '#F7F7F0' }}>
+                  <th className="px-2.5 py-2 font-bold">When (Dubai)</th><th className="px-2.5 py-2 font-bold">Who</th>
+                  <th className="px-2.5 py-2 font-bold">Task</th><th className="px-2.5 py-2 font-bold">Change</th><th className="px-2.5 py-2 font-bold">Note</th>
+                </tr>
+              </thead>
+              <tbody>
+                {state.events.filter((e) => focus === 'all' || TASK_BY_KEY[e.key]?.who === focus).slice(0, 60).map((e, i) => {
+                  const t = TASK_BY_KEY[e.key];
+                  if (!t) return null;
+                  const change = e.toStage > e.fromStage
+                    ? `✓ ${t.steps.slice(e.fromStage, e.toStage).join(' · ')}`
+                    : e.toStage < e.fromStage ? `↩ back to step ${e.toStage + 1}` : e.status === 'blocked' ? '⚑ flagged blocked' : 'note';
+                  return (
+                    <tr key={`${e.at}-${i}`} className="border-t align-top" style={{ borderColor: '#EEEFE1' }}>
+                      <td className="px-2.5 py-1.5 whitespace-nowrap tabular-nums" style={{ color: OLIVE }}>{fmtAt(e.at)}</td>
+                      <td className="px-2.5 py-1.5 whitespace-nowrap font-bold" style={{ color: NAVY }}>{e.actor}</td>
+                      <td className="px-2.5 py-1.5" style={{ color: '#3a4148' }}>{t.task}</td>
+                      <td className="px-2.5 py-1.5" style={{ color: e.status === 'blocked' ? '#a04a38' : '#2C5E3F' }}>{change}{e.status === 'done' ? ' — task complete' : ''}</td>
+                      <td className="px-2.5 py-1.5" style={{ color: '#3a4148' }}>{e.note ?? '—'}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="rounded-xl border bg-white px-3 py-2 text-[11px]" style={{ borderColor: LINE, color: OLIVE }}>No updates yet — the first step an owner marks done appears here with its time and author.</p>
+        )}
+      </section>
+
+      <section>
+        <Exhibit n="T4" title="Standing rhythms — the daily and weekly habits behind the dated tasks" />
         <div className="grid gap-2 md:grid-cols-2">
           {RHYTHMS.filter((r) => focus === 'all' || r.who === focus).map((r) => {
             const p = TEAM.find((x) => x.id === r.who)!;
@@ -2528,7 +2728,7 @@ function TeamTab() {
       </section>
 
       <section>
-        <Exhibit n="T4" title="Branch pace — paid subscriptions per branch, cumulative" />
+        <Exhibit n="T5" title="Branch pace — paid subscriptions per branch, cumulative" />
         <div className="overflow-x-auto rounded-xl border bg-white" style={{ borderColor: LINE }}>
           <table className="w-full border-collapse text-[11px]">
             <thead>
@@ -2586,7 +2786,7 @@ const SUBS: { id: Sub; label: string }[] = [
 
 const SUB_LABELS: Record<string, string> = Object.fromEntries(SUBS.map((s) => [s.id, s.label]));
 
-export function SmileClubOptimization() {
+export function SmileClubOptimization({ tracker }: { tracker?: TrackerState } = {}) {
   const [sub, setSub] = useState<Sub>('why');
   // The return trail: cross-reference jumps remember their origin so the
   // reader (Mr Akbar) can follow any thread and come straight back.
@@ -2672,7 +2872,7 @@ export function SmileClubOptimization() {
         {sub === 'reco' && <Recommendation />}
         {sub === 'mandate' && <MandateTab />}
         {sub === 'response' && <ResponseTab />}
-        {sub === 'team' && <TeamTab />}
+        {sub === 'team' && <TeamTab tracker={tracker ?? EMPTY_TRACKER} />}
         {sub === 'dm' && <DmPlan />}
         {sub === 'offer' && <OfferEconomics />}
         {sub === 'waves' && <Waves />}

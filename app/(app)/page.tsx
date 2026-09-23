@@ -19,7 +19,7 @@ import { ArabyAdsReport } from '@/components/sections/arabyads/ArabyAdsReport';
 import { DataDrop } from '@/components/sections/drop/DataDrop';
 import { MarketingReport } from '@/components/sections/marketing/MarketingReport';
 import { SocialReport } from '@/components/sections/social/SocialReport';
-import { SmileClubOptimization } from '@/components/sections/smileclub/SmileClubOptimization';
+import { SmileClubPlan } from '@/components/sections/smileclub/SmileClubPlan';
 import { GoogleAnalyticsReport } from '@/components/sections/analytics/GoogleAnalyticsReport';
 import { ClarityReport } from '@/components/sections/clarity/ClarityReport';
 import { StatusReport } from '@/components/sections/status/StatusReport';
@@ -148,7 +148,7 @@ export default async function DashboardPage({
         {/* Grantable per-user window onto the Smile Club plan (primary home:
             /impact#smileclub). resolveTabInSet already limits `tab` to the
             viewer's effective set, so membership alone gates it. */}
-        {tab === 'smileclub' ? <SmileClubOptimization /> : null}
+        {tab === 'smileclub' ? <SmileClubPlan /> : null}
         {/* Group Revenue + Board Report are grantable per-user: resolveTabInSet
             already restricts `tab` to the viewer's effective set, so membership
             alone gates them (no extra isAdmin check). Status + Users stay hard
