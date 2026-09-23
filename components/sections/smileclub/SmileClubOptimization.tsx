@@ -42,7 +42,7 @@ const MINT = '#A9C3A6';
 const OLIVE = '#767769';
 const LINE = '#D8D8CC';
 
-type Sub = 'why' | 'layers' | 'reco' | 'mandate' | 'response' | 'dm' | 'offer' | 'waves' | 'corporate' | 'channels' | 'kpis';
+type Sub = 'why' | 'layers' | 'reco' | 'mandate' | 'response' | 'team' | 'dm' | 'offer' | 'waves' | 'corporate' | 'channels' | 'kpis';
 
 /* ── atoms ─────────────────────────────────────────────────────── */
 
@@ -314,7 +314,7 @@ function MandateTab() {
       <section>
         <Exhibit n="M2" title="Action register — re-based to the 22 Sep kick-start" />
         <p className="mb-2 text-[11px]" style={{ color: OLIVE }}>
-          Accountability rule: Gautam ISSUES and owns the mandate — he provides the baseline data and reports
+          Every owner&apos;s week-by-week tasks: <Jump to="team">Team task calendar</Jump>. Accountability rule: Gautam ISSUES and owns the mandate — he provides the baseline data and reports
           completion to Mr Akbar; Fahad owns DELIVERY. Acceptance therefore sits with Fahad: it is the delivery
           owner&apos;s written commitment to the targets, deadlines and guardrails — an issuer cannot accept his
           own mandate.
@@ -806,7 +806,7 @@ function ResponseTab() {
             {[
               'Tracking: every activity source-coded (QR / employer code / partner code / UTM); the dashboard spine — enquiry → qualified → checkout → paid → card active → booked → attended — is the single report. Attribution BELOW 98% holds new spend; on paid contracts that means ≥30/30, 49/50, 74/75 and 118/120 attributed at the four checkpoints.',
               'Rhythm: 09:00 outcome review · 16:00 recovery queue · EOD scorecard · weekly resource decision, run with the Smile Club Coordinator.',
-              'Risk 1 — creative assets: the designer gap limits paid creative volume. Mitigation: Creative OS output + offer-led formats; the hire decision (19 Sep) is the unlock.',
+              'Risk 1 — creative assets: the designer gap limited paid creative volume. Unlock in progress: Mohan (videographer & content designer) in role — dynamic-format asset set v1 due Mon 28 Sep, clinically reviewed before launch.',
               'Risk 2 — corporate pipeline: the 24 depends on sized, surviving doors — Michael Page closed 21 Sep; Assembly Global awaiting; the ≥72 coverage is unquantified until the 28 Sep replacement-door bridge lands. Mr Akbar’s three intros requested at sign-off.',
               'Risk 3 — clinic capacity: 60 clinic conversions must be servable; branch appointment availability is checked in the daily review before pushing harder.',
               'Recovery rule: any missed checkpoint minimum → recovery plan the next business day, as mandated.',
@@ -845,7 +845,7 @@ const DM_CHANNELS: DmChannel[] = [
     execution: 'Offer-led statics from Creative OS launch now; Advantage+/dynamic formats HELD by the smart/dynamic-creatives blocker. Contact centre tags membership-intent vs appointment-intent on first reply.',
     budget: 'AED 9,000',
     contrib: 'Est. 150–300 gross (pool-capped) → 90–180 qualified → 7–14 subs (inside Website-12)',
-    status: 'PARTIAL — creative-capped', statusColor: '#7a6420', thesis: 'th-meta',
+    status: 'PARTIAL — unlock: Mohan’s v1 set 28 Sep', statusColor: '#7a6420', thesis: 'th-meta',
   },
   {
     channel: 'LinkedIn — corporate air-cover', role: 'Door-opener, not a CPL channel: HR, People/Culture, Benefits and Office-Manager titles in Dubai see the one-pager before and after the field-sales knock and the intro emails.',
@@ -992,7 +992,7 @@ const DM_TIMELINE = [
   { wk: '22–28 Sep · mandate days 1–7', paid: 'Search live · LinkedIn organic starts · sticky banner briefed to CRM-DN · Meta statics prepped', corp: 'Outreach opened — Assembly Global contacted · Michael Page closed 21 Sep (referral live) · ArabyAds staff-membership ask scheduled', gate: 'Day-7 checkpoint 28 Sep — 36 plan / 30 minimum' },
   { wk: '29 Sep – 5 Oct · days 8–14', paid: 'Sticky banner LIVE · Meta statics live · awareness burst starts · LinkedIn sponsored test brief ready', corp: 'Assembly Global follow-up · ArabyAds staff-membership ask made · field-sales door plan live (JLT / Business Bay / DIFC) · agent sourcing starts', gate: 'Day-14 checkpoint 5 Oct — 60/50 · Google gate: matured CPQL ≤ 150 releases the second tranche' },
   { wk: '6–12 Oct · days 15–21', paid: 'Reallocate ±10% to the winning lanes · LinkedIn sponsored test live if creative allows · awareness kill check (lift visible or burst stops)', corp: 'First corporate pilot agreed, coded and speced (the “one defined pilot”) · 40+ doors walked cumulative', gate: 'Day-21 checkpoint 12 Oct — 88/75, reviewed with Gautam' },
-  { wk: '13–19 Oct · days 22–28', paid: 'Scale proven sources only · dynamic/smart creatives live IF the designer hire has landed', corp: 'Corporate pilot enrolments running under its employer code · agent offer out for the scale phase', gate: 'CAC vs ceiling + ≥98% attribution checked before any scale-up' },
+  { wk: '13–19 Oct · days 22–28', paid: 'Scale proven sources only · dynamic/smart creatives scale on Mohan’s v2 set (Day-14 learnings)', corp: 'Corporate pilot enrolments running under its employer code · agent offer out for the scale phase', gate: 'CAC vs ceiling + ≥98% attribution checked before any scale-up' },
   { wk: '20–21 Oct · days 29–30', paid: 'Final push through proven lanes only — no new experiments', corp: 'Pipeline handover notes for the next period', gate: '21 Oct — 120 paid, active, non-refunded, Finance-validated' },
 ];
 
@@ -1223,10 +1223,11 @@ function DmPlan() {
             <p className="mt-1.5 text-[11px] leading-snug" style={{ color: '#3a4148' }}>
               The scale formats — Meta Advantage+ / dynamic creative and Google responsive display / PMax — need
               asset variety: multiple ratios, message variants, video cutdowns. Creative OS produces templated
-              statics; it cannot feed those formats. Until the in-house designer decision (19 Sep) lands, paid runs
-              creative-capped: search + offer-led statics carry the load and the dynamic lanes stay HELD. This is
-              Risk 1 of the delivery plan, now named as the structural blocker of the DM plan — the hire is the
-              unlock, not more budget.
+              statics; it cannot feed those formats. UNLOCK IN PROGRESS: the hire has landed — Mohan
+              (videographer &amp; content designer) delivers the dynamic-format asset set v1 (3 ratios × 3
+              demand-state messages) on Mon 28 Sep; the dynamic lanes go live only after Dr Luvi&apos;s clinical
+              review, and scale on the v2 set from Day-14 learnings. Until then search + offer-led statics carry
+              the load. See the <Jump to="team">Team task calendar</Jump>.
             </p>
           </Card>
           <Card accent={BLUE}>
@@ -2322,6 +2323,250 @@ function Kpis() {
   );
 }
 
+/* ── Team task calendar (23 Sep): who does what, week by week, to Day 30 ── */
+
+type Person = 'gautam' | 'luvi' | 'mohan' | 'reception';
+
+const TEAM: { id: Person; name: string; role: string; color: string; owns: string }[] = [
+  { id: 'gautam', name: 'Gautam', role: 'Project owner & corporate implementer', color: NAVY, owns: 'Owns the mandate and its data, carries the corporate door-to-door bag in-window, and implements every signed employer (proposal → launch → activation).' },
+  { id: 'luvi', name: 'Dr Luvi', role: 'Head of Operations', color: '#2C5E3F', owns: 'Owns the front-desk engine behind In-clinic-60, branch capacity, clinical review of every claim, and clinical delivery of on-site days.' },
+  { id: 'mohan', name: 'Mohan', role: 'Videographer & content designer', color: CORAL, owns: 'The creative unlock: produces the asset variety the dynamic formats need, plus every print, video and launch kit the other lanes depend on.' },
+  { id: 'reception', name: 'Receptionists', role: 'Al Wasl · Dr Tosun · AMC', color: BLUE, owns: 'Sell at the checkout moment, every patient, every day — 20 paid subscriptions per branch by 21 Oct.' },
+];
+
+const WEEKS: { n: number; label: string; gate: string }[] = [
+  { n: 1, label: 'Week 1 · 22–28 Sep', gate: 'Mon 28 Sep · Day-7 · 36 plan / 30 min' },
+  { n: 2, label: 'Week 2 · 29 Sep – 5 Oct', gate: 'Mon 5 Oct · Day-14 · 60 / 50 · funding review' },
+  { n: 3, label: 'Week 3 · 6–12 Oct', gate: 'Mon 12 Oct · Day-21 · 88 / 75' },
+  { n: 4, label: 'Week 4 · 13–19 Oct', gate: 'Scale only past CAC + ≥98% attribution' },
+  { n: 5, label: 'Close · 20–21 Oct', gate: 'Wed 21 Oct · Day-30 · 120 paid' },
+];
+
+interface TeamTask {
+  who: Person; wk: number; due: string; task: string; done: string; with?: string; to?: Sub; toLabel?: string;
+}
+
+const TEAM_TASKS: TeamTask[] = [
+  /* ── Gautam ── */
+  { who: 'gautam', wk: 1, due: 'Wed 23 Sep EOD', task: 'Close the historical CRM test', done: 'Payment-record reconciliation shared: 71 replies classified, 417 failures coded, broadcast memberships confirmed or ruled out.', with: 'Fahad reviews', to: 'waves', toLabel: 'Wave 1 results' },
+  { who: 'gautam', wk: 1, due: 'Thu 24 Sep', task: 'Hand over the member baseline', done: 'Enrolments, payment status, plan mix, usage and cancellations — the savings examples and funnel definitions are built from it; nothing scales before it exists.', with: 'Fahad', to: 'offer', toLabel: 'Offer & economics' },
+  { who: 'gautam', wk: 1, due: 'Thu 24 Sep', task: 'Release enablement assets for print', done: 'Corporate one-pager, savings math, HR email kit and reception deck handed to Mohan in editable form.', with: 'Mohan', to: 'response', toLabel: 'R1 · Corporate' },
+  { who: 'gautam', wk: 1, due: 'Fri 25 Sep', task: 'Field-sales door plan — first 15 doors', done: 'First 15 SME doors in JLT and Business Bay chosen trigger-first (renewal month, complaints, hiring), each qualified with “does your medical include dental?”.', with: 'Fahad (warm doors)', to: 'corporate', toLabel: 'Corporate playbook' },
+  { who: 'gautam', wk: 1, due: 'Mon 28 Sep', task: 'Replacement-door bridge + product decisions', done: 'Bridge sizes the ≥72-equivalent pipeline door by door after Michael Page’s closure; decision on 4 live plans vs the blueprint’s 3 tiers; owners named for Smile Score, My Smile Plan and the annual value statement.', with: 'Fahad', to: 'mandate', toLabel: 'M4 alignment' },
+  { who: 'gautam', wk: 2, due: 'Wed 30 Sep', task: 'ArabyAds staff-membership decision', done: 'If yes: pilot spec + employer code within 48 hours. If no: logged, referral asked.', with: 'Fahad (relationship)', to: 'dm', toLabel: 'Outreach D3' },
+  { who: 'gautam', wk: 2, due: 'Fri 2 Oct', task: 'Finance fully-loaded CAC ceiling', done: 'Ceiling set via finance/ops (staff, commissions, creative, events, onboarding priced) — required before the Day-14 funding review.', with: 'Finance/ops', to: 'response', toLabel: 'Budget R2' },
+  { who: 'gautam', wk: 2, due: 'Fri 2 Oct', task: '20 doors walked · first discovery meetings', done: 'Meeting log current (door, date, model discussed, outcome); Benefits Gap Assessment run with every qualified employer.', with: 'Fahad (LinkedIn air-cover)', to: 'corporate', toLabel: 'Corporate playbook' },
+  { who: 'gautam', wk: 2, due: 'Mon 5 Oct', task: 'Day-14 gate: funding + corporate viability decision', done: 'Day-15–30 funding released or held; Corporate-24 confirmed against the bridge, or reallocated toward in-clinic/family per Wave-1 priority — decided here, not at Day 30.', with: 'Fahad · Mr Akbar', to: 'mandate', toLabel: 'M4 alignment' },
+  { who: 'gautam', wk: 3, due: 'Wed 7 Oct', task: 'Assembly Global pilot decision', done: 'Yes/no recorded; if yes, the pilot moves straight into specification.', with: 'Fahad (contact)', to: 'dm', toLabel: 'Outreach D3' },
+  { who: 'gautam', wk: 3, due: 'Fri 9 Oct', task: 'First corporate pilot signed and specified', done: 'The “one defined pilot” with all eight spec points: employer, eligible count, payment model, sponsor, on-site scope and cost, tracking code, success criteria, reporting. 40+ doors walked cumulative.', with: 'Dr Luvi (on-site scope)', to: 'corporate', toLabel: 'Pilot spec (C10)' },
+  { who: 'gautam', wk: 3, due: 'Mon 12 Oct', task: 'Day-21 checkpoint review', done: '88 plan / 75 minimum reviewed with Fahad; recovery plan the next business day if missed.', with: 'Fahad', to: 'kpis', toLabel: 'Controls' },
+  { who: 'gautam', wk: 4, due: 'Wed 14 Oct', task: 'Employee launch of the first pilot', done: 'CEO/HR email + QR + landing page live under the employer code; activation drive running — activation rate, not the signature, is the KPI.', with: 'Mohan (launch kit)', to: 'corporate', toLabel: 'Implementation (C9)' },
+  { who: 'gautam', wk: 4, due: 'Fri 16 Oct', task: 'On-site dental day at the pilot employer', done: 'Day delivered at the pre-approved cost; enrolments under the employer code; first bookings made on the day.', with: 'Dr Luvi · Mohan', to: 'corporate', toLabel: 'Corporate playbook' },
+  { who: 'gautam', wk: 5, due: 'Wed 21 Oct', task: 'Complete the mandate → report to Mr Akbar', done: '120 paid, active, non-refunded, source-coded; ≥98% data and attribution; Finance-validated. Corporate pipeline handover + agent onboarding plan for the scale phase.', with: 'Fahad', to: 'kpis', toLabel: 'Measurement' },
+
+  /* ── Dr Luvi ── */
+  { who: 'luvi', wk: 1, due: 'Wed 23 Sep', task: 'Front-desk route audit — all three branches', done: 'QR standees placed under SC-ALW / SC-TOS / SC-AMC; Reception Conversion Guide in use; objection log open at each desk.', with: 'Smile Club Coordinator', to: 'response', toLabel: 'R1 · In-clinic' },
+  { who: 'luvi', wk: 1, due: 'Thu 24 Sep', task: '30-minute receptionist refresher per branch', done: 'Ask → Match → Value → Clarify → Close rehearsed; language rules (membership, never insurance/coverage/claim); first member appointment booked before the patient leaves.', with: 'Receptionists', to: 'why', toLabel: 'Language dictionary' },
+  { who: 'luvi', wk: 1, due: 'Fri 25 Sep', task: 'Capacity check + priority-booking rule', done: 'Member appointment availability per branch and daypart confirmed; a priority member-booking rule defined — capacity is an expansion gate.', to: 'offer', toLabel: 'Capacity gate' },
+  { who: 'luvi', wk: 1, due: 'Mon 28 Sep', task: 'Day-7 in-clinic readout', done: '18 of the 36 from in-clinic (6 per branch, pro-rata); top objection themes; conversion assumption checked against branch footfall.', with: 'Receptionists', to: 'response', toLabel: 'R1 · In-clinic' },
+  { who: 'luvi', wk: 2, due: 'Wed 30 Sep', task: 'Onboarding standard live', done: 'Every new member’s first appointment booked within 7 days of joining; first booking and first completed visit tracked separately.', to: 'layers', toLabel: 'Layer map' },
+  { who: 'luvi', wk: 2, due: 'Thu 1 Oct', task: 'Clinical review of Mohan’s asset set v1', done: 'Every claim clinically accurate, non-alarmist and free of unsubstantiated savings before any ad goes live; weekly sign-off from here on.', with: 'Mohan', to: 'why', toLabel: 'Regulatory dictionary' },
+  { who: 'luvi', wk: 2, due: 'Mon 5 Oct', task: 'Day-14 in-clinic + capacity readout', done: '30 from in-clinic (10 per branch); capacity reading feeds the Day-15–30 funding decision.', to: 'kpis', toLabel: 'Controls' },
+  { who: 'luvi', wk: 3, due: 'Thu 8 Oct', task: 'On-site dental day: clinical scope and cost', done: 'Clinician, chair time, materials and cost estimated for the pilot employer’s day — costed per event, never assumed low-cost.', with: 'Gautam', to: 'corporate', toLabel: 'Pilot spec (C10)' },
+  { who: 'luvi', wk: 3, due: 'Fri 9 Oct', task: 'First CSR community event — clinician assigned', done: 'Event near a branch costed and staffed; per-event code live.', with: 'Fahad', to: 'response', toLabel: 'R1 · CSR' },
+  { who: 'luvi', wk: 3, due: 'Mon 12 Oct', task: 'Day-21 in-clinic readout', done: '44 from in-clinic (≈15 per branch); branch-level recovery actions if a branch trails.', to: 'kpis', toLabel: 'Controls' },
+  { who: 'luvi', wk: 4, due: 'Fri 16 Oct', task: 'Deliver the corporate on-site day clinically', done: 'Screenings delivered to standard; employees’ first visits booked; member first-visit experience audited (attendance, no-shows).', with: 'Gautam · Mohan', to: 'corporate', toLabel: 'Corporate playbook' },
+  { who: 'luvi', wk: 4, due: 'Mon 19 Oct', task: 'Draft clinical definitions for the baseline assessment', done: 'Smile Score dimensions drafted (caries risk, gum health, hygiene, function, preventive adherence) for the build decision — clinical governance, not marketing.', to: 'why', toLabel: 'Member journey (W3)' },
+  { who: 'luvi', wk: 5, due: 'Wed 21 Oct', task: 'In-clinic 60 delivered + refund check', done: '20 per branch; cancellations and refunds reconciled so every counted contract is active and non-refunded before Finance validation.', to: 'mandate', toLabel: 'Output definition' },
+
+  /* ── Mohan ── */
+  { who: 'mohan', wk: 1, due: 'Wed 23 Sep', task: 'Onboard to the brief', done: 'Language dictionary + demand-state map absorbed: every asset is tagged to ONE demand state and never uses insurance vocabulary.', to: 'layers', toLabel: 'Layer map (L1)' },
+  { who: 'mohan', wk: 1, due: 'Thu 24 Sep', task: 'Sticky banner artwork EN/AR', done: '“Smile Club — dental care from AED 99/month → Join”, dismissible, handed to CRM-DN/W3Layouts for the build.', with: 'CRM-DN', to: 'dm', toLabel: 'DM plan D1' },
+  { who: 'mohan', wk: 1, due: 'Fri 25 Sep', task: 'Corporate print kit for Gautam’s doors', done: 'One-pager + savings table EN/AR, on-site day banner, QR materials — print-ready inside the field-sales AED 6,000.', with: 'Gautam', to: 'response', toLabel: 'R1 · Corporate' },
+  { who: 'mohan', wk: 1, due: 'Mon 28 Sep', task: 'Dynamic-format asset set v1 — the blocker unlock', done: '3 ratios (1:1 · 4:5 · 9:16) × 3 demand-state messages (cost anxiety · family · existing patient) for Meta dynamic/Advantage+ formats, submitted for Dr Luvi’s review.', with: 'Dr Luvi (review)', to: 'dm', toLabel: 'Blocker D2' },
+  { who: 'mohan', wk: 2, due: 'Fri 2 Oct', task: 'Three proof videos + cutdowns', done: 'Doctor-trust prevention explainer · 30-second “what’s included” · member story (written consent only) — each with 15s and 6s cutdowns for Reels/Stories.', with: 'Dr Luvi (clinical)', to: 'layers', toLabel: 'Layer map' },
+  { who: 'mohan', wk: 2, due: 'Fri 2 Oct', task: 'Family-layer creator brief', done: 'Brief + content template for affiliate creators (tracked codes; “one dental home for the family”).', with: 'Fahad', to: 'response', toLabel: 'R1 · Affiliates' },
+  { who: 'mohan', wk: 2, due: 'Mon 5 Oct', task: 'Employee launch kit template', done: '“Your company has given you Smile Club — activate in 60 seconds”: email, WhatsApp card, QR poster — ready before the first pilot signs.', with: 'Gautam', to: 'corporate', toLabel: 'Implementation (C9)' },
+  { who: 'mohan', wk: 3, due: 'Thu 8 Oct', task: 'HR-facing LinkedIn content + Gap Assessment design', done: '“Dental Benefits Made Simple” posts for the door territories; the 5-question Dental Benefits Gap Assessment as a one-page leave-behind.', with: 'Gautam · Fahad', to: 'corporate', toLabel: 'Distribution (C7)' },
+  { who: 'mohan', wk: 3, due: 'Fri 9 Oct', task: 'Awareness air-cover geo creatives', done: 'IG/FB creatives for the geo cells around the three branches — judged on enabler metrics, never CPL.', with: 'Fahad', to: 'dm', toLabel: 'DM plan D1b' },
+  { who: 'mohan', wk: 4, due: 'Thu 15 Oct', task: 'Asset set v2 from Day-14 learnings', done: 'Winning demand states re-cut; losing variants retired — dynamic formats scale on proven creative only.', with: 'Fahad', to: 'dm', toLabel: 'DM plan D1d' },
+  { who: 'mohan', wk: 4, due: 'Fri 16 Oct', task: 'Film the corporate on-site day', done: 'Content captured with permissions; no identifiable employee or patient without written consent; no implied employer endorsement before it is granted.', with: 'Gautam · Dr Luvi', to: 'corporate', toLabel: 'Reporting & permissions' },
+  { who: 'mohan', wk: 5, due: 'Tue 20 Oct', task: 'Asset library handover', done: 'Every asset filed with its demand state, format, approval date and performance tag for the scale phase.', to: 'dm', toLabel: 'DM plan' },
+
+  /* ── Receptionists ── */
+  { who: 'reception', wk: 1, due: 'Thu 24 Sep', task: 'Attend the refresher', done: 'Pitch, language rules and first-booking step rehearsed with Dr Luvi.', with: 'Dr Luvi', to: 'why', toLabel: 'Language dictionary' },
+  { who: 'reception', wk: 1, due: 'Mon 28 Sep', task: 'Branch pace: 6 paid (minimum 5)', done: 'Per-branch count reported at the 09:00 review; every decline in the objection log.', to: 'response', toLabel: 'R1 · In-clinic' },
+  { who: 'reception', wk: 2, due: 'Mon 5 Oct', task: 'Branch pace: 10 paid (minimum 9)', done: 'Family prompt added: parents offered Family membership at checkout.', to: 'layers', toLabel: 'Layer map · state 7' },
+  { who: 'reception', wk: 3, due: 'Mon 12 Oct', task: 'Branch pace: 15 paid (minimum 13)', done: 'Treatment-plan patients asked “would member rates help with your plan?” (demand state 6).', to: 'layers', toLabel: 'Layer map · state 6' },
+  { who: 'reception', wk: 4, due: 'Wed 14 Oct', task: 'Recognise corporate members', done: 'Employees arriving under a pilot employer code are activated, welcomed and booked — the employee journey starts at the desk.', with: 'Gautam', to: 'corporate', toLabel: 'Employee journey (C1)' },
+  { who: 'reception', wk: 5, due: 'Wed 21 Oct', task: 'Branch target: 20 paid', done: 'Every enrolment under the branch code, card active, first appointment booked.', to: 'mandate', toLabel: 'Output definition' },
+];
+
+const RHYTHMS: { who: Person; items: string[] }[] = [
+  { who: 'gautam', items: ['Mon: checkpoint or weekly resource decision', 'Daily: EOD scorecard read · meeting log updated after every door', 'Weekly: pipeline coverage vs ≥72 equivalents'] },
+  { who: 'luvi', items: ['Daily 09:00: per-branch count + objection log review (with the Smile Club Coordinator)', 'Daily 16:00: recovery queue for any branch behind pace', 'Weekly: clinical sign-off on new creative and claims'] },
+  { who: 'mohan', items: ['Every asset tagged to one demand state before it ships', 'Weekly: submission batch to Dr Luvi for clinical review', 'Weekly: performance read with Fahad — cut, keep or re-cut'] },
+  { who: 'reception', items: ['Every checkout: Ask → Match → Value → Clarify → Close, savings shown against TODAY’s bill', 'Every join: QR under the branch code + first member appointment booked before the patient leaves', 'Every decline: objection log · Friday: objection themes to Dr Luvi', 'Always “membership / included services / member rates” — never insurance, coverage or claim'] },
+];
+
+function TeamTab() {
+  const [focus, setFocus] = useState<Person | 'all'>('all');
+  const people = focus === 'all' ? TEAM : TEAM.filter((p) => p.id === focus);
+  return (
+    <div className="space-y-5">
+      <p className="rounded-xl border-l-4 bg-white px-4 py-3 text-[12.5px] font-medium leading-snug" style={{ borderColor: GOLD, color: NAVY, fontFamily: 'Georgia, serif' }}>
+        <span className="font-bold">Who does what, week by week, to 21 October.</span>{' '}
+        Every task below is lifted from a commitment elsewhere in this plan and links back to it; every week
+        ends on its checkpoint. Four owners outside the marketing lane — Gautam, Dr Luvi, Mohan and the
+        receptionists at all three branches — with Fahad named only where a task depends on him.
+      </p>
+
+      <section>
+        <Exhibit n="T1" title="The calendar — four owners × five weeks, each week closing on its gate" />
+        <div className="mb-2 flex flex-wrap gap-1.5">
+          {([['all', 'Everyone'], ...TEAM.map((p) => [p.id, p.name])] as [Person | 'all', string][]).map(([id, label]) => (
+            <button
+              key={id} type="button" onClick={() => setFocus(id)}
+              className="rounded-full px-3 py-1 text-[11px] font-bold transition"
+              style={focus === id ? { backgroundColor: NAVY, color: 'white' } : { backgroundColor: '#F1F1EA', color: OLIVE }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <div className="overflow-x-auto rounded-xl border bg-white" style={{ borderColor: LINE }}>
+          <table className="w-full min-w-[860px] border-collapse text-[10.5px]">
+            <thead>
+              <tr className="text-left align-bottom" style={{ backgroundColor: '#F7F7F0' }}>
+                <th className="w-[130px] px-2.5 py-2 text-[9.5px] font-bold uppercase tracking-wide" style={{ color: OLIVE }}>Owner</th>
+                {WEEKS.map((w) => (
+                  <th key={w.n} className="px-2.5 py-2">
+                    <span className="block text-[10px] font-bold" style={{ color: NAVY }}>{w.label}</span>
+                    <span className="block text-[9px] font-semibold" style={{ color: CORAL }}>{w.gate}</span>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {people.map((p) => (
+                <tr key={p.id} className="border-t align-top" style={{ borderColor: '#EEEFE1' }}>
+                  <td className="px-2.5 py-2">
+                    <span className="block text-[11px] font-bold" style={{ color: p.color }}>{p.name}</span>
+                    <span className="block text-[9.5px] leading-tight" style={{ color: OLIVE }}>{p.role}</span>
+                  </td>
+                  {WEEKS.map((w) => (
+                    <td key={w.n} className="px-2 py-2">
+                      <div className="space-y-1">
+                        {TEAM_TASKS.filter((x) => x.who === p.id && x.wk === w.n).map((x) => (
+                          <div key={x.task} className="rounded-md border-l-2 px-1.5 py-1" style={{ borderColor: p.color, backgroundColor: '#FAFAF6' }}>
+                            <span className="block text-[9px] font-bold" style={{ color: p.color }}>{x.due}</span>
+                            <span className="block leading-tight" style={{ color: '#3a4148' }}>{x.task}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <Exhibit n="T2" title="The task list — what “done” looks like, who it depends on, where it comes from" />
+        <div className="space-y-3">
+          {people.map((p) => (
+            <Card key={p.id} accent={p.color}>
+              <p className="text-[12px] font-bold" style={{ color: p.color }}>{p.name} <span className="text-[10.5px] font-semibold" style={{ color: OLIVE }}>· {p.role}</span></p>
+              <p className="mt-0.5 text-[10.5px] leading-snug" style={{ color: '#3a4148' }}>{p.owns}</p>
+              <div className="mt-2 overflow-x-auto">
+                <table className="w-full border-collapse text-[10.5px]">
+                  <thead>
+                    <tr className="text-left text-[9px] uppercase tracking-wide" style={{ color: OLIVE }}>
+                      <th className="py-1 pr-2 font-bold">Due</th><th className="py-1 pr-2 font-bold">Task</th>
+                      <th className="py-1 pr-2 font-bold">Done looks like</th><th className="py-1 pr-2 font-bold">With</th><th className="py-1 font-bold">Source</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {TEAM_TASKS.filter((x) => x.who === p.id).map((x) => (
+                      <tr key={x.task} className="border-t align-top" style={{ borderColor: '#EEEFE1' }}>
+                        <td className="py-1.5 pr-2 whitespace-nowrap font-bold" style={{ color: p.color }}>{x.due}</td>
+                        <td className="py-1.5 pr-2 font-semibold" style={{ color: NAVY }}>{x.task}</td>
+                        <td className="py-1.5 pr-2" style={{ color: '#3a4148' }}>{x.done}</td>
+                        <td className="py-1.5 pr-2 whitespace-nowrap" style={{ color: OLIVE }}>{x.with ?? '—'}</td>
+                        <td className="py-1.5 whitespace-nowrap">{x.to ? <Jump to={x.to}>{x.toLabel}</Jump> : null}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          ))}
+        </div>
+      </section>
+
+      <section>
+        <Exhibit n="T3" title="Standing rhythms — the daily and weekly habits behind the dated tasks" />
+        <div className="grid gap-2 md:grid-cols-2">
+          {RHYTHMS.filter((r) => focus === 'all' || r.who === focus).map((r) => {
+            const p = TEAM.find((x) => x.id === r.who)!;
+            return (
+              <div key={r.who} className="rounded-xl border bg-white p-3" style={{ borderColor: LINE }}>
+                <p className="text-[11px] font-bold" style={{ color: p.color }}>{p.name}</p>
+                <ul className="mt-1 space-y-1">
+                  {r.items.map((i) => (
+                    <li key={i} className="flex gap-2 text-[10.5px] leading-snug" style={{ color: '#3a4148' }}>
+                      <span className="mt-[5px] h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: p.color }} />{i}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      <section>
+        <Exhibit n="T4" title="Branch pace — paid subscriptions per branch, cumulative" />
+        <div className="overflow-x-auto rounded-xl border bg-white" style={{ borderColor: LINE }}>
+          <table className="w-full border-collapse text-[11px]">
+            <thead>
+              <tr className="text-left text-[9.5px] uppercase tracking-wide" style={{ color: OLIVE, backgroundColor: '#F7F7F0' }}>
+                <th className="px-3 py-2 font-bold">Branch · code</th>
+                <th className="px-3 py-2 text-center font-bold">Mon 28 Sep</th><th className="px-3 py-2 text-center font-bold">Mon 5 Oct</th>
+                <th className="px-3 py-2 text-center font-bold">Mon 12 Oct</th><th className="px-3 py-2 text-center font-bold">Wed 21 Oct</th>
+              </tr>
+            </thead>
+            <tbody>
+              {['Al Wasl · SC-ALW', 'Dr Tosun · SC-TOS', 'AMC · SC-AMC'].map((b) => (
+                <tr key={b} className="border-t" style={{ borderColor: '#EEEFE1' }}>
+                  <td className="px-3 py-1.5 font-semibold" style={{ color: NAVY }}>{b}</td>
+                  {['6 (min 5)', '10 (min 9)', '15 (min 13)', '20'].map((v) => (
+                    <td key={v} className="px-3 py-1.5 text-center tabular-nums" style={{ color: '#3a4148' }}>{v}</td>
+                  ))}
+                </tr>
+              ))}
+              <tr className="border-t font-bold" style={{ borderColor: '#EEEFE1', backgroundColor: '#F7F7F0' }}>
+                <td className="px-3 py-1.5" style={{ color: NAVY }}>In-clinic total</td>
+                {['18', '30', '44', '60'].map((v) => (
+                  <td key={v} className="px-3 py-1.5 text-center tabular-nums" style={{ color: CORAL }}>{v}</td>
+                ))}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p className="mt-2 text-[10.5px]" style={{ color: OLIVE }}>
+          Pro-rata assumption: in-clinic is 60 of the 120 (50%), so each branch carries half of every
+          checkpoint split three ways — 36 → 18 → 6 per branch; minimums use the checkpoint minimums (30 / 50 /
+          75) the same way, rounded up. A branch below its minimum triggers Dr Luvi&apos;s 16:00 recovery queue
+          the same day.
+        </p>
+      </section>
+    </div>
+  );
+}
+
 /* ── the tab ───────────────────────────────────────────────────── */
 
 const SUBS: { id: Sub; label: string }[] = [
@@ -2330,6 +2575,7 @@ const SUBS: { id: Sub; label: string }[] = [
   { id: 'reco', label: 'The recommendation' },
   { id: 'mandate', label: '30-day mandate' },
   { id: 'response', label: '30-day delivery plan' },
+  { id: 'team', label: 'Team task calendar' },
   { id: 'dm', label: 'Digital marketing plan' },
   { id: 'offer', label: 'Offer & economics' },
   { id: 'waves', label: 'Three waves' },
@@ -2426,6 +2672,7 @@ export function SmileClubOptimization() {
         {sub === 'reco' && <Recommendation />}
         {sub === 'mandate' && <MandateTab />}
         {sub === 'response' && <ResponseTab />}
+        {sub === 'team' && <TeamTab />}
         {sub === 'dm' && <DmPlan />}
         {sub === 'offer' && <OfferEconomics />}
         {sub === 'waves' && <Waves />}
