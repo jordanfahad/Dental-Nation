@@ -45,8 +45,8 @@ export const LANG_LABEL: Record<Lang, string> = { en: 'English', tr: 'Türkçe �
 /** Who checks each translation before anything is sent or filmed. */
 export const LANG_REVIEW: Record<Lang, string> = {
   en: 'Final wording.',
-  tr: 'Draft translation — to be checked by a Turkish-speaking dentist at Dr. Tosun Dental Clinic before use.',
-  ar: 'Draft translation — to be checked by an Arabic-speaking dentist (names and job titles in Arabic script, male/female wording) before use.',
+  tr: 'Turkish reviewed by Astra (DN-005, 25 Sep) — final check by a Turkish-speaking dentist at Dr. Tosun Dental Clinic before use.',
+  ar: 'Arabic reviewed by Astra (DN-005, 25 Sep) — final check by an Arabic-speaking dentist before use; each dentist confirms the Arabic spelling of their own name and title.',
 };
 
 export const PATIENT_SEGS: { id: PatientSeg; label: string; when: string }[] = [
@@ -82,6 +82,8 @@ export interface Dentist {
   /** Overrides the specialty's lane for the second video. */
   lane?: LaneId;
   laneWhy?: string;
+  /** Arabic-script name and title — drafts from DN-005, to confirm with the dentist. */
+  ar?: { name: string; title: string };
   note?: string;
 }
 
@@ -94,18 +96,18 @@ export const DENTISTS: Dentist[] = [
   { id: 'maysoun-ahmad', name: 'Dr. Maysoun Ahmad', title: 'General Dentist', branch: 'tosun', specialty: 'general', days: 'Mon', code: 'SC-DR-MAYSOUN' },
   { id: 'sathyapriya-surendar', name: 'Dr. Sathyapriya Surendar', title: 'Periodontist', branch: 'tosun', specialty: 'perio', days: 'Tue–Wed', code: 'SC-DR-SATHYA' },
 
-  { id: 'hasna-alsaeed', name: 'Dr. Hasna Alsaeed', title: 'Consultant Orthodontist', branch: 'alwasl', specialty: 'ortho', days: 'Sun', code: 'SC-DR-HASNA' },
-  { id: 'ali-ghasemi', name: 'Dr. Ali Ghasemi', title: 'Hygienist', branch: 'alwasl', specialty: 'hygiene', days: 'Sat–Thu', code: 'SC-DR-ALI' },
-  { id: 'safwan-sultan', name: 'Dr. M Safwan Sultan', title: 'General Dentist', branch: 'alwasl', specialty: 'general', days: 'Sat–Thu', code: 'SC-DR-SAFWAN' },
-  { id: 'yasmin-youssef', name: 'Dr. Yasmin Youssef', title: 'Orthodontist', branch: 'alwasl', specialty: 'ortho', days: 'Sun', code: 'SC-DR-YASMIN' },
-  { id: 'ghada-hussain', name: 'Dr. Ghada Hussain', title: 'Pedodontist (children’s dentist)', branch: 'alwasl', specialty: 'pedo', days: 'Sat', code: 'SC-DR-GHADA' },
-  { id: 'mohammad-qasem', name: 'Dr. Mohammad Qasem', title: 'Periodontist', branch: 'alwasl', specialty: 'perio', days: 'Thu', code: 'SC-DR-QASEM' },
-  { id: 'helmi-shaath', name: 'Dr. Helmi Shaath', title: 'Prosthodontist', branch: 'alwasl', specialty: 'prostho', days: 'Sat', code: 'SC-DR-HELMI' },
-  { id: 'chahira-berlarbi', name: 'Dr. Chahira Berlarbi', title: 'Dentist', branch: 'alwasl', specialty: 'general', days: 'Mon–Thu, Sat', code: 'SC-DR-CHAHIRA', note: 'Specialty not listed on the schedule — using the general script; confirm with Dr Luvi.' },
+  { id: 'hasna-alsaeed', name: 'Dr. Hasna Alsaeed', title: 'Consultant Orthodontist', branch: 'alwasl', specialty: 'ortho', days: 'Sun', code: 'SC-DR-HASNA', ar: { name: 'د. حسناء السعيد', title: 'استشارية تقويم الأسنان' } },
+  { id: 'ali-ghasemi', name: 'Dr. Ali Ghasemi', title: 'Hygienist', branch: 'alwasl', specialty: 'hygiene', days: 'Sat–Thu', code: 'SC-DR-ALI', ar: { name: 'د. علي قاسمي', title: 'أخصائي صحة الفم والأسنان' } },
+  { id: 'safwan-sultan', name: 'Dr. M Safwan Sultan', title: 'General Dentist', branch: 'alwasl', specialty: 'general', days: 'Sat–Thu', code: 'SC-DR-SAFWAN', ar: { name: 'د. م. صفوان سلطان', title: 'طبيب أسنان عام' } },
+  { id: 'yasmin-youssef', name: 'Dr. Yasmin Youssef', title: 'Orthodontist', branch: 'alwasl', specialty: 'ortho', days: 'Sun', code: 'SC-DR-YASMIN', ar: { name: 'د. ياسمين يوسف', title: 'طبيبة تقويم الأسنان' } },
+  { id: 'ghada-hussain', name: 'Dr. Ghada Hussain', title: 'Pedodontist (children’s dentist)', branch: 'alwasl', specialty: 'pedo', days: 'Sat', code: 'SC-DR-GHADA', ar: { name: 'د. غادة حسين', title: 'طبيبة أسنان الأطفال' } },
+  { id: 'mohammad-qasem', name: 'Dr. Mohammad Qasem', title: 'Periodontist', branch: 'alwasl', specialty: 'perio', days: 'Thu', code: 'SC-DR-QASEM', ar: { name: 'د. محمد قاسم', title: 'أخصائي أمراض اللثة' } },
+  { id: 'helmi-shaath', name: 'Dr. Helmi Shaath', title: 'Prosthodontist', branch: 'alwasl', specialty: 'prostho', days: 'Sat', code: 'SC-DR-HELMI', ar: { name: 'د. حلمي شعث', title: 'أخصائي تركيبات الأسنان' } },
+  { id: 'chahira-berlarbi', name: 'Dr. Chahira Berlarbi', title: 'Dentist', branch: 'alwasl', specialty: 'general', days: 'Mon–Thu, Sat', code: 'SC-DR-CHAHIRA', ar: { name: 'د. شهيرة برلاربي', title: 'طبيبة أسنان' }, note: 'Specialty not listed on the schedule — using the general script; confirm with Dr Luvi.' },
 
-  { id: 'maher-selman', name: 'Dr. Maher Selman', title: 'Consultant Endodontist & Implantologist', branch: 'amc', specialty: 'endo', days: 'Sun–Mon, Wed–Thu', code: 'SC-DR-MAHER' },
-  { id: 'suzanna-almaali', name: 'Dr. Suzanna Almaali', title: 'Specialist Orthodontist', branch: 'amc', specialty: 'ortho', days: 'Sun', code: 'SC-DR-SUZANNA' },
-  { id: 'leila-mostawe', name: 'Dr. Leila Mostawe', title: 'General Dentist', branch: 'amc', specialty: 'general', days: 'Sun, Tue, Thu', code: 'SC-DR-LEILA' },
+  { id: 'maher-selman', name: 'Dr. Maher Selman', title: 'Consultant Endodontist & Implantologist', branch: 'amc', specialty: 'endo', days: 'Sun–Mon, Wed–Thu', code: 'SC-DR-MAHER', ar: { name: 'د. ماهر سلمان', title: 'استشاري علاج العصب وطبيب زراعة الأسنان' } },
+  { id: 'suzanna-almaali', name: 'Dr. Suzanna Almaali', title: 'Specialist Orthodontist', branch: 'amc', specialty: 'ortho', days: 'Sun', code: 'SC-DR-SUZANNA', ar: { name: 'د. سوزانا المعالي', title: 'أخصائية تقويم الأسنان' } },
+  { id: 'leila-mostawe', name: 'Dr. Leila Mostawe', title: 'General Dentist', branch: 'amc', specialty: 'general', days: 'Sun, Tue, Thu', code: 'SC-DR-LEILA', ar: { name: 'د. ليلى مستاوي', title: 'طبيبة أسنان عامة' } },
 ];
 
 export const laneFor = (d: Dentist): LaneId => d.lane ?? LANE_BY_SPECIALTY[d.specialty];
@@ -122,8 +124,8 @@ const ANGLE: Record<Lang, Record<Specialty, { chair: string; why: string }>> = {
   en: {
     ortho: { chair: 'While we straighten your teeth, keeping them clean and healthy matters just as much — Smile Club puts your check-ups and cleanings into the plan.', why: 'A straight smile deserves to stay healthy — with braces or aligners, regular check-ups and professional cleaning matter even more.' },
     general: { chair: 'The best way to avoid bigger problems is to keep your check-ups and cleanings on track — Smile Club makes that simple for the whole year.', why: 'Most dental problems start small — catching them early keeps treatment simple and costs down.' },
-    perio: { chair: 'Healthy gums need regular maintenance — with Smile Club your preventive visits are planned for the year, so nothing slips.', why: 'Healthy gums are the foundation of a healthy smile — and they need regular care, not just a visit when something bleeds or hurts.' },
-    hygiene: { chair: 'A professional cleaning every six months is the simplest protection there is — Smile Club includes it, so you never have to think about booking.', why: 'A professional cleaning every six months is the simplest protection for your teeth and gums.' },
+    perio: { chair: 'Healthy gums need regular maintenance. With Smile Club, preventive visits are planned for the year, making them easier to keep track of.', why: 'Healthy gums are the foundation of a healthy smile — and they need regular care, not just a visit when something bleeds or hurts.' },
+    hygiene: { chair: 'A professional cleaning every six months is one of the simplest ways to care for your teeth and gums. Depending on the plan, Smile Club includes a professional cleaning and helps you plan regular care.', why: 'A professional cleaning every six months is one of the simplest ways to care for your teeth and gums.' },
     pedo: { chair: 'Good habits start young — Smile Club helps the whole family keep regular check-ups, children included.', why: 'Good dental habits start young — regular check-ups help children grow up with healthy, confident smiles.' },
     prostho: { chair: 'If you’re planning crowns, bridges or dentures, members pay member rates on eligible treatments — and regular check-ups help your new teeth last.', why: 'Crowns, bridges and dentures last longest when they are looked after with regular check-ups.' },
     endo: { chair: 'After a root canal or an implant, regular check-ups protect the work we’ve done — and members pay member rates on eligible treatments.', why: 'After a root canal or an implant, regular check-ups are what protect the work — and your investment.' },
@@ -181,7 +183,7 @@ const COPY: Record<Lang, {
       dormant: 'Whenever you decide to come back, Smile Club makes it simple.',
     },
     cta: {
-      active: 'Just reply to this message and my team will explain the plans and book your check-up.',
+      active: 'Just reply to this message and my team will explain the plans and, if you would like, arrange your check-up.',
       inactive: 'Reply to this message and my team will explain the plans and find a time that suits you.',
       dormant: 'If you’d like to hear more, just reply and my team will explain — no obligation.',
     },
@@ -207,7 +209,7 @@ const COPY: Record<Lang, {
       dormant: 'Yeniden gelmeye karar verdiğinizde Smile Club bu adımı kolaylaştırır.',
     },
     cta: {
-      active: 'Bu mesaja yanıt vermeniz yeterli; ekibim planları açıklayıp diş kontrolü randevunuzu ayarlayacaktır.',
+      active: 'Bu mesaja yanıt vermeniz yeterli; ekibim planları açıklayacak ve isterseniz diş kontrolü randevunuzu ayarlayacaktır.',
       inactive: 'Bu mesaja yanıt vermeniz yeterli; ekibim planları açıklayıp size uygun bir randevu saati bulacaktır.',
       dormant: 'Daha fazla bilgi için bu mesaja yanıt vermeniz yeterli; ekibim planları açıklayacaktır. Herhangi bir yükümlülüğünüz yoktur.',
     },
@@ -233,7 +235,7 @@ const COPY: Record<Lang, {
       dormant: 'متى قررتم العودة، يجعل Smile Club هذه الخطوة أسهل.',
     },
     cta: {
-      active: 'يكفي الرد على هذه الرسالة، وسيشرح فريقي الخطط ويرتب مواعيد فحوصاتكم الدورية.',
+      active: 'يكفي الرد على هذه الرسالة، وسيشرح فريقي الخطط ويرتب موعد الفحص إذا رغبتم بذلك.',
       inactive: 'يكفي الرد على هذه الرسالة، وسيشرح فريقي الخطط ويساعدكم في اختيار مواعيد مناسبة.',
       dormant: 'للمزيد من المعلومات، يكفي الرد على هذه الرسالة، وسيشرح فريقي الخطط دون أي التزام من جانبكم.',
     },
@@ -300,8 +302,8 @@ const LANE_VIDEO: Record<LaneId, Record<Lang, LaneLines>> = {
     en: (n, t, w) => [
       `[On camera] Coffee, tea, or simply time — teeth lose their brightness. I’m ${n}, ${t} at ${w}.`,
       'The DN Glow Up is professional Zoom whitening, supervised by a dentist, in about an hour.',
-      'AED 1,699, all-inclusive — we check your teeth first, so it’s safe and the result looks natural.',
-      'A brighter smile, done properly.',
+      'AED 1,699, all-inclusive — we check your teeth first to assess whether whitening is suitable for you.',
+      'Professional care for a brighter smile.',
       '[End card] Book The DN Glow Up — link in the ad, or message us on WhatsApp.',
     ],
     tr: (n, t, w) => [
@@ -324,7 +326,7 @@ const LANE_VIDEO: Record<LaneId, Record<Lang, LaneLines>> = {
       `[On camera] Toothache, a broken tooth, a swelling that won’t wait? I’m ${n}, ${t} at ${w}.`,
       'With Dental Nation’s urgent dental care, you’re seen within 60 minutes.',
       'AED 699, all-inclusive — you know the price before you arrive.',
-      'Don’t wait for the pain to get worse. Call us, and we’ll see you today.',
+      'Don’t wait for the pain to get worse. Call us to arrange an urgent appointment.',
       '[End card] Tap to call now — urgent dental care, seen within 60 minutes.',
     ],
     tr: (n, t, w) => [
@@ -382,13 +384,14 @@ export function scriptsFor(d: Dentist, lang: Lang): DentistScripts {
   const a = ANGLE[lang][d.specialty];
   const where = BRANCH_NAME[lang][d.branch];
   const from = `${where}${d.branch === 'alwasl' ? '' : c.partOf}`;
-  const title = lang === 'en' ? d.title : TITLE[lang][d.specialty];
-  const wa = (s: PatientSeg) => [c.hello(d.name, from), c.seg[s], a.why, `${c.club[s]} ${c.offer}`, c.cta[s], c.stop].join('\n\n');
+  const name = lang === 'ar' && d.ar ? d.ar.name : d.name;
+  const title = lang === 'en' ? d.title : lang === 'ar' && d.ar ? d.ar.title : TITLE[lang][d.specialty];
+  const wa = (s: PatientSeg) => [c.hello(name, from), c.seg[s], a.why, `${c.club[s]} ${c.offer}`, c.cta[s], c.stop].join('\n\n');
   return {
     chair: `“${a.chair} ${c.invite}”`,
     whatsapp: { active: wa('active'), inactive: wa('inactive'), dormant: wa('dormant') },
-    clubVideo: [c.vIntro(d.name, title, where), a.why, `${c.vWhy} ${c.offer}`, c.vKeep, c.vEnd].join('\n'),
-    laneVideo: LANE_VIDEO[laneFor(d)][lang](d.name, title, where).join('\n'),
+    clubVideo: [c.vIntro(name, title, where), a.why, `${c.vWhy} ${c.offer}`, c.vKeep, c.vEnd].join('\n'),
+    laneVideo: LANE_VIDEO[laneFor(d)][lang](name, title, where).join('\n'),
   };
 }
 

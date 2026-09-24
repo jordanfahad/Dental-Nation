@@ -3117,7 +3117,7 @@ function ShootScripts({ d }: { d: Dentist }) {
     <div className="space-y-1.5 rounded-lg border bg-white px-2.5 py-2" style={{ borderColor: '#EEEFE1' }}>
       <p className="text-[11px] font-bold" style={{ color: NAVY }}>{d.name} <span className="font-semibold" style={{ color: OLIVE }}>· {d.title} · {BRANCH_LABEL[d.branch]}</span></p>
       <p className="text-[10.5px] leading-snug" style={{ color: '#3a4148' }}>
-        One appointment, two videos — each filmed in {langsFor(d).map((l) => LANG_LABEL[l].split(' · ').pop()).join(' and ')}: four short takes, same set-up.
+        One appointment, two videos — each filmed in {langsFor(d).map((l) => LANG_LABEL[l].split(' · ').pop()).join(' and ')}: four takes, same set-up. Video 1 runs about 35–45 seconds, Video 2 about 25–30 — time both in rehearsal.
       </p>
       <BiScript d={d} label="Video 1 · Smile Club" tone={CORAL} pick={(s) => s.clubVideo} />
       <BiScript d={d} label={`Video 2 · ${lane.name} (${lane.tag})`} tone={BLUE} pick={(s) => s.laneVideo} />

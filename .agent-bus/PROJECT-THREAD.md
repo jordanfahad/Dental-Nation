@@ -110,9 +110,12 @@ P&L pathway block complete on all 24 capabilities, pending finance ticks.
 
 ## Open via the bus
 
-- DN-005 (dispatched 25 Sep): Astra reviews the Turkish and Arabic scripts in
-  lib/smileclub/scripts.ts. Shoot-critical first: Dr. Tosun and Dr. Dilsad,
-  Turkish, filmed Fri 25 Sep.
+- None. DN-005 closed 25 Sep: Turkish/Arabic reviewed and merged; English
+  source softened (no whitening safety/result promise, no "see you today",
+  cleaning "depending on the plan", check-up booked only if the patient wants).
+  Arabic names/titles live as per-dentist drafts (Dentist.ar). Still open:
+  native-speaker sign-off per language; each dentist confirms their Arabic
+  name/title; RTL display of Latin brand names inside Arabic to eyeball.
 
 ## Pending merge
 
