@@ -36,8 +36,8 @@ export const SEGMENT_BUDGETS: SegmentBudget[] = [
   {
     seg: 'patients', target: 24,
     lines: [
-      { item: 'WhatsApp message costs — about 3,000 curated messages', aed: 1000 },
-      { item: 'Dentist thank-you: AED 40 per their patient who joins', aed: 1000, note: 'paid only on results' },
+      { item: 'WhatsApp message allowance — up to about 3,000 consent-checked messages', aed: 1000 },
+      { item: 'Dentist incentive allowance — AED 40 per paid membership from their own patients', aed: 1000, note: '24 memberships × AED 40 = AED 960; AED 40 remains within the AED 1,000 allowance; paid only on results' },
     ],
   },
   {
@@ -62,7 +62,7 @@ export const SEGMENT_BUDGETS: SegmentBudget[] = [
     lines: [
       { item: 'Printed material — schools, building lobbies, gym and pharmacy counters', aed: 2000 },
       { item: 'One community event', aed: 1500 },
-      { item: 'Partner and promoter commissions — about AED 100 per member', aed: 2000, note: 'paid only on results' },
+      { item: 'Shared partner and promoter commission allowance — about AED 100 per paid membership', aed: 2000, note: 'one AED 2,000 allowance for 20 partner memberships: 7 local businesses + 7 promoters + 3 brokers + 3 benefit platforms; no duplicate commission' },
     ],
   },
 ];
