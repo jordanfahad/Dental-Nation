@@ -102,6 +102,18 @@ P&L pathway block complete on all 24 capabilities, pending finance ticks.
   companies 24, online 12, families/neighbourhoods 24. Proposed spend AED
   27,000; indicative full-cost ceiling AED 30,000, subject to Finance.
 
+- Dentist scripts rev. 25 Sep: WhatsApp goes to patient groups (active /
+  inactive / dormant), never addressed by name; every filming appointment
+  gives two videos (Smile Club + the dentist's lane campaign). Languages:
+  Dr. Tosun Dental Clinic TR + EN; Al Wasl and AMC AR + EN (AMC confirmed by
+  Fahad 25 Sep). TR/AR are drafts under review in DN-005.
+
+## Open via the bus
+
+- DN-005 (dispatched 25 Sep): Astra reviews the Turkish and Arabic scripts in
+  lib/smileclub/scripts.ts. Shoot-critical first: Dr. Tosun and Dr. Dilsad,
+  Turkish, filmed Fri 25 Sep.
+
 ## Pending merge
 
 - codex/DN-002 (Astra's hardening of the Meta ad-level work: range-end-
