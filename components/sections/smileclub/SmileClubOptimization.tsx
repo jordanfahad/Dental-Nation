@@ -3744,7 +3744,7 @@ function AlertsPanel({ state }: { state: TrackerState }) {
         </table>
       </div>
       <p className="text-[10.5px] leading-snug" style={{ color: OLIVE }}>
-        Each alert goes at most once a day and only when there is something to say. Ms Shadi’s and Mohan’s email addresses are not on record yet — until they are added, they are named in the email but not sent it.
+        Each alert goes at most once a day and only when there is something to say. Mohan receives his at his temporary address until he has a Dental Nation email.
       </p>
       {isAdmin ? (
         <div className="flex flex-wrap items-center gap-1.5">

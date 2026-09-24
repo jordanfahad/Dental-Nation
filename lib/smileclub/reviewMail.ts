@@ -8,13 +8,13 @@ import { getSupabaseAdmin } from '@/lib/supabase/server';
 /**
  * Email alerts for the Smile Club script sign-off. Recipients are env-overridable
  * (SC_REVIEW_EMAIL_<SHADI|LUVI|GAUTAM|FAHAD>) so an address changes without a
- * deploy. Ms Shadi has no address on record yet — set SC_REVIEW_EMAIL_SHADI.
+ * deploy.
  */
 const DEFAULTS: Record<ReviewerId | 'fahad', string> = {
   fahad: 'fa.siddiqui@dentalnation.com',
   luvi: 'lu.kaprani@dentalnation.com',
   gautam: 'gautam.n@dentalnation.com',
-  shadi: '',
+  shadi: 'sh.gheitasi@dentalnation.com',
 };
 
 export function reviewEmail(who: ReviewerId | 'fahad'): string | null {

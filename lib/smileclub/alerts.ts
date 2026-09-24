@@ -19,8 +19,9 @@ import { OWNER_LABEL, TASK_BY_KEY, TEAM_TASKS, TOTAL_WEIGHT, TRACKER_SOURCE, ext
  *          when the person has nothing due, overdue, blocked or waiting.
  *   Event  A task flagged "blocked" → Fahad and the owners it waits on; cc owner.
  *
- * Addresses are env-overridable: SC_EMAIL_<KEY> (KEY = FAHAD, AKBAR, LUVI,
- * GAUTAM, SHADI, MJ, MOHAN). Ms Shadi's and Mohan's are not on record yet.
+ * Addresses: env SC_EMAIL_<KEY> (KEY = FAHAD, AKBAR, LUVI, GAUTAM, SHADI, MJ,
+ * MOHAN), then lane_e.app_secrets `sc_email_<key>` (for personal addresses
+ * that must not sit in this public repo), then the work defaults below.
  */
 
 type Who = 'fahad' | 'akbar' | 'luvi' | 'gautam' | 'shadi' | 'mj' | 'mohan';
@@ -31,14 +32,21 @@ const DEFAULTS: Record<Who, string> = {
   luvi: 'lu.kaprani@dentalnation.com',
   gautam: 'gautam.n@dentalnation.com',
   mj: 'mj.torreta@dentalnation.com',
-  shadi: '',
-  mohan: '',
+  shadi: 'sh.gheitasi@dentalnation.com',
+  mohan: '', // personal address kept out of this public repo — stored in lane_e.app_secrets (sc_email_mohan)
 };
 const NAME: Record<Who, string> = { fahad: 'Fahad', akbar: 'Mr Akbar', luvi: 'Dr Luvi', gautam: 'Gautam', shadi: 'Ms Shadi', mj: 'MJ', mohan: 'Mohan' };
 
+/** Addresses stored in the database (loaded once per run). */
+let STORED: Record<string, string> = {};
+export async function loadStoredEmails(sb: NonNullable<ReturnType<typeof getSupabaseAdmin>>) {
+  const { data } = await sb.from('app_secrets').select('key,value').like('key', 'sc_email_%');
+  STORED = Object.fromEntries((data ?? []).map((r) => [(r.key as string).slice(9), (r.value as string).trim()]));
+}
+
 export function emailOf(w: Who): string | null {
   const k = w.toUpperCase();
-  return process.env[`SC_EMAIL_${k}`]?.trim() || process.env[`SC_REVIEW_EMAIL_${k}`]?.trim() || DEFAULTS[w] || null;
+  return process.env[`SC_EMAIL_${k}`]?.trim() || process.env[`SC_REVIEW_EMAIL_${k}`]?.trim() || STORED[w] || DEFAULTS[w] || null;
 }
 
 const PERSON_WHO: Partial<Record<Person, Who>> = { fahad: 'fahad', gautam: 'gautam', luvi: 'luvi', mohan: 'mohan' };
@@ -196,6 +204,7 @@ ${extra}
 export async function runSmileClubAlerts(): Promise<string[]> {
   const sb = getSupabaseAdmin();
   if (!sb) return ['no db'];
+  await loadStoredEmails(sb);
   const now = new Date();
   const today = dubai(now);
   const hour = dubaiHour(now);
@@ -229,6 +238,7 @@ export async function runSmileClubAlerts(): Promise<string[]> {
 export async function alertBlocked(task: TeamTask, note: string | null, actor: string) {
   const sb = getSupabaseAdmin();
   if (!sb) return;
+  await loadStoredEmails(sb);
   const p = await loadProgress(sb);
   const waits = notDoneNeeds(task, p);
   const to: Who[] = ['fahad', ...waits.map((n) => PERSON_WHO[n.who]).filter((x): x is Who => !!x)];
@@ -244,6 +254,7 @@ ${waits.length ? `<p>It is waiting on: ${esc(waits.map((n) => `${OWNER_LABEL[n.w
 export async function previewAlert(kind: 'shoot' | 'gautam' | 'luvi' | 'mohan'): Promise<string> {
   const sb = getSupabaseAdmin();
   if (!sb) return 'Tracking database unavailable.';
+  await loadStoredEmails(sb);
   const today = dubai();
   let m: { subject: string; html: string } | null = null;
   if (kind === 'shoot') {
