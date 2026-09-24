@@ -38,10 +38,10 @@ export const SEGMENTS: Segment[] = [
     scripts: [
       { label: 'Dentist — after a cleaning', text: '“Your gums look good today. To keep them that way I’d like to see you every six months — Smile Club includes those planned visits. I’ve signed an invitation for you; the front desk can explain the plan details in a minute.”' },
       { label: 'Dentist — treatment still to do', text: '“You still have the two fillings we talked about. As a Smile Club member you’d pay member rates on those, and your check-ups are included.”' },
-      { label: 'Receptionist — checkout', text: '“Dr ___ mentioned Smile Club. Today’s visit came to AED ___; as a member your check-ups and cleaning are included and treatments are at member rates — it’s AED 99 a month. Shall I set it up now and book your next check-up?”' },
+      { label: 'Receptionist — checkout', text: '“Dr ___ mentioned Smile Club. Let’s compare today’s bill with the included services and member rates in the plan you choose. Plans start from AED 99 a month; I’ll confirm the price, eligibility and limits before you decide. Would you like the details and a first appointment?”' },
       { label: 'Parent with a child', text: '“The Family membership brings your family’s dental care together. Let’s check who can join and what the plan includes.”' },
     ],
-    unlock: 'Unlocked now — the reception guide, scripts and QR stands already exist. The dentist’s sentence starts after the Thursday 24 Sep refresher.',
+    unlock: 'The dentist recommendation starts Fri 25 Sep after the Thu 24 Sep refresher, checked invitation cards and working branch codes are ready.',
     notDo: ['No leaflet-only approach — the recommendation must come from the dentist.', 'Use membership, included services and member rates. Do not describe Smile Club as insurance or use coverage, claim, premium or policy for it.', 'No pressure on a patient in pain or mid-treatment — offer at checkout, not in the chair during treatment.'],
   },
   {
@@ -68,13 +68,13 @@ export const SEGMENTS: Segment[] = [
   {
     id: 'corporate', name: 'Companies', owner: 'Gautam accountable · Fahad and Mr Akbar support warm introductions',
     who: 'Employers whose medical insurance gives staff little or no dental — they buy Smile Club for their team as an employee benefit.',
-    target: 24, targetNote: 'First company trial ≈12 · on-site dental day ≈12',
+    target: 24, targetNote: 'First company trial about 12 · two company dental days about 12 combined, with no contract counted twice',
     messenger: 'Gautam, face to face. Warm doors first (people who already know us), then door-to-door in the right places.',
     message: '“Your medical insurance probably doesn’t give your team much dental. Smile Club sits beside it: a benefit your staff will actually use, at a fixed cost per employee — we run the joining, bookings and reporting.”',
     how: [
       { title: 'The company list — by type, in this order', body: '1) WARM: Assembly Global, ArabyAds (staff), RBS, existing DN partners and Mr Akbar’s three introductions. 2) SMEs of 20–200 staff in JLT, Business Bay, DIFC and Al Quoz — close to a branch. 3) FRONTLINE employers — hotels, restaurants, retail, facilities, security — whose staff are on basic insurance. 4) SCHOOLS — staff first, families later. Large enterprises (1,000+) go through warm introductions and brokers only, never cold knocks.' },
       { title: 'When door-to-door works', body: 'Use visits for companies of roughly 20–200 staff where the owner or general manager can decide, and group nearby offices in one trip. Visits are planned Tuesday–Thursday, 10:00–12:00 or 14:00–16:00, starting no earlier than Tue 29 Sep after the four prerequisites are ready. Large companies use warm introductions and arranged meetings.' },
-      { title: 'The first question at every door', body: '“Does your medical insurance include dental?” — if the answer is yes (as at Michael Page), thank them, ask for a referral and move on. Time goes only to companies with a gap.' },
+      { title: 'The first question at every door', body: 'Ask what dental care employees already receive and whether it meets their needs. If it is sufficient, thank the contact and move on; if there is a specific unmet need, discuss the membership’s actual included services and terms. The existence of any dental benefit alone is not a reason to rule a company out.' },
       { title: 'The door-opener is a dental day, not a sales pitch', body: 'Offer a free on-site dental check day for staff. Staff meet our dentists, see the value, and join on the spot — the company says yes to the benefit afterwards.' },
     ],
     unlock: 'Door-to-door unlocks Tue 29 Sep, once four things are in hand: corporate price and funding options approved · print kit ready · company list built by type · the on-site dental day costed. Warm introductions start now.',

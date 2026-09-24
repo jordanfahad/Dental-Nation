@@ -36,7 +36,7 @@ export const SEGMENT_BUDGETS: SegmentBudget[] = [
   {
     seg: 'patients', target: 24,
     lines: [
-      { item: 'WhatsApp message allowance — up to about 3,000 consent-checked messages', aed: 1000 },
+      { item: 'WhatsApp message allowance — up to about 3,000 consent-checked messages', aed: 1000, note: 'planning allowance only: 3,000 messages over the 15 weekdays 28 Sep–16 Oct needs about 10 dentists sending at the 20-a-day limit — confirm participating dentists and consenting group sizes first' },
       { item: 'Dentist incentive allowance — AED 40 per paid membership from their own patients', aed: 1000, note: '24 memberships × AED 40 = AED 960; AED 40 remains within the AED 1,000 allowance; paid only on results' },
     ],
   },
@@ -55,7 +55,7 @@ export const SEGMENT_BUDGETS: SegmentBudget[] = [
       { item: 'Google — brand 500 · price searches 1,000 · insurance gap 500', aed: 2000 },
       { item: 'Facebook/Instagram — people who already visited us', aed: 1500 },
     ],
-    gated: { aed: 3500, condition: 'Released at Day 14 (5 Oct) only if one online member has cost AED 600 or less: Google price searches +1,500, Facebook/Instagram +2,000.' },
+    gated: { aed: 3500, condition: 'Considered on 5 Oct, never released automatically: only if a paid online membership has cost AED 600 or less after enough follow-up time — zero paid memberships means hold. Google price searches +1,500; Facebook/Instagram +2,000 waits for its first seven-day review (Fri 9 Oct) if it launched 2 Oct.' },
   },
   {
     seg: 'community', target: 24,

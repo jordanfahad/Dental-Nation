@@ -242,14 +242,11 @@ const FORTNIGHT = [
 /* ── the 30-day mandate (Gautam, Action Map v4, 16 Sep) ───────── */
 
 const MANDATE_MIX = [
-  { ch: 'Existing DN clinics', n: 60, note: '3 clinics × 20 — Al Wasl, Dr Tosun, AMC (live clinic conversion)' },
-  { ch: 'Corporate', n: 24, note: 'pipeline equivalent to ≥ 72 memberships required' },
-  { ch: 'Website', n: 12, note: '150 qualified opportunities by Day 30 at 8% conversion' },
-  { ch: 'Clinic reseller', n: 7, note: '2 resellers active and source-coded' },
-  { ch: 'Affiliate', n: 7, note: '3 affiliates active and source-coded' },
-  { ch: 'CSR', n: 4, note: '' },
-  { ch: 'Broker', n: 3, note: '' },
-  { ch: 'Distributor', n: 3, note: '' },
+  { ch: 'Patients in the chair', n: 36, note: '12 per branch: Al Wasl, Dr Tosun and AMC; dentist recommends, reception completes joining.' },
+  { ch: 'Our patients not visiting', n: 24, note: 'Each dentist’s own consenting patients: active-due 10, inactive 8, dormant 6.' },
+  { ch: 'Companies', n: 24, note: 'Gautam leads company sales; first trial about 12 and company dental days about 12, counted once.' },
+  { ch: 'People searching online', n: 12, note: 'Google about 3, Facebook/Instagram returning visitors about 7, website banner about 2.' },
+  { ch: 'Families & neighbourhoods', n: 24, note: 'Local businesses 7, family promoters 7, brokers 3, benefit platforms 3, community event 4.' },
 ];
 
 const CHECKPOINTS = [
@@ -260,23 +257,23 @@ const CHECKPOINTS = [
 ];
 
 const REGISTER: { act: string; dl: string; who: string; out: string; to: Sub; toLabel: string }[] = [
-  { act: 'Accept the commercial mandate', dl: '22 Sep 10:00', who: 'Fahad', out: '120 by 21 Oct; bulk CRM target 0 — targets, deadlines and guardrails acknowledged in writing. The acceptance in practice is the delivery plan itself:', to: 'response', toLabel: 'Delivery plan' },
-  { act: 'Submit the quantified marketing response', dl: '22 Sep EOD', who: 'Fahad', out: '100% of the 120 mapped: source forecast, qualified demand, conversion, spend, CAC, launch date, owner — ALREADY IN THIS DOCUMENT:', to: 'response', toLabel: 'Delivery plan R1' },
-  { act: 'Close the historical CRM test', dl: '23 Sep EOD', who: 'Gautam shares data · Fahad reviews', out: '71 replies classified, 417 failures coded, new bulk sends 0 — reconciled to payment and membership records. Campaign-level numbers received via the 12 Sep progress update (5 sends, 1,280 non-unique reach, 863 delivered); the payment-record reconciliation review remains. Evidence to date:', to: 'waves', toLabel: 'Wave 1 results (5b)' },
-  { act: 'Activate the first acquisition portfolio', dl: '24 Sep EOD', who: 'Fahad', out: 'Every live activity has source, spend, forecast, destination and response owner — the portfolio is the channel plan:', to: 'dm', toLabel: 'DM plan D1' },
-  { act: 'Checkpoints (Day 7 / 14 / 21)', dl: '28 Sep · 5 Oct · 12 Oct', who: 'Fahad + Smile Club Coordinator; Day 21 with Gautam', out: '36/30 → 60/50 → 88/75 cumulative paid; recovery plan next business day if missed. Cadence and gates:', to: 'kpis', toLabel: 'Controls' },
-  { act: 'Complete the mandate', dl: '21 Oct', who: 'Gautam → Mr Akbar', out: '120 paid, active, non-refunded, source-coded; ≥98% data and attribution; Finance-validated. How each condition is measured:', to: 'kpis', toLabel: 'Measurement' },
+  { act: 'Record the delivery commitment', dl: '22 Sep', who: 'Fahad', out: 'Target 120 by 21 Oct; five segment allocations and checkpoint minimums recorded. An initial commitment is not proof that forecast gaps or release conditions are resolved.', to: 'segments', toLabel: 'The plan by segment' },
+  { act: 'Share the revised delivery plan', dl: 'Initial 22 Sep; revision 24 Sep', who: 'Fahad', out: 'Five segments, named leads, the rev. 7 AED 27,000 proposal and the open checkpoint forecast shown; unresolved assumptions remain labelled.', to: 'response', toLabel: 'Delivery plan' },
+  { act: 'Reconcile the historical WhatsApp test', dl: '23 Sep', who: 'Gautam', out: 'Classify 71 replies and explain 417 failures using private records and non-identifying evidence. The 1,280 contacts across five sends are non-unique. Fahad reviews the reconciliation; bulk messaging stays at zero.', to: 'team', toLabel: 'Evidence upload' },
+  { act: 'Confirm readiness before each launch', dl: 'Each segment’s start date', who: 'Fahad', out: 'Working source codes, checked wording, reply capacity and the required human sign-off precede each activity. Company visits start no earlier than 29 Sep.', to: 'segments', toLabel: 'Start conditions' },
+  { act: 'Report the three checkpoints', dl: '28 Sep · 5 Oct · 12 Oct', who: 'Fahad', out: 'Paid totals against 36/30, 60/50 and 88/75, with Dr Luvi’s branch/dentist figures and Gautam’s company figures. A missed minimum has a recovery plan the next working day.', to: 'kpis', toLabel: 'Controls' },
+  { act: 'Report final delivery', dl: '21 Oct', who: 'Gautam', out: 'Finance-reconciled distinct paid, active, non-refunded contracts with one primary source; report bookings and attendance separately.', to: 'kpis', toLabel: 'Measurement' },
 ];
 
 const MANDATE_MAP: { req: string; ours: string; to: Sub; toLabel: string }[] = [
-  { req: 'Existing DN clinics — 60 paid subscriptions', ours: 'Wave 1 front-desk route + onboarding (front desk + Dr Luvi): one consistent explanation, QR at three branches, first-appointment help, objection log.', to: 'waves', toLabel: 'Three waves' },
-  { req: 'Corporate — 24 paid subscriptions (needs a pipeline of ≥72 membership-equivalents at ~33% close)', ours: 'Corporate playbook: qualified doors (see the live outreach status — Michael Page closed 21 Sep, ICP sharpened) + the three warm introductions the mandate asks Mr Akbar to provide (CEO approval item 6).', to: 'corporate', toLabel: 'Corporate playbook' },
-  { req: 'Website — 12 paid subscriptions (150 qualified enquiries × 8% close)', ours: 'Wave 1 relevant placements + Wave 2 SEO membership cluster and eligibility-checked paid tests; CRM-DN pilot LP live.', to: 'dm', toLabel: 'DM plan' },
-  { req: 'Reseller / affiliate / broker / distributor / CSR (community events) — 24 paid subscriptions combined', ours: 'NEW commercial-access lane the mandate adds beyond rev. 2 — folds into the B2B mechanics (partner codes, QR links, referral agreements) with per-partner source codes.', to: 'response', toLabel: 'Delivery plan R1' },
-  { req: 'Bulk CRM: target 0, budget 0', ours: 'Aligned with our audience-eligibility and consent rule. The Wave 1 CRM test stays limited, consented and non-bulk — scope confirmed against the CRM hold.', to: 'waves', toLabel: 'Wave 1 results' },
-  { req: 'CAC ≤ Finance ceiling · daily spend/forecast', ours: 'Our economics gate — "allowable CAC from measured economics" — now given its owner: Finance sets the ceiling, Mr Akbar signs it.', to: 'response', toLabel: 'Budget R2' },
-  { req: '≥ 98% data & attribution · dashboard spine (enquiry → qualified → checkout → paid → card active → booked → attended)', ours: 'Exactly the measurement machinery of rev. 2 — activation tracked as first booking AND first completed visit; the spine answers the console-tracking question we posed to Gautam.', to: 'kpis', toLabel: 'Measurement' },
-  { req: '3× pipeline coverage · 09:00 review · 16:00 recovery · EOD scorecard', ours: 'The daily operating rhythm the pilot reports into; the objection log and comparison-group reads feed the same reviews.', to: 'kpis', toLabel: 'Controls' },
+  { req: 'Existing patients: 60 paid memberships', ours: 'Chair 36: dentist recommendation followed by reception joining. Dentist messages 24: own patients, valid consent, reviewed wording, combined daily limit 20, opt-outs honoured.', to: 'segments', toLabel: 'Segments' },
+  { req: 'Companies: 24 paid memberships', ours: 'Gautam sells; Fahad arranges warm introductions and materials. Door-to-door begins no earlier than 29 Sep after four prerequisites. The proposed pool of at least 72 potential memberships still needs company-level evidence.', to: 'corporate', toLabel: 'Corporate' },
+  { req: 'Online: 12 paid memberships', ours: 'Three Google campaigns, Facebook/Instagram returning visitors and the website banner; targets 3 + 7 + 2. The 150 qualified enquiries at 8% conversion remain a planning assumption to validate at the smaller budget.', to: 'response', toLabel: 'R1' },
+  { req: 'Families and neighbourhoods: 24 paid memberships', ours: 'Local businesses 7, family promoters 7, brokers 3, benefit platforms 3 and one community event 4, each with a source code.', to: 'segments', toLabel: 'Segments' },
+  { req: 'Bulk messaging: target 0, budget 0', ours: 'Reconcile the old test without restarting it. New dentist messages are a separate consent-checked route to each dentist’s own patients.', to: 'team', toLabel: 'Team' },
+  { req: 'Spending within the confirmed cost limit', ours: 'Rev. 7 proposes AED 27,000. Finance checks the indicative AED 250 full-cost ceiling; the online top-up and reserve have separate conditions.', to: 'response', toLabel: 'R2' },
+  { req: 'Counted contracts have a source; funnel records are at least 98% complete', ours: 'Record enquiry, qualification, checkout, payment, active card, booking and attendance separately. Count a contract only once.', to: 'kpis', toLabel: 'Measurement' },
+  { req: 'Daily results and recovery', ours: 'Review counts at 09:00, address gaps at 16:00 and record the daily totals. The proposed corporate pool is at least 72 potential memberships to support a target of 24; its size is unverified.', to: 'kpis', toLabel: 'Controls' },
 ];
 
 /* ── sub-views ─────────────────────────────────────────────────── */
@@ -286,14 +283,14 @@ function MandateTab() {
   return (
     <div className="space-y-5">
       <p className="rounded-xl border-l-4 bg-white px-4 py-3 text-[12.5px] font-medium leading-snug" style={{ borderColor: GOLD, color: NAVY, fontFamily: 'Georgia, serif' }}>
-        <span className="font-bold">The owner has set the outcome: 120 paid memberships in 30 days — clock re-based 22 Sep (kick-start) → 21 Oct (Day 30); day-count, targets and guardrails unchanged.</span>{' '}
-        Gautam&apos;s Marketing Activation Action Map (v4, 16 Sep) mandates the result and delegates the method —
-        which is precisely the ownership split rev. 2 called for. This page maps Gautam&apos;s mandate requirements
-        onto Fahad&apos;s delivery machinery, one to one. Guardrails: ≥3× pipeline coverage · CAC within the Finance ceiling · ≥98% data &amp;
-        attribution · bulk CRM at zero. Output definition: 120 DISTINCT NEW membership contracts whose first
-        qualifying payment falls in the 22 Sep – 21 Oct cohort, card active and not refunded at the reporting
-        cutoff; a family contract counts once (beneficiaries reported separately); one primary acquisition source
-        per contract.
+        <span className="font-bold">The 30-day target is 120 distinct paid memberships from 22 Sep to 21 Oct.</span>{' '}
+        The five segments have different messages, messengers and start conditions. Gautam owns programme completion
+        and company sales; Fahad coordinates growth delivery; Dr Luvi leads clinical operations. The dated checkpoints
+        remain 36/30, 60/50, 88/75 and 120/120. Source completeness, actual payments and member activity are checked
+        separately. <b>What counts:</b> distinct new membership contracts with a first qualifying payment between 22
+        Sep and 21 Oct, active and not refunded at the reporting cutoff, with one primary acquisition source. A
+        Family contract counts once; its family members are reported separately. First booking and first attended
+        visit are reported separately from paid contracts.
       </p>
 
       <section>
@@ -303,14 +300,15 @@ function MandateTab() {
             <p className="mb-2 text-[11px] font-semibold" style={{ color: NAVY }}>Target paid membership SUBSCRIPTIONS by channel — every number on this page is a count of paid subscriptions</p>
             {MANDATE_MIX.map((m) => (
               <div key={m.ch} className="mb-1.5 flex items-center gap-2">
-                <span className="w-[118px] shrink-0 text-[10.5px]" style={{ color: '#3a4148' }}>{m.ch}</span>
+                <span className="w-[150px] shrink-0 text-[10.5px]" style={{ color: '#3a4148' }} title={m.note}>{m.ch}</span>
                 <div className="h-3.5 flex-1 rounded-full" style={{ backgroundColor: '#EEEFE1' }}>
-                  <div className="h-3.5 rounded-full" style={{ width: `${Math.max(4, Math.round((m.n / maxMix) * 100))}%`, backgroundColor: m.ch === 'Existing DN clinics' ? NAVY : BLUE }} />
+                  <div className="h-3.5 rounded-full" style={{ width: `${Math.max(4, Math.round((m.n / maxMix) * 100))}%`, backgroundColor: m.ch === 'Patients in the chair' ? NAVY : BLUE }} />
                 </div>
                 <span className="w-[24px] shrink-0 text-right text-[10.5px] font-semibold tabular-nums" style={{ color: NAVY }}>{m.n}</span>
               </div>
             ))}
-            <p className="mt-2 text-[10px]" style={{ color: OLIVE }}>Existing DN = live clinic conversion (50% of the mix). Bulk CRM contributes zero.</p>
+            <p className="mt-2 text-[10px]" style={{ color: OLIVE }}>Our existing patients contribute 60: 36 at checkout and 24 through their own dentists&apos; messages. Bulk messaging has target 0 and budget 0.</p>
+            <ul className="mt-1 space-y-0.5">{MANDATE_MIX.map((m) => <li key={m.ch} className="text-[9.5px]" style={{ color: OLIVE }}><b style={{ color: NAVY }}>{m.ch}</b> — {m.note}</li>)}</ul>
           </Card>
           <Card>
             <p className="mb-2 text-[11px] font-semibold" style={{ color: NAVY }}>Management checkpoints — plan / minimum</p>
@@ -326,7 +324,12 @@ function MandateTab() {
                 </div>
               ))}
             </div>
-            <p className="mt-2 text-[10px]" style={{ color: OLIVE }}>A missed minimum triggers a recovery plan the next business day. Day-15–30 funding releases after the 5 Oct review.</p>
+            <p className="mt-2 text-[10px]" style={{ color: OLIVE }}>Any missed minimum requires a recovery plan the next working day. The 5 Oct review considers the conditional AED 3,500 online allocation and the separate AED 3,000 reserve; neither is an automatic date-based release.</p>
+            <p className="mt-1.5 rounded px-2 py-1 text-[10px]" style={{ backgroundColor: '#FDF6E3', color: '#7a6420' }}>
+              <b>Open forecast:</b> the chair contributes 12 / 21 / 30 / 36; the other four segments must supply 24 / 39 / 58 / 84
+              cumulatively. A dated source forecast is still required — task completion and task subscription targets are not
+              payment evidence.
+            </p>
           </Card>
         </div>
       </section>
@@ -334,10 +337,10 @@ function MandateTab() {
       <section>
         <Exhibit n="M2" title="Action register — re-based to the 22 Sep kick-start" />
         <p className="mb-2 text-[11px]" style={{ color: OLIVE }}>
-          Every owner&apos;s week-by-week tasks: <Jump to="team">Team task calendar</Jump>. Accountability rule: Gautam ISSUES and owns the mandate — he provides the baseline data and reports
-          completion to Mr Akbar; Fahad owns DELIVERY. Acceptance therefore sits with Fahad: it is the delivery
-          owner&apos;s written commitment to the targets, deadlines and guardrails — an issuer cannot accept his
-          own mandate.
+          Every owner&apos;s week-by-week tasks: <Jump to="team">Team task calendar</Jump>. Gautam owns programme
+          completion and corporate selling. Fahad coordinates the five-segment delivery plan and checkpoint reports.
+          Dr Luvi reports the chair and dentist-message results and updates receptionists&apos; and dentists&apos; tasks.
+          Each register row names one accountable lead.
         </p>
         <div className="overflow-x-auto rounded-xl border bg-white" style={{ borderColor: LINE }}>
           <table className="w-full border-collapse text-[11px]">
@@ -364,7 +367,7 @@ function MandateTab() {
       </section>
 
       <section>
-        <Exhibit n="M3" title="The logical map — Gautam's mandate requirement → Fahad's delivery machinery" />
+        <Exhibit n="M3" title="The logical map — each requirement → how this plan delivers it" />
         <div className="overflow-x-auto rounded-xl border bg-white" style={{ borderColor: LINE }}>
           <table className="w-full border-collapse text-[11px]">
             <thead>
@@ -387,26 +390,24 @@ function MandateTab() {
         </div>
         <div className="mt-2 space-y-2">
           <Note tone="gold">
-            How the two documents fit: the mandate fixes the outcome and cadence; the baseline and economic
-            derivation remain open deliverables (owners: Gautam — member baseline; Finance — fully loaded
-            ceiling), due before scale spending. Fixed checkpoints replace this plan&apos;s indicative dates. The measurement definitions, consent rules and economics gates of rev. 2 remain the
-            control system the mandate is tracked with. First hard funnel data also arrives with it: the historical
-            CRM test (71 replies, 417 failures to reconcile) closes 23 Sep.
+            The five segment targets, fixed checkpoints and rev. 7 budget are the current planning references. Gautam
+            supplies the starting member totals and company forecast; Finance validates complete acquisition costs.
+            Historical WhatsApp figures require payment reconciliation. Open assumptions stay visible.
           </Note>
           <Note tone="coral">
-            Open before launch (22 Sep): Mr Akbar&apos;s sign-off — 30-day budget ceiling, allowable CAC and initial
-            release are blank in the mandate; plus the three warm corporate introductions and confirmation of the
-            CRM hold. Fahad&apos;s quantified response is due 22 Sep EOD.
+            Before an activity starts, its required human sign-off, price and included-service wording, source codes,
+            consent where relevant and response capacity must be recorded. The proposed budget is AED 27,000; the actual
+            releases and outcomes have not been verified in this plan review.
           </Note>
         </div>
       </section>
 
       <section>
-        <Exhibit n="M4" title="Alignment — Mr Akbar's two blueprints ↔ this 30-day plan" />
+        <Exhibit n="M4" title="Alignment with Mr Akbar's blueprints — what is current, what needs evidence, what is deferred" />
         <p className="mb-2 text-[11px]" style={{ color: OLIVE }}>
-          Checked line by line against the Smile Club Strategic Blueprint and the Corporate Strategy (both Sep
-          2026). This 30-day plan is their execution slice: blueprint phases 0–2 for consumers plus the corporate
-          &quot;2–5 pilot accounts&quot; motion. One tension is named honestly rather than hidden.
+          The 30-day plan focuses on the five segments below. Wider product, reporting and corporate-system work is
+          listed separately so it does not displace the 120-membership target. The source blueprints and live product
+          terms still require their owners&apos; confirmation.
         </p>
         <div className="overflow-x-auto rounded-xl border bg-white" style={{ borderColor: LINE }}>
           <table className="w-full border-collapse text-[10.5px]">
@@ -418,16 +419,16 @@ function MandateTab() {
             </thead>
             <tbody>
               {([
-                ['Demand architecture before economics; personalised message per demand state', 'Why & proposition + Layers tabs lead the plan; every DM lane carries a named layer and CTA', 'ALIGNED', '#2C5E3F'],
-                ['Wave-1 priority: existing patients + families first (strongest trust, fastest learning)', 'In-clinic-60 = 50% of the target; family layer served by creators/CSR; states 7–8 are the largest engines', 'ALIGNED', '#2C5E3F'],
-                ['DTC growth phased, gated on CAC and activation thresholds', 'Paid capped at 15K direct, Google gated at Day-14, kill rules per cluster, no scale past a failed gate', 'ALIGNED', '#2C5E3F'],
-                ['North Star: Active (Preventively Engaged / Corporate Smile) Members — not subscriptions or contracts', 'K0 on Measurement; activation rate is the corporate primary KPI (C8)', 'ALIGNED', '#2C5E3F'],
-                ['Membership language, never insurance; legal sign-off as a launch gate', 'W4 regulatory dictionary incl. DHA 2026 context; legal review flagged before any new wording ships', 'ALIGNED', '#2C5E3F'],
-                ['No random broad awareness; offline only where precise and attributable', 'Billboards/radio deferred; awareness is a bounded geo air cover on enabler metrics with a Day-21 kill', 'ALIGNED', '#2C5E3F'],
-                ['Corporate B2B2C system: segments, triggers, funding models, ABM, brokers, HR portal', 'Corporate playbook C1–C10 carries the full system; the 30-day window runs only its seed (warm-door pilots + door plan)', 'ALIGNED — full build sequenced to scale phase', '#2C5E3F'],
-                ['Corporate roadmap cadence: pilot employers in months 2–4, brokers 6–9, scale 9–12', 'The mandate asks for Corporate-24 by Day 30 — more aggressive than the blueprint cadence. Resolution: the 30-day corporate lane is ONLY the blueprint’s “2–5 pilot accounts through warm doors”; broad ABM and brokers stay scale-phase; if the 28 Sep door bridge cannot support 24, the recovery plan reallocates toward in-clinic/family per Wave-1 priority — decided at the Day-14 gate, not discovered at Day 30', 'TENSION — managed, decision 5 Oct', '#7a6420'],
-                ['Product architecture: launch simple (Individual / Family / Plus)', 'The live public page shows four plans; reconciling the live tier set with the blueprint’s three-tier launch principle is a product decision for Gautam at the 28 Sep review', 'TO RECONCILE — Gautam, 28 Sep', '#7a6420'],
-                ['Smile Score · My Smile Plan · annual value statement · activation cadence (Day 0–30)', 'Marked as BUILD items with owner assignment at the 28 Sep review; onboarding/first-booking already runs in Wave 1', 'ALIGNED — sequenced', '#2C5E3F'],
+                ['Demand architecture before economics; personalised message per customer situation', 'Five segments define the audience, messenger, message, route and start condition.', 'CURRENT PLAN', '#2C5E3F'],
+                ['Existing patients and families first', 'Existing-patient target 60: chair 36 plus dentist-message 24. Families and neighbourhoods have a separate target of 24.', 'CURRENT PLAN', '#2C5E3F'],
+                ['Selling to individuals online is phased and gated', 'Online allocation AED 7,000: AED 3,500 initially and AED 3,500 conditional on the 5 Oct paid-member-cost review.', 'FUNDING EVIDENCE NEEDED', '#7a6420'],
+                ['North Star: active, engaged members — not subscriptions or contracts', 'Report paid contracts, first bookings and first attended visits separately; an employer signature is not a paid membership.', 'MEASUREMENT REQUIRED', '#7a6420'],
+                ['Membership language, never insurance; legal sign-off before launch', 'Use membership, included services and member rates. Product terms and new public wording need the responsible human reviewers before use.', 'REVIEW REQUIRED', '#7a6420'],
+                ['No random broad awareness', 'Community awareness is offline: AED 2,000 print and AED 1,500 for one event. No separate digital awareness allocation.', 'CURRENT PLAN', '#2C5E3F'],
+                ['Corporate system: segments, triggers, funding models, company lists, brokers, HR portal', 'Gautam handles warm company meetings and qualified door visits; larger employer systems and a dedicated sales hire are future work.', 'WIDER BUILD DEFERRED', OLIVE],
+                ['Corporate roadmap cadence (pilots months 2–4, brokers 6–9)', 'Company target 24 is provisional until the company forecast supports it. A limited broker contribution of 3 is already inside the families 24; a full broker programme is future work. Recovery options reviewed on 5 Oct without silently changing segment targets.', 'FORECAST OPEN', '#7a6420'],
+                ['Launch simple: three tiers', 'Gautam records the current plan set and any proposed simplification; the live product set was not verified here.', 'PRODUCT TERMS UNVERIFIED', '#7a6420'],
+                ['Smile Score · value statement', 'Keep current onboarding and first-booking work. The health-check draft is assigned to Dr Luvi, due 19 Oct; a new product build and annual statement are separate future work.', 'DRAFT ONLY', OLIVE],
               ] as [string, string, string, string][]).map(([req, ours, st, col]) => (
                 <tr key={req} className="border-t align-top" style={{ borderColor: '#EEEFE1' }}>
                   <td className="px-2.5 py-1.5 font-semibold" style={{ color: NAVY }}>{req}</td>
@@ -456,146 +457,79 @@ interface ResponseRow {
  *  goes — and links to its deep section. */
 const RESPONSE_ROWS: ResponseRow[] = [
   {
-    source: 'Existing DN clinics', target: 60,
-    summary: 'Rev. 6 split: 36 in the chair (dentist recommends, reception closes — 12 per branch) + 24 from each dentist’s own WhatsApp to their own patients.',
-    owner: 'Front desk + Dr Luvi · reported by Smile Club Coordinator',
-    launch: 'LIVE since 18–19 Sep', code: 'SC-ALW / SC-TOS / SC-AMC (QR per branch)',
-    approach: 'The patient is already in the chair and already trusts us — the cheapest acquisition there is. The sale happens at the CHECKOUT moment, when the bill is in front of them and membership is visibly the cheaper way to keep coming back. No media, no cold pitch: a scripted conversation by trained reception staff, with a structured objection log when it is a no.',
-    proposition: '“You’re already part of Dental Nation. Smile Club makes staying with us easier — your check-ups and hygiene are planned for the year and members pay preferred rates.” (Demand state 8 · CTA: join from your DN record.)',
-    steps: [
-      'Patient checks out after treatment or hygiene',
-      'Front desk runs the Reception Conversion Guide: Ask → Match → Value → Clarify → Close',
-      'Savings example shown against TODAY’s bill — not a generic leaflet',
-      'QR standee → enrolment page under the branch code',
-      'Onboarding: first member appointment booked before the patient leaves',
-      'Declines logged in the objection log — reviewed at the 09:00 daily',
-    ],
-    demand: '20 per branch across Al Wasl, Dr Tosun and AMC. The conversion assumption is validated against branch footfall at the Day-7 checkpoint (28 Sep).',
-    budget: 'AED 0 media. Real costs are staffed minutes per pitch and the printed QR standees (already produced by the programme build); all staffed cost is priced in the Finance fully-loaded bridge, not hidden.',
-    to: 'waves', toLabel: 'Front-desk route · Wave 1',
+    source: "Patients in the chair",
+    target: 36,
+    summary: "Dentist recommends; reception completes joining. Target 12 paid contracts per branch.",
+    owner: "Dr Luvi accountable; treating dentists and receptionists deliver.",
+    launch: "From Fri 25 Sep, after the refresher, invitation cards, working branch codes and desk readiness.",
+    code: "SC-ALW / SC-TOS / SC-AMC; one primary source per contract.",
+    approach: "At checkout, continue the treating dentist’s recommendation, explain the selected membership’s included care and member rates, and offer to arrange the first visit.",
+    proposition: "Smile Club helps plan your dental care through included services and member rates. Let’s check the plan that suits you.",
+    steps: ["Dentist gives a tailored recommendation and checked invitation card", "Reception explains the selected plan and price", "Patient chooses whether to join through the branch code", "Arrange the first appointment and record reasons for declining without personal details", "Report paid contracts separately from appointments"],
+    demand: "Cumulative per-branch targets 4 / 7 / 10 / 12 at the four checkpoints: 12 / 21 / 30 / 36 overall. Validate against actual visits and joining rates.",
+    budget: "AED 2,000: invitation cards and refreshed QR stands AED 1,100; desk incentive allowance AED 900, at AED 25 per paid chair membership. Staff time is assessed separately by Finance.",
+    to: "scripts",
+    toLabel: "Dentist scripts",
   },
   {
-    source: 'Corporate', target: 24,
-    summary: 'Sold employer-by-employer: warm doors + door-to-door field sales. Needs a ≥72-equivalent pipeline.',
-    owner: 'Gautam — field sales in-window (owner decision, 22 Sep) · Fahad — warm doors & enablement · Mr Akbar — economic-buyer introductions · agent sourced for scale',
-    launch: 'Discovery live · doors from w/c 22 Sep', code: 'One code per employer',
-    approach: 'A subscription for a whole team is SOLD in meetings, not clicked. Two motions run together. (1) WARM DOORS: Assembly Global (awaiting reply), ArabyAds (staff-membership ask at the go-live meeting), RBS and existing partners, plus the three introductions requested from Mr Akbar. (2) DOOR-TO-DOOR: 40–60 qualified SME doors across JLT, Business Bay, DIFC and Al Quoz. Every door is qualified FIRST with “does your medical insurance include dental?” — the Michael Page learning (closed 21 Sep precisely because their medical already covers dental). A dedicated sales agent cannot land inside 30 days, so Gautam carries the bag in-window (owner decision, 22 Sep) with Fahad running warm doors and enablement, while agent sourcing starts now for the scale phase.',
-    proposition: '“Your health insurance probably doesn’t provide meaningful dental. Smile Club sits BESIDE it — a visible employee benefit at a defined per-employee cost, with activation, booking, employee communications and aggregated reporting run by us, not by HR.” The employer then picks a funding model — employer-paid, subsidized or voluntary employee-paid — agreed per employer and never blurred.',
-    steps: [
-      'Pick the door trigger-first (insurance-renewal month, employee complaints, rapid hiring) — never alphabetically',
-      'Qualify: dental in their medical? headcount? who is the economic buyer?',
-      'Discovery meeting with the one-pager + savings table (LinkedIn air-cover touch before and after)',
-      'Benefits Gap Assessment (5 questions) → a numbers-based business case',
-      'Pilot proposal: company code + on-site dental day + quarterly aggregated usage report',
-      'Sign → employee launch (CEO/HR email + QR) → activation drive — activation rate is the KPI, not the signature',
-    ],
-    demand: 'To close 24 contracts at the ~33% assumed close rate the pipeline must hold ≥72 membership-equivalents. SIZING PENDING: the replacement-door bridge (which doors, how many contract-equivalents each) is due 28 Sep, after Michael Page’s closure removed one of three named doors.',
-    budget: 'AED 7,500 (rev. 7) — print kit: one-pager, savings table, QR cards EN/AR 1,500 · two on-site dental days, materials and set-up 2 × 1,500 = 3,000 · LinkedIn warm-up for HR contacts at target companies 1,500 · door-plan logistics 1,500. No salaries, commissions or agency fees in this figure (Finance’s fully-loaded check).',
-    to: 'corporate', toLabel: 'Corporate playbook (B2B2C system)',
+    source: "Our patients not visiting",
+    target: 24,
+    summary: "Personal messages from each patient’s own dentist: active-due 10, inactive 8, dormant 6.",
+    owner: "Dr Luvi accountable; treating dentists and CRM-DN deliver; Dr Luvi records dentist task updates.",
+    launch: "First wave Tue 29 Sep–Fri 2 Oct, then weeks of 5 Oct and 12 Oct; no sending before readiness checks.",
+    code: "One code per dentist; one primary source per membership contract.",
+    approach: "Assign each consenting patient to one group under their own treating dentist. Use dentist-reviewed wording, answer replies the same day and arrange a booking only when requested.",
+    proposition: "A personal invitation to discuss planned dental care and what Smile Club includes; no pressure to join.",
+    steps: ["Confirm own-dentist lists and non-overlapping groups", "Check current consent and opt-outs", "Record reviewed wording and the required human sign-off", "Send at most 20 messages per dentist per day across all routes", "Answer replies, honour opt-outs and report paid contracts separately"],
+    demand: "Targets 10 / 8 / 6 across the three waves. Consenting audience sizes, dentist capacity and checkpoint contributions are not yet evidenced.",
+    budget: "AED 2,000: message allowance AED 1,000; dentist incentive allowance AED 1,000. At target, 24 × AED 40 = AED 960, leaving AED 40 within the allowance.",
+    to: "scripts",
+    toLabel: "Dentist scripts",
   },
   {
-    source: 'Website', target: 12,
-    summary: '150 qualified enquiries × 8% close — Google + Meta + owned surfaces feeding one funnel.',
-    owner: 'Fahad + CRM-DN · contact centre works the queue within 10 minutes',
-    launch: 'LIVE since 19 Sep (with the portfolio)', code: 'UTM + source field per placement/campaign',
-    approach: 'Capture demand that already exists and route traffic we already have — never cold membership prospecting. Paid: Google on cost-intent and branded queries, Meta on retargeting + the CTWA offer lane. Owned: sticky banner, cost-guide placements, triggered CRM. Every enquiry gets a 10-minute contact-centre follow-up and an intent tag on first reply.',
-    proposition: 'Per demand state, never one speech: cost-anxious searcher → “know where you stand before problems become expensive”; insurance-frustrated → “your medical insurance and your dental membership do different jobs”; retargeted visitor → the offer at the moment of return.',
-    steps: [
-      'Ad or placement carries its per-cluster UTM',
-      'Membership landing page (EN/AR)',
-      'Enquiry enters the spine: enquiry → qualified → checkout → paid',
-      'Contact centre responds within 10 minutes and tags membership-intent vs appointment-intent',
-      'Cluster kill rules pause anything whose matured CPQL exceeds 200; Day-14 gate decides Google’s second tranche',
-    ],
-    demand: '150 qualified opportunities by Day 30 at the mandate’s 8% close. Paid is planned to deliver ≥120 (Google est. 24–66 qualified + Meta 90–180, pool-capped) and owned lanes ≥30 (banner · placements · triggered CRM).',
-    budget: 'AED 7,000 (rev. 7), half conditional — released now: Google 2,000 (brand 500 · price searches 1,000 · insurance gap 500) + Facebook/Instagram 1,500 to people who already visited us. Held back 3,500 (Google +1,500, Facebook/Instagram +2,000), released at Day 14 only if one online member has cost AED 600 or less.',
-    to: 'dm', toLabel: 'DM plan (D1–D1d)',
+    source: "Companies",
+    target: 24,
+    summary: "Gautam sells through warm introductions and suitable small-company visits. First trial about 12, company dental days about 12 combined.",
+    owner: "Gautam accountable; Fahad supports warm introductions and materials; Dr Luvi leads clinical delivery.",
+    launch: "Warm introductions first; door-to-door no earlier than Tue 29 Sep after all four prerequisites.",
+    code: "One company code; count distinct paid member contracts, not employer agreements.",
+    approach: "Prioritise existing relationships and companies of roughly 20–200 staff near branches. Check their dental-care needs, identify who can agree the benefit, then offer a costed company dental day. Large employers use arranged introductions.",
+    proposition: "A dental membership benefit for your staff, with clear included care, price and who pays. We support joining and appointments.",
+    steps: ["Confirm price/funding terms, printed kit, company list and dental-day costing", "Fahad arranges warm meetings; Gautam leads sales and visits", "Discuss the company’s needs and funding choice", "Record the agreement and source code", "HR shares the correct company-paid, shared-cost or staff-paid message", "Report distinct paid contracts, bookings and attendance without double counting"],
+    demand: "Target 24 from a proposed pool of at least 72 potential memberships, assuming about one in three joins. Company-by-company evidence is outstanding; the assumption is not a confirmed forecast.",
+    budget: "AED 7,500: print kit AED 1,500; two dental days’ materials/set-up AED 3,000; LinkedIn support AED 1,500; visit logistics AED 1,500. Salaries, clinical time and other excluded costs go to Finance’s complete-cost check.",
+    to: "corporate",
+    toLabel: "Company delivery",
   },
   {
-    source: 'Clinic resellers', target: 7,
-    summary: '≥2 local partners selling under their own code, paid per result.',
-    owner: 'Fahad',
-    launch: 'Agreements w/c 22 Sep', code: 'Per-partner code',
-    approach: 'Local businesses with aligned audiences near the branches — pharmacies, gyms, salons, GP clinics without dental — refer or sell memberships under a written agreement. They already own the customer’s trust; we pay only for results.',
-    proposition: '“Offer your customers a dental membership from a 4.9★, three-branch network — and earn a commission on every PAID membership, tracked to your code.”',
-    steps: [
-      'Shortlist partners inside branch catchments',
-      'One-page agreement: commission per paid membership only — never per referral or click',
-      'Partner receives code + QR + counter material',
-      'Monthly reconciliation against the funnel spine before any payout',
-    ],
-    demand: '7 subscriptions through ≥2 active, source-coded resellers (mandate requirement).',
-    budget: 'No media. Commission per paid membership priced inside the CAC ceiling once Finance sets it; counter material rides the field-sales print run at marginal cost.',
-    to: 'corporate', toLabel: 'Distribution engine (C7)',
+    source: "People searching online",
+    target: 12,
+    summary: "Google about 3, Facebook/Instagram returning visitors about 7, website banner about 2.",
+    owner: "Fahad accountable; CRM-DN runs pages, source tracking and contact-centre replies.",
+    launch: "Each campaign starts after its wording, designs, destination, source codes, reply capacity and required human sign-off are ready.",
+    code: "Source link/code for each campaign or website placement.",
+    approach: "Use three Google campaigns: brand, dental-care price searches and searches about gaps in existing dental benefits. Facebook/Instagram reminders reach returning visitors only. The banner reaches existing website visitors.",
+    proposition: "Explain the selected membership’s included care and member rates in words suited to the person’s enquiry. Never present Smile Club as an insurance product.",
+    steps: ["Set up the three Google campaigns with separate budgets", "Use checked English and Arabic destinations and source codes", "Launch checked Facebook/Instagram designs to returning visitors", "Reply within 10 minutes and distinguish membership interest from appointment requests", "At the funding review, use paid-member cost and adequate follow-up time, with no automatic release"],
+    demand: "Target 12; 150 qualified enquiries at 8% conversion is an unverified planning assumption. Rebuild the campaign forecast for the AED 7,000 allocation before treating the source forecast as complete.",
+    budget: "AED 7,000 total. Initially Google AED 2,000 (brand 500, price searches 1,000, existing-benefit-gap searches 500) and Facebook/Instagram AED 1,500. A further Google AED 1,500 and Facebook/Instagram AED 2,000 remain conditional on the 5 Oct paid-online-membership cost test of at most AED 600 and the required human sign-off.",
+    to: "segments",
+    toLabel: "People searching online",
   },
   {
-    source: 'Affiliates', target: 7,
-    summary: '≥3 result-paid promoters — micro-influencers, community groups, deal platforms.',
-    owner: 'Fahad',
-    launch: 'Agreements w/c 22 Sep', code: 'Per-affiliate tracked link/code',
-    approach: 'Third parties promote Smile Club to their own audience through tracked links — local micro-influencers, parenting and community groups, deal/lifestyle platforms, gym and wellness partners. Paid per RESULT: a commission only when a promoted member’s first qualifying payment clears.',
-    proposition: 'Family-layer creative carries this lane: “one membership, one dental home for the family” — the creator shows the visit, the tracked code does the attribution. (Demand state 7 · CTA: explore Family membership.)',
-    steps: [
-      'Recruit ≥3 affiliates (family/community creators first — the layer map says this is their lane)',
-      'Written agreement per affiliate: commission per PAID membership, payable after first payment clears',
-      'Unique tracked link/code each',
-      'Monthly reconciliation of affiliate claims against the spine before payout',
-    ],
-    demand: '7 subscriptions via ≥3 active, source-coded affiliates (mandate requirement).',
-    budget: 'No fixed media — pure performance commission inside the CAC ceiling (Finance sets it). Nothing is paid for posts, reach or clicks.',
-    to: 'layers', toLabel: 'Layer map (L1 · family state)',
-  },
-  {
-    source: 'CSR (community events)', target: 4,
-    summary: 'Community activations near the branches with on-the-spot QR enrolment.',
-    owner: 'Fahad',
-    launch: 'First event by early Oct', code: 'Per-event code',
-    approach: 'Corporate Social Responsibility — community, not customer service: schools, community centres, sports and wellness events inside branch catchments. A table, a clinician, a free smile check and a QR code. Each event is costed BEFORE commitment; nothing is assumed low-cost.',
-    proposition: 'Prevention and family framing: free smile check → “stay ahead of your smile” → enrol on the spot with the event code.',
-    steps: [
-      'Pick an event near a branch (school terms and community calendars first)',
-      'Cost it before committing: staff, clinical time, materials',
-      'Per-event source code + QR enrolment flow',
-      'Run the activation; enrol on the spot',
-      'Post-event attribution review — the event only repeats if the code shows enrolments',
-    ],
-    demand: '4 subscriptions from community activations.',
-    budget: 'No standing budget line — each event is costed and approved individually; staffing and clinical time are the real costs and sit in the Finance bridge.',
-    to: 'channels', toLabel: 'Offline verdict',
-  },
-  {
-    source: 'Brokers', target: 3,
-    summary: 'Insurance brokers recommend Smile Club beside the medical policies they already sell.',
-    owner: 'Fahad',
-    launch: 'w/c 22 Sep', code: 'Per-broker code',
-    approach: 'The broker already owns the employer relationship and, crucially, its insurance-renewal calendar — the single biggest corporate demand moment. Smile Club becomes an add-on benefit they can recommend, never a competitor to their medical book.',
-    proposition: '“Add a differentiated dental benefit to your client proposition without building dental delivery yourself — we run the membership, the network and the reporting; you keep the relationship.”',
-    steps: [
-      'Identify 2–3 brokers through existing relationships',
-      'Broker terms: referral fee per paid membership/account, inside the CAC ceiling',
-      'Broker receives the one-pager + the Benefits Gap Assessment as a conversation tool',
-      'Per-broker code on every resulting enrolment; the full “Smile Club Partner” broker product is a scale-phase build',
-    ],
-    demand: '3 subscriptions through source-coded broker agreements.',
-    budget: 'No media — referral fee per result, priced inside the CAC ceiling once Finance sets it.',
-    to: 'corporate', toLabel: 'Distribution engine (C7)',
-  },
-  {
-    source: 'Distributors', target: 3,
-    summary: 'Benefit platforms and aggregators listing Smile Club under tracked codes.',
-    owner: 'Fahad',
-    launch: 'w/c 22 Sep', code: 'Per-distributor code',
-    approach: 'Employee-benefit marketplaces and community aggregators list the membership where employees and households already browse benefits; the same result-paid mechanics as resellers.',
-    proposition: '“A dental benefit your users can actually see, understand and use” — listed with plain-language inclusions, never insurance vocabulary.',
-    steps: [
-      'Shortlist benefit platforms and aggregators',
-      'Listing agreement with a per-distributor code',
-      'Result-paid terms inside the CAC ceiling',
-      'Monthly reconciliation against the spine before payout',
-    ],
-    demand: '3 subscriptions through source-coded distributor agreements.',
-    budget: 'No media — per-result terms inside the CAC ceiling once Finance sets it.',
-    to: 'corporate', toLabel: 'Distribution engine (C7)',
+    source: "Families & neighbourhoods",
+    target: 24,
+    summary: "Local businesses 7, family promoters 7, brokers 3, benefit platforms 3, one community event 4.",
+    owner: "Fahad accountable; Dr Luvi runs the community event; Mohan provides checked material.",
+    launch: "Partner agreements planned by 2 Oct; printed material by 7 Oct; first community event by Fri 9 Oct. Sales dates need the checkpoint forecast.",
+    code: "One code per partner or event; one primary source per paid contract.",
+    approach: "Reach nearby families through schools, buildings, gyms, pharmacies and trusted local promoters. Use the existing partner relationships and a costed local event; do not add broad digital awareness.",
+    proposition: "Bring your family’s dental care together with clear membership terms and a nearby dental team. Check the Family plan’s eligibility and included services.",
+    steps: ["Agree partner terms and one code each", "Pay commissions only for distinct paid, active, non-refunded contracts", "Give promoters checked guidance and distribute the coded print material", "Dr Luvi delivers the costed community event", "Reconcile each source and exclude duplicate commissions or contracts"],
+    demand: "24 planned paid contracts: 20 through partners and 4 through the event. Partner agreements and event attendance alone do not establish these sales.",
+    budget: "AED 5,500: printed material AED 2,000; one community event AED 1,500; one shared AED 2,000 results-only commission allowance across local businesses, promoters, brokers and benefit platforms.",
+    to: "segments",
+    toLabel: "Families & neighbourhoods",
   },
 ];
 
@@ -656,16 +590,14 @@ function R1Row({ r, open, onToggle }: { r: ResponseRow; open: boolean; onToggle:
 
 function ResponseTab() {
   const total = RESPONSE_ROWS.reduce((a, r) => a + r.target, 0);
-  const [openSrc, setOpenSrc] = useState<string | null>('Corporate');
+  const [openSrc, setOpenSrc] = useState<string | null>('Companies');
   return (
     <div className="space-y-5">
       <p className="rounded-xl border-l-4 bg-white px-4 py-3 text-[12.5px] font-medium leading-snug" style={{ borderColor: GOLD, color: NAVY, fontFamily: 'Georgia, serif' }}>
-        <span className="font-bold">Fahad&apos;s quantified marketing response — v1.2, 19 Sep.</span>{' '}
-        100% of the 120 mapped to source, demand basis, method, launch date, tracking and owner. The budget (R2) is
-        rev. 7: AED 27,000, built from what one member is worth and split by what each segment&apos;s members cost —
-        PROPOSED until Mr Akbar signs it. Blanket CRM: target 0, budget 0 — the dentists&apos; curated messages are
-        the opposite of a blanket send. v1.2 applies the 12 Sep programme-update learnings: broadcast CRM testing is dropped for
-        high-intent triggered contact, and plays now use the enablement assets the programme has already built.
+        <span className="font-bold">Smile Club delivery plan — segments rev. 6 (23 Sep), budget rev. 7 (24 Sep).</span>{' '}
+        Five segments allocate the 120-membership target. The AED 27,000 budget is proposed, including conditional
+        online funding and a reserve. Checkpoint source forecasts, actual launches, consent and funding releases
+        require evidence. Bulk messaging remains at target 0 and budget 0.
       </p>
 
       <section>
@@ -2279,30 +2211,30 @@ function Kpis() {
 /* ── Team task calendar + live tracker: who does what, week by week, to Day 30 ── */
 
 const TEAM: { id: Person; name: string; role: string; color: string; owns: string }[] = [
-  { id: 'fahad', name: 'Fahad', role: 'Growth lead — reports to Mr Akbar', color: '#5B4B8A', owns: 'Runs the marketing machine — Google, Facebook/Instagram, LinkedIn and the partner channels — works the warm corporate introductions, gets Mr Akbar’s sign-offs, and reports progress every checkpoint Monday.' },
+  { id: 'fahad', name: 'Fahad', role: 'Growth lead — reports to Mr Akbar', color: '#5B4B8A', owns: 'Coordinates Google, Facebook/Instagram, LinkedIn and partners; arranges warm company introductions; records required human sign-offs and reports at the three Monday checkpoints and final Wednesday close.' },
   { id: 'crm', name: 'CRM-DN', role: 'WhatsApp, web pages, tracking & contact centre', color: '#7A5C2E', owns: 'Runs the WhatsApp messages, the membership web page and banner, the contact centre’s 10-minute replies, and the tracking that proves where every member came from. Fahad updates these tasks.' },
   { id: 'doctors', name: 'Treating dentists', role: 'Dr Hasna · Dr Tosun · Dr Maysoon · every treating dentist', color: '#1F6F6B', owns: 'Recommend Smile Club in one sentence at the end of every check-up, and write — in their own name, only to their own patients — the three waves of personal WhatsApp messages. Dr Luvi updates these tasks.' },
-  { id: 'gautam', name: 'Gautam', role: 'Project owner & corporate implementer', color: NAVY, owns: 'Owns the mandate and its data, carries the corporate door-to-door bag in-window, and implements every signed employer (proposal → launch → activation).' },
-  { id: 'luvi', name: 'Dr Luvi', role: 'Head of Operations', color: '#2C5E3F', owns: 'Owns the front-desk engine behind In-clinic-60, branch capacity, clinical review of every claim, and clinical delivery of on-site days. Updates the receptionists’ tasks on their behalf.' },
-  { id: 'mohan', name: 'Mohan', role: 'Videographer & content designer', color: CORAL, owns: 'The creative unlock: produces the asset variety the dynamic formats need, plus every print, video and launch kit the other lanes depend on.' },
-  { id: 'reception', name: 'Receptionists', role: 'Al Wasl · Dr Tosun · AMC', color: BLUE, owns: 'Sell at the checkout moment, every patient, every day — 20 paid subscriptions per branch by 21 Oct.' },
+  { id: 'gautam', name: 'Gautam', role: 'Project owner & corporate implementer', color: NAVY, owns: 'Owns programme completion and starting data, leads company meetings and door visits, and coordinates the signed companies through staff joining.' },
+  { id: 'luvi', name: 'Dr Luvi', role: 'Head of Operations', color: '#2C5E3F', owns: 'Leads the chair 36 and dentist-message 24, branch capacity, clinical review and dental-day delivery. Updates her own, receptionists’ and dentists’ tasks.' },
+  { id: 'mohan', name: 'Mohan', role: 'Videographer & content designer', color: CORAL, owns: 'Produces checked print, video, ad and company-launch materials for the named audiences; Fahad manages ad launches.' },
+  { id: 'reception', name: 'Receptionists', role: 'Al Wasl · Dr Tosun · AMC', color: BLUE, owns: 'Completes joining at checkout after the dentist’s recommendation: chair target 12 paid contracts per branch, 36 in total, by 21 Oct.' },
 ];
 
 const WEEKS: { n: number; label: string; gate: string }[] = [
   { n: 1, label: 'Week 1 · 22–28 Sep', gate: 'Mon 28 Sep · Day-7 · 36 plan / 30 min' },
   { n: 2, label: 'Week 2 · 29 Sep – 5 Oct', gate: 'Mon 5 Oct · Day-14 · 60 / 50 · funding review' },
   { n: 3, label: 'Week 3 · 6–12 Oct', gate: 'Mon 12 Oct · Day-21 · 88 / 75' },
-  { n: 4, label: 'Week 4 · 13–19 Oct', gate: 'Scale only past CAC + ≥98% attribution' },
+  { n: 4, label: 'Week 4 · 13–19 Oct', gate: 'More spending only after the cost review and source check' },
   { n: 5, label: 'Close · 20–21 Oct', gate: 'Wed 21 Oct · Day-30 · 120 paid' },
 ];
 
 const RHYTHMS: { who: Person; items: string[] }[] = [
   { who: 'fahad', items: ['Daily: read the end-of-day numbers — members by source, ad spend, enquiries', 'Monday: one-page progress report to Mr Akbar', 'Weekly: ad performance review with Mohan — keep, cut or remake'] },
-  { who: 'doctors', items: ['Every check-up or cleaning: the one-sentence recommendation + the signed invitation card', 'During a wave: up to 20 messages a day to your own patients only; every reply answered the same day', 'Friday: what patients said back, to Dr Luvi'] },
+  { who: 'doctors', items: ['Every check-up or cleaning: the one-sentence recommendation + the signed invitation card', 'During a wave: own patients with current consent only; at most 20 messages per dentist per day across all routes; answer replies the same day and honour opt-outs immediately', 'Friday: what patients said back, to Dr Luvi'] },
   { who: 'crm', items: ['Every enquiry answered within 10 minutes and tagged “membership” or “appointment”', 'Daily: late replies reviewed at the 09:00 meeting', 'Weekly: tracking spot-check — every new member shows where they came from'] },
-  { who: 'gautam', items: ['Mon: checkpoint or weekly resource decision', 'Daily: EOD scorecard read · meeting log updated after every door', 'Weekly: pipeline coverage vs ≥72 equivalents'] },
+  { who: 'gautam', items: ['Mon: checkpoint or weekly resource decision', 'Daily: EOD scorecard read · meeting log updated after every door', 'Weekly: check the company list and evidence for at least 72 potential memberships supporting the target of 24'] },
   { who: 'luvi', items: ['Daily 09:00: per-branch count + objection log review (with the Smile Club Coordinator)', 'Daily 16:00: recovery queue for any branch behind pace', 'Weekly: clinical sign-off on new creative and claims'] },
-  { who: 'mohan', items: ['Every asset tagged to one demand state before it ships', 'Weekly: submission batch to Dr Luvi for clinical review', 'Weekly: performance read with Fahad — cut, keep or re-cut'] },
+  { who: 'mohan', items: ['Label every design with its intended audience and message before handing it over', 'Weekly: submission batch to Dr Luvi for clinical review', 'Weekly: performance read with Fahad — cut, keep or re-cut'] },
   { who: 'reception', items: ['Every checkout: Ask → Match → Value → Clarify → Close, savings shown against TODAY’s bill', 'Every join: QR under the branch code + first member appointment booked before the patient leaves', 'Every decline: objection log · Friday: objection themes to Dr Luvi', 'Always “membership / included services / member rates” — never insurance, coverage or claim'] },
 ];
 
@@ -2480,7 +2412,7 @@ function TaskCard({ t, p, today, color, editable, onSave, onVerified, comments, 
       </div>
       <div className="mt-2"><Bar pct={pct} color={rag === 'overdue' || rag === 'blocked' ? CORAL : color} /></div>
       <div className="mt-2 flex flex-wrap gap-1.5 text-[10px]">
-        <span className="rounded px-1.5 py-0.5 font-bold" style={{ backgroundColor: '#EEF1F6', color: NAVY }}>Weightage {weightPct(t)}%</span>
+        <span className="rounded px-1.5 py-0.5 font-bold" style={{ backgroundColor: '#EEF1F6', color: NAVY }}>Relative weight {weightPct(t)}%</span>
         <span className="rounded px-1.5 py-0.5 font-bold" style={{ backgroundColor: t.subs ? '#e7efe6' : '#F1F1EA', color: t.subs ? '#2C5E3F' : OLIVE }}>
           {t.subs ? `Subscription target: ${t.subs}` : 'Enabler — no direct subscriptions'}
         </span>
@@ -2605,7 +2537,7 @@ function TeamTab({ state, setState }: { state: TrackerState; setState: (s: Track
               <div className="absolute top-[-3px] h-4 w-[2px]" style={{ left: `${expectedPct}%`, backgroundColor: CORAL }} title="Planned position today" />
             </div>
             <p className="mt-1 text-[10px]" style={{ color: OLIVE }}>
-              <span className="font-bold" style={{ color: CORAL }}>│</span> planned position today: {expectedPct}%. Completion is weighted — each task counts by its weightage, so the tasks that drive the most subscriptions move the bar most. {all.n} tasks · subscription targets of completed tasks: <b style={{ color: NAVY }}>{all.subsDone} of {all.subs}</b>.
+              <span className="font-bold" style={{ color: CORAL }}>│</span> planned position today: {expectedPct}%. Task progress, weighted by the plan’s task weights. The subscription figure is the target allocation attached to completed tasks — <b style={{ color: NAVY }}>{all.subsDone} of {all.subs}</b> — not a verified count of paid memberships; actual paid memberships are reported separately.
             </p>
             <div className="mt-2 grid grid-cols-3 gap-1.5 md:grid-cols-6">
               {([['done', all.done], ['on_track', all.onTrack], ['due', all.due], ['overdue', all.overdue], ['blocked', all.blocked], ['not_started', all.notStarted]] as [Rag, number][]).map(([r, n]) => (
@@ -2658,7 +2590,7 @@ function TeamTab({ state, setState }: { state: TrackerState; setState: (s: Track
       </section>
 
       <section>
-        <Exhibit n="T1" title="The calendar — six owners × five weeks, each week closing on its checkpoint" />
+        <Exhibit n="T1" title="The calendar — seven responsible teams × five weeks, each week closing on its checkpoint" />
         <div className="mb-2 flex flex-wrap gap-1.5">
           {([['all', 'Everyone'], ...TEAM.map((p) => [p.id, p.name])] as [Person | 'all', string][]).map(([id, label]) => (
             <button
@@ -2725,8 +2657,10 @@ function TeamTab({ state, setState }: { state: TrackerState; setState: (s: Track
       <section>
         <Exhibit n="T2" title="Every task — objective, why it matters, how to do it, weightage, subscription target and live progress" />
         <p className="mb-2 text-[11px]" style={{ color: OLIVE }}>
-          Owners update their own tasks: mark the next step done, flag a block, add a note. Dr Luvi updates the
-          receptionists’ tasks; Fahad updates CRM-DN’s. Everyone else sees the same live picture read-only.
+          Gautam, Mohan and Fahad update their own tasks. Dr Luvi updates her tasks and the receptionists’ and
+          dentists’ tasks. CRM-DN has no login; Fahad records its updates. Anyone signed in can comment. Use aggregate
+          counts and task status here — keep patient and staff contact details, medical records, private messages and
+          identifiable footage in their existing restricted systems. Everyone else sees the same live picture read-only.
           {state.viewer ? <> Signed in as <b style={{ color: NAVY }}>{state.viewer}</b>{state.canEdit === 'all' ? ' — you can update every task.' : state.canEdit.length ? ` — you can update ${state.canEdit.map((x) => TEAM.find((p) => p.id === x)!.name).join(' and ')}’s tasks.` : ' — read-only.'}</> : null}
         </p>
         <div className="space-y-4">
@@ -2859,12 +2793,12 @@ function BudgetExhibit({ n }: { n: string }) {
   const segName = (id: SegmentId) => SEGMENTS.find((s) => s.id === id)!.name;
   return (
     <section>
-      <Exhibit n={n} title={`Budget — ${fmtAed(TOTAL)} for 30 days (${fmtAed(COMMITTED)} committed + ${fmtAed(RESERVE.aed)} reserve) · pending Mr Akbar’s sign-off`} />
+      <Exhibit n={n} title={`Proposed 30-day budget — ${fmtAed(TOTAL)}: ${fmtAed(COMMITTED)} allocated, including AED 3,500 conditional online funding, plus ${fmtAed(RESERVE.aed)} reserve · pending Mr Akbar’s sign-off`} />
       <div className="grid gap-2 md:grid-cols-3">
         {([
           [`≈ ${fmtAed(CEILING.perMember)}`, 'Most we should spend to win one member', `The cheapest plan is AED ${CEILING.lowestAnnualFee.toLocaleString('en-US')} a year. If the check-ups and cleanings it includes cost about half of that, about AED 500 is left in year one. Spending no more than half of that to win a member gives ≈ AED ${CEILING.perMember}. Assumption to confirm with Finance.`],
           [fmtAed(CEILING.total), 'The ceiling for 120 members', `${CEILING.members} × AED ${CEILING.perMember}. The plan stays below it: ${fmtAed(TOTAL)} ≈ AED ${Math.round(TOTAL / CEILING.members)} per member on average.`],
-          ['Cheapest first', 'How the money is split', 'Budget follows where members are cheapest to win: our own patients cost least, online costs most — so online is small and half of it is released only if it proves itself at Day 14.'],
+          ['Cheapest first', 'How the money is split', 'The plan assumes existing-patient routes cost less. Actual paid-member costs determine the conditional online release and reserve allocation; the assumption is not yet a measured result.'],
         ] as [string, string, string][]).map(([v, l, s]) => (
           <div key={l} className="rounded-xl border bg-white px-3 py-2.5" style={{ borderColor: LINE }}>
             <p className="text-[16px] font-bold tabular-nums" style={{ color: NAVY, fontFamily: 'Georgia, serif' }}>{v}</p>
@@ -2901,7 +2835,7 @@ function BudgetExhibit({ n }: { n: string }) {
               );
             })}
             <tr className="border-t font-bold" style={{ borderColor: '#EEEFE1', backgroundColor: '#F7F7F0' }}>
-              <td className="px-2.5 py-1.5" style={{ color: NAVY }}>Committed</td>
+              <td className="px-2.5 py-1.5" style={{ color: NAVY }}>Allocated, incl. conditional</td>
               <td className="px-2.5 py-1.5 text-center tabular-nums" style={{ color: CORAL }}>{SEGMENT_BUDGETS.reduce((a, b) => a + b.target, 0)}</td>
               <td className="px-2.5 py-1.5" />
               <td className="px-2.5 py-1.5 text-right tabular-nums" style={{ color: NAVY }}>{COMMITTED.toLocaleString('en-US')}</td>
@@ -2922,17 +2856,16 @@ function BudgetExhibit({ n }: { n: string }) {
       </div>
       <div className="mt-2 space-y-2">
         <Note tone="blue">
-          What changed from the first AED 30,000 draft: online cut from 15,000 to 7,000 (half conditional) — it was buying 12
-          members at about AED 1,250 each, more than a year&apos;s fee; the separate AED 3,000 digital awareness line
-          is gone (awareness now happens offline, inside families &amp; neighbourhoods); companies up from 6,000 to
-          7,500 so both dental days are funded; new small, results-only thank-yous for desk teams and dentists; AED
-          3,000 held back to reward whichever segment works.
+          The current allocations are chair AED 2,000; dentists’ own patients AED 2,000; companies AED 7,500; online
+          AED 7,000, including AED 3,500 conditional; families and neighbourhoods AED 5,500; reserve AED 3,000.
+          Community awareness is offline and results-only incentives are included in these amounts.
         </Note>
         <Note tone="gold">
-          Not in this budget (real costs, not marketing spend — added in Finance&apos;s fully-loaded check, task due 2
-          Oct): salaries and staff time, dentists&apos; time on dental days, and the free first check-up offered to
-          long-lapsed patients. The one number to confirm with Finance is what the included care really costs — if it
-          is much more than half the fee, the ceiling drops and online shrinks further.
+          AED 27,000 is the proposed marketing and delivery allocation, averaging AED 225 per target membership. It
+          excludes salaries, staff and clinician time and any additional included-care costs identified by Finance.
+          The indicative full-cost ceiling is AED 30,000, leaving at most AED 3,000 for excluded acquisition costs if
+          that ceiling is confirmed. Finance’s 2 Oct review must reconcile the costs before further funding is
+          released; the AED 250 ceiling is an assumption, not a verified margin.
         </Note>
       </div>
     </section>
@@ -2971,7 +2904,7 @@ function SegmentsTab({ state }: { state: TrackerState }) {
                 <th className="px-2.5 py-2 font-bold">Segment</th><th className="px-2.5 py-2 font-bold">Who delivers it</th>
                 <th className="px-2.5 py-2 font-bold">When it starts</th><th className="px-2.5 py-2 text-center font-bold">Target</th>
                 <th className="px-2.5 py-2 text-right font-bold">Budget</th>
-                <th className="px-2.5 py-2 font-bold" style={{ width: 150 }}>Tasks done</th>
+                <th className="px-2.5 py-2 font-bold" style={{ width: 150 }}>Task progress</th>
               </tr>
             </thead>
             <tbody>
@@ -3108,12 +3041,12 @@ function SegmentsTab({ state }: { state: TrackerState }) {
         <div className="grid gap-2 md:grid-cols-2">
           {([
             ['Existing patients split in two', 'The 60 now come from two different moments: 36 in the chair (the dentist recommends, reception closes) and 24 from each dentist writing personally to their own patients — active, inactive and dormant, in that order.'],
-            ['WhatsApp is curated, never blanket', 'Each dentist writes only to their own patients, in their own name, 20 a day at most. This replaces the mass test that produced no confirmed members.'],
+            ['WhatsApp is curated, never blanket', 'Each dentist writes only to their own patients with current contact consent, reviewed wording and the required human sign-off. All messages combined stay within 20 per dentist per day; opt-outs stop further messages. The historical mass test is not restarted.'],
             ['Corporate has a list, a type order and an unlock date', 'Warm doors first; door-to-door only for smaller companies, Tue–Thu, from 29 Sep once the price, kit, list and dental-day offer are ready. The door-opener is a free dental day, not a sales pitch.'],
             ['Google is three campaigns, not one', 'Brand, price searches and insurance-gap searches — each with its own words and budget. No display, no broad awareness.'],
             ['Awareness moves offline', 'No digital awareness ads: families are reached through schools, residential buildings, gyms and pharmacies near the branches.'],
-            ['Budget built from the member, not the channel', 'AED 27,000 instead of 30,000: about AED 225 per member, below the AED 250 ceiling — online cut to 7,000 (half conditional), our own patients funded, results-only thank-yous.'],
-            ['Every task carries its segment', 'The task calendar and the progress bars are the plan — Mr Akbar sees each segment’s progress on this page.'],
+            ['Budget built from the member, not the channel', 'Proposed budget AED 27,000: AED 24,000 allocated across the five segments, including AED 3,500 conditional online funding, plus AED 3,000 reserve. AED 225 per target member is a marketing-budget average; Finance still checks the indicative AED 250 full-cost ceiling.'],
+            ['Segment tasks plus programme-wide work', 'Most tasks link to one segment; eleven programme-wide tasks support the whole plan. Progress bars show task steps, not confirmed paid memberships.'],
           ] as [string, string][]).map(([h, b]) => (
             <div key={h} className="rounded-xl border bg-white p-3" style={{ borderColor: LINE }}>
               <p className="text-[11px] font-bold" style={{ color: NAVY }}>{h}</p>

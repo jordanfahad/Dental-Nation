@@ -80,6 +80,28 @@ P&L pathway block complete on all 24 capabilities, pending finance ticks.
   register) are assigned to the 23 Sep checkpoint, not faked. Review file:
   .agent-bus/reviews/DN-003-smileclub-rigor.md (on codex/DN-003).
 
+- DN-004 (24 Sep) — Smile Club plan sanitisation. Astra reviewed all 74
+  tasks, five segments, the rev. 7 budget and the mandate/delivery copy:
+  22 findings, 79 text-only data edits across 29 task keys (keys, numbers
+  and dates preserved). Claude QA'd, merged (3 wording conflicts resolved
+  in Astra's favour, keeping the corrected Dr Maysoon spelling), then
+  applied the proposals Astra could not touch: dependency dates (dental-day
+  costing and LinkedIn material before the 29 Sep door unlock; tracking
+  before joining links; first dentist wave from 29 Sep), consent
+  safeguards on every sending route, the M1–M4 / R1–R2 / Team / Segments
+  copy, and "task progress is not paid memberships" labelling.
+  OPEN (F01): no dated source forecast yet — chair gives 12/21/30/36 at the
+  checkpoints; the other segments must supply 24/39/58/84 and nobody has
+  evidenced that. Needs Fahad + owners.
+
+## Current plan (supersedes older dates above)
+
+- Smile Club plan rev. 6 (23 Sep) + budget rev. 7 (24 Sep): 120 paid
+  memberships by 21 Oct; checkpoints 28 Sep 36/30, 5 Oct 60/50, 12 Oct
+  88/75, 21 Oct 120. Segments: chair 36, dentists' own patients 24,
+  companies 24, online 12, families/neighbourhoods 24. Proposed spend AED
+  27,000; indicative full-cost ceiling AED 30,000, subject to Finance.
+
 ## Pending merge
 
 - codex/DN-002 (Astra's hardening of the Meta ad-level work: range-end-
