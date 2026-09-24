@@ -12,7 +12,8 @@
  * patient data; unknowns are marked "baseline pending", never invented.
  */
 
-import { createContext, useContext, useState } from 'react';
+import { Fragment, createContext, useContext, useState } from 'react';
+import { CLINIC_CLOSED, DAYS, FILMED, HOURS, SHOOT_PLAN, dentistById, hoursOn, nextClinicDays, shootLoad } from '@/lib/smileclub/shoots';
 import { commentTeamTaskAction, reviewScriptAction, saveCompanyAction, sendScriptsForReviewAction, updateTeamTaskAction, uploadCalendarAction, verifyCrmTestAction } from '@/app/(app)/smileclub-actions';
 import { REVIEWERS, REVIEWER_BY_USER, reviewFor, reviewSummary, type ReviewEntry, type ReviewerState } from '@/lib/smileclub/review';
 import { PLAYBOOKS, type Channel } from '@/lib/smileclub/playbook';
@@ -2719,6 +2720,12 @@ function TeamTab({ state, setState }: { state: TrackerState; setState: (s: Track
             <Card key={p.id} accent={p.color}>
               <p className="text-[12px] font-bold" style={{ color: p.color }}>{p.name} <span className="text-[10.5px] font-semibold" style={{ color: OLIVE }}>· {p.role}</span></p>
               <p className="mt-0.5 text-[10.5px] leading-snug" style={{ color: '#3a4148' }}>{p.owns}</p>
+              {p.id === 'mohan' ? (
+                <div className="mt-2 rounded-xl border p-2.5" style={{ borderColor: '#EBD3CE', backgroundColor: '#FFFBFA' }}>
+                  <p className="text-[11px] font-bold" style={{ color: CORAL }}>Mohan’s shoot schedule — which dentist, which clinic, what time</p>
+                  <div className="mt-1.5"><ShootSchedule /></div>
+                </div>
+              ) : null}
               <div className="mt-2 space-y-2">
                 {TEAM_TASKS.filter((x) => x.who === p.id).map((x) => (
                   <TaskCard
@@ -3698,6 +3705,128 @@ function ShootScripts({ d }: { d: Dentist }) {
   );
 }
 
+/* ── Mohan's shoot schedule, from Dr Luvi's doctors' calendar ── */
+
+function DoctorTimetable() {
+  return (
+    <div className="space-y-2">
+      {(['tosun', 'alwasl', 'amc'] as Branch[]).map((b) => (
+        <div key={b} className="overflow-x-auto rounded-xl border bg-white" style={{ borderColor: LINE }}>
+          <table className="w-full min-w-[820px] border-collapse text-[10px]">
+            <thead>
+              <tr className="text-left" style={{ backgroundColor: '#F7F7F0' }}>
+                <th className="px-2 py-1.5 text-[10.5px] font-bold" style={{ color: NAVY }}>{BRANCH_LABEL[b]}</th>
+                {DAYS.map((dd) => (
+                  <th key={dd} className="px-2 py-1.5 text-[9.5px] font-bold uppercase tracking-wide" style={{ color: CLINIC_CLOSED[b] === dd ? '#a04a38' : OLIVE }}>
+                    {dd}{CLINIC_CLOSED[b] === dd ? ' · closed' : ''}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {DENTISTS.filter((d) => d.branch === b).map((d) => (
+                <tr key={d.id} className="border-t align-top" style={{ borderColor: '#EEEFE1' }}>
+                  <td className="px-2 py-1">
+                    <span className="font-bold" style={{ color: NAVY }}>{d.name}</span>
+                    <span className="block text-[9.5px]" style={{ color: OLIVE }}>{d.title} · {langsFor(d).map((l) => l.toUpperCase()).join(' + ')}</span>
+                  </td>
+                  {DAYS.map((dd) => {
+                    const h = HOURS[d.id]?.[dd];
+                    return (
+                      <td key={dd} className="px-2 py-1 tabular-nums" style={{ color: h ? '#2C5E3F' : '#C9C9BC', backgroundColor: CLINIC_CLOSED[b] === dd ? '#FBF3F1' : undefined }}>
+                        {h ?? '—'}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ))}
+      <p className="text-[10px]" style={{ color: OLIVE }}>Source: Dr Luvi’s “Doctor’s daily schedule — branch wise”. A dash means the dentist is not in that clinic that day.</p>
+    </div>
+  );
+}
+
+function ShootSchedule() {
+  const ctx = useContext(TrackerCtx);
+  const reviews = ctx?.state.reviews ?? [];
+  const progress = ctx?.state.progress ?? {};
+  const [open, setOpen] = useState<string | null>(null);
+  const [showTable, setShowTable] = useState(false);
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap gap-1.5 text-[10.5px]" style={{ color: '#3a4148' }}>
+        <b style={{ color: NAVY }}>Already filmed:</b>
+        {FILMED.map((f) => <span key={f.id} className="rounded px-1.5 py-0.5" style={{ backgroundColor: '#e7efe6', color: '#2C5E3F' }}>✓ {dentistById(f.id).name} · {f.when} · {f.what}</span>)}
+      </div>
+      {SHOOT_PLAN.map((day) => {
+        const tk = TASK_BY_KEY[`m-shoot-${day.key}`];
+        const pr = progress[`m-shoot-${day.key}`];
+        const pct = tk ? Math.round(((pr?.stage ?? 0) / tk.steps.length) * 100) : 0;
+        return (
+          <div key={day.key} className="rounded-xl border bg-white p-2.5" style={{ borderColor: LINE }}>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-lg px-2 py-1 text-[12px] font-bold text-white" style={{ backgroundColor: CORAL }}>{day.label}</span>
+              <span className="text-[11px] font-bold" style={{ color: NAVY }}>{day.stops.map((st) => BRANCH_LABEL[st.branch]).join(' → ')}</span>
+              <span className="text-[10px]" style={{ color: OLIVE }}>{day.stops.reduce((a, st) => a + st.slots.length, 0)} dentists</span>
+              {tk ? <span className="ml-auto flex items-center gap-1.5 text-[10px]" style={{ color: OLIVE }}><span className="w-[80px]"><Bar pct={pct} color={CORAL} h={4} /></span>{pct}% · <TaskLink k={tk.key}>task</TaskLink></span> : null}
+            </div>
+            {day.stops.map((st) => (
+              <div key={st.branch} className="mt-1.5">
+                <p className="text-[9.5px] font-bold uppercase tracking-widest" style={{ color: BLUE }}>{BRANCH_LABEL[st.branch]}</p>
+                <div className="mt-0.5 overflow-x-auto">
+                  <table className="w-full min-w-[760px] border-collapse text-[10.5px]">
+                    <tbody>
+                      {st.slots.map((sl) => {
+                        const d = dentistById(sl.id);
+                        const load = shootLoad(d, sl.only);
+                        const badge = reviewBadge(d, reviews);
+                        const key = `${day.key}:${sl.id}`;
+                        const isOpen = open === key;
+                        return (
+                          <Fragment key={sl.id}>
+                            <tr className="border-t align-top" style={{ borderColor: '#EEEFE1' }}>
+                              <td className="w-[52px] py-1 pr-2 font-bold tabular-nums" style={{ color: CORAL }}>{sl.time}</td>
+                              <td className="py-1 pr-2">
+                                <button type="button" onClick={() => setOpen(isOpen ? null : key)} className="text-left font-bold underline decoration-dotted underline-offset-2" style={{ color: NAVY }}>{d.name} {isOpen ? '▾' : '▸'}</button>
+                                <span className="block text-[9.5px]" style={{ color: OLIVE }}>{d.title} · in clinic {hoursOn(d.id, day.iso) ?? '—'}</span>
+                              </td>
+                              <td className="py-1 pr-2" style={{ color: '#3a4148' }}>
+                                {sl.only ? `Video 2 · ${LANES[laneFor(d)].name}` : `Smile Club + ${LANES[laneFor(d)].name}`}
+                                <span className="block text-[9.5px]" style={{ color: OLIVE }}>{langsFor(d).map((l) => LANG_LABEL[l].split(' · ').pop()).join(' + ')} · {load.takes} takes · ≈{load.minutes} min</span>
+                              </td>
+                              <td className="py-1 pr-2"><span className="rounded-full px-2 py-0.5 text-[9.5px] font-bold" style={{ color: badge.fg, backgroundColor: badge.bg }}>{badge.text}</span></td>
+                              <td className="py-1 text-[9.5px]" style={{ color: OLIVE }}>
+                                {sl.note ? <span className="block">{sl.note}</span> : null}
+                                Backup: {nextClinicDays(d.id, day.iso).join(' · ') || '—'}
+                              </td>
+                            </tr>
+                            {isOpen ? <tr><td colSpan={5} className="pb-2"><ShootScripts d={d} /></td></tr> : null}
+                          </Fragment>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      })}
+      <p className="text-[10px] leading-snug" style={{ color: OLIVE }}>
+        Times are proposals inside each dentist’s clinic hours; Dr Luvi confirms them in the dentist’s diary. A dentist films only once their scripts
+        show Final ✓ — otherwise Mohan uses the backup day shown. Click a name to open the scripts.
+      </p>
+      <button type="button" onClick={() => setShowTable(!showTable)} className="text-[10.5px] font-bold underline decoration-dotted" style={{ color: BLUE }}>
+        {showTable ? 'Hide' : 'Show'} every dentist’s clinic hours (Dr Luvi’s calendar) {showTable ? '▾' : '▸'}
+      </button>
+      {showTable ? <DoctorTimetable /> : null}
+    </div>
+  );
+}
+
 const BRANCH_TAB: [Branch | 'all', string][] = [
   ['all', 'All branches'],
   ...(['tosun', 'alwasl', 'amc'] as Branch[]).map((b): [Branch, string] => [b, `${BRANCH_LABEL[b]} · ${BRANCH_LANGS[b].map((l) => l.toUpperCase()).join(' + ')}`]),
@@ -3723,35 +3852,21 @@ function ScriptsTab() {
       <ReviewOverview />
 
       <section>
-        <Exhibit n="DS1" title={`Mohan’s shoot — ${SHOOT.date}, ${BRANCH_LABEL[SHOOT.branch]}: two dentists, four videos, Turkish + English`} />
+        <Exhibit n="DS1" title="Mohan’s shoot schedule — which dentist, which clinic, what time (from Dr Luvi’s doctors’ calendar)" />
         <Card accent={CORAL}>
-          <p className="text-[11px] leading-snug" style={{ color: '#3a4148' }}>
-            Two appointments confirmed: <b>{byId(SHOOT.dentists[0]).name}</b> and <b>{byId(SHOOT.dentists[1]).name}</b>. Each
-            gives two videos — Smile Club and the dentist&apos;s campaign — filmed in Turkish and English, so one
-            session produces four finished takes per dentist. Optional third dentist if time allows:
-            <b> {byId(SHOOT.suggested).name}</b>, also in clinic on Friday morning. Written consent from any patient who
-            appears; no patient identifiable without it.
-          </p>
-          <ol className="mt-2 grid gap-1 text-[10.5px] leading-snug md:grid-cols-2" style={{ color: '#3a4148' }}>
+          <ol className="grid gap-1 text-[10.5px] leading-snug md:grid-cols-2" style={{ color: '#3a4148' }}>
             {[
               'Set up once — lighting, sound, the dentist in their clinic.',
-              'Video 1 (Smile Club) in Turkish, then straight away in English.',
+              'Video 1 (Smile Club) in the dentist’s first language, then straight away in English.',
               'Change the framing or background, so the two videos do not look the same.',
-              'Video 2 (the dentist’s campaign) in Turkish, then in English. About 40–45 minutes per dentist.',
+              'Video 2 (the dentist’s campaign) in the first language, then in English. About 45 minutes for two languages, 25 for one.',
               'A dentist not fluent in one of the languages films in the language they are comfortable in; the other gets subtitles — never read phonetically on camera.',
-              'Short cuts (15 s and 6 s) from every take for ads and WhatsApp status.',
+              'Short cuts (15 s and 6 s) from every take for ads and WhatsApp status. Written consent from anyone else on camera.',
             ].map((x, i) => (
               <li key={x} className="flex gap-1.5"><span className="font-bold" style={{ color: CORAL }}>{i + 1}.</span>{x}</li>
             ))}
           </ol>
-          <div className="mt-2 space-y-2">
-            {[...SHOOT.dentists, SHOOT.suggested].map((id) => (
-              <div key={id}>
-                {id === SHOOT.suggested ? <p className="mb-1 text-[9.5px] font-bold uppercase tracking-wide" style={{ color: OLIVE }}>Suggested third dentist — only if time allows</p> : null}
-                <ShootScripts d={byId(id)} />
-              </div>
-            ))}
-          </div>
+          <div className="mt-2"><ShootSchedule /></div>
         </Card>
       </section>
 

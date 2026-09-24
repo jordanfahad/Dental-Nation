@@ -13,6 +13,8 @@
 import type { SegmentId } from '@/lib/smileclub/segments';
 import type { CorpState } from '@/lib/smileclub/corporate';
 import type { ReviewEntry } from '@/lib/smileclub/review';
+import { SHOOT_PLAN, dentistById } from '@/lib/smileclub/shoots';
+import { BRANCH_LABEL } from '@/lib/smileclub/scripts';
 
 export type Person = 'fahad' | 'gautam' | 'luvi' | 'doctors' | 'mohan' | 'reception' | 'crm';
 
@@ -659,7 +661,7 @@ const TASKS_RAW: TeamTask[] = [
     done: 'The scheduled, consent-checked batches are sent within the combined daily limit; replies are answered, requested bookings arranged and opt-outs honoured. Paid memberships are reported separately from messages and bookings.', with: 'CRM-DN', to: 'segments', toLabel: 'Segment: our patients', weight: 3, subs: 6, subsNote: '6 of the dentists’ 24' },
 
   /* ── Mohan — videographer & content designer ── */
-  { key: 'm-invite', who: 'mohan', wk: 1, dueIso: '2026-09-24', due: 'Thu 24 Sep', task: 'Dentist-signed invitation cards',
+  { key: 'm-invite', who: 'mohan', wk: 1, dueIso: '2026-09-26', due: 'Sat 26 Sep', task: 'Dentist-signed invitation cards',
     objective: 'A small printed card — “Dr ___ recommends Smile Club for you” — that each dentist signs and hands to the patient, with a QR code to join.',
     why: 'It turns the dentist’s spoken recommendation into something the patient carries to the desk and home.',
     steps: [
@@ -954,7 +956,28 @@ const SEG_OF: Record<string, SegmentId> = {
   'm-geo': 'community',
 };
 
-export const TEAM_TASKS: TeamTask[] = TASKS_RAW.map((t) => ({ ...t, seg: SEG_OF[t.key] }));
+/** One Mohan task per planned shoot day (lib/smileclub/shoots.ts — from Dr Luvi's doctors' calendar). */
+const SHOOT_TASKS: TeamTask[] = SHOOT_PLAN.map((day) => {
+  const ids = day.stops.flatMap((st) => st.slots.map((x) => x.id));
+  const where = day.stops.map((st) => `${BRANCH_LABEL[st.branch]} (${st.slots.map((x) => `${x.time} ${dentistById(x.id).name}${x.only ? ' — campaign video only' : ''}`).join(', ')})`).join('; then ');
+  return {
+    key: `m-shoot-${day.key}`, who: 'mohan' as const, wk: day.iso <= '2026-09-28' ? 1 : 2, dueIso: day.iso, due: day.label,
+    task: `Shoot day — ${day.stops.map((st) => BRANCH_LABEL[st.branch]).join(' → ')} · ${ids.length} dentist${ids.length === 1 ? '' : 's'}`,
+    scripts: ids,
+    objective: `Film each dentist’s two videos (Smile Club + their campaign) in their own languages: ${where}.`,
+    why: 'One appointment gives two finished videos per dentist. Grouping dentists by clinic and day, inside their clinic hours from Dr Luvi’s calendar, keeps travel and waiting to a minimum.',
+    steps: [
+      { s: 'Scripts final', how: 'Each dentist’s scripts show “Final ✓” on the Dentist scripts tab by the evening before. Any dentist not final moves to their backup day (shown in the shoot schedule).' },
+      { s: 'Slots confirmed', how: 'Dr Luvi blocks each time in the dentist’s diary (about 45 minutes for two languages, 25 for one) and tells the branch desk.' },
+      { s: 'Filmed', how: 'Two videos per dentist, first language then English, change the framing between videos. Written consent from anyone else on camera.' },
+      { s: 'First cuts shared', how: 'Posted to this task for team review.' },
+    ],
+    done: 'Every dentist on the day filmed; first cuts shared here.', with: `Dr Luvi · ${ids.map((i) => dentistById(i).name).join(' · ')}`, to: 'scripts', toLabel: 'Shoot schedule & scripts',
+    weight: 1, subs: 0, subsNote: 'Supports the dentists’ 24 and the campaign lanes', seg: 'patients' as SegmentId,
+  };
+});
+
+export const TEAM_TASKS: TeamTask[] = [...TASKS_RAW, ...SHOOT_TASKS].map((t) => ({ ...t, seg: SEG_OF[t.key] ?? t.seg }));
 
 export const TASK_BY_KEY: Record<string, TeamTask> = Object.fromEntries(TEAM_TASKS.map((t) => [t.key, t]));
 
