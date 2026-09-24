@@ -3762,16 +3762,17 @@ function ShootSchedule() {
         {FILMED.map((f) => <span key={f.id} className="rounded px-1.5 py-0.5" style={{ backgroundColor: '#e7efe6', color: '#2C5E3F' }}>✓ {dentistById(f.id).name} · {f.when} · {f.what}</span>)}
       </div>
       {SHOOT_PLAN.map((day) => {
-        const tk = TASK_BY_KEY[`m-shoot-${day.key}`];
-        const pr = progress[`m-shoot-${day.key}`];
-        const pct = tk ? Math.round(((pr?.stage ?? 0) / tk.steps.length) * 100) : 0;
+        const keys = day.tasks ?? [`m-shoot-${day.key}`];
+        const tks = keys.map((k) => TASK_BY_KEY[k]).filter(Boolean);
+        const tk = tks[0];
+        const pct = tks.length ? Math.round((tks.reduce((a, t) => a + Math.min(1, (progress[t.key]?.stage ?? 0) / t.steps.length), 0) / tks.length) * 100) : 0;
         return (
           <div key={day.key} className="rounded-xl border bg-white p-2.5" style={{ borderColor: LINE }}>
             <div className="flex flex-wrap items-center gap-2">
               <span className="rounded-lg px-2 py-1 text-[12px] font-bold text-white" style={{ backgroundColor: CORAL }}>{day.label}</span>
               <span className="text-[11px] font-bold" style={{ color: NAVY }}>{day.stops.map((st) => BRANCH_LABEL[st.branch]).join(' → ')}</span>
               <span className="text-[10px]" style={{ color: OLIVE }}>{day.stops.reduce((a, st) => a + st.slots.length, 0)} dentists</span>
-              {tk ? <span className="ml-auto flex items-center gap-1.5 text-[10px]" style={{ color: OLIVE }}><span className="w-[80px]"><Bar pct={pct} color={CORAL} h={4} /></span>{pct}% · <TaskLink k={tk.key}>task</TaskLink></span> : null}
+              {tk ? <span className="ml-auto flex items-center gap-1.5 text-[10px]" style={{ color: OLIVE }}><span className="w-[80px]"><Bar pct={pct} color={CORAL} h={4} /></span>{pct}% · {tks.map((t, i) => <TaskLink key={t.key} k={t.key}>{tks.length > 1 ? `task ${i + 1}` : 'task'}</TaskLink>)}</span> : null}
             </div>
             {day.stops.map((st) => (
               <div key={st.branch} className="mt-1.5">

@@ -957,7 +957,7 @@ const SEG_OF: Record<string, SegmentId> = {
 };
 
 /** One Mohan task per planned shoot day (lib/smileclub/shoots.ts — from Dr Luvi's doctors' calendar). */
-const SHOOT_TASKS: TeamTask[] = SHOOT_PLAN.map((day) => {
+const SHOOT_TASKS: TeamTask[] = SHOOT_PLAN.filter((day) => !day.tasks).map((day) => {
   const ids = day.stops.flatMap((st) => st.slots.map((x) => x.id));
   const where = day.stops.map((st) => `${BRANCH_LABEL[st.branch]} (${st.slots.map((x) => `${x.time} ${dentistById(x.id).name}${x.only ? ' — campaign video only' : ''}`).join(', ')})`).join('; then ');
   return {

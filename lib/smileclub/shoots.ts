@@ -45,6 +45,8 @@ export interface ShootSlot {
 
 export interface ShootDay {
   key: string;
+  /** Existing tasks that already cover this day (no generated shoot-day task). */
+  tasks?: string[];
   iso: string;
   label: string;
   stops: { branch: Branch; slots: ShootSlot[] }[];
@@ -53,8 +55,6 @@ export interface ShootDay {
 /** Already filmed. */
 export const FILMED: { id: string; when: string; what: string }[] = [
   { id: 'yasmin-youssef', when: 'Wed 23 Sep', what: 'Video 1 (Smile Club) — being finished from the team’s comments' },
-  { id: 'yahya-tosun', when: 'Fri 25 Sep', what: 'Both videos' },
-  { id: 'dilsad-ozdogan', when: 'Fri 25 Sep', what: 'Both videos' },
 ];
 
 /**
@@ -62,6 +62,12 @@ export const FILMED: { id: string; when: string; what: string }[] = [
  * Times are proposals: Dr Luvi blocks each slot in the dentist's diary.
  */
 export const SHOOT_PLAN: ShootDay[] = [
+  { key: 'fri25', iso: '2026-09-25', label: 'Fri 25 Sep', tasks: ['m-shoot-tosun', 'm-shoot-dilsad'], stops: [
+    { branch: 'tosun', slots: [
+      { id: 'yahya-tosun', time: '10:00', note: 'Confirmed with Mohan: 10:00–12:00' },
+      { id: 'dilsad-ozdogan', time: '12:00', note: 'Confirmed with Mohan: 12:00–14:00' },
+    ] },
+  ] },
   { key: 'sat26', iso: '2026-09-26', label: 'Sat 26 Sep', stops: [
     { branch: 'alwasl', slots: [
       { id: 'ghada-hussain', time: '09:00' },
