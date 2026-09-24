@@ -13,7 +13,10 @@ import { OWNER_LABEL, TASK_BY_KEY, TEAM_TASKS, TOTAL_WEIGHT, TRACKER_SOURCE, ext
  * cron; each alert goes at most once per Dubai day (lane_e.sc_alert_log).
  *
  *   17:00  Tomorrow's shoot schedule → MJ; cc Dr Luvi, Mr Akbar, Ms Shadi,
- *          Gautam, Fahad (+ Mohan). Only when there is a shoot tomorrow.
+ *          Gautam, Fahad (+ Mohan). Only when there is a shoot tomorrow; any
+ *          run 17:00–21:59 sends it, so a missed 17:00 run still goes out.
+ *   07:00  Shoot-day sign-off nudge → Ms Shadi, Dr Luvi, Gautam; cc Fahad —
+ *          only when today's dentists still lack final approval (07:00–09:59).
  *   09:00  Personal status digests (Mon–Sat; Sunday only if something is due
  *          that day) → Gautam, Dr Luvi, Mohan; cc Mr Akbar and Fahad. Skipped
  *          when the person has nothing due, overdue, blocked or waiting.
@@ -138,6 +141,31 @@ ${tomorrow < WARDROBE.arrives ? `<p style="background:#FDF9EC;padding:8px;border
   return { subject, html: shell(`Tomorrow’s shoot — ${day.label}`, body) };
 }
 
+/* ── 07:00 on a shoot day — sign-off nudge ── */
+
+export async function buildSignoffNudge(sb: Sb, today: string) {
+  const day = SHOOT_PLAN.find((d) => d.iso === today);
+  if (!day) return null;
+  const reviews = await loadReviews(sb);
+  const pending: string[][] = [];
+  let first = '';
+  for (const st of day.stops) for (const sl of st.slots) {
+    const d = dentistById(sl.id);
+    const r = reviewFor(d, reviews);
+    if (!first) first = sl.time;
+    if (r.final) continue;
+    const who = (['shadi', 'luvi', 'gautam'] as const).filter((x) => r.per[x].state !== 'approved').map((x) => NAME[x]);
+    pending.push([`<b style="color:#B45F53">${esc(sl.time)}</b>`, `<b>${esc(d.name)}</b><br><span style="color:#767769">${esc(BRANCH_LABEL[st.branch])}</span>`, esc(who.join(', ')), esc(nextClinicDays(d.id, day.iso).join(' or ') || '—')]);
+  }
+  if (!pending.length) return null;
+  const subject = `Today’s shoot starts ${first} — please approve ${pending.length} dentist${pending.length === 1 ? '' : 's'}’ scripts now`;
+  const body = `<p>Good morning Ms Shadi, Dr Luvi and Gautam,</p><p>Mohan films today from <b>${esc(first)}</b>. These dentists’ scripts are not yet approved by all three of you:</p>
+${table(['Time', 'Dentist', 'Still to approve', 'Backup day if not approved'], pending)}
+<p>Please approve (or say what to change) on the dashboard before the slot: Smile Club → Dentist scripts → the dentist → <b>Approve (final)</b>. If you already approved by email, reply to Fahad and he records it for you.</p>
+<p style="color:#767769">Copied: Fahad.</p>`;
+  return { subject, html: shell(`Today’s shoot — approvals needed`, body) };
+}
+
 /* ── 09:00 — personal status digests ── */
 
 const PERSON_SCOPE: Record<'gautam' | 'luvi' | 'mohan', Person[]> = { gautam: ['gautam'], luvi: ['luvi', 'reception', 'doctors'], mohan: ['mohan'] };
@@ -209,7 +237,17 @@ export async function runSmileClubAlerts(): Promise<string[]> {
   const today = dubai(now);
   const hour = dubaiHour(now);
   const out: string[] = [];
-  if (hour === 17 && !(await alreadySent(sb, 'shoot-tomorrow', today))) {
+  if (hour >= 7 && hour < 10 && !(await alreadySent(sb, 'shoot-today-signoff', today))) {
+    const m = await buildSignoffNudge(sb, today);
+    if (m) {
+      const r = await send(['shadi', 'luvi', 'gautam'], ['fahad'], m.subject, m.html);
+      await logSent(sb, 'shoot-today-signoff', today, r);
+      out.push(`shoot-today-signoff: ${r.note}`);
+    } else {
+      await logSent(sb, 'shoot-today-signoff', today, { ok: true, recipients: [], note: 'no shoot today, or all approved — nothing sent' });
+    }
+  }
+  if (hour >= 17 && hour < 22 && !(await alreadySent(sb, 'shoot-tomorrow', today))) {
     const m = await buildShootEmail(sb, today);
     if (m) {
       const r = await send(['mj'], ['luvi', 'akbar', 'shadi', 'gautam', 'fahad', 'mohan'], m.subject, m.html);

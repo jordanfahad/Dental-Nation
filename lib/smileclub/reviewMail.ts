@@ -4,6 +4,7 @@ import { emailConfigured, sendEmail } from '@/lib/notify/email';
 import { DENTISTS } from '@/lib/smileclub/scripts';
 import { REVIEWERS, reviewFor, type ReviewEntry, type ReviewerId } from '@/lib/smileclub/review';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
+import { SHOOT_PLAN } from '@/lib/smileclub/shoots';
 
 /**
  * Email alerts for the Smile Club script sign-off. Recipients are env-overridable
@@ -77,12 +78,15 @@ export async function runReviewReminder(): Promise<string> {
   if (done?.length) return 'already reminded today';
   const { data } = await sb.from('sc_script_reviews').select('dentist_id,reviewer,decision,note,hash,actor,at');
   const entries: ReviewEntry[] = (data ?? []).map((r) => ({ dentistId: r.dentist_id as string, reviewer: r.reviewer as ReviewEntry['reviewer'], decision: r.decision as ReviewEntry['decision'], note: (r.note as string | null) ?? null, hash: r.hash as string, actor: r.actor as string, at: r.at as string }));
-  const sentIds = new Set(entries.filter((e) => e.decision === 'sent').map((e) => e.dentistId));
+  const soon = new Date(now.getTime() + 7 * 86_400_000).toISOString().slice(0, 10);
+  const upcoming = SHOOT_PLAN.filter((d) => d.iso >= today && d.iso <= soon).flatMap((d) => d.stops.flatMap((s) => s.slots.map((x) => x.id)));
+  // Scripts sent from the dashboard, plus anyone filming in the next 7 days (the pack was also sent by email).
+  const sentIds = new Set([...entries.filter((e) => e.decision === 'sent').map((e) => e.dentistId), ...upcoming]);
   let n = 0;
   for (const r of REVIEWERS) {
     const waiting = DENTISTS.filter((d) => sentIds.has(d.id)).filter((d) => {
       const st = reviewFor(d, entries);
-      return st.sent && (st.per[r.id].state === 'pending' || st.per[r.id].state === 'stale');
+      return st.per[r.id].state === 'pending' || st.per[r.id].state === 'stale';
     });
     if (!waiting.length) continue;
     const res = await mail([r.id], `Reminder: ${waiting.length} Smile Club script set${waiting.length === 1 ? '' : 's'} waiting for your approval`,

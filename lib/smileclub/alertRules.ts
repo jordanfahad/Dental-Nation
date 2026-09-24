@@ -1,6 +1,7 @@
 /** The Smile Club email alert rules, as shown on the Team tab (implemented in lib/smileclub/alerts.ts). */
 export const ALERT_RULES = [
-  { when: 'Daily 17:00 Dubai — only if there is a shoot tomorrow', what: 'Tomorrow’s shoot schedule: time, dentist, clinic, clinic hours, what is filmed, languages, scripts approved or not (with backup day), wardrobe', to: 'MJ', cc: 'Dr Luvi, Mr Akbar, Ms Shadi, Gautam, Fahad, Mohan' },
+  { when: 'Shoot days, 07:00 Dubai — only if that day’s dentists are not all approved', what: 'Today’s shoot: which dentists still need approval, from whom, before which slot — and the backup day', to: 'Ms Shadi, Dr Luvi, Gautam', cc: 'Fahad' },
+  { when: 'Daily 17:00 Dubai (sent by 22:00 at the latest) — only if there is a shoot tomorrow', what: 'Tomorrow’s shoot schedule: time, dentist, clinic, clinic hours, what is filmed, languages, scripts approved or not (with backup day), wardrobe', to: 'MJ', cc: 'Dr Luvi, Mr Akbar, Ms Shadi, Gautam, Fahad, Mohan' },
   { when: 'Daily 09:00 Dubai, Mon–Sat (Sunday only if something is due that day) — skipped when nothing is due, overdue, blocked or waiting', what: 'Gautam’s status: completion score vs plan, due today, overdue, who is waiting on him, what he is waiting on, next 3 days, company pipeline and today’s calendar entries', to: 'Gautam', cc: 'Mr Akbar, Fahad' },
   { when: 'Same rule as above', what: 'Dr Luvi’s status: her score, plus the receptionists’ and dentists’ tasks she updates — due, overdue, dependencies both ways', to: 'Dr Luvi', cc: 'Mr Akbar, Fahad' },
   { when: 'Same rule as above', what: 'Mohan’s status: score, due and overdue, today’s and tomorrow’s shoots, new review comments on his work', to: 'Mohan', cc: 'Mr Akbar, Fahad' },

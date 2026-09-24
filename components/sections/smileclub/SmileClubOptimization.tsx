@@ -3602,6 +3602,7 @@ function ReviewPanel({ d }: { d: Dentist }) {
     setMsg(res.mail);
   };
   const decide = (decision: 'approved' | 'changes' | 'input') => run(() => reviewScriptAction({ dentistId: d.id, decision, note }));
+  const recordEmail = (who: 'shadi' | 'luvi' | 'gautam') => run(() => reviewScriptAction({ dentistId: d.id, decision: 'approved', note: note || 'Approved by email', onBehalf: who }));
   return (
     <div className="rounded-lg border px-2.5 py-2" style={{ borderColor: r.final ? '#cfe0cd' : '#E8DDB5', backgroundColor: r.final ? '#F3F8F2' : '#FFFCF3' }}>
       <div className="flex flex-wrap items-center gap-1.5">
@@ -3641,6 +3642,9 @@ function ReviewPanel({ d }: { d: Dentist }) {
           <input value={note} onChange={(e) => setNote(e.target.value)} maxLength={1500} placeholder={me ? 'Your input or the change you need…' : 'Fahad’s input…'} className="min-w-[200px] flex-1 rounded-md border px-2 py-1 text-[10.5px]" style={{ borderColor: LINE }} />
           {me ? <button type="button" disabled={busy || !note.trim()} onClick={() => decide('changes')} className="rounded-full border px-2.5 py-1 text-[10.5px] font-bold disabled:opacity-40" style={{ borderColor: '#dcb3aa', color: '#a04a38' }}>Request changes</button> : null}
           <button type="button" disabled={busy || !note.trim()} onClick={() => decide('input')} className="rounded-full px-2.5 py-1 text-[10.5px] font-bold text-white disabled:opacity-40" style={{ backgroundColor: BLUE }}>Add input</button>
+          {isAdmin ? REVIEWERS.filter((x) => r.per[x.id].state !== 'approved').map((x) => (
+            <button key={x.id} type="button" disabled={busy} onClick={() => recordEmail(x.id)} className="rounded-full border px-2.5 py-1 text-[10.5px] font-bold disabled:opacity-40" style={{ borderColor: '#cfe0cd', color: '#2C5E3F' }} title={`${x.name} approved by email — record it here`}>{x.name} approved by email ✓</button>
+          )) : null}
           {isAdmin && !r.sent ? <button type="button" disabled={busy} onClick={() => run(() => sendScriptsForReviewAction({ dentistIds: [d.id] }))} className="rounded-full px-2.5 py-1 text-[10.5px] font-bold text-white disabled:opacity-40" style={{ backgroundColor: NAVY }}>Send for sign-off (email)</button> : null}
         </div>
       ) : state?.live ? <p className="mt-1 text-[10px]" style={{ color: OLIVE }}>Ms Shadi, Dr Luvi and Gautam approve here, signed in as themselves; Fahad adds input.</p> : null}

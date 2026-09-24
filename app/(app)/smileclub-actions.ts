@@ -390,12 +390,14 @@ export type ReviewResult = { ok: true; state: TrackerState; mail: string } | { o
  * Fahad (admin) may add input. Each decision is pinned to the current wording
  * (scriptHash) and emailed to Fahad and the other reviewers.
  */
-export async function reviewScriptAction(input: { dentistId: string; decision: string; note?: string }): Promise<ReviewResult> {
+export async function reviewScriptAction(input: { dentistId: string; decision: string; note?: string; onBehalf?: string }): Promise<ReviewResult> {
   const d = DENTISTS.find((x) => x.id === input.dentistId);
   if (!d) return { ok: false, error: 'Unknown dentist.' };
   const { canEdit, viewer } = await editableFor();
   const isAdmin = canEdit === 'all';
-  const reviewer = viewer ? REVIEWER_BY_USER[viewer] : undefined;
+  // Fahad may record a decision a reviewer sent by email (marked as such in the trail).
+  const behalf = isAdmin && input.onBehalf && ['shadi', 'luvi', 'gautam'].includes(input.onBehalf) ? (input.onBehalf as 'shadi' | 'luvi' | 'gautam') : undefined;
+  const reviewer = behalf ?? (viewer ? REVIEWER_BY_USER[viewer] : undefined);
   const decision = input.decision as Decision;
   if (!['approved', 'changes', 'input'].includes(decision)) return { ok: false, error: 'Invalid decision.' };
   if (decision !== 'input' && !reviewer) return { ok: false, error: 'Only Ms Shadi, Dr Luvi or Gautam can approve or request changes — signed in as themselves.' };
@@ -404,7 +406,8 @@ export async function reviewScriptAction(input: { dentistId: string; decision: s
   if (decision !== 'approved' && !note) return { ok: false, error: 'Write what should change first.' };
   const sb = getSupabaseAdmin();
   if (!sb) return { ok: false, error: 'Tracking database unavailable.' };
-  const row = { dentist_id: d.id, reviewer: reviewer ?? 'fahad', decision, note, hash: scriptHash(d), actor: viewer ?? 'Fahad (admin)' };
+  const actorName = behalf ? `${{ shadi: 'Ms Shadi', luvi: 'Dr Luvi', gautam: 'Gautam' }[behalf]} (by email, recorded by Fahad)` : viewer ?? 'Fahad (admin)';
+  const row = { dentist_id: d.id, reviewer: reviewer ?? 'fahad', decision, note, hash: scriptHash(d), actor: actorName };
   const { error } = await sb.from('sc_script_reviews').insert(row);
   if (error) return { ok: false, error: error.message };
   const entries = await loadReviews(sb);
