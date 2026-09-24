@@ -15,6 +15,7 @@
 import { createContext, useContext, useState } from 'react';
 import { updateTeamTaskAction, verifyCrmTestAction } from '@/app/(app)/smileclub-actions';
 import { SEGMENTS, type SegmentId } from '@/lib/smileclub/segments';
+import { BANNED_WORDS, BRANCH_LABEL, DENTISTS, SHOOT, scriptsFor, type Branch } from '@/lib/smileclub/scripts';
 import { BUDGET_BY_SEG, CEILING, COMMITTED, RESERVE, SEGMENT_BUDGETS, TOTAL, fmtAed, segmentTotal } from '@/lib/smileclub/budget';
 import {
   CRM_TEST_SPEC,
@@ -60,7 +61,7 @@ const MINT = '#A9C3A6';
 const OLIVE = '#767769';
 const LINE = '#D8D8CC';
 
-type Sub = 'segments' | 'why' | 'layers' | 'reco' | 'mandate' | 'response' | 'team' | 'dm' | 'offer' | 'waves' | 'corporate' | 'channels' | 'kpis';
+type Sub = 'segments' | 'scripts' | 'why' | 'layers' | 'reco' | 'mandate' | 'response' | 'team' | 'dm' | 'offer' | 'waves' | 'corporate' | 'channels' | 'kpis';
 
 /* ── atoms ─────────────────────────────────────────────────────── */
 
@@ -2279,7 +2280,7 @@ function Kpis() {
 const TEAM: { id: Person; name: string; role: string; color: string; owns: string }[] = [
   { id: 'fahad', name: 'Fahad', role: 'Growth lead — reports to Mr Akbar', color: '#5B4B8A', owns: 'Runs the marketing machine — Google, Facebook/Instagram, LinkedIn and the partner channels — works the warm corporate introductions, gets Mr Akbar’s sign-offs, and reports progress every checkpoint Monday.' },
   { id: 'crm', name: 'CRM-DN', role: 'WhatsApp, web pages, tracking & contact centre', color: '#7A5C2E', owns: 'Runs the WhatsApp messages, the membership web page and banner, the contact centre’s 10-minute replies, and the tracking that proves where every member came from. Fahad updates these tasks.' },
-  { id: 'doctors', name: 'Treating dentists', role: 'Dr Hasna · Dr Tosun · Dr Maisoon · every treating dentist', color: '#1F6F6B', owns: 'Recommend Smile Club in one sentence at the end of every check-up, and write — in their own name, only to their own patients — the three waves of personal WhatsApp messages. Dr Luvi updates these tasks.' },
+  { id: 'doctors', name: 'Treating dentists', role: 'Dr Hasna · Dr Tosun · Dr Maysoon · every treating dentist', color: '#1F6F6B', owns: 'Recommend Smile Club in one sentence at the end of every check-up, and write — in their own name, only to their own patients — the three waves of personal WhatsApp messages. Dr Luvi updates these tasks.' },
   { id: 'gautam', name: 'Gautam', role: 'Project owner & corporate implementer', color: NAVY, owns: 'Owns the mandate and its data, carries the corporate door-to-door bag in-window, and implements every signed employer (proposal → launch → activation).' },
   { id: 'luvi', name: 'Dr Luvi', role: 'Head of Operations', color: '#2C5E3F', owns: 'Owns the front-desk engine behind In-clinic-60, branch capacity, clinical review of every claim, and clinical delivery of on-site days. Updates the receptionists’ tasks on their behalf.' },
   { id: 'mohan', name: 'Mohan', role: 'Videographer & content designer', color: CORAL, owns: 'The creative unlock: produces the asset variety the dynamic formats need, plus every print, video and launch kit the other lanes depend on.' },
@@ -3078,11 +3079,129 @@ function SegmentsTab({ state }: { state: TrackerState }) {
   );
 }
 
+/* ── Dentist scripts (24 Sep): each dentist presents Smile Club to their own patients ── */
+
+function CopyButton({ text }: { text: string }) {
+  const [done, setDone] = useState(false);
+  return (
+    <button
+      type="button"
+      onClick={() => { void navigator.clipboard?.writeText(text); setDone(true); setTimeout(() => setDone(false), 1500); }}
+      className="rounded-full border px-2 py-0.5 text-[9.5px] font-bold" style={{ borderColor: LINE, color: done ? '#2C5E3F' : NAVY }}
+    >
+      {done ? 'Copied ✓' : 'Copy'}
+    </button>
+  );
+}
+
+function ScriptBlock({ label, text, tone }: { label: string; text: string; tone: string }) {
+  return (
+    <div className="rounded-lg border-l-4 bg-white px-2.5 py-2" style={{ borderColor: tone }}>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[9.5px] font-bold uppercase tracking-wide" style={{ color: tone }}>{label}</p>
+        <CopyButton text={text.replace(/^“|”$/g, '')} />
+      </div>
+      <p className="mt-1 whitespace-pre-line text-[11px] leading-snug" style={{ color: NAVY }}>{text}</p>
+    </div>
+  );
+}
+
+function ScriptsTab() {
+  const [branch, setBranch] = useState<Branch | 'all'>('all');
+  const [open, setOpen] = useState<string | null>(SHOOT.dentists[0]);
+  const list = DENTISTS.filter((d) => branch === 'all' || d.branch === branch);
+  const byId = (id: string) => DENTISTS.find((d) => d.id === id)!;
+  return (
+    <div className="space-y-5">
+      <p className="rounded-xl border-l-4 bg-white px-4 py-3 text-[12.5px] font-medium leading-snug" style={{ borderColor: GOLD, color: NAVY, fontFamily: 'Georgia, serif' }}>
+        <span className="font-bold">Every dentist presents Smile Club to their own patients — in their own name, with a reason that fits their work.</span>{' '}
+        An orthodontist talks about protecting a new smile, a periodontist about gums, a children&apos;s dentist about
+        family habits. Each dentist has three versions: one sentence in the chair, a WhatsApp message to their own
+        patients, and a 30-second video. Every dentist reads and approves their own before anything is used.
+      </p>
+
+      <section>
+        <Exhibit n="DS1" title={`Mohan’s first shoot — ${SHOOT.date}, ${BRANCH_LABEL[SHOOT.branch]}`} />
+        <Card accent={CORAL}>
+          <p className="text-[11px] leading-snug" style={{ color: '#3a4148' }}>
+            Two dentists confirmed: <b>{byId(SHOOT.dentists[0]).name}</b> and <b>{byId(SHOOT.dentists[1]).name}</b>. The
+            third slot in the brief was blank — <b>{byId(SHOOT.suggested).name}</b> is also in clinic on Friday morning at
+            the same branch and would give the set a second general-dentist voice. Film each dentist&apos;s 30-second
+            script below (it replaces the earlier draft: it names the dentist and branch correctly and explains
+            &quot;urgent dental support&quot; in plain words). Written consent from any patient who appears; no patient
+            identifiable without it.
+          </p>
+          <div className="mt-2 grid gap-2 md:grid-cols-3">
+            {[...SHOOT.dentists, SHOOT.suggested].map((id) => {
+              const d = byId(id);
+              return <ScriptBlock key={id} label={`${d.name}${id === SHOOT.suggested ? ' (suggested)' : ''} — video`} text={scriptsFor(d).video} tone={CORAL} />;
+            })}
+          </div>
+        </Card>
+      </section>
+
+      <section>
+        <Exhibit n="DS2" title={`All ${DENTISTS.length} dentists — three scripts each`} />
+        <div className="mb-2 flex flex-wrap gap-1.5">
+          {([['all', 'All branches'], ['tosun', BRANCH_LABEL.tosun], ['alwasl', BRANCH_LABEL.alwasl], ['amc', BRANCH_LABEL.amc]] as [Branch | 'all', string][]).map(([id, label]) => (
+            <button key={id} type="button" onClick={() => setBranch(id)} className="rounded-full px-3 py-1 text-[11px] font-bold"
+              style={branch === id ? { backgroundColor: NAVY, color: 'white' } : { backgroundColor: '#F1F1EA', color: OLIVE }}>{label}</button>
+          ))}
+        </div>
+        <div className="space-y-2">
+          {list.map((d) => {
+            const s = scriptsFor(d);
+            const isOpen = open === d.id;
+            return (
+              <div key={d.id} className="rounded-xl border bg-white" style={{ borderColor: isOpen ? BLUE : LINE }}>
+                <button type="button" onClick={() => setOpen(isOpen ? null : d.id)} className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left">
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[12px] font-bold" style={{ color: NAVY }}>{d.name} <span className="font-semibold" style={{ color: OLIVE }}>· {d.title}</span></span>
+                    <span className="block text-[10.5px]" style={{ color: OLIVE }}>{BRANCH_LABEL[d.branch]} · in clinic {d.days} · WhatsApp code {d.code}</span>
+                  </span>
+                  <span className="shrink-0 text-[13px] font-bold" style={{ color: BLUE }}>{isOpen ? '▾' : '▸'}</span>
+                </button>
+                {isOpen ? (
+                  <div className="space-y-2 border-t px-3.5 py-3" style={{ borderColor: '#EEEFE1' }}>
+                    {d.note ? <p className="text-[10.5px] font-bold" style={{ color: '#8a6a1e' }}>⚠ {d.note}</p> : null}
+                    <ScriptBlock label="1 · In the chair — one sentence at the end of the visit" text={s.chair} tone={BLUE} />
+                    <ScriptBlock label="2 · WhatsApp — only to this dentist’s own patients" text={s.whatsapp} tone="#2C5E3F" />
+                    <ScriptBlock label="3 · 30-second video" text={s.video} tone={CORAL} />
+                  </div>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      <section>
+        <Exhibit n="DS3" title="Rules for every script" />
+        <ul className="grid gap-1.5 md:grid-cols-2">
+          {[
+            'The dentist reads and approves their own version before it is used — nothing goes out in a name without approval.',
+            `Never the words ${BANNED_WORDS.map((w) => `“${w}”`).join(', ')} — Smile Club is a membership.`,
+            'WhatsApp goes only to the dentist’s own patients who agreed to be contacted — at most 20 a day, every reply answered the same day, any “STOP” honoured immediately.',
+            'Dentists who are in clinic one day a week (e.g. Dr. Hasna Alsaeed, Sundays): replies are answered by the branch desk on the other days, in the dentist’s name, and booked with them.',
+            '“Help when you have an urgent dental problem” — say it this way; the internal name DN SOS means nothing to patients.',
+            'Arabic versions: to be translated and checked by an Arabic-speaking dentist before use.',
+          ].map((r) => (
+            <li key={r} className="flex gap-2 text-[11px] leading-snug" style={{ color: '#3a4148' }}>
+              <span className="mt-[6px] h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: BLUE }} />{r}
+            </li>
+          ))}
+        </ul>
+      </section>
+    </div>
+  );
+}
+
 /* ── the tab ───────────────────────────────────────────────────── */
 
 const SUBS: { id: Sub; label: string }[] = [
   { id: 'segments', label: 'The plan by segment' },
   { id: 'team', label: 'Team task calendar' },
+  { id: 'scripts', label: 'Dentist scripts' },
   { id: 'why', label: 'Why & proposition' },
   { id: 'layers', label: 'Layers & demand states' },
   { id: 'reco', label: 'The recommendation' },
@@ -3181,6 +3300,7 @@ export function SmileClubOptimization({ tracker }: { tracker?: TrackerState } = 
       <SubNavContext.Provider value={{ goto }}>
       <div className="mt-3">
         {sub === 'segments' && <SegmentsTab state={trk} />}
+        {sub === 'scripts' && <ScriptsTab />}
         {sub === 'why' && <WhyTab />}
         {sub === 'layers' && <LayersTab />}
         {sub === 'reco' && <Recommendation />}

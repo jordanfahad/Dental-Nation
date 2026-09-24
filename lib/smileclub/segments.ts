@@ -48,7 +48,7 @@ export const SEGMENTS: Segment[] = [
     id: 'patients', name: 'Our patients who are not visiting', owner: 'Treating doctors · Dr Luvi · CRM-DN',
     who: 'Existing Dental Nation patients, grouped by their own dentist and by how recently they visited: ACTIVE but due a check-up · INACTIVE (last visit 6–18 months ago) · DORMANT (over 18 months).',
     target: 24, targetNote: 'Active-due 10 · inactive 8 · dormant 6',
-    messenger: 'Each dentist writes only to their OWN patients, in their own name — Dr Hasna to Dr Hasna’s patients, Dr Tosun to his, Dr Maisoon to hers, and so on for every treating dentist. Never a blanket message from “Dental Nation”.',
+    messenger: 'Each dentist writes only to their OWN patients, in their own name — Dr Hasna to Dr Hasna’s patients, Dr Tosun to his, Dr Maysoon to hers, and so on for every treating dentist. Never a blanket message from “Dental Nation”.',
     message: 'One short, personal WhatsApp from the patient’s own dentist, different for each group — a nudge for those due, a welcome back for those who have drifted.',
     how: [
       { title: '1 · One list per dentist', body: 'Dr Luvi and CRM-DN split the patient base by treating dentist, then into active-due / inactive / dormant. Only patients who agreed to be contacted are included.' },
@@ -60,7 +60,7 @@ export const SEGMENTS: Segment[] = [
     scripts: [
       { label: 'ACTIVE — check-up due', text: '“Hi ___, it’s Dr Hasna from Dental Nation. Your six-month check-up is due. Many of my patients now use Smile Club — check-ups and cleanings included, member rates on everything else, AED 99 a month. Would you like me to book you in?”' },
       { label: 'INACTIVE — 6–18 months', text: '“Hi ___, Dr Tosun here from Dental Nation. It’s been a while since your last visit — I’d love to see how you’re doing. Smile Club makes it simple to stay on track: your check-ups are planned and included. Shall I find you a time?”' },
-      { label: 'DORMANT — over 18 months', text: '“Hi ___, Dr Maisoon from Dental Nation. It’s been some time — no pressure at all, but if you’d like a fresh start, a Smile Club membership includes your first check-up. Just reply and I’ll arrange it.”' },
+      { label: 'DORMANT — over 18 months', text: '“Hi ___, Dr Maysoon from Dental Nation. It’s been some time — no pressure at all, but if you’d like a fresh start, a Smile Club membership includes your first check-up. Just reply and I’ll arrange it.”' },
     ],
     unlock: 'Unlocks only when all four are true: (1) each dentist’s list is consent-checked, (2) each dentist has approved their messages, (3) Mr Akbar has approved the approach, (4) per-dentist tracking codes are live. Target: first wave Mon 28 Sep.',
     notDo: ['No blanket broadcast — this replaces the mass WhatsApp test that produced no confirmed members.', 'No message from a dentist the patient has never seen.', 'No patient who has opted out; any “stop” is honoured immediately.'],

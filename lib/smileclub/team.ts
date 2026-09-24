@@ -241,7 +241,7 @@ const TASKS_RAW: TeamTask[] = [
     objective: 'Set up WhatsApp so each dentist’s messages go only to that dentist’s patients, in their name, at most 20 a day, with replies routed to their branch.',
     why: 'This is the opposite of the old mass test: personal, small, and every reply answered.',
     steps: [
-      { s: 'One code per dentist', how: 'e.g. SC-DR-HASNA, SC-DR-TOSUN, SC-DR-MAISOON.' },
+      { s: 'One code per dentist', how: 'e.g. SC-DR-HASNA, SC-DR-TOSUN, SC-DR-MAYSOON.' },
       { s: 'Batch limit set', how: 'Max 20 per dentist per day.' },
       { s: 'Replies routed', how: 'To the dentist’s branch desk, answered same day.' },
       { s: 'Opt-outs honoured', how: 'Any “stop” removes the patient immediately.' },
@@ -445,10 +445,10 @@ const TASKS_RAW: TeamTask[] = [
     ],
     done: 'All receptionists at all three branches trained.', with: 'Receptionists', to: 'why', toLabel: 'Words to use', weight: 4, subs: 0, subsNote: 'Protects the clinic 60' },
   { key: 'l-doctor-lists', who: 'luvi', wk: 1, dueIso: '2026-09-25', due: 'Fri 25 Sep', task: 'Split each dentist’s patients into three groups',
-    objective: 'With CRM-DN, produce one list per treating dentist — Dr Hasna, Dr Tosun, Dr Maisoon and every other dentist — split into active-but-due, inactive (6–18 months) and dormant (18+ months).',
+    objective: 'With CRM-DN, produce one list per treating dentist — Dr Hasna, Dr Tosun, Dr Maysoon and every other dentist — split into active-but-due, inactive (6–18 months) and dormant (18+ months).',
     why: 'Mr Akbar’s rule: no blanket messages. Each dentist writes only to their own patients, and a patient due a check-up needs a different message from one we have not seen in two years.',
     steps: [
-      { s: 'List the dentists', how: 'Every treating dentist at the three branches, with their branch.' },
+      { s: 'Confirm the dentists', how: '18 dentists across the three branches are listed in the plan’s “Dentist scripts” tab — confirm the list and anyone missing.' },
       { s: 'Patients per dentist', how: 'Each patient under the dentist who last treated them, with last visit date.' },
       { s: 'Consent check', how: 'Keep only patients who agreed to be contacted; remove anyone who opted out.' },
       { s: 'Three groups each', how: 'Active-but-due · inactive 6–18 months · dormant 18+ months — counts per dentist.' },
@@ -558,12 +558,12 @@ const TASKS_RAW: TeamTask[] = [
     ],
     done: '60 confirmed and handed to Finance.', to: 'mandate', toLabel: 'What counts as a member', weight: 3, subs: 0, subsNote: 'Confirms the clinic 60' },
 
-  /* ── Treating dentists — Dr Hasna, Dr Tosun, Dr Maisoon and every other treating dentist (Dr Luvi updates) ── */
+  /* ── Treating dentists — Dr Hasna, Dr Tosun, Dr Maysoon and every other treating dentist (Dr Luvi updates) ── */
   { key: 'd-pitch', who: 'doctors', wk: 1, dueIso: '2026-09-24', due: 'Thu 24 Sep', task: 'The one-sentence recommendation in the chair',
     objective: 'At the end of every check-up or cleaning, each dentist recommends Smile Club in one sentence tailored to what they just saw, and hands over a signed invitation card.',
     why: 'Patients act on their own dentist’s advice far more than on a receptionist or a poster. This one sentence is what makes the checkout conversation easy.',
     steps: [
-      { s: 'Learn the sentences', how: 'Three versions with Dr Luvi: after a cleaning, treatment still to do, parent with a child.' },
+      { s: 'Learn your sentence', how: 'Each dentist’s own sentence is in the “Dentist scripts” tab, written for their specialty — read it, adjust the tone, approve it.' },
       { s: 'Use it every visit', how: 'End of every check-up and cleaning — never mid-treatment or with a patient in pain.' },
       { s: 'Hand the card', how: 'The signed invitation card; the receptionist takes it from there.' },
     ],
@@ -572,7 +572,7 @@ const TASKS_RAW: TeamTask[] = [
     objective: 'Each dentist reads and approves, in their own words, the three messages that will go to their own patients: due a check-up, not seen in a while, not seen for a long time.',
     why: 'The message comes from the dentist the patient knows. Nothing goes out in a dentist’s name that the dentist has not approved.',
     steps: [
-      { s: 'Drafts received', how: 'From Dr Luvi, using the plan’s examples.' },
+      { s: 'Drafts received', how: 'Your own WhatsApp message and video script are in the “Dentist scripts” tab.' },
       { s: 'Own words', how: 'Adjust the tone so it sounds like you.' },
       { s: 'Approved', how: 'Reply “approved” to Dr Luvi.' },
     ],
@@ -583,7 +583,7 @@ const TASKS_RAW: TeamTask[] = [
     steps: [
       { s: 'Dr Hasna’s list sent', how: 'In daily batches of up to 20; code SC-DR-HASNA.' },
       { s: 'Dr Tosun’s list sent', how: 'Same; code SC-DR-TOSUN.' },
-      { s: 'Dr Maisoon’s list sent', how: 'Same; code SC-DR-MAISOON.' },
+      { s: 'Dr Maysoon’s list sent', how: 'Same; code SC-DR-MAYSOON.' },
       { s: 'Every other dentist sent', how: 'Same, each with their own code.' },
       { s: 'Replies booked', how: 'Every reply answered and booked the same day by the branch.' },
     ],
