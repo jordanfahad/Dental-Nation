@@ -15,7 +15,7 @@
 import { createContext, useContext, useState } from 'react';
 import { commentTeamTaskAction, updateTeamTaskAction, verifyCrmTestAction } from '@/app/(app)/smileclub-actions';
 import { SEGMENTS, type SegmentId } from '@/lib/smileclub/segments';
-import { AMC_LANG_NOTE, BANNED_TR_AR, BANNED_WORDS, BRANCH_LABEL, BRANCH_LANGS, DENTISTS, LANES, LANG_LABEL, LANG_REVIEW, PATIENT_SEGS, SHOOT, laneFor, langsFor, scriptsFor, type Branch, type Dentist, type DentistScripts, type Lang } from '@/lib/smileclub/scripts';
+import { BANNED_TR_AR, BANNED_WORDS, BRANCH_LABEL, BRANCH_LANGS, DENTISTS, LANES, LANG_LABEL, LANG_REVIEW, PATIENT_SEGS, SHOOT, laneFor, langsFor, scriptsFor, type Branch, type Dentist, type DentistScripts, type Lang } from '@/lib/smileclub/scripts';
 import { BUDGET_BY_SEG, CEILING, COMMITTED, RESERVE, SEGMENT_BUDGETS, TOTAL, fmtAed, segmentTotal } from '@/lib/smileclub/budget';
 import {
   CRM_TEST_SPEC,
@@ -3107,7 +3107,6 @@ function BiScript({ d, label, tone, pick, combined }: { d: Dentist; label: strin
 
 function TranslationNote({ d }: { d: Dentist }) {
   const notes = langsFor(d).filter((l) => l !== 'en').map((l) => LANG_REVIEW[l]);
-  if (d.branch === 'amc') notes.push(AMC_LANG_NOTE);
   return notes.length ? <p className="text-[10px] font-bold" style={{ color: '#8a6a1e' }}>⚠ {notes.join(' ')}</p> : null;
 }
 
@@ -3237,7 +3236,7 @@ function ScriptsTab() {
             'WhatsApp goes to group lists — active, inactive, dormant — built from each dentist’s own patients who agreed to be contacted. One message per group, with no patient names or personal details in the text.',
             'At most 20 messages a day per dentist, every reply answered the same day, any “STOP” honoured immediately.',
             'Language: send the patient’s own language when the CRM has it; otherwise one message with both — the branch language first, English second.',
-            'Dr. Tosun Dental Clinic: Turkish + English. Dental Nation Al Wasl: Arabic + English. Al Maher Medical Centre: Arabic + English (assumed — confirm with Dr Luvi).',
+            'Dr. Tosun Dental Clinic: Turkish + English. Dental Nation Al Wasl: Arabic + English. Al Maher Medical Centre: Arabic + English.',
             'Turkish and Arabic are draft translations: checked by a Turkish-speaking dentist at Dr. Tosun Dental Clinic and an Arabic-speaking dentist before anything is sent or filmed.',
             'Dentists who are in clinic one day a week (e.g. Dr. Hasna Alsaeed, Sundays): replies are answered by the branch desk on the other days, in the dentist’s name, and booked with them.',
             '“Help when you have an urgent dental problem” — say it this way; the internal name DN SOS means nothing to patients.',

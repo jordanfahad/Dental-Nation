@@ -9,7 +9,7 @@
  *   lane campaign (DN Scan, First Look, Glow Up, urgent care, Restore).
  * - Languages by branch: Dr. Tosun Dental Clinic (Turkish specialty clinic) →
  *   Turkish + English; Al Wasl → Arabic + English; AMC → Arabic + English
- *   (assumed — confirm). Turkish and Arabic are drafts for native review.
+ *   (confirmed 25 Sep). Turkish and Arabic are drafts for native review.
  *
  * Branch rosters from the doctors' schedule (branch-wise). Professional names
  * and clinic days only — no personal data.
@@ -48,8 +48,6 @@ export const LANG_REVIEW: Record<Lang, string> = {
   tr: 'Draft translation — to be checked by a Turkish-speaking dentist at Dr. Tosun Dental Clinic before use.',
   ar: 'Draft translation — to be checked by an Arabic-speaking dentist (names and job titles in Arabic script, male/female wording) before use.',
 };
-
-export const AMC_LANG_NOTE = 'Al Maher Medical Centre is set to Arabic + English by assumption — confirm with Dr Luvi.';
 
 export const PATIENT_SEGS: { id: PatientSeg; label: string; when: string }[] = [
   { id: 'active', label: 'Active — check-up due', when: 'Wave 1 · from Tue 29 Sep' },
