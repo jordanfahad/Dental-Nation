@@ -13,7 +13,7 @@
  */
 
 import { Fragment, createContext, useContext, useState } from 'react';
-import { CLINIC_CLOSED, DAYS, FILMED, HOURS, SHOOT_PLAN, dentistById, hoursOn, nextClinicDays, shootLoad } from '@/lib/smileclub/shoots';
+import { CLINIC_CLOSED, DAYS, FILMED, HOURS, SHOOT_PLAN, WARDROBE, dentistById, hoursOn, nextClinicDays, shootLoad } from '@/lib/smileclub/shoots';
 import { commentTeamTaskAction, reviewScriptAction, saveCompanyAction, sendScriptsForReviewAction, updateTeamTaskAction, uploadCalendarAction, verifyCrmTestAction } from '@/app/(app)/smileclub-actions';
 import { REVIEWERS, REVIEWER_BY_USER, reviewFor, reviewSummary, type ReviewEntry, type ReviewerState } from '@/lib/smileclub/review';
 import { PLAYBOOKS, type Channel } from '@/lib/smileclub/playbook';
@@ -3757,6 +3757,9 @@ function ShootSchedule() {
   const [showTable, setShowTable] = useState(false);
   return (
     <div className="space-y-2">
+      <p className="rounded-lg px-2.5 py-1.5 text-[10.5px] leading-snug" style={{ backgroundColor: '#FDF9EC', color: '#6d5a1d' }}>
+        <b>Wardrobe:</b> {WARDROBE.note} <TaskLink k="l-labcoats">Lab-coat task</TaskLink>
+      </p>
       <div className="flex flex-wrap gap-1.5 text-[10.5px]" style={{ color: '#3a4148' }}>
         <b style={{ color: NAVY }}>Already filmed:</b>
         {FILMED.map((f) => <span key={f.id} className="rounded px-1.5 py-0.5" style={{ backgroundColor: '#e7efe6', color: '#2C5E3F' }}>✓ {dentistById(f.id).name} · {f.when} · {f.what}</span>)}

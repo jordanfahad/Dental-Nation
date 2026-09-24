@@ -52,6 +52,12 @@ export interface ShootDay {
   stops: { branch: Branch; slots: ShootSlot[] }[];
 }
 
+/** Wardrobe for every shoot (Dr Luvi, 24 Sep). */
+export const WARDROBE = {
+  arrives: '2026-09-28',
+  note: 'Some new and existing dentists have fit or availability issues with the current DN scrubs. Procurement has ordered DN-branded lab coats, expected Mon 28 Sep. Until then, film in well-fitting DN scrubs; a dentist whose scrubs do not fit moves to a day from Mon 28 Sep (their backup day) and films in the new lab coat.',
+};
+
 /** Already filmed. */
 export const FILMED: { id: string; when: string; what: string }[] = [
   { id: 'yasmin-youssef', when: 'Wed 23 Sep', what: 'Video 1 (Smile Club) — being finished from the team’s comments' },
