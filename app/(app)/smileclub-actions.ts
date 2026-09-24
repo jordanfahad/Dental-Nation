@@ -2,7 +2,10 @@
 
 import { revalidatePath } from 'next/cache';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
-import { editableFor, loadTracker, seedRows } from '@/lib/smileclub/tracker';
+import { editableFor, loadReviews, loadTracker, seedRows } from '@/lib/smileclub/tracker';
+import { DENTISTS, scriptHash } from '@/lib/smileclub/scripts';
+import { REVIEWER_BY_USER, type Decision, type ReviewEntry } from '@/lib/smileclub/review';
+import { mailDecision, mailSentForReview } from '@/lib/smileclub/reviewMail';
 import {
   CAL_WINDOW,
   COMPANY_TYPES,
@@ -373,4 +376,53 @@ export async function uploadCalendarAction(formData: FormData): Promise<Calendar
 
   revalidatePath('/');
   return { ok: true, state: await loadTracker(), summary: { filed: rows.length, newCompanies, ignored, removed: drop.length } };
+}
+
+/* ── Script sign-off: Fahad pre-final → Ms Shadi, Dr Luvi, Gautam approve (25 Sep) ── */
+
+export type ReviewResult = { ok: true; state: TrackerState; mail: string } | { ok: false; error: string };
+
+/**
+ * Approve, request changes on, or add input to one dentist's scripts. Approvals
+ * and change requests only from the named reviewers, signed in as themselves;
+ * Fahad (admin) may add input. Each decision is pinned to the current wording
+ * (scriptHash) and emailed to Fahad and the other reviewers.
+ */
+export async function reviewScriptAction(input: { dentistId: string; decision: string; note?: string }): Promise<ReviewResult> {
+  const d = DENTISTS.find((x) => x.id === input.dentistId);
+  if (!d) return { ok: false, error: 'Unknown dentist.' };
+  const { canEdit, viewer } = await editableFor();
+  const isAdmin = canEdit === 'all';
+  const reviewer = viewer ? REVIEWER_BY_USER[viewer] : undefined;
+  const decision = input.decision as Decision;
+  if (!['approved', 'changes', 'input'].includes(decision)) return { ok: false, error: 'Invalid decision.' };
+  if (decision !== 'input' && !reviewer) return { ok: false, error: 'Only Ms Shadi, Dr Luvi or Gautam can approve or request changes — signed in as themselves.' };
+  if (!reviewer && !isAdmin) return { ok: false, error: 'Only the reviewers and Fahad can add input here.' };
+  const note = (input.note ?? '').trim().slice(0, 1500) || null;
+  if (decision !== 'approved' && !note) return { ok: false, error: 'Write what should change first.' };
+  const sb = getSupabaseAdmin();
+  if (!sb) return { ok: false, error: 'Tracking database unavailable.' };
+  const row = { dentist_id: d.id, reviewer: reviewer ?? 'fahad', decision, note, hash: scriptHash(d), actor: viewer ?? 'Fahad (admin)' };
+  const { error } = await sb.from('sc_script_reviews').insert(row);
+  if (error) return { ok: false, error: error.message };
+  const entries = await loadReviews(sb);
+  const entry: ReviewEntry = { dentistId: row.dentist_id, reviewer: row.reviewer as ReviewEntry['reviewer'], decision, note, hash: row.hash, actor: row.actor, at: new Date().toISOString() };
+  const m = await mailDecision(entry, entries);
+  revalidatePath('/');
+  return { ok: true, state: await loadTracker(), mail: m.note + (m.missing.length ? ` No address on record for: ${m.missing.join(', ')}.` : '') };
+}
+
+/** Fahad marks dentists' scripts as created and reviewed (pre-final) and emails the three reviewers. */
+export async function sendScriptsForReviewAction(input: { dentistIds: string[] }): Promise<ReviewResult> {
+  const { canEdit, viewer } = await editableFor();
+  if (canEdit !== 'all') return { ok: false, error: 'Only Fahad can send scripts for sign-off.' };
+  const ds = DENTISTS.filter((d) => input.dentistIds.includes(d.id));
+  if (!ds.length) return { ok: false, error: 'Choose at least one dentist.' };
+  const sb = getSupabaseAdmin();
+  if (!sb) return { ok: false, error: 'Tracking database unavailable.' };
+  const { error } = await sb.from('sc_script_reviews').insert(ds.map((d) => ({ dentist_id: d.id, reviewer: 'fahad', decision: 'sent', note: null, hash: scriptHash(d), actor: viewer ?? 'Fahad (admin)' })));
+  if (error) return { ok: false, error: error.message };
+  const m = await mailSentForReview(ds.map((d) => d.id));
+  revalidatePath('/');
+  return { ok: true, state: await loadTracker(), mail: m.note + (m.missing.length ? ` No address on record for: ${m.missing.join(', ')}.` : '') };
 }

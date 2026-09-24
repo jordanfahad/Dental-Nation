@@ -14,6 +14,7 @@ import {
   type VerifyResult,
 } from '@/lib/smileclub/team';
 import type { CalEvent, Company, CompanyType, CorpState, EventKind, Stage } from '@/lib/smileclub/corporate';
+import type { ReviewEntry } from '@/lib/smileclub/review';
 
 /** Calendar day in Dubai — the clinics' day, independent of server timezone. */
 export function dubaiToday(): string {
@@ -86,8 +87,22 @@ export async function loadTracker(): Promise<TrackerState> {
       note: (e.note as string | null) ?? null,
     }));
   }
-  const corp = await loadCorp(sb);
-  return { progress, events, canEdit, viewer, today, live: true, corp };
+  const [corp, reviews] = await Promise.all([loadCorp(sb), loadReviews(sb)]);
+  return { progress, events, canEdit, viewer, today, live: true, corp, reviews };
+}
+
+/** Script sign-off trail (reminder bookkeeping rows excluded). */
+export async function loadReviews(sb: NonNullable<ReturnType<typeof getSupabaseAdmin>>): Promise<ReviewEntry[]> {
+  const { data } = await sb.from('sc_script_reviews').select('dentist_id,reviewer,decision,note,hash,actor,at').neq('decision', 'reminder').order('at');
+  return (data ?? []).map((r) => ({
+    dentistId: r.dentist_id as string,
+    reviewer: r.reviewer as ReviewEntry['reviewer'],
+    decision: r.decision as ReviewEntry['decision'],
+    note: (r.note as string | null) ?? null,
+    hash: r.hash as string,
+    actor: r.actor as string,
+    at: r.at as string,
+  }));
 }
 
 /** Gautam's pipeline and the follow-ups imported from his calendar. */

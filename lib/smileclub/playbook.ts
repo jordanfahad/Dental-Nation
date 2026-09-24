@@ -89,7 +89,7 @@ export const PLAYBOOKS: Record<SegmentId, Playbook> = {
         do: 'In the patient system, split each dentist’s own patients into active (check-up due) / inactive (6–18 months) / dormant (over 18 months). Keep only patients with contact consent; remove opt-outs. Only the counts come into this plan.',
         record: 'Counts per dentist and group.' },
       { when: 'In the dentist’s briefing', who: 'Dr Luvi → each dentist', how: ['In person'], task: 'd-approve', words: 'scripts',
-        do: 'Show the three group messages in the branch’s two languages; the dentist adjusts the wording and says “approved”.',
+        do: 'Show the three group messages in the dentist’s own languages (shown on their card — e.g. English only for Dr. Sathyapriya Surendar); the dentist adjusts the wording and says “approved”.',
         record: 'Approval recorded.' },
       { when: 'On each wave’s start date', who: 'CRM-DN (Zavis)', how: ['WhatsApp'], task: 'c-doctor-send',
         do: 'Load each dentist’s approved message for that group and language; send in the dentist’s name from the branch number — at most 20 per dentist per day, 10:00–13:00, each carrying the dentist’s code.',

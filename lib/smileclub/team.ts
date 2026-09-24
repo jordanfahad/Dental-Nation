@@ -12,6 +12,7 @@
 
 import type { SegmentId } from '@/lib/smileclub/segments';
 import type { CorpState } from '@/lib/smileclub/corporate';
+import type { ReviewEntry } from '@/lib/smileclub/review';
 
 export type Person = 'fahad' | 'gautam' | 'luvi' | 'doctors' | 'mohan' | 'reception' | 'crm';
 
@@ -488,7 +489,7 @@ const TASKS_RAW: TeamTask[] = [
     objective: 'Dr Luvi sits with each of the 18 dentists for 15 minutes on their first clinic day from Fri 25 Sep and walks them through exactly what to do, using the seven-point briefing in the chair playbook (Segments → S2).',
     why: 'A dentist who has not been shown the steps will improvise or skip them. The chair 36 and the dentists’ 24 both start with this conversation.',
     steps: [
-      { s: 'Dr. Tosun Dental Clinic — 7 dentists', how: 'Open the “Dentist scripts” tab on a tablet: chair sentence and messages in Turkish and English; each dentist signs a sample card.' },
+      { s: 'Dr. Tosun Dental Clinic — 7 dentists', how: 'Open the “Dentist scripts” tab on a tablet: each dentist’s sentence and messages in their own languages — Turkish + English for the Turkish dentists, Arabic + English for Dr. Maysoon Abdelmajeed and Dr. Maysoun Ahmad, English only for Dr. Sathyapriya Surendar; each dentist signs a sample card.' },
       { s: 'Al Wasl — 8 dentists', how: 'Same, in Arabic and English. Sunday-only dentists (Dr. Hasna Alsaeed, Dr. Yasmin Youssef) on Sun 27 Sep.' },
       { s: 'AMC — 3 dentists', how: 'Same, in Arabic and English. Dr. Suzanna Almaali on Sun 27 Sep.' },
       { s: 'Approvals recorded', how: 'Each dentist says “approved” for their sentence and messages; note the count here and tick the dentists’ approval task.' },
@@ -622,7 +623,7 @@ const TASKS_RAW: TeamTask[] = [
     objective: 'Each dentist reads and approves, in their own words and in both branch languages, the three group messages that will go to their own patients: due a check-up, not seen in a while, not seen for a long time.',
     why: 'The message comes from the dentist the patient knows. Nothing goes out in a dentist’s name that the dentist has not approved.',
     steps: [
-      { s: 'Drafts received', how: 'Your three group messages (active, inactive, dormant) are in the “Dentist scripts” tab, in your branch’s two languages: Turkish + English at Dr. Tosun Dental Clinic, Arabic + English at Al Wasl and Al Maher.' },
+      { s: 'Drafts received', how: 'Your three group messages (active, inactive, dormant) are in the “Dentist scripts” tab, in the languages your patients speak — shown on your card (e.g. English only for Dr. Sathyapriya Surendar). They reach you only after Fahad’s review; Ms Shadi, Dr Luvi and Gautam give the final approval.' },
       { s: 'Own words', how: 'Adjust the tone so it sounds like you, and check the Turkish or Arabic reads naturally. Each message goes to a group — no patient names.' },
       { s: 'Approved', how: 'Reply “approved” to Dr Luvi.' },
     ],
@@ -1020,6 +1021,8 @@ export interface TrackerState {
   live: boolean;
   /** Gautam's company pipeline and calendar follow-ups. */
   corp?: CorpState;
+  /** Script sign-off decisions and inputs (Ms Shadi, Dr Luvi, Gautam; Fahad). */
+  reviews?: ReviewEntry[];
 }
 
 export type Rag = 'done' | 'blocked' | 'overdue' | 'due' | 'on_track' | 'not_started';

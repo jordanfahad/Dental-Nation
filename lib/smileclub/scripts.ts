@@ -7,7 +7,8 @@
  *   message per segment — never personalised with a patient's name.
  * - Every filming appointment yields TWO videos: Smile Club + the dentist's
  *   lane campaign (DN Scan, First Look, Glow Up, urgent care, Restore).
- * - Languages by branch: Dr. Tosun Dental Clinic (Turkish specialty clinic) →
+ * - Languages: each dentist's own patients' languages. Branch default —
+ *   Dr. Tosun Dental Clinic (Turkish specialty clinic) →
  *   Turkish + English; Al Wasl → Arabic + English; AMC → Arabic + English
  *   (confirmed 25 Sep). Turkish and Arabic are drafts for native review.
  *
@@ -42,12 +43,8 @@ export const BRANCH_LANGS: Record<Branch, Lang[]> = {
 
 export const LANG_LABEL: Record<Lang, string> = { en: 'English', tr: 'Türkçe · Turkish', ar: 'العربية · Arabic' };
 
-/** Who checks each translation before anything is sent or filmed. */
-export const LANG_REVIEW: Record<Lang, string> = {
-  en: 'Final wording.',
-  tr: 'Turkish reviewed by Astra (DN-005, 25 Sep) — final check by a Turkish-speaking dentist at Dr. Tosun Dental Clinic before use.',
-  ar: 'Arabic reviewed by Astra (DN-005, 25 Sep) — final check by an Arabic-speaking dentist before use; each dentist confirms the Arabic spelling of their own name and title.',
-};
+/** Authorship and sign-off — shown on every script. Approvals are recorded on the system (lib/smileclub/review.ts). */
+export const SCRIPT_STATUS = 'Created and reviewed by Fahad (pre-final). Final check and approval required from Ms Shadi, Dr Luvi and Gautam — inputs are shared here on the system, and every decision is emailed.';
 
 export const PATIENT_SEGS: { id: PatientSeg; label: string; when: string }[] = [
   { id: 'active', label: 'Active — check-up due', when: 'Wave 1 · from Tue 29 Sep' },
@@ -82,6 +79,9 @@ export interface Dentist {
   /** Overrides the specialty's lane for the second video. */
   lane?: LaneId;
   laneWhy?: string;
+  /** The languages this dentist's own patients use — overrides the branch default. */
+  langs?: Lang[];
+  langWhy?: string;
   /** Arabic-script name and title — drafts from DN-005, to confirm with the dentist. */
   ar?: { name: string; title: string };
   note?: string;
@@ -90,14 +90,14 @@ export interface Dentist {
 export const DENTISTS: Dentist[] = [
   { id: 'yahya-tosun', name: 'Dr. Yahya Tosun', title: 'Specialist Orthodontist', branch: 'tosun', specialty: 'ortho', days: 'Mon–Tue, Thu–Sat', code: 'SC-DR-TOSUN' },
   { id: 'dilsad-ozdogan', name: 'Dr. Dilsad Ozdogan', title: 'General Dentist', branch: 'tosun', specialty: 'general', days: 'Tue–Sat', code: 'SC-DR-DILSAD', lane: 'glowup', laneWhy: 'Glow Up has no video yet — its Facebook/Instagram campaign is waiting for creative, so this is the most useful second video.' },
-  { id: 'maysoon-abdelmajeed', name: 'Dr. Maysoon Abdelmajeed', title: 'General Dentist', branch: 'tosun', specialty: 'general', days: 'Mon–Tue, Thu–Sat', code: 'SC-DR-MAYSOON' },
+  { id: 'maysoon-abdelmajeed', name: 'Dr. Maysoon Abdelmajeed', title: 'General Dentist', branch: 'tosun', specialty: 'general', days: 'Mon–Tue, Thu–Sat', code: 'SC-DR-MAYSOON', langs: ['ar', 'en'], langWhy: 'Arabic-speaking dentist at the Turkish clinic — patients are Arabic and English speakers, so Arabic + English, not Turkish (Dr Luvi to confirm).', ar: { name: 'د. ميسون عبد المجيد', title: 'طبيبة أسنان عامة' } },
   { id: 'bulent-ozdogan', name: 'Dr. Bulent Ozdogan', title: 'General Dentist', branch: 'tosun', specialty: 'general', days: 'Tue, Thu, Sat', code: 'SC-DR-BULENT' },
   { id: 'sevinc-behruzoglu', name: 'Dr. Sevinc Behruzoglu', title: 'General Dentist', branch: 'tosun', specialty: 'general', days: 'Mon, Wed', code: 'SC-DR-SEVINC' },
-  { id: 'maysoun-ahmad', name: 'Dr. Maysoun Ahmad', title: 'General Dentist', branch: 'tosun', specialty: 'general', days: 'Mon', code: 'SC-DR-MAYSOUN' },
-  { id: 'sathyapriya-surendar', name: 'Dr. Sathyapriya Surendar', title: 'Periodontist', branch: 'tosun', specialty: 'perio', days: 'Tue–Wed', code: 'SC-DR-SATHYA' },
+  { id: 'maysoun-ahmad', name: 'Dr. Maysoun Ahmad', title: 'General Dentist', branch: 'tosun', specialty: 'general', days: 'Mon', code: 'SC-DR-MAYSOUN', langs: ['ar', 'en'], langWhy: 'Arabic-speaking dentist at the Turkish clinic — patients are Arabic and English speakers, so Arabic + English, not Turkish (Dr Luvi to confirm).', ar: { name: 'د. ميسون أحمد', title: 'طبيبة أسنان عامة' } },
+  { id: 'sathyapriya-surendar', name: 'Dr. Sathyapriya Surendar', title: 'Periodontist', branch: 'tosun', specialty: 'perio', days: 'Tue–Wed', code: 'SC-DR-SATHYA', langs: ['en'], langWhy: 'Indian periodontist who sees English-speaking patients — English only (confirmed by Fahad).' },
 
   { id: 'hasna-alsaeed', name: 'Dr. Hasna Alsaeed', title: 'Consultant Orthodontist', branch: 'alwasl', specialty: 'ortho', days: 'Sun', code: 'SC-DR-HASNA', ar: { name: 'د. حسناء السعيد', title: 'استشارية تقويم الأسنان' } },
-  { id: 'ali-ghasemi', name: 'Dr. Ali Ghasemi', title: 'Hygienist', branch: 'alwasl', specialty: 'hygiene', days: 'Sat–Thu', code: 'SC-DR-ALI', ar: { name: 'د. علي قاسمي', title: 'أخصائي صحة الفم والأسنان' } },
+  { id: 'ali-ghasemi', name: 'Dr. Ali Ghasemi', title: 'Hygienist', branch: 'alwasl', specialty: 'hygiene', days: 'Sat–Thu', code: 'SC-DR-ALI', langs: ['en'], langWhy: 'Not an Arabic speaker; sees English-speaking patients — English only (Dr Luvi to confirm).', ar: { name: 'د. علي قاسمي', title: 'أخصائي صحة الفم والأسنان' } },
   { id: 'safwan-sultan', name: 'Dr. M Safwan Sultan', title: 'General Dentist', branch: 'alwasl', specialty: 'general', days: 'Sat–Thu', code: 'SC-DR-SAFWAN', ar: { name: 'د. م. صفوان سلطان', title: 'طبيب أسنان عام' } },
   { id: 'yasmin-youssef', name: 'Dr. Yasmin Youssef', title: 'Orthodontist', branch: 'alwasl', specialty: 'ortho', days: 'Sun', code: 'SC-DR-YASMIN', ar: { name: 'د. ياسمين يوسف', title: 'طبيبة تقويم الأسنان' } },
   { id: 'ghada-hussain', name: 'Dr. Ghada Hussain', title: 'Pedodontist (children’s dentist)', branch: 'alwasl', specialty: 'pedo', days: 'Sat', code: 'SC-DR-GHADA', ar: { name: 'د. غادة حسين', title: 'طبيبة أسنان الأطفال' } },
@@ -111,7 +111,7 @@ export const DENTISTS: Dentist[] = [
 ];
 
 export const laneFor = (d: Dentist): LaneId => d.lane ?? LANE_BY_SPECIALTY[d.specialty];
-export const langsFor = (d: Dentist): Lang[] => BRANCH_LANGS[d.branch];
+export const langsFor = (d: Dentist): Lang[] => d.langs ?? BRANCH_LANGS[d.branch];
 
 /** Job titles on camera in Turkish and Arabic (English uses the dentist's own title). */
 const TITLE: Record<'tr' | 'ar', Record<Specialty, string>> = {
@@ -400,10 +400,22 @@ export const BANNED_WORDS = ['insurance', 'coverage', 'covered', 'claim', 'premi
 /** The same rule in Turkish and Arabic. */
 export const BANNED_TR_AR = ['sigorta', 'poliçe', 'teminat', 'tazminat', 'تأمين', 'بوليصة', 'تغطية', 'مطالبة'];
 
-/** Mohan's first shoot — each appointment films two videos, each in the branch's two languages. */
+/** Mohan's first shoot — each appointment films two videos, each in the dentist's languages. */
 export const SHOOT = {
   date: 'Fri 25 Sep',
   branch: 'tosun' as Branch,
   dentists: ['yahya-tosun', 'dilsad-ozdogan'],
   suggested: 'maysoon-abdelmajeed',
 };
+
+/** Fingerprint of everything a dentist's reviewers approve (all scripts, all their languages).
+ *  An approval only counts for the version it was given on — any wording change needs a fresh approval. */
+export function scriptHash(d: Dentist): string {
+  const text = JSON.stringify(langsFor(d).map((l) => [l, scriptsFor(d, l)]));
+  let h = 0x811c9dc5;
+  for (let i = 0; i < text.length; i++) {
+    h ^= text.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h.toString(16).padStart(8, '0');
+}

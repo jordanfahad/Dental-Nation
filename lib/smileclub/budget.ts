@@ -46,7 +46,7 @@ export const SEGMENT_BUDGETS: SegmentBudget[] = [
     seg: 'chair', target: 36,
     lines: [
       { item: 'Dentist-signed invitation cards + refreshed QR stands', aed: 1100, exec: {
-        what: '1,500 A6 cards (500 per branch), 350 gsm matte, printed both sides in the branch’s two languages; 6 acrylic A5 QR stands (2 per branch: desk and waiting area). The figure is an estimate — the two quotes decide.',
+        what: '1,500 A6 cards (500 per branch), 350 gsm matte, printed both sides in English plus the branch language (Arabic or Turkish); 6 acrylic A5 QR stands (2 per branch: desk and waiting area). The figure is an estimate — the two quotes decide.',
         buy: 'Mohan designs → Gautam raises the purchase request to Procurement with two print quotes → Finance approves → delivered to each branch by Mon 28 Sep.',
         use: 'The dentist signs one at the end of a check-up or cleaning and hands it over; the patient brings it to the desk; the receptionist keeps it with the joining form.',
         track: 'Every Friday per branch: cards handed out (stock count) → cards brought to the desk → joined.',

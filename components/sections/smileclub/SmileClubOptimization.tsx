@@ -13,11 +13,12 @@
  */
 
 import { createContext, useContext, useState } from 'react';
-import { commentTeamTaskAction, saveCompanyAction, updateTeamTaskAction, uploadCalendarAction, verifyCrmTestAction } from '@/app/(app)/smileclub-actions';
+import { commentTeamTaskAction, reviewScriptAction, saveCompanyAction, sendScriptsForReviewAction, updateTeamTaskAction, uploadCalendarAction, verifyCrmTestAction } from '@/app/(app)/smileclub-actions';
+import { REVIEWERS, REVIEWER_BY_USER, reviewFor, reviewSummary, type ReviewEntry, type ReviewerState } from '@/lib/smileclub/review';
 import { PLAYBOOKS, type Channel } from '@/lib/smileclub/playbook';
 import { CAL_RULE, COMPANY_TYPES, STAGES, TYPE_LABEL, type CalEvent, type Company, type CompanyType, type CorpState, type EventKind, type Stage } from '@/lib/smileclub/corporate';
 import { SEGMENTS, type SegmentId } from '@/lib/smileclub/segments';
-import { BANNED_TR_AR, BANNED_WORDS, BRANCH_LABEL, BRANCH_LANGS, DENTISTS, LANES, LANG_LABEL, LANG_REVIEW, PATIENT_SEGS, SHOOT, laneFor, langsFor, scriptsFor, type Branch, type Dentist, type DentistScripts, type Lang } from '@/lib/smileclub/scripts';
+import { BANNED_TR_AR, BANNED_WORDS, BRANCH_LABEL, BRANCH_LANGS, DENTISTS, LANES, LANG_LABEL, PATIENT_SEGS, SCRIPT_STATUS, SHOOT, laneFor, langsFor, scriptsFor, type Branch, type Dentist, type DentistScripts, type Lang } from '@/lib/smileclub/scripts';
 import { BUDGET_BY_SEG, CEILING, HELD, PROCUREMENT_STEPS, RESERVE, SEGMENT_BUDGETS, SPEND_NOW, TOTAL, fmtAed, segmentTotal } from '@/lib/smileclub/budget';
 import {
   CRM_TEST_SPEC,
@@ -3535,10 +3536,10 @@ function BiScript({ d, label, tone, pick, combined }: { d: Dentist; label: strin
   const texts = langs.map((l) => pick(scriptsFor(d, l)));
   return (
     <div>
-      <div className="grid gap-2 md:grid-cols-2">
+      <div className={`grid gap-2${langs.length > 1 ? ' md:grid-cols-2' : ''}`}>
         {langs.map((l, i) => <ScriptBlock key={l} lang={l} label={`${label} · ${LANG_LABEL[l]}`} text={texts[i]} tone={tone} />)}
       </div>
-      {combined ? (
+      {combined && langs.length > 1 ? (
         <p className="mt-1 flex items-center gap-1.5 text-[10px]" style={{ color: OLIVE }}>
           Patient&apos;s language not on file? Send both in one message: <CopyButton text={texts.join('\n\n— — —\n\n')} />
         </p>
@@ -3547,26 +3548,152 @@ function BiScript({ d, label, tone, pick, combined }: { d: Dentist; label: strin
   );
 }
 
-function TranslationNote({ d }: { d: Dentist }) {
-  const notes = langsFor(d).filter((l) => l !== 'en').map((l) => LANG_REVIEW[l]);
-  return notes.length ? <p className="text-[10px] font-bold" style={{ color: '#8a6a1e' }}>⚠ {notes.join(' ')}</p> : null;
+/** Shared tracker state, so script sign-off shows the same live picture on the Scripts tab and on task cards. */
+const TrackerCtx = createContext<{ state: TrackerState; setState: (s: TrackerState) => void } | null>(null);
+
+const REVIEW_STATE: Record<ReviewerState, { label: string; fg: string; bg: string }> = {
+  approved: { label: '✓ approved', fg: '#2C5E3F', bg: '#e7efe6' },
+  changes: { label: '✎ changes requested', fg: '#a04a38', bg: '#FBEFEC' },
+  stale: { label: '↻ re-check (wording changed)', fg: '#7a6420', bg: '#FDF9EC' },
+  pending: { label: 'pending', fg: OLIVE, bg: '#F1F1EA' },
+};
+
+function reviewBadge(d: Dentist, entries: ReviewEntry[]) {
+  const r = reviewFor(d, entries);
+  const n = REVIEWERS.filter((x) => r.per[x.id].state === 'approved').length;
+  if (r.final) return { text: 'Final ✓', fg: 'white', bg: '#2C5E3F' };
+  if (REVIEWERS.some((x) => r.per[x.id].state === 'changes')) return { text: 'Changes requested', fg: '#a04a38', bg: '#FBEFEC' };
+  if (r.sent) return { text: `Sign-off ${n}/3`, fg: NAVY, bg: '#EEF1F6' };
+  return { text: 'Pre-final — not sent', fg: '#7a6420', bg: '#FDF9EC' };
 }
 
-/** One filming appointment → two videos (Smile Club + the dentist's lane), each in the branch's two languages. */
+/** Fahad's pre-final → Ms Shadi, Dr Luvi and Gautam approve; inputs on the system, every decision emailed. */
+function ReviewPanel({ d }: { d: Dentist }) {
+  const ctx = useContext(TrackerCtx);
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const state = ctx?.state;
+  const entries = state?.reviews ?? [];
+  const r = reviewFor(d, entries);
+  const me = state?.viewer ? REVIEWER_BY_USER[state.viewer] : undefined;
+  const isAdmin = state?.canEdit === 'all';
+  const run = async (fn: () => Promise<{ ok: true; state: TrackerState; mail: string } | { ok: false; error: string }>) => {
+    setBusy(true); setErr(null); setMsg(null);
+    const res = await fn();
+    setBusy(false);
+    if (!res.ok) { setErr(res.error); return; }
+    ctx?.setState(res.state);
+    setNote('');
+    setMsg(res.mail);
+  };
+  const decide = (decision: 'approved' | 'changes' | 'input') => run(() => reviewScriptAction({ dentistId: d.id, decision, note }));
+  return (
+    <div className="rounded-lg border px-2.5 py-2" style={{ borderColor: r.final ? '#cfe0cd' : '#E8DDB5', backgroundColor: r.final ? '#F3F8F2' : '#FFFCF3' }}>
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="text-[10px] font-bold" style={{ color: r.final ? '#2C5E3F' : '#7a6420' }}>
+          {r.final ? '✓ FINAL — approved by Ms Shadi, Dr Luvi and Gautam' : '✎ Created and reviewed by Fahad (pre-final)'}
+        </span>
+        <span className="text-[10px]" style={{ color: OLIVE }}>
+          {r.sent ? `· sent for sign-off ${fmtAt(r.sent.at)}` : '· not yet sent for sign-off'}
+        </span>
+      </div>
+      {!r.final ? <p className="mt-0.5 text-[10px] leading-snug" style={{ color: '#3a4148' }}>Final check and approval required from Ms Shadi, Dr Luvi and Gautam — inputs shared here on the system; every decision is emailed.</p> : null}
+      {d.langWhy ? <p className="mt-0.5 text-[10px] font-semibold" style={{ color: NAVY }}>Languages: {langsFor(d).map((l) => LANG_LABEL[l].split(' · ').pop()).join(' + ')} — {d.langWhy}</p> : null}
+      <div className="mt-1 flex flex-wrap gap-1.5">
+        {REVIEWERS.map((x) => {
+          const st = REVIEW_STATE[r.per[x.id].state];
+          return (
+            <span key={x.id} className="rounded px-1.5 py-0.5 text-[10px] font-bold" style={{ color: st.fg, backgroundColor: st.bg }} title={x.role}>
+              {x.name}: {st.label}
+            </span>
+          );
+        })}
+      </div>
+      {r.thread.length ? (
+        <ul className="mt-1.5 space-y-1">
+          {r.thread.map((e, i) => (
+            <li key={`${e.at}-${i}`} className="text-[10.5px] leading-snug" style={{ color: '#3a4148' }}>
+              <b style={{ color: NAVY }}>{e.actor}</b> <span style={{ color: OLIVE }}>· {fmtAt(e.at)} · {e.decision === 'changes' ? 'changes requested' : e.decision === 'approved' ? 'approved' : 'input'}{e.hash !== r.hash ? ' · on earlier wording' : ''}</span> — {e.note}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {state?.live && (me || isAdmin) ? (
+        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+          {me && r.per[me].state !== 'approved' ? (
+            <button type="button" disabled={busy} onClick={() => decide('approved')} className="rounded-full px-2.5 py-1 text-[10.5px] font-bold text-white disabled:opacity-40" style={{ backgroundColor: '#2C5E3F' }}>Approve (final)</button>
+          ) : null}
+          <input value={note} onChange={(e) => setNote(e.target.value)} maxLength={1500} placeholder={me ? 'Your input or the change you need…' : 'Fahad’s input…'} className="min-w-[200px] flex-1 rounded-md border px-2 py-1 text-[10.5px]" style={{ borderColor: LINE }} />
+          {me ? <button type="button" disabled={busy || !note.trim()} onClick={() => decide('changes')} className="rounded-full border px-2.5 py-1 text-[10.5px] font-bold disabled:opacity-40" style={{ borderColor: '#dcb3aa', color: '#a04a38' }}>Request changes</button> : null}
+          <button type="button" disabled={busy || !note.trim()} onClick={() => decide('input')} className="rounded-full px-2.5 py-1 text-[10.5px] font-bold text-white disabled:opacity-40" style={{ backgroundColor: BLUE }}>Add input</button>
+          {isAdmin && !r.sent ? <button type="button" disabled={busy} onClick={() => run(() => sendScriptsForReviewAction({ dentistIds: [d.id] }))} className="rounded-full px-2.5 py-1 text-[10.5px] font-bold text-white disabled:opacity-40" style={{ backgroundColor: NAVY }}>Send for sign-off (email)</button> : null}
+        </div>
+      ) : state?.live ? <p className="mt-1 text-[10px]" style={{ color: OLIVE }}>Ms Shadi, Dr Luvi and Gautam approve here, signed in as themselves; Fahad adds input.</p> : null}
+      {msg ? <p className="mt-1 text-[10px] font-bold" style={{ color: '#2C5E3F' }}>{msg}</p> : null}
+      {err ? <p className="mt-1 text-[10px] font-bold" style={{ color: '#a04a38' }}>{err}</p> : null}
+    </div>
+  );
+}
+
+/** Sign-off overview + Fahad's one-click "send everything not yet sent". */
+function ReviewOverview() {
+  const ctx = useContext(TrackerCtx);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const entries = ctx?.state.reviews ?? [];
+  const sum = reviewSummary(entries);
+  const unsent = sum.all.filter((x) => !x.r.sent && !x.r.final).map((x) => x.d.id);
+  const isAdmin = ctx?.state.canEdit === 'all';
+  const sendAll = async () => {
+    setBusy(true); setErr(null); setMsg(null);
+    const res = await sendScriptsForReviewAction({ dentistIds: unsent });
+    setBusy(false);
+    if (!res.ok) { setErr(res.error); return; }
+    ctx?.setState(res.state);
+    setMsg(res.mail);
+  };
+  return (
+    <Card accent={GOLD}>
+      <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+        <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: NAVY }}>Script sign-off</p>
+        <span className="text-[11px]" style={{ color: '#3a4148' }}><b className="tabular-nums" style={{ color: '#2C5E3F' }}>{sum.final}</b> of {DENTISTS.length} final</span>
+        <span className="text-[11px]" style={{ color: '#3a4148' }}><b className="tabular-nums" style={{ color: NAVY }}>{sum.sent}</b> sent for sign-off</span>
+        <span className="text-[11px]" style={{ color: '#3a4148' }}><b className="tabular-nums" style={{ color: '#a04a38' }}>{sum.changes}</b> with changes requested</span>
+      </div>
+      <p className="mt-1 text-[10.5px] leading-snug" style={{ color: '#3a4148' }}>
+        {SCRIPT_STATUS} Nothing is filmed or sent until a dentist’s scripts show <b style={{ color: '#2C5E3F' }}>Final ✓</b>. An approval
+        counts only for the wording it was given on — if the wording changes, it comes back for a re-check. Each reviewer gets an
+        email when scripts are sent, whenever someone decides or adds input, and a reminder at 09:00 Dubai while anything waits on them.
+      </p>
+      {isAdmin && unsent.length ? (
+        <button type="button" disabled={busy} onClick={sendAll} className="mt-1.5 rounded-full px-3 py-1 text-[10.5px] font-bold text-white disabled:opacity-40" style={{ backgroundColor: NAVY }}>
+          {busy ? 'Sending…' : `Send ${unsent.length} not-yet-sent script set${unsent.length === 1 ? '' : 's'} for sign-off (email)`}
+        </button>
+      ) : null}
+      {msg ? <p className="mt-1 text-[10.5px] font-bold" style={{ color: '#2C5E3F' }}>{msg}</p> : null}
+      {err ? <p className="mt-1 text-[10.5px] font-bold" style={{ color: '#a04a38' }}>{err}</p> : null}
+    </Card>
+  );
+}
+
+/** One filming appointment → two videos (Smile Club + the dentist's lane), each in the dentist's languages. */
 function ShootScripts({ d }: { d: Dentist }) {
   const lane = LANES[laneFor(d)];
   return (
     <div className="space-y-1.5 rounded-lg border bg-white px-2.5 py-2" style={{ borderColor: '#EEEFE1' }}>
       <p className="text-[11px] font-bold" style={{ color: NAVY }}>{d.name} <span className="font-semibold" style={{ color: OLIVE }}>· {d.title} · {BRANCH_LABEL[d.branch]}</span></p>
       <p className="text-[10.5px] leading-snug" style={{ color: '#3a4148' }}>
-        One appointment, two videos — each filmed in {langsFor(d).map((l) => LANG_LABEL[l].split(' · ').pop()).join(' and ')}: four takes, same set-up. Video 1 runs about 35–45 seconds, Video 2 about 25–30 — time both in rehearsal.
+        One appointment, two videos — each filmed in {langsFor(d).map((l) => LANG_LABEL[l].split(' · ').pop()).join(' and ')}: {langsFor(d).length * 2} takes, same set-up. Video 1 runs about 35–45 seconds, Video 2 about 25–30 — time both in rehearsal.
       </p>
       <BiScript d={d} label="Video 1 · Smile Club" tone={CORAL} pick={(s) => s.clubVideo} />
       <BiScript d={d} label={`Video 2 · ${lane.name} (${lane.tag})`} tone={BLUE} pick={(s) => s.laneVideo} />
       <p className="text-[10px] leading-snug" style={{ color: OLIVE }}>
         <b>Video 2 offer:</b> {lane.offer} · page {lane.page}. {d.laneWhy ? `${d.laneWhy} ` : ''}Before publishing, confirm the price is still current and the offer is booked at {BRANCH_LABEL[d.branch]}.
       </p>
-      <TranslationNote d={d} />
+      <ReviewPanel d={d} />
     </div>
   );
 }
@@ -3577,6 +3704,7 @@ const BRANCH_TAB: [Branch | 'all', string][] = [
 ];
 
 function ScriptsTab() {
+  const trkReviews = useContext(TrackerCtx)?.state.reviews ?? [];
   const [branch, setBranch] = useState<Branch | 'all'>('all');
   const [open, setOpen] = useState<string | null>(SHOOT.dentists[0]);
   const list = DENTISTS.filter((d) => branch === 'all' || d.branch === branch);
@@ -3584,13 +3712,15 @@ function ScriptsTab() {
   return (
     <div className="space-y-5">
       <p className="rounded-xl border-l-4 bg-white px-4 py-3 text-[12.5px] font-medium leading-snug" style={{ borderColor: GOLD, color: NAVY, fontFamily: 'Georgia, serif' }}>
-        <span className="font-bold">Every dentist presents Smile Club to their own patients — in their own name, with a reason that fits their work, in the branch&apos;s languages.</span>{' '}
+        <span className="font-bold">Every dentist presents Smile Club to their own patients — in their own name, with a reason that fits their work, in the languages their patients speak.</span>{' '}
         WhatsApp goes to three patient groups — active, inactive, dormant — one message per group, never addressed to
         an individual. Every filming appointment gives Mohan two videos: Smile Club, and the dentist&apos;s own campaign
         (braces planning, first visit, whitening, urgent care or restorations). Dr. Tosun Dental Clinic is a Turkish
-        specialty clinic, so its scripts are Turkish + English; Al Wasl and Al Maher are Arabic + English. Every dentist
-        approves their own version before anything is used.
+        specialty clinic, so its Turkish dentists’ scripts are Turkish + English; Al Wasl and Al Maher are Arabic + English.
+        A dentist whose patients speak other languages gets theirs instead — e.g. Dr. Sathyapriya Surendar, English only.
       </p>
+
+      <ReviewOverview />
 
       <section>
         <Exhibit n="DS1" title={`Mohan’s shoot — ${SHOOT.date}, ${BRANCH_LABEL[SHOOT.branch]}: two dentists, four videos, Turkish + English`} />
@@ -3646,12 +3776,13 @@ function ScriptsTab() {
                       {BRANCH_LABEL[d.branch]} · {langsFor(d).map((l) => l.toUpperCase()).join(' + ')} · in clinic {d.days} · second video: {lane.name} · WhatsApp code {d.code}
                     </span>
                   </span>
+                  {(() => { const b = reviewBadge(d, trkReviews); return <span className="shrink-0 rounded-full px-2 py-0.5 text-[9.5px] font-bold" style={{ color: b.fg, backgroundColor: b.bg }}>{b.text}</span>; })()}
                   <span className="shrink-0 text-[13px] font-bold" style={{ color: BLUE }}>{isOpen ? '▾' : '▸'}</span>
                 </button>
                 {isOpen ? (
                   <div className="space-y-2.5 border-t px-3.5 py-3" style={{ borderColor: '#EEEFE1' }}>
                     {d.note ? <p className="text-[10.5px] font-bold" style={{ color: '#8a6a1e' }}>⚠ {d.note}</p> : null}
-                    <TranslationNote d={d} />
+                    <ReviewPanel d={d} />
                     <BiScript d={d} label="1 · In the chair" tone={BLUE} pick={(s) => s.chair} />
                     {PATIENT_SEGS.map((g, i) => (
                       <BiScript key={g.id} d={d} label={`2${'abc'[i]} · WhatsApp — ${g.label} · ${g.when}`} tone="#2C5E3F" pick={(s) => s.whatsapp[g.id]} combined />
@@ -3678,8 +3809,8 @@ function ScriptsTab() {
             'WhatsApp goes to group lists — active, inactive, dormant — built from each dentist’s own patients who agreed to be contacted. One message per group, with no patient names or personal details in the text.',
             'At most 20 messages a day per dentist, every reply answered the same day, any “STOP” honoured immediately.',
             'Language: send the patient’s own language when the CRM has it; otherwise one message with both — the branch language first, English second.',
-            'Dr. Tosun Dental Clinic: Turkish + English. Dental Nation Al Wasl: Arabic + English. Al Maher Medical Centre: Arabic + English.',
-            'Turkish and Arabic are draft translations: checked by a Turkish-speaking dentist at Dr. Tosun Dental Clinic and an Arabic-speaking dentist before anything is sent or filmed.',
+            'Languages follow each dentist’s own patients. Default: Turkish + English at Dr. Tosun Dental Clinic, Arabic + English at Al Wasl and Al Maher. Exceptions are shown on the dentist’s card (e.g. Dr. Sathyapriya Surendar — English only).',
+            'Sign-off: created and reviewed by Fahad (pre-final); final approval by Ms Shadi, Dr Luvi and Gautam on the system. Nothing is filmed or sent before “Final ✓”.',
             'Dentists who are in clinic one day a week (e.g. Dr. Hasna Alsaeed, Sundays): replies are answered by the branch desk on the other days, in the dentist’s name, and booked with them.',
             '“Help when you have an urgent dental problem” — say it this way; the internal name DN SOS means nothing to patients.',
             'Campaign videos quote the price on the live campaign page — check it on the day of publishing.',
@@ -3796,6 +3927,7 @@ export function SmileClubOptimization({ tracker }: { tracker?: TrackerState } = 
         </button>
       ) : null}
       <SubNavContext.Provider value={{ goto }}>
+      <TrackerCtx.Provider value={{ state: trk, setState: setTrk }}>
       <div className="mt-3">
         {sub === 'segments' && <SegmentsTab state={trk} />}
         {sub === 'scripts' && <ScriptsTab />}
@@ -3812,6 +3944,7 @@ export function SmileClubOptimization({ tracker }: { tracker?: TrackerState } = 
         {sub === 'channels' && <Channels />}
         {sub === 'kpis' && <Kpis />}
       </div>
+      </TrackerCtx.Provider>
       </SubNavContext.Provider>
     </section>
   );

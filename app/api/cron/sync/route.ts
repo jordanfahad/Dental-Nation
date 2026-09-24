@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { runSync } from '@/lib/sync';
+import { runReviewReminder } from '@/lib/smileclub/reviewMail';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // Pro allows up to ~300s; sync stays within budget.
@@ -23,6 +24,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
   const summary = await runSync('cron');
+  // Smile Club script sign-off: one reminder email a day (09:00 Dubai) to each reviewer with scripts waiting.
+  await runReviewReminder().catch(() => undefined);
   const httpStatus = summary.status === 'failed' ? 502 : 200;
   return NextResponse.json(summary, { status: httpStatus });
 }
