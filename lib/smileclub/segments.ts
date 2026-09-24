@@ -88,12 +88,12 @@ export const SEGMENTS: Segment[] = [
     message: 'Match the search: price searchers see “know what you’ll pay — check-ups included”; insurance-frustrated searchers see “your insurance and your dental membership do different jobs”.',
     how: [
       { title: 'Google campaign 1 — Brand', body: '“smile club dental nation”, “dental nation membership” — cheap, and stops competitors catching people who heard of us. AED 500.' },
-      { title: 'Google campaign 2 — Price searches', body: '“teeth cleaning price dubai”, “dental checkup cost dubai”, “scaling polishing offer” — the membership is the answer to the price they just saw. AED 4,500.' },
-      { title: 'Google campaign 3 — Insurance gap', body: '“dentist without insurance dubai”, “dental insurance for individuals” — careful, honest wording: a membership, not insurance. AED 1,000.' },
+      { title: 'Google campaign 2 — Price searches', body: '“teeth cleaning price dubai”, “dental checkup cost dubai”, “scaling polishing offer” — the membership is the answer to the price they just saw. AED 2,500 — 1,000 now, 1,500 only if proven at Day 14.' },
+      { title: 'Google campaign 3 — Insurance gap', body: '“dentist without insurance dubai”, “dental insurance for individuals” — careful, honest wording: a membership, not insurance. AED 500.' },
       { title: 'Call ads for local searches', body: 'A “call the branch” button on mobile — many people prefer to phone.' },
       { title: 'Facebook/Instagram — only people who already visited us', body: 'Reminder ads to people who looked at the Smile Club page, plus a “chat on WhatsApp” offer. No cold audiences.' },
     ],
-    unlock: 'Brand and price campaigns run now. Google gets its second AED 6,000 only if, at Day 14, a genuine membership enquiry costs AED 150 or less.',
+    unlock: 'Runs now on AED 3,500. The other AED 3,500 (Google +1,500, Facebook/Instagram +2,000) is released at Day 14 only if one online member has cost AED 600 or less.',
     notDo: ['No “dentist near me” or treatment searches — those belong to the clinic campaigns.', 'No display, PMax or broad awareness ads for Smile Club.', 'No cold Facebook audiences.'],
   },
   {
@@ -103,7 +103,7 @@ export const SEGMENTS: Segment[] = [
     messenger: 'People they already trust locally — a school, their building, their gym or pharmacy, a parent they follow — not our ads.',
     message: '“One dental home for the whole family — stay ahead of problems instead of reacting to them.”',
     how: [
-      { title: 'Awareness goes offline', body: 'Digital awareness ads are unlikely to work for a product nobody searches for. The AED 3,000 moves to local, physical presence near each branch.' },
+      { title: 'Awareness goes offline', body: 'Digital awareness ads are unlikely to work for a product nobody searches for. The money goes to local, physical presence near each branch: AED 2,000 of printed material and AED 1,500 for one community event.' },
       { title: 'Schools & nurseries', body: 'A dentist-led 20-minute talk for parents; staff offered Smile Club; a leaflet in school bags at the start of term.' },
       { title: 'Residential buildings & community groups', body: 'Posters in building lobbies near each branch; the building or community WhatsApp admin shares one message.' },
       { title: 'Gyms, pharmacies, salons', body: 'A counter card with a QR code under that partner’s own code — they earn a commission only on paid members.' },

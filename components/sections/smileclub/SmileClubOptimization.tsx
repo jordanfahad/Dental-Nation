@@ -15,6 +15,7 @@
 import { createContext, useContext, useState } from 'react';
 import { updateTeamTaskAction, verifyCrmTestAction } from '@/app/(app)/smileclub-actions';
 import { SEGMENTS, type SegmentId } from '@/lib/smileclub/segments';
+import { BUDGET_BY_SEG, CEILING, COMMITTED, RESERVE, SEGMENT_BUDGETS, TOTAL, fmtAed, segmentTotal } from '@/lib/smileclub/budget';
 import {
   CRM_TEST_SPEC,
   OWNER_LABEL,
@@ -487,7 +488,7 @@ const RESPONSE_ROWS: ResponseRow[] = [
       'Sign → employee launch (CEO/HR email + QR) → activation drive — activation rate is the KPI, not the signature',
     ],
     demand: 'To close 24 contracts at the ~33% assumed close rate the pipeline must hold ≥72 membership-equivalents. SIZING PENDING: the replacement-door bridge (which doors, how many contract-equivalents each) is due 28 Sep, after Michael Page’s closure removed one of three named doors.',
-    budget: 'AED 6,000 enablement — production and distribution only: on-site dental-day kits 2 × 1,500 = 3,000 · printed one-pagers + savings tables EN/AR 1,000 · LinkedIn boost on the door territories 1,000 · employer-code enrolment pages + QR 500 · door-plan logistics 500. No salaries, commissions or agency fees in this figure (Finance bridge). LinkedIn adds a separate AED 3,000 bounded test, measured as cost per held meeting.',
+    budget: 'AED 7,500 (rev. 7) — print kit: one-pager, savings table, QR cards EN/AR 1,500 · two on-site dental days, materials and set-up 2 × 1,500 = 3,000 · LinkedIn warm-up for HR contacts at target companies 1,500 · door-plan logistics 1,500. No salaries, commissions or agency fees in this figure (Finance’s fully-loaded check).',
     to: 'corporate', toLabel: 'Corporate playbook (B2B2C system)',
   },
   {
@@ -505,7 +506,7 @@ const RESPONSE_ROWS: ResponseRow[] = [
       'Cluster kill rules pause anything whose matured CPQL exceeds 200; Day-14 gate decides Google’s second tranche',
     ],
     demand: '150 qualified opportunities by Day 30 at the mandate’s 8% close. Paid is planned to deliver ≥120 (Google est. 24–66 qualified + Meta 90–180, pool-capped) and owned lanes ≥30 (banner · placements · triggered CRM).',
-    budget: 'AED 15,000 direct-response: Google 6,000 pilot (branded 500 · cost-intent 4,500 · plan-intent 500 · insurance-gap 500; second tranche only via the Day-14 gate) + Meta 9,000 (retargeting + CTWA). Blended CPQL target ≤ 125, kill line 200. Full dirham-to-subscription funnel in the DM plan (D1d).',
+    budget: 'AED 7,000 (rev. 7), half conditional — released now: Google 2,000 (brand 500 · price searches 1,000 · insurance gap 500) + Facebook/Instagram 1,500 to people who already visited us. Held back 3,500 (Google +1,500, Facebook/Instagram +2,000), released at Day 14 only if one online member has cost AED 600 or less.',
     to: 'dm', toLabel: 'DM plan (D1–D1d)',
   },
   {
@@ -658,10 +659,10 @@ function ResponseTab() {
     <div className="space-y-5">
       <p className="rounded-xl border-l-4 bg-white px-4 py-3 text-[12.5px] font-medium leading-snug" style={{ borderColor: GOLD, color: NAVY, fontFamily: 'Georgia, serif' }}>
         <span className="font-bold">Fahad&apos;s quantified marketing response — v1.2, 19 Sep.</span>{' '}
-        100% of the 120 mapped to source, demand basis, method, launch date, tracking and owner. The budget panel
-        (R2) carries Fahad&apos;s proposed AED 30,000 DM budget with an honest CPL/CAC decomposition — marked
-        PROPOSED until Mr Akbar signs the ceiling, allowable CAC and initial release. Bulk CRM: target 0, budget 0,
-        per the mandate. v1.2 applies the 12 Sep programme-update learnings: broadcast CRM testing is dropped for
+        100% of the 120 mapped to source, demand basis, method, launch date, tracking and owner. The budget (R2) is
+        rev. 7: AED 27,000, built from what one member is worth and split by what each segment&apos;s members cost —
+        PROPOSED until Mr Akbar signs it. Blanket CRM: target 0, budget 0 — the dentists&apos; curated messages are
+        the opposite of a blanket send. v1.2 applies the 12 Sep programme-update learnings: broadcast CRM testing is dropped for
         high-intent triggered contact, and plays now use the enablement assets the programme has already built.
       </p>
 
@@ -678,74 +679,7 @@ function ResponseTab() {
         </div>
       </section>
 
-      <section>
-        <Exhibit n="R2" title="Budget — AED 30,000 / 30 days (PROPOSED, pending Mr Akbar's sign-off)" />
-        <div className="grid gap-2 md:grid-cols-3">
-          {([
-            ['AED 30,000', 'DM budget · 30 days', 'Full digital budget supporting all lanes — awareness, retargeting, corporate air-cover, offer creative — not only direct website acquisition.'],
-            ['≤ AED 250', 'Proposed DM budget per target contract', '= 30,000 ÷ 120 (18–25% of the two individual annual fees). NOT yet a full-cost ceiling: staff, commissions, creative, events and onboarding are unpriced — the fully loaded ceiling is a Finance deliverable before scale.'],
-            ['CPL 150 · ceiling 200', 'Paid-lane cost per lead', 'Target 150; 200 is the hard break-point — above it the website-12 target is mathematically dead within this budget (150 leads × 200 = the full 30K).'],
-          ] as [string, string, string][]).map(([v, l, s]) => (
-            <div key={l} className="rounded-xl border bg-white px-3 py-2.5" style={{ borderColor: LINE }}>
-              <p className="text-[16px] font-bold tabular-nums" style={{ color: NAVY, fontFamily: 'Georgia, serif' }}>{v}</p>
-              <p className="text-[10.5px] font-bold uppercase tracking-wide" style={{ color: BLUE }}>{l}</p>
-              <p className="mt-0.5 text-[10px] leading-snug" style={{ color: OLIVE }}>{s}</p>
-            </div>
-          ))}
-        </div>
-        <div className="mt-2 overflow-x-auto rounded-xl border bg-white" style={{ borderColor: LINE }}>
-          <table className="w-full border-collapse text-[11px]">
-            <thead>
-              <tr className="text-left text-[9.5px] uppercase tracking-wide" style={{ color: OLIVE, backgroundColor: '#F7F7F0' }}>
-                <th className="px-3 py-2 font-bold">Paid CPL scenario</th><th className="px-3 py-2 text-center font-bold">Fixed 150 qualified: cost · paid · headroom</th>
-                <th className="px-3 py-2 text-center font-bold">Full 30K: leads → expected paid</th>
-                <th className="px-3 py-2 text-center font-bold">Full-spend CAC</th><th className="px-3 py-2 font-bold">Reading</th>
-              </tr>
-            </thead>
-            <tbody>
-              {([
-                ['CPL 150 — target', 'AED 22,500 · 12 paid · AED 7,500 headroom', '200 → 16 expected · no headroom', '~AED 1,875', 'Fixed-150 and full-spend outcomes are mutually exclusive — never both.'],
-                ['CPL 200 — ceiling', 'AED 30,000 · 12 paid · zero headroom', '150 → 12 expected', 'AED 2,500', 'The operating break-point at full budget.'],
-                ['CPL 500 — downside', 'not affordable (150 leads = 2.5× budget)', '60 → 4.8 expected', 'AED 6,250', 'Recovery trigger: shift to clinic/corporate enablement + warm audiences; website target revised.'],
-              ] as string[][]).map((r) => (
-                <tr key={r[0]} className="border-t align-top" style={{ borderColor: '#EEEFE1' }}>
-                  <td className="px-3 py-1.5 font-semibold whitespace-nowrap" style={{ color: NAVY }}>{r[0]}</td>
-                  <td className="px-3 py-1.5 text-center tabular-nums" style={{ color: '#3a4148' }}>{r[1]}</td>
-                  <td className="px-3 py-1.5 text-center tabular-nums" style={{ color: '#3a4148' }}>{r[2]}</td>
-                  <td className="px-3 py-1.5 text-center font-bold tabular-nums" style={{ color: CORAL }}>{r[3]}</td>
-                  <td className="px-3 py-1.5 text-center tabular-nums" style={{ color: '#3a4148' }}>{r[4]}</td>
-                  <td className="px-3 py-1.5" style={{ color: OLIVE }}>{r[5]}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <div className="mt-2 space-y-2">
-          <Note tone="blue">
-            Affordability check on the direct slices: Search 6,000 + Meta 9,000 = AED 15,000
-            direct-response. All 150 qualified from paid alone would need CPQL ≤ 100 (15,000 ÷ 150); the plan
-            instead assumes paid delivers ≥120 of the 150 (CPQL ≤ 125) with the owned lanes (banner ·
-            placements · triggered CRM) contributing ≥30 at zero media cost. At the 200 ceiling the 15K buys
-            only 75 qualified → 6 expected paid — recovery is owned lanes + the reserve, not silent overspend.
-            The mandate’s own direct-media formula (12 × 250 = 3,000) is 5× smaller than these slices — the
-            budget-classification question flagged at sign-off, restated here so it is settled at the 28 Sep
-            review, not discovered later.
-          </Note>
-          <Note tone="coral">
-            Dropped from the earlier draft: a CAC target of AED 70 — unreachable under any paid scenario (it would
-            require more than two memberships per lead at target CPL) and only meaningful as a blend at ~8.4K spend.
-            Paid-lane CAC (~1,875–2,500 at target CPL) exceeds the first-year fee on its own: it is justified only by
-            incremental treatment revenue, which the pilot measures — until then, paid stays capped at this budget.
-          </Note>
-          <Note tone="gold">
-            Definition to agree at sign-off: under the mandate&apos;s formula (working-media ceiling = paid-media
-            acquisition target × allowable CAC), 12 × 250 authorizes only AED 3,000 of direct-acquisition working
-            media. The 30K is therefore submitted as the full DM budget across all lanes, with direct acquisition as
-            one slice — agreeing this labelling now prevents a definitional &quot;overspend&quot; at the first
-            checkpoint review.
-          </Note>
-        </div>
-      </section>
+      <BudgetExhibit n="R2" />
 
       <section>
         <Exhibit n="R3" title="Channels, sub-channels, funnels & assets" />
@@ -803,7 +737,7 @@ function ResponseTab() {
 
       <section className="grid gap-3 md:grid-cols-2">
         <Card>
-          <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: BLUE }}>Funding gates & rules — 30K proposed, sign-off pending</p>
+          <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: BLUE }}>Funding gates & rules — AED 27,000 proposed, sign-off pending</p>
           <ul className="mt-2 space-y-1.5">
             {[
               'Working-media ceiling = paid-media acquisition target × allowable CAC (Finance sets the CAC; Mr Akbar signs the 30-day ceiling and initial release — the blanks on the mandate’s sign-off page).',
@@ -853,35 +787,35 @@ const DM_CHANNELS: DmChannel[] = [
   {
     channel: 'Google Search', role: 'Capture the only search demand that exists for this product — cost/price intent plus branded protection. There is no membership-query volume to buy; treatment intent stays excluded (it belongs to clinic campaigns).',
     execution: 'Responsive search ads EN/AR → membership LP → lead → 10-minute contact-centre follow-up. Per-cluster budgets and the confirmation status of every keyword in D1c; the second tranche is released ONLY through the Day-14 gate (reserve + reallocation rule) if matured CPQL ≤ 150.',
-    budget: 'AED 6,000 pilot (+ gated second tranche at Day-14)',
+    budget: 'AED 3,500: 2,000 now (brand 500 · price 1,000 · insurance gap 500) + 1,500 at Day 14 if proven',
     contrib: 'Est. 40–110 gross → 24–66 qualified → 2–5 subs (inside Website-12)',
     status: 'LIVE', statusColor: '#2C5E3F', thesis: 'th-google',
   },
   {
     channel: 'Meta — paid (FB/IG)', role: 'Retargeting site visitors + CTWA offer lane at high-intent moments — NOT cold membership prospecting (the broadcast learning). Patient-list audiences only after the documented eligibility check.',
     execution: 'Offer-led statics from Creative OS launch now; Advantage+/dynamic formats HELD by the smart/dynamic-creatives blocker. Contact centre tags membership-intent vs appointment-intent on first reply.',
-    budget: 'AED 9,000',
+    budget: 'AED 3,500: 1,500 now + 2,000 at Day 14 if proven',
     contrib: 'Est. 150–300 gross (pool-capped) → 90–180 qualified → 7–14 subs (inside Website-12)',
     status: 'PARTIAL — unlock: Mohan’s v1 set 28 Sep', statusColor: '#7a6420', thesis: 'th-meta',
   },
   {
     channel: 'LinkedIn — corporate air-cover', role: 'Door-opener, not a CPL channel: HR, People/Culture, Benefits and Office-Manager titles in Dubai see the one-pager before and after the field-sales knock and the intro emails.',
     execution: 'Founder-led organic posts (Fahad) at zero media cost + one bounded sponsored test on the corporate one-pager; every corporate meeting preceded by a connection touch.',
-    budget: 'AED 3,000 (test)',
+    budget: 'AED 1,500 (HR contacts at target companies only)',
     contrib: 'Est. 8–20 held meetings — feeds Corporate-24; no membership CPL is claimed',
     status: 'READY — w/c 22 Sep', statusColor: BLUE, thesis: 'th-linkedin',
   },
   {
     channel: 'Corporate field sales — door-to-door', role: 'THE 70% ENGINE. A committed monthly subscription this considered is SOLD in meetings, not clicked: a dedicated agent walks SME/startup/blue-collar doors WITHOUT dental in their medical cover (the Michael Page learning) and signs employer codes.',
     execution: 'Inside the mandate window Gautam carries the bag (owner decision, 22 Sep; a hire cannot land within 30 days — agent sourcing starts now, onboards for the scale phase); Fahad runs warm doors and enablement. Door plan: JLT, Business Bay, DIFC, Al Quoz clusters; “does your medical include dental?” asked first. The 6,000 enablement is itemized line by line in D1b.',
-    budget: 'AED 6,000 enablement (itemized in D1b)',
+    budget: 'AED 6,000 (print 1,500 · two dental days 3,000 · logistics 1,500)',
     contrib: '40–60 doors → 12–20 held meetings → pipeline toward ≥72 equivalent → 24 subs (Corporate-24)',
     status: 'NEW — doors from w/c 22 Sep', statusColor: CORAL, thesis: 'th-fieldsales',
   },
   {
     channel: 'Community awareness — offline (rev. 6)', role: 'Targeted air cover, deliberately NOT called brand awareness: AED 3,000 cannot buy brand awareness and does not claim to. It warms exactly where the other lanes harvest — geo cells around the three branches and the agent’s door territories. The full DN brand-awareness campaign is a costed scale-phase proposal for the 21 Oct review (D1b).',
     execution: 'Bounded geo burst: IG/FB reach around the three branches + LinkedIn boost on the agent’s door territories; organic IG proof content rides here (TikTok deferred, asset-blocked). Judged on ENABLER metrics only — branded-search lift, direct traffic, GMB profile views, meeting-acceptance rate — never on CPL.',
-    budget: 'AED 3,000 — moved from digital to schools, buildings, gyms and pharmacies near the branches',
+    budget: 'AED 3,500 (print 2,000 · one event 1,500) — inside families & neighbourhoods; no digital awareness ads',
     contrib: 'No subscription claim — declared enabler: 30 days of subs cannot judge awareness',
     status: 'NEW — w/c 22 Sep', statusColor: BLUE, thesis: 'th-awareness',
   },
@@ -932,35 +866,35 @@ const DM_OUTREACH: { org: string; door: string; code: string; ask: string; timel
 const DM_THESES: { id: string; ch: string; why: string; cpl: string; track: string }[] = [
   {
     id: 'th-google',
-    ch: 'Google Search · AED 6,000 pilot — second tranche only via the Day-14 gate',
+    ch: 'Google Search · AED 3,500 (rev. 7) — 2,000 now, 1,500 only if proven at Day 14',
     why: 'Search can only CAPTURE demand that already exists — and measured volume for “dental membership” queries is near zero, so a large membership search budget has nothing to buy. What Dubai does search is PRICE: “teeth cleaning price dubai”, “dental checkup cost”. That searcher sees a price, flinches, and the membership is presented as the cheaper way in — the one non-branded pool worth paying for, and a HYPOTHESIS until the first coded cohort matures. Branded terms are protected separately at trivial cost so a told-about-us searcher never lands on a competitor. “Dentist near me” stays negative-matched: that click books an appointment either way, so paying for it here would charge the membership plan for revenue the clinic campaigns already earn.',
-    cpl: 'Penny accounting of the 6,000 — branded 500 (CPC 1–3, CVR 20%+ → CPL ≈5–15; volume-capped ≈10–25 leads) · cost-intent 4,500 (CPC 6–14 ÷ 8–10% LP CVR → CPL ≈60–175 → ≈26–75 leads) · plan-intent 500 + insurance-gap 500 (CPL ≈100–250 → ≈4–10 leads). Slice total: est. 40–110 gross → 24–66 qualified → 2–5 subscriptions (full funnel in D1d).',
+    cpl: 'Penny accounting of the AED 3,500 (rev. 7) — brand 500 (CPC 1–3, CVR 20%+ → CPL ≈5–15; volume-capped ≈10–25 leads) · price searches 2,500 (1,000 now + 1,500 only if proven; CPC 6–14 ÷ 8–10% page conversion → CPL ≈60–175 → ≈14–42 leads; plan-intent phrases run inside it) · insurance gap 500 (CPL ≈125–250 → ≈2–4 leads). Total: est. 25–70 gross → 15–42 qualified → 1–3 subscriptions (full funnel in D1d).',
     track: 'One UTM per cluster → LP → enquiry enters the spine (enquiry → qualified → checkout → paid); live CPC/CPL on the Marketing tab daily; per-cluster kill rule below; Day-14 gate decides the second tranche. Live keyword coverage is confirmed cluster by cluster in D1c — owner Fahad, by 23 Sep.',
   },
   {
     id: 'th-meta',
-    ch: 'Meta · AED 9,000 slice',
+    ch: 'Facebook/Instagram · AED 3,500 (rev. 7) — 1,500 now, 2,000 only if proven at Day 14',
     why: 'Our own live proof: appointment campaigns deliver at AED 3–6/lead (Tooth Gap 123 leads @ ~AED 3). Learning applied — that engagement is APPOINTMENT-led, so Meta’s membership job is narrow: retargeting site visitors and the CTWA offer lane at high-intent moments, not cold membership prospecting.',
     cpl: 'Membership CTWA est. CPL AED 15–40 — an independent planning range, NOT derived from the appointment CPL. The retargeting + CTWA pool is FINITE (site visitors + engaged non-converters), so volume is planning-capped at 150–300 gross → 90–180 qualified → 7–14 subscriptions (D1d); a raw CPL far below 15 would signal junk volume, not success.',
     track: 'CTWA source codes per ad set → spine; contact-centre tags membership-intent vs appointment-intent on first reply — the split that killed the broadcast test is measured from message one.',
   },
   {
     id: 'th-linkedin',
-    ch: 'LinkedIn · AED 3,000 slice (bounded test)',
+    ch: 'LinkedIn · AED 1,500 (rev. 7) — HR contacts at target companies only',
     why: 'Not a CPL channel — a door-opener. Air-cover for the field-sales knocks and corporate asks: HR/People/Benefits titles see the one-pager before and after outreach. The Michael Page “no” sharpens the ICP: qualify for companies WITHOUT dental in their medical policy (SMEs, startups, blue-collar employers) before spending a meeting.',
     cpl: 'Measured as cost per corporate MEETING, not per lead: est. AED 150–400/meeting on a bounded sponsored test → est. 8–20 held meetings feeding Corporate-24. No membership CPL is claimed for LinkedIn — that would be invented.',
     track: 'UTM → corporate enquiry form + the meeting log (door, date, model discussed, outcome) reviewed at each checkpoint; SC-corporate codes on any resulting pilot.',
   },
   {
     id: 'th-fieldsales',
-    ch: 'Corporate field sales · AED 6,000 enablement — THE 70% ENGINE',
+    ch: 'Corporate field sales · AED 6,000 enablement (+1,500 LinkedIn = 7,500 for companies) — THE 70% ENGINE',
     why: 'The doctrine in practice: 70% of the mandate (In-clinic 60 + Corporate 24 = 84 of 120) is sold face-to-face, and corporate needs a bag-carrier, not a banner. A considered AED 99/month commitment for a whole team is bought in a meeting where the savings table is walked through — so the plan funds a door-to-door motion: 40–60 qualified doors across JLT, Business Bay, DIFC and Al Quoz, “does your medical include dental?” asked first. Inside the 30-day window Gautam carries the bag (owner decision, 22 Sep) with Fahad on warm doors and enablement; a dedicated agent CANNOT contribute in-window (hiring takes 2–4 weeks), so sourcing starts now and the agent onboards for the scale phase — priced into the Finance fully-loaded bridge (salary + commission are staffed cost, not media).',
     cpl: 'What the 6,000 buys, line by line (indicative, re-costed per event before commitment): on-site dental-day kits for the first two employer pilots 2 × 1,500 = 3,000 (banner stand, screening forms, chair-side collateral, giveaways) · printed one-pagers + savings tables EN/AR 1,000 · LinkedIn boost on the door territories 1,000 · employer-code enrolment pages + QR materials 500 · door-plan logistics 500. What the 6,000 is NOT: no salaries, no commissions, no agency fees (those sit in the Finance fully-loaded bridge) and no new design spend — artwork and content come from the programme’s existing enablement assets (corporate one-pager, savings math, HR email kit, reception deck) plus Creative OS templates; the 6,000 buys only their production and distribution: printing, kit materials, the territory boost and logistics. Media-side arithmetic: 6,000 ÷ 24 target contracts = AED 250/contract — exactly the mandate’s own per-contract figure. The controlling number is pipeline: ≥72 membership-equivalent at ~33% close → 24.',
     track: 'The meeting log (door, date, model, outcome) + one employer code per door → spine; pipeline coverage reviewed at every checkpoint; the 28 Sep replacement-door bridge sizes the doors.',
   },
   {
     id: 'th-awareness',
-    ch: 'Awareness air cover · AED 3,000 — targeted, and honestly NOT brand awareness',
+    ch: 'Community awareness · AED 3,500, offline (rev. 7) — honestly NOT brand awareness',
     why: 'Honest sizing first: AED 3,000 cannot buy brand awareness — a credible Dental Nation brand campaign runs AED 25–60K/month sustained over 3+ months and is judged on brand tracking, which a 30-day acquisition mandate cannot fund or measure. So this slice claims only the smaller job it can actually do: targeted air cover exactly where the other lanes harvest — geo cells around the three branches (warms cost-intent search and the retargeting pool) and the agent’s door territories (warms the knock before it lands). The full brand-awareness question — media mix, budget, brand tracking — goes to Mr Akbar as a costed, stand-alone scale-phase proposal at the 21 Oct review.',
     cpl: 'No CPL and no CAC are claimed — enabler metrics only: branded-search impression lift, direct traffic, GMB profile views, door/meeting acceptance rate, all read week-over-week against the pre-burst baseline.',
     track: 'Reach/frequency per geo cell + the enabler metrics on the weekly scorecard; if no lift is visible by Day-21, the remaining burst stops (its own kill rule).',
@@ -985,8 +919,8 @@ const DM_THESES: { id: string; ch: string; why: string; cpl: string; track: stri
  *  labelled as estimates; live CPCs replace them from the first day of spend. */
 const DM_KEYWORDS: { cluster: string; slice: string; kws: string; cpc: string; cpl: string; live: string; role: string }[] = [
   { cluster: 'Branded (always-on)', slice: 'AED 500', kws: '“smile club dental nation” · “dental nation membership” · “smile club dubai”', cpc: '1–3', cpl: '≈5–15 at 20% CVR', live: 'TO CONFIRM — 23 Sep', role: 'Capture told-about-us demand; never lose it to a competitor bid. Volume-capped ≈10–25 leads.' },
-  { cluster: 'Cost intent (core test)', slice: 'AED 4,500', kws: '“teeth cleaning price dubai” · “dental checkup cost dubai” · “scaling polishing offer dubai” · “cheap dentist dubai”', cpc: '6–14', cpl: '≈60–175 @ 8–10% CVR', live: 'TO CONFIRM — 23 Sep', role: 'Membership as the ANSWER to price shock — the pilot LP thesis. ≈26–75 leads.' },
-  { cluster: 'Plan intent (thin volume)', slice: 'AED 500', kws: '“dental plan dubai” · “dental membership dubai” · “dental discount card uae”', cpc: '8–18', cpl: '≈100–225 @ 8% CVR', live: 'TO CONFIRM — 23 Sep', role: 'Exact match only, low cap — tiny but perfectly qualified.' },
+  { cluster: 'Cost intent (core test)', slice: 'AED 2,500 (1,000 now)', kws: '“teeth cleaning price dubai” · “dental checkup cost dubai” · “scaling polishing offer dubai” · “cheap dentist dubai”', cpc: '6–14', cpl: '≈60–175 @ 8–10% CVR', live: 'TO CONFIRM — 23 Sep', role: 'Membership as the ANSWER to price shock — the pilot LP thesis. ≈14–42 leads.' },
+  { cluster: 'Plan intent (thin volume)', slice: 'inside price', kws: '“dental plan dubai” · “dental membership dubai” · “dental discount card uae”', cpc: '8–18', cpl: '≈100–225 @ 8% CVR', live: 'TO CONFIRM — 23 Sep', role: 'Exact match only, low cap — tiny but perfectly qualified.' },
   { cluster: 'Insurance gap', slice: 'AED 500', kws: '“dental insurance dubai individuals” · “dentist without insurance dubai” · “dental cover self employed uae”', cpc: '10–20', cpl: '≈125–250 @ 8% CVR', live: 'TO CONFIRM — 23 Sep', role: 'The uninsured segment the Michael Page learning points at.' },
   { cluster: 'EXCLUDED: treatment intent', slice: '—', kws: '“dentist near me” · “root canal dubai” · “veneers price” → negative-matched', cpc: '—', cpl: '—', live: 'Negative list TO CONFIRM', role: 'Booking demand — belongs to clinic campaigns; bidding it here would double-pay for the same click.' },
 ];
@@ -995,13 +929,13 @@ const DM_KEYWORDS: { cluster: string; slice: string; kws: string; cpc: string; c
  *  estimates; the 60% gross→qualified rate is an assumption validated at the
  *  Day-7 checkpoint (28 Sep); qualified→paid 8% is the mandate assumption. */
 const DM_FUNNEL: { lane: string; budget: string; gross: string; qual: string; subs: string; costPerSub: string }[] = [
-  { lane: 'Google Search (pilot)', budget: '6,000', gross: '40–110', qual: '24–66', subs: '2–5', costPerSub: '1,200–3,000' },
-  { lane: 'Meta (retargeting + CTWA)', budget: '9,000', gross: '150–300 (pool-capped)', qual: '90–180', subs: '7–14', costPerSub: '640–1,290' },
-  { lane: 'DIRECT-RESPONSE SUBTOTAL', budget: '15,000', gross: '190–410', qual: '114–246 · need ≥120 of the 150', subs: '9–19 · target 12 in band', costPerSub: 'blended CPQL 61–132 → target ≤125 · kill 200' },
+  { lane: 'Google Search', budget: '3,500', gross: '25–70', qual: '15–42', subs: '1–3 (target 3)', costPerSub: '1,150–3,500' },
+  { lane: 'Facebook/Instagram (return visitors + WhatsApp offer)', budget: '3,500', gross: '90–230 (pool-capped)', qual: '54–138', subs: '4–11 (target 7)', costPerSub: '320–875' },
+  { lane: 'DIRECT-RESPONSE SUBTOTAL', budget: '7,000', gross: '115–300', qual: '69–180 · + owned ≥30 toward the 150', subs: '5–14 · target 10 in band (+2 banner = 12)', costPerSub: 'blended ~500–1,400 → Day-14 test: ≤ 600' },
   { lane: 'Owned (banner · placements · triggered CRM)', budget: '0 media', gross: 'measured, not forecast', qual: '≥30 (planning floor)', subs: '2–3', costPerSub: '0 media (staffed cost in Finance bridge)' },
-  { lane: 'LinkedIn (air-cover)', budget: '3,000', gross: 'meetings, not leads: 8–20', qual: '—', subs: 'feeds Corporate-24', costPerSub: '150–400 per held meeting' },
+  { lane: 'LinkedIn (air-cover)', budget: '1,500', gross: 'meetings, not leads: 8–20', qual: '—', subs: 'feeds Corporate-24', costPerSub: '150–400 per held meeting' },
   { lane: 'Corporate field sales', budget: '6,000', gross: '40–60 doors', qual: '12–20 held meetings', subs: '24 (via ≥72 pipeline @ ~33%)', costPerSub: '250/contract media-side' },
-  { lane: 'Awareness air cover', budget: '3,000', gross: 'no claim', qual: '—', subs: '0 claimed', costPerSub: 'enabler metrics only' },
+  { lane: 'Community awareness (offline)', budget: '3,500', gross: 'no claim', qual: '—', subs: '0 claimed', costPerSub: 'enabler metrics only' },
   { lane: 'Reserve', budget: '3,000', gross: '—', qual: '—', subs: '—', costPerSub: 'unallocated until the Day-14 gate' },
 ];
 
@@ -1031,7 +965,7 @@ function DmPlan() {
         The mandate mix already encodes the doctrine — In-clinic 60 + Corporate 24 = 84 of 120 = 70% sold
         face-to-face — rev. 4 names it and funds it. Media money is inherently an online instrument (offline lanes
         run on staffed cost, priced in the Finance bridge), so the split lives in outcomes and effort, not in the
-        media ledger. The AED 30,000, sliced: Google 6 · Meta 9 · LinkedIn 3 · field-sales enablement
+        media ledger. Rev. 7 budget (AED 27,000 — see R2): Google 3.5 · Facebook/Instagram 3.5 (half of each conditional) · LinkedIn 1.5 · field-sales enablement
         6 · awareness air cover 3 · reserve 3. Every lane feeds the same spine (enquiry → qualified → checkout → paid → card
         active → booked → attended) under its own source code; the smart/dynamic-creatives blocker stands and is
         worked around, not wished away. Every lane serves named audience layers and demand states — the
@@ -1076,7 +1010,7 @@ function DmPlan() {
           </table>
         </div>
         <p className="mt-2 text-[10px]" style={{ color: OLIVE }}>
-          Media total AED 27,000 committed (6+9+3+6+3) + AED 3,000 reserve = the proposed 30K (pending
+          Rev. 7 budget: AED 24,000 committed across the five segments + AED 3,000 reserve = AED 27,000 (full split in the budget exhibit on the segments page and R2; pending
           Mr Akbar&apos;s sign-off). No-media lanes are staffed work, not free — owner time is tracked in the
           daily rhythm.
         </p>
@@ -1176,7 +1110,7 @@ function DmPlan() {
           </table>
         </div>
         <p className="mt-2 rounded-lg px-3 py-2 text-[11px] font-medium" style={{ backgroundColor: '#FDF9EC', color: '#6d5a1d' }}>
-          Slices sum to the 6,000 pilot (500 + 4,500 + 500 + 500). The campaign is LIVE but live keyword
+          Rev. 7 slices: brand 500 · price searches 2,500 (1,000 now, +1,500 at Day 14 if proven; plan-intent phrases run inside it) · insurance gap 500 = AED 3,500. The campaign is LIVE but live keyword
           coverage is NOT assumed: our sync reads campaign-level data only, so every cluster above — including
           “dental checkup cost dubai” — is confirmed inside the Google Ads account itself (owner: Fahad, by 23
           Sep); any missing keyword is added at confirmation and the status column flips to CONFIRMED, dated.
@@ -1220,7 +1154,7 @@ function DmPlan() {
             low-mid — headroom, not slack. Qualified check: paid 114–246 + owned ≥30 against the 150 the mandate
             requires. Assumptions on show: gross→qualified ~60% (validated at the 28 Sep Day-7 checkpoint) and
             qualified→paid 8% (the mandate&apos;s own rate). Blended direct CPQL must land ≤125 target
-            (15,000 ÷ 120) with 200 as the kill line.
+            on the rev. 7 direct budget (7,000); an online member costing more than AED 600 at Day 14 keeps the held-back 3,500 locked.
           </Note>
           <Note tone="coral">
             The honesty line that justifies the 70/30 doctrine: direct-media cost per subscription (est. AED
@@ -1362,7 +1296,7 @@ function Recommendation() {
         <span className="font-bold">Recommendation: proceed with a focused, measurable pilot; expand when the evidence supports it.</span>{' '}
         Start with existing patients and clinic touchpoints, validate the offer and its economics, run one clearly
         defined corporate pilot through a warm door, and defer heavy awareness media (rev. 4 carries a single
-        bounded AED 3,000 awareness burst, judged on enabler metrics, never on CPL). Scale is a decision we earn
+        bounded AED 3,500 of offline community awareness near the branches, judged on members it brings). Scale is a decision we earn
         with data at the end of the pilot — not a calendar commitment we make today. The owner has since fixed
         the outcome (<Jump to="mandate">30-day mandate</Jump>) and the proposed, quantified response is in the{' '}
         <Jump to="response">30-day delivery plan</Jump>.
@@ -2871,6 +2805,92 @@ function TeamTab({ state, setState }: { state: TrackerState; setState: (s: Track
   );
 }
 
+/* ── rev. 7 budget: one shared exhibit (lib/smileclub/budget.ts) ── */
+
+function BudgetExhibit({ n }: { n: string }) {
+  const segName = (id: SegmentId) => SEGMENTS.find((s) => s.id === id)!.name;
+  return (
+    <section>
+      <Exhibit n={n} title={`Budget — ${fmtAed(TOTAL)} for 30 days (${fmtAed(COMMITTED)} committed + ${fmtAed(RESERVE.aed)} reserve) · pending Mr Akbar’s sign-off`} />
+      <div className="grid gap-2 md:grid-cols-3">
+        {([
+          [`≈ ${fmtAed(CEILING.perMember)}`, 'Most we should spend to win one member', `The cheapest plan is AED ${CEILING.lowestAnnualFee.toLocaleString('en-US')} a year. If the check-ups and cleanings it includes cost about half of that, about AED 500 is left in year one. Spending no more than half of that to win a member gives ≈ AED ${CEILING.perMember}. Assumption to confirm with Finance.`],
+          [fmtAed(CEILING.total), 'The ceiling for 120 members', `${CEILING.members} × AED ${CEILING.perMember}. The plan stays below it: ${fmtAed(TOTAL)} ≈ AED ${Math.round(TOTAL / CEILING.members)} per member on average.`],
+          ['Cheapest first', 'How the money is split', 'Budget follows where members are cheapest to win: our own patients cost least, online costs most — so online is small and half of it is released only if it proves itself at Day 14.'],
+        ] as [string, string, string][]).map(([v, l, s]) => (
+          <div key={l} className="rounded-xl border bg-white px-3 py-2.5" style={{ borderColor: LINE }}>
+            <p className="text-[16px] font-bold tabular-nums" style={{ color: NAVY, fontFamily: 'Georgia, serif' }}>{v}</p>
+            <p className="text-[10.5px] font-bold uppercase tracking-wide" style={{ color: BLUE }}>{l}</p>
+            <p className="mt-0.5 text-[10px] leading-snug" style={{ color: OLIVE }}>{s}</p>
+          </div>
+        ))}
+      </div>
+      <div className="mt-2 overflow-x-auto rounded-xl border bg-white" style={{ borderColor: LINE }}>
+        <table className="w-full min-w-[720px] border-collapse text-[10.5px]">
+          <thead>
+            <tr className="text-left text-[9.5px] uppercase tracking-wide" style={{ color: OLIVE, backgroundColor: '#F7F7F0' }}>
+              <th className="px-2.5 py-2 font-bold">Segment</th><th className="px-2.5 py-2 text-center font-bold">Target</th>
+              <th className="px-2.5 py-2 font-bold">What the money buys</th><th className="px-2.5 py-2 text-right font-bold">Budget</th>
+              <th className="px-2.5 py-2 text-right font-bold">Per member</th>
+            </tr>
+          </thead>
+          <tbody>
+            {SEGMENT_BUDGETS.map((b) => {
+              const tot = segmentTotal(b);
+              return (
+                <tr key={b.seg} className="border-t align-top" style={{ borderColor: '#EEEFE1' }}>
+                  <td className="px-2.5 py-1.5 font-bold" style={{ color: NAVY }}>{segName(b.seg)}</td>
+                  <td className="px-2.5 py-1.5 text-center font-bold tabular-nums" style={{ color: CORAL }}>{b.target}</td>
+                  <td className="px-2.5 py-1.5" style={{ color: '#3a4148' }}>
+                    {b.lines.map((l) => (
+                      <span key={l.item} className="block">{l.item} — <b className="tabular-nums">{l.aed.toLocaleString('en-US')}</b>{l.note ? <span style={{ color: '#2C5E3F' }}> ({l.note})</span> : null}</span>
+                    ))}
+                    {b.gated ? <span className="block font-semibold" style={{ color: '#7a6420' }}>+ {b.gated.aed.toLocaleString('en-US')} held back: {b.gated.condition}</span> : null}
+                  </td>
+                  <td className="px-2.5 py-1.5 text-right font-bold tabular-nums" style={{ color: NAVY }}>{tot.toLocaleString('en-US')}</td>
+                  <td className="px-2.5 py-1.5 text-right tabular-nums" style={{ color: OLIVE }}>~{Math.round(tot / b.target)}</td>
+                </tr>
+              );
+            })}
+            <tr className="border-t font-bold" style={{ borderColor: '#EEEFE1', backgroundColor: '#F7F7F0' }}>
+              <td className="px-2.5 py-1.5" style={{ color: NAVY }}>Committed</td>
+              <td className="px-2.5 py-1.5 text-center tabular-nums" style={{ color: CORAL }}>{SEGMENT_BUDGETS.reduce((a, b) => a + b.target, 0)}</td>
+              <td className="px-2.5 py-1.5" />
+              <td className="px-2.5 py-1.5 text-right tabular-nums" style={{ color: NAVY }}>{COMMITTED.toLocaleString('en-US')}</td>
+              <td className="px-2.5 py-1.5 text-right tabular-nums" style={{ color: OLIVE }}>~{Math.round(COMMITTED / 120)}</td>
+            </tr>
+            <tr className="border-t" style={{ borderColor: '#EEEFE1' }}>
+              <td className="px-2.5 py-1.5 font-bold" style={{ color: NAVY }}>Reserve</td><td />
+              <td className="px-2.5 py-1.5" style={{ color: '#3a4148' }}>{RESERVE.condition}</td>
+              <td className="px-2.5 py-1.5 text-right font-bold tabular-nums" style={{ color: NAVY }}>{RESERVE.aed.toLocaleString('en-US')}</td><td />
+            </tr>
+            <tr className="border-t font-bold" style={{ borderColor: '#EEEFE1', backgroundColor: '#EEF1F6' }}>
+              <td className="px-2.5 py-1.5" colSpan={3} style={{ color: NAVY }}>Total</td>
+              <td className="px-2.5 py-1.5 text-right tabular-nums" style={{ color: NAVY }}>{TOTAL.toLocaleString('en-US')}</td>
+              <td className="px-2.5 py-1.5 text-right tabular-nums" style={{ color: OLIVE }}>~{Math.round(TOTAL / 120)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="mt-2 space-y-2">
+        <Note tone="blue">
+          What changed from the first AED 30,000 draft: online cut from 15,000 to 7,000 (half conditional) — it was buying 12
+          members at about AED 1,250 each, more than a year&apos;s fee; the separate AED 3,000 digital awareness line
+          is gone (awareness now happens offline, inside families &amp; neighbourhoods); companies up from 6,000 to
+          7,500 so both dental days are funded; new small, results-only thank-yous for desk teams and dentists; AED
+          3,000 held back to reward whichever segment works.
+        </Note>
+        <Note tone="gold">
+          Not in this budget (real costs, not marketing spend — added in Finance&apos;s fully-loaded check, task due 2
+          Oct): salaries and staff time, dentists&apos; time on dental days, and the free first check-up offered to
+          long-lapsed patients. The one number to confirm with Finance is what the included care really costs — if it
+          is much more than half the fee, the ceiling drops and online shrinks further.
+        </Note>
+      </div>
+    </section>
+  );
+}
+
 /* ── rev. 6: the plan by segment (Mr Akbar, 23 Sep — "no one solution for all") ── */
 
 function SegmentsTab({ state }: { state: TrackerState }) {
@@ -2902,6 +2922,7 @@ function SegmentsTab({ state }: { state: TrackerState }) {
               <tr className="text-left text-[9.5px] uppercase tracking-wide" style={{ color: OLIVE, backgroundColor: '#F7F7F0' }}>
                 <th className="px-2.5 py-2 font-bold">Segment</th><th className="px-2.5 py-2 font-bold">Who delivers it</th>
                 <th className="px-2.5 py-2 font-bold">When it starts</th><th className="px-2.5 py-2 text-center font-bold">Target</th>
+                <th className="px-2.5 py-2 text-right font-bold">Budget</th>
                 <th className="px-2.5 py-2 font-bold" style={{ width: 150 }}>Tasks done</th>
               </tr>
             </thead>
@@ -2920,6 +2941,10 @@ function SegmentsTab({ state }: { state: TrackerState }) {
                       <span className="text-[15px] font-bold tabular-nums" style={{ color: CORAL, fontFamily: 'Georgia, serif' }}>{s.target}</span>
                       <span className="block text-[9px]" style={{ color: OLIVE }}>{s.targetNote}</span>
                     </td>
+                    <td className="px-2.5 py-1.5 text-right font-bold tabular-nums whitespace-nowrap" style={{ color: NAVY }}>
+                      {segmentTotal(BUDGET_BY_SEG[s.id]).toLocaleString('en-US')}
+                      <span className="block text-[9px] font-normal" style={{ color: OLIVE }}>~{Math.round(segmentTotal(BUDGET_BY_SEG[s.id]) / s.target)}/member</span>
+                    </td>
                     <td className="px-2.5 py-1.5">
                       <span className="text-[11px] font-bold tabular-nums" style={{ color: NAVY }}>{st.pct}%</span>
                       <span className="text-[9.5px]" style={{ color: OLIVE }}> · {st.tasks.length} tasks{st.late ? <b style={{ color: '#a04a38' }}> · {st.late} late</b> : null}</span>
@@ -2931,12 +2956,15 @@ function SegmentsTab({ state }: { state: TrackerState }) {
               <tr className="border-t font-bold" style={{ borderColor: '#EEEFE1', backgroundColor: '#F7F7F0' }}>
                 <td className="px-2.5 py-1.5" colSpan={3} style={{ color: NAVY }}>Total — paid, active memberships by Wed 21 Oct</td>
                 <td className="px-2.5 py-1.5 text-center text-[15px] tabular-nums" style={{ color: CORAL, fontFamily: 'Georgia, serif' }}>{total}</td>
+                <td className="px-2.5 py-1.5 text-right tabular-nums" style={{ color: NAVY }}>{TOTAL.toLocaleString('en-US')}<span className="block text-[9px] font-normal" style={{ color: OLIVE }}>incl. {RESERVE.aed.toLocaleString('en-US')} reserve</span></td>
                 <td className="px-2.5 py-1.5" />
               </tr>
             </tbody>
           </table>
         </div>
       </section>
+
+      <BudgetExhibit n="S1b" />
 
       <section>
         <Exhibit n="S2" title="Each segment — who, the message, how it is done, when it starts, what we will not do" />
@@ -3035,7 +3063,8 @@ function SegmentsTab({ state }: { state: TrackerState }) {
             ['WhatsApp is curated, never blanket', 'Each dentist writes only to their own patients, in their own name, 20 a day at most. This replaces the mass test that produced no confirmed members.'],
             ['Corporate has a list, a type order and an unlock date', 'Warm doors first; door-to-door only for smaller companies, Tue–Thu, from 29 Sep once the price, kit, list and dental-day offer are ready. The door-opener is a free dental day, not a sales pitch.'],
             ['Google is three campaigns, not one', 'Brand, price searches and insurance-gap searches — each with its own words and budget. No display, no broad awareness.'],
-            ['Awareness moves offline', 'The AED 3,000 moves from digital ads to schools, residential buildings, gyms and pharmacies near the branches.'],
+            ['Awareness moves offline', 'No digital awareness ads: families are reached through schools, residential buildings, gyms and pharmacies near the branches.'],
+            ['Budget built from the member, not the channel', 'AED 27,000 instead of 30,000: about AED 225 per member, below the AED 250 ceiling — online cut to 7,000 (half conditional), our own patients funded, results-only thank-yous.'],
             ['Every task carries its segment', 'The task calendar and the progress bars are the plan — Mr Akbar sees each segment’s progress on this page.'],
           ] as [string, string][]).map(([h, b]) => (
             <div key={h} className="rounded-xl border bg-white p-3" style={{ borderColor: LINE }}>
