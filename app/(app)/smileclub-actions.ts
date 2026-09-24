@@ -4,6 +4,18 @@ import { revalidatePath } from 'next/cache';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
 import { editableFor, loadTracker, seedRows } from '@/lib/smileclub/tracker';
 import {
+  CAL_WINDOW,
+  COMPANY_TYPES,
+  STAGES,
+  STAGE_ORDER,
+  kindOf,
+  matchCompany,
+  parseIcs,
+  taskFor,
+  type EventKind,
+  type Stage,
+} from '@/lib/smileclub/corporate';
+import {
   CRM_TEST_SPEC,
   SMILECLUB_PROJECT_ID,
   TASK_BY_KEY,
@@ -211,4 +223,154 @@ export async function commentTeamTaskAction(input: { key: string; text: string }
   if (error) return { ok: false, error: error.message };
   revalidatePath('/');
   return { ok: true, state: await loadTracker() };
+}
+
+/* ── Gautam's company pipeline + calendar import (25 Sep) ── */
+
+async function canRunCorporate() {
+  const { canEdit, viewer } = await editableFor();
+  const ok = canEdit === 'all' || canEdit.includes('gautam');
+  return { ok, actor: viewer ?? 'Fahad (admin)' };
+}
+
+const TYPE_IDS = new Set<string>([...COMPANY_TYPES.map((t) => t.id), 'unsorted']);
+const STAGE_IDS = new Set<string>(STAGES.map((x) => x.id));
+const clip = (v: unknown, n: number) => {
+  const t = String(v ?? '').trim().slice(0, n);
+  return t || null;
+};
+
+/** Add or update one company in Gautam's pipeline. Gautam and Fahad only. */
+export async function saveCompanyAction(input: {
+  id?: string;
+  name: string;
+  type: string;
+  area?: string;
+  staffBand?: string;
+  source?: string;
+  stage: string;
+  nextStep?: string;
+  nextDate?: string;
+  members?: number;
+  note?: string;
+}): Promise<ProgressResult> {
+  const { ok, actor } = await canRunCorporate();
+  if (!ok) return { ok: false, error: 'Only Gautam (or Fahad) can edit the company pipeline.' };
+  const name = clip(input.name, 120);
+  if (!name) return { ok: false, error: 'Company name is required.' };
+  if (!TYPE_IDS.has(input.type)) return { ok: false, error: 'Choose a company type.' };
+  if (!STAGE_IDS.has(input.stage)) return { ok: false, error: 'Choose a stage.' };
+  const nextDate = input.nextDate && /^\d{4}-\d{2}-\d{2}$/.test(input.nextDate) ? input.nextDate : null;
+  const members = Math.max(0, Math.min(5000, Math.round(Number(input.members ?? 0)) || 0));
+  const sb = getSupabaseAdmin();
+  if (!sb) return { ok: false, error: 'Tracking database unavailable.' };
+  const row = {
+    name, type: input.type, area: clip(input.area, 80), staff_band: clip(input.staffBand, 40), source: clip(input.source, 80),
+    stage: input.stage, next_step: clip(input.nextStep, 200), next_date: nextDate, members, note: clip(input.note, 500),
+    updated_at: new Date().toISOString(), updated_by: actor,
+  };
+  const { error } = input.id
+    ? await sb.from('sc_companies').update(row).eq('id', input.id)
+    : await sb.from('sc_companies').insert(row);
+  if (error) return { ok: false, error: /duplicate|unique/i.test(error.message) ? 'That company is already in the pipeline.' : error.message };
+  revalidatePath('/');
+  return { ok: true, state: await loadTracker() };
+}
+
+export type CalendarResult =
+  | { ok: true; state: TrackerState; summary: { filed: number; newCompanies: number; ignored: number; removed: number } }
+  | { ok: false; error: string };
+
+/**
+ * Import Gautam's calendar (.ics). Only entries named "SC – Company – …" or
+ * naming a pipeline company, dated inside the programme window, are stored;
+ * everything else in the file is ignored and never saved. Each entry is filed
+ * against its company and the matching corporate task; company stages move
+ * forward (never back) from the entries already held.
+ */
+export async function uploadCalendarAction(formData: FormData): Promise<CalendarResult> {
+  const { ok, actor } = await canRunCorporate();
+  if (!ok) return { ok: false, error: 'Only Gautam (or Fahad) can upload the calendar.' };
+  const f = formData.get('file');
+  if (!f || typeof f === 'string' || !(f as File).size) return { ok: false, error: 'Choose the calendar file (.ics) first.' };
+  const file = f as File;
+  if (file.size > 2_000_000) return { ok: false, error: 'File is too large (max 2 MB).' };
+  if (!/\.ics$/i.test(file.name) && file.type !== 'text/calendar') return { ok: false, error: 'Upload the calendar export as an .ics file.' };
+  const text = await file.text();
+  if (!/BEGIN:VCALENDAR/.test(text)) return { ok: false, error: 'This does not look like a calendar file (.ics).' };
+
+  const sb = getSupabaseAdmin();
+  if (!sb) return { ok: false, error: 'Tracking database unavailable.' };
+  const { data: cs } = await sb.from('sc_companies').select('id,name,stage');
+  const companies = (cs ?? []).map((c) => ({ id: c.id as string, name: c.name as string, stage: (c.stage as Stage) ?? 'target' }));
+
+  const all = parseIcs(text);
+  const from = `${CAL_WINDOW.from}T00:00:00+04:00`;
+  const to = `${CAL_WINDOW.to}T23:59:59+04:00`;
+  let ignored = 0;
+  let newCompanies = 0;
+  const cancelled: string[] = [];
+  const rows: { uid: string; owner: string; starts_at: string; ends_at: string | null; title: string; location: string | null; company_id: string | null; kind: EventKind; task_key: string; uploaded_at: string; uploaded_by: string }[] = [];
+  const now = new Date().toISOString();
+  for (const ev of all) {
+    const t = Date.parse(ev.start);
+    if (!Number.isFinite(t) || t < Date.parse(from) || t > Date.parse(to)) { ignored += 1; continue; }
+    const m = matchCompany(ev, companies);
+    if (!m || !m.name) { ignored += 1; continue; }
+    if (ev.cancelled) { cancelled.push(ev.uid); continue; }
+    let companyId = m.id;
+    if (!companyId) {
+      const { data: created, error } = await sb.from('sc_companies')
+        .insert({ name: m.name.slice(0, 120), type: 'unsorted', stage: 'contacted', source: 'calendar', updated_by: actor })
+        .select('id').single();
+      if (error || !created) { ignored += 1; continue; }
+      companyId = created.id as string;
+      companies.push({ id: companyId, name: m.name, stage: 'contacted' });
+      newCompanies += 1;
+    }
+    const kind = kindOf(m.kindText);
+    rows.push({ uid: ev.uid, owner: 'gautam', starts_at: new Date(t).toISOString(), ends_at: ev.end ? new Date(Date.parse(ev.end)).toISOString() : null,
+      title: ev.summary, location: ev.location, company_id: companyId, kind, task_key: taskFor(kind, new Date(t + 4 * 3600_000).toISOString()), uploaded_at: now, uploaded_by: actor });
+  }
+  if (rows.length) {
+    const { error } = await sb.from('sc_calendar_events').upsert(rows, { onConflict: 'uid' });
+    if (error) return { ok: false, error: error.message };
+  }
+  // Future entries that were deleted or cancelled in the calendar are removed here too.
+  const keep = new Set(rows.map((r) => r.uid));
+  const { data: future } = await sb.from('sc_calendar_events').select('uid').eq('owner', 'gautam').gte('starts_at', now);
+  const drop = [...new Set([...cancelled, ...(future ?? []).map((r) => r.uid as string).filter((u) => !keep.has(u))])];
+  if (drop.length) await sb.from('sc_calendar_events').delete().in('uid', drop);
+
+  // Move company stages forward from past entries; set the next step from the next entry.
+  const { data: held } = await sb.from('sc_calendar_events').select('company_id,starts_at,title,kind').eq('owner', 'gautam').order('starts_at');
+  const REACH: Partial<Record<EventKind, Stage>> = { visit: 'contacted', 'follow-up': 'contacted', meeting: 'meeting', proposal: 'proposal', launch: 'launched' };
+  for (const c of companies) {
+    const mine = (held ?? []).filter((e) => e.company_id === c.id);
+    if (!mine.length) continue;
+    let stage: Stage = c.stage;
+    for (const e of mine) {
+      const s2 = REACH[e.kind as EventKind];
+      if (e.starts_at as string <= now && s2 && stage !== 'lost' && STAGE_ORDER[s2] > STAGE_ORDER[stage]) stage = s2;
+    }
+    const next = mine.find((e) => (e.starts_at as string) > now);
+    await sb.from('sc_companies').update({
+      stage, next_step: next ? (next.title as string).slice(0, 200) : null,
+      next_date: next ? new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Dubai' }).format(new Date(next.starts_at as string)) : null,
+      updated_at: now, updated_by: actor,
+    }).eq('id', c.id);
+  }
+
+  // One activity-log line per corporate task that received entries.
+  const perTask: Record<string, number> = {};
+  for (const r of rows) perTask[r.task_key] = (perTask[r.task_key] ?? 0) + 1;
+  for (const [key, n] of Object.entries(perTask)) {
+    const { data: tr } = await sb.from('tasks').select('id,raw').eq('source', TRACKER_SOURCE).eq('external_id', externalIdFor(key)).maybeSingle();
+    if (!tr) continue;
+    const stg = Number((tr.raw as { stage?: number } | null)?.stage ?? 0);
+    await sb.from('task_events').insert({ task_id: tr.id, actor, from_stage: stg, to_stage: stg, status: 'calendar', note: `Calendar upload: ${n} company ${n === 1 ? 'entry' : 'entries'} filed to this task.` });
+  }
+
+  revalidatePath('/');
+  return { ok: true, state: await loadTracker(), summary: { filed: rows.length, newCompanies, ignored, removed: drop.length } };
 }

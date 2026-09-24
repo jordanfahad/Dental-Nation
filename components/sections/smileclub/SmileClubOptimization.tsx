@@ -13,10 +13,12 @@
  */
 
 import { createContext, useContext, useState } from 'react';
-import { commentTeamTaskAction, updateTeamTaskAction, verifyCrmTestAction } from '@/app/(app)/smileclub-actions';
+import { commentTeamTaskAction, saveCompanyAction, updateTeamTaskAction, uploadCalendarAction, verifyCrmTestAction } from '@/app/(app)/smileclub-actions';
+import { PLAYBOOKS, type Channel } from '@/lib/smileclub/playbook';
+import { CAL_RULE, COMPANY_TYPES, STAGES, TYPE_LABEL, type CalEvent, type Company, type CompanyType, type CorpState, type EventKind, type Stage } from '@/lib/smileclub/corporate';
 import { SEGMENTS, type SegmentId } from '@/lib/smileclub/segments';
 import { BANNED_TR_AR, BANNED_WORDS, BRANCH_LABEL, BRANCH_LANGS, DENTISTS, LANES, LANG_LABEL, LANG_REVIEW, PATIENT_SEGS, SHOOT, laneFor, langsFor, scriptsFor, type Branch, type Dentist, type DentistScripts, type Lang } from '@/lib/smileclub/scripts';
-import { BUDGET_BY_SEG, CEILING, COMMITTED, RESERVE, SEGMENT_BUDGETS, TOTAL, fmtAed, segmentTotal } from '@/lib/smileclub/budget';
+import { BUDGET_BY_SEG, CEILING, HELD, PROCUREMENT_STEPS, RESERVE, SEGMENT_BUDGETS, SPEND_NOW, TOTAL, fmtAed, segmentTotal } from '@/lib/smileclub/budget';
 import {
   CRM_TEST_SPEC,
   OWNER_LABEL,
@@ -24,6 +26,7 @@ import {
   TEAM_TASKS,
   TOTAL_WEIGHT,
   ragFor,
+  waitingOn,
   weightPct,
   type Step,
   type Person,
@@ -2214,7 +2217,7 @@ const TEAM: { id: Person; name: string; role: string; color: string; owns: strin
   { id: 'fahad', name: 'Fahad', role: 'Growth lead — reports to Mr Akbar', color: '#5B4B8A', owns: 'Coordinates Google, Facebook/Instagram, LinkedIn and partners; arranges warm company introductions; records required human sign-offs and reports at the three Monday checkpoints and final Wednesday close.' },
   { id: 'crm', name: 'CRM-DN', role: 'WhatsApp, web pages, tracking & contact centre', color: '#7A5C2E', owns: 'Runs the WhatsApp messages, the membership web page and banner, the contact centre’s 10-minute replies, and the tracking that proves where every member came from. Fahad updates these tasks.' },
   { id: 'doctors', name: 'Treating dentists', role: 'Dr Hasna · Dr Tosun · Dr Maysoon · every treating dentist', color: '#1F6F6B', owns: 'Recommend Smile Club in one sentence at the end of every check-up, and write — in their own name, only to their own patients — the three waves of personal WhatsApp messages. Dr Luvi updates these tasks.' },
-  { id: 'gautam', name: 'Gautam', role: 'Project owner & corporate implementer', color: NAVY, owns: 'Owns programme completion and starting data, leads company meetings and door visits, and coordinates the signed companies through staff joining.' },
+  { id: 'gautam', name: 'Gautam', role: 'Project owner & corporate implementer', color: NAVY, owns: 'Owns programme completion and starting data, leads company meetings and door visits, and coordinates the signed companies through staff joining. The single contact for Procurement, and owns getting the WhatsApp follow-up live — chasing Mohan and CRM-DN until every blocker is cleared.' },
   { id: 'luvi', name: 'Dr Luvi', role: 'Head of Operations', color: '#2C5E3F', owns: 'Leads the chair 36 and dentist-message 24, branch capacity, clinical review and dental-day delivery. Updates her own, receptionists’ and dentists’ tasks.' },
   { id: 'mohan', name: 'Mohan', role: 'Videographer & content designer', color: CORAL, owns: 'Produces checked print, video, ad and company-launch materials for the named audiences; Fahad manages ad launches.' },
   { id: 'reception', name: 'Receptionists', role: 'Al Wasl · Dr Tosun · AMC', color: BLUE, owns: 'Completes joining at checkout after the dentist’s recommendation: chair target 12 paid contracts per branch, 36 in total, by 21 Oct.' },
@@ -2232,7 +2235,7 @@ const RHYTHMS: { who: Person; items: string[] }[] = [
   { who: 'fahad', items: ['Daily: read the end-of-day numbers — members by source, ad spend, enquiries', 'Monday: one-page progress report to Mr Akbar', 'Weekly: ad performance review with Mohan — keep, cut or remake'] },
   { who: 'doctors', items: ['Every check-up or cleaning: the one-sentence recommendation + the signed invitation card', 'During a wave: own patients with current consent only; at most 20 messages per dentist per day across all routes; answer replies the same day and honour opt-outs immediately', 'Friday: what patients said back, to Dr Luvi'] },
   { who: 'crm', items: ['Every enquiry answered within 10 minutes and tagged “membership” or “appointment”', 'Daily: late replies reviewed at the 09:00 meeting', 'Weekly: tracking spot-check — every new member shows where they came from'] },
-  { who: 'gautam', items: ['Mon: checkpoint or weekly resource decision', 'Daily: EOD scorecard read · meeting log updated after every door', 'Weekly: check the company list and evidence for at least 72 potential memberships supporting the target of 24'] },
+  { who: 'gautam', items: ['Mon: checkpoint or weekly resource decision', 'Daily: EOD scorecard read · every visit and meeting in the calendar as “SC – Company – …”', 'Friday: upload the calendar file; update company stages; chase any task you are waiting on', 'Weekly: check the company list and evidence for at least 72 potential memberships supporting the target of 24'] },
   { who: 'luvi', items: ['Daily 09:00: per-branch count + objection log review (with the Smile Club Coordinator)', 'Daily 16:00: recovery queue for any branch behind pace', 'Weekly: clinical sign-off on new creative and claims'] },
   { who: 'mohan', items: ['Label every design with its intended audience and message before handing it over', 'Weekly: submission batch to Dr Luvi for clinical review', 'Weekly: performance read with Fahad — cut, keep or re-cut'] },
   { who: 'reception', items: ['Every checkout: Ask → Match → Value → Clarify → Close, savings shown against TODAY’s bill', 'Every join: QR under the branch code + first member appointment booked before the patient leaves', 'Every decline: objection log · Friday: objection themes to Dr Luvi', 'Always “membership / included services / member rates” — never insurance, coverage or claim'] },
@@ -2364,8 +2367,10 @@ function EvidenceBox({ p, editable, onVerified }: { p: TaskProgress | undefined;
   );
 }
 
-function TaskCard({ t, p, today, color, editable, onSave, onVerified, comments, canComment, onComment }: {
+function TaskCard({ t, p, today, color, editable, onSave, onVerified, comments, canComment, onComment, waiting, cal }: {
   t: TeamTask; p: TaskProgress | undefined; today: string; color: string; editable: boolean;
+  waiting: TeamTask[];
+  cal: CalEvent[];
   onSave: (stage: number, blocked: boolean, note: string) => Promise<string | null>;
   onVerified: (s: TrackerState) => void;
   comments: TaskEvent[];
@@ -2418,6 +2423,27 @@ function TaskCard({ t, p, today, color, editable, onSave, onVerified, comments, 
         </span>
         <span className="py-0.5" style={{ color: OLIVE }}>{t.subsNote}</span>
       </div>
+      {t.needs?.length ? (
+        <div className="mt-2 rounded-lg border px-2.5 py-1.5" style={{ borderColor: waiting.length ? '#dcb3aa' : '#cfe0cd', backgroundColor: waiting.length ? '#FBEFEC' : '#F3F8F2' }}>
+          <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: waiting.length ? '#a04a38' : '#2C5E3F' }}>
+            {waiting.length ? `Waiting on ${waiting.length} — ${OWNER_LABEL[t.who]} chases these` : 'Prerequisites cleared ✓'}
+          </p>
+          <ul className="mt-0.5 space-y-0.5">
+            {t.needs.map((k) => {
+              const n = TASK_BY_KEY[k];
+              if (!n) return null;
+              const open = waiting.some((w) => w.key === k);
+              return (
+                <li key={k} className="text-[10.5px]" style={{ color: '#3a4148' }}>
+                  <span className="font-bold" style={{ color: open ? '#a04a38' : '#2C5E3F' }}>{open ? '⏳' : '✓'}</span>{' '}
+                  <b style={{ color: NAVY }}>{OWNER_LABEL[n.who]}</b> — <button type="button" onClick={() => document.getElementById(`task-${k}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })} className="underline decoration-dotted" style={{ color: BLUE }}>{n.task}</button>
+                  <span style={{ color: OLIVE }}> · due {n.due}</span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ) : null}
       <div className="mt-2 grid gap-2 md:grid-cols-2">
         <p className="text-[10.5px] leading-snug" style={{ color: '#3a4148' }}><span className="font-bold" style={{ color: NAVY }}>Objective:</span> {t.objective}</p>
         <p className="text-[10.5px] leading-snug" style={{ color: '#3a4148' }}><span className="font-bold" style={{ color: NAVY }}>Why it matters:</span> {t.why}</p>
@@ -2436,6 +2462,18 @@ function TaskCard({ t, p, today, color, editable, onSave, onVerified, comments, 
       </div>
       <p className="mt-2 text-[10.5px] leading-snug" style={{ color: '#3a4148' }}><span className="font-bold" style={{ color: NAVY }}>Done looks like:</span> {t.done}</p>
       {t.verify ? <EvidenceBox p={p} editable={editable} onVerified={onVerified} /> : null}
+      {cal.length ? (
+        <div className="mt-2 rounded-lg px-2.5 py-2" style={{ backgroundColor: '#EEF1F6' }}>
+          <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: NAVY }}>From Gautam’s calendar ({cal.length})</p>
+          <ul className="mt-0.5 space-y-0.5">
+            {cal.map((e) => (
+              <li key={e.uid} className="text-[10.5px]" style={{ color: dubaiDate(e.startsAt) < today ? OLIVE : '#3a4148' }}>
+                <b className="tabular-nums" style={{ color: NAVY }}>{fmtDay(e.startsAt)} {fmtTime(e.startsAt)}</b> · {KIND_LABEL[e.kind]} · {e.company ?? e.title}{dubaiDate(e.startsAt) < today ? ' · done' : ''}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
       {t.scripts ? (
         <div className="mt-2 space-y-1.5">
           <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: CORAL }}>The scripts — for review</p>
@@ -2640,10 +2678,16 @@ function TeamTab({ state, setState }: { state: TrackerState; setState: (s: Track
                                 <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: RAG_STYLE[rag].bg === '#F1F1EA' ? '#C9C9BC' : RAG_STYLE[rag].fg === '#ffffff' ? RAG_STYLE[rag].bg : RAG_STYLE[rag].fg }} title={RAG_STYLE[rag].label} />
                               </span>
                               <span className="block leading-tight" style={{ color: '#3a4148' }}>{x.task}</span>
+                              {rag !== 'done' && waitingOn(x, state.progress).length ? <span className="block text-[9px] font-bold" style={{ color: '#a04a38' }}>⏳ waiting on {waitingOn(x, state.progress).map((w) => OWNER_LABEL[w.who]).filter((v, i, a) => a.indexOf(v) === i).join(', ')}</span> : null}
                               <span className="mt-0.5 block"><Bar pct={pct} color={rag === 'overdue' || rag === 'blocked' ? CORAL : p.color} h={3} /></span>
                             </button>
                           );
                         })}
+                        {p.id === 'gautam' ? (state.corp?.events ?? []).filter((e) => weekOf(dubaiDate(e.startsAt)) === w.n).map((e) => (
+                          <span key={e.uid} className="block rounded-md px-1.5 py-0.5 text-[9px] leading-tight" style={{ backgroundColor: '#EEF1F6', color: NAVY }} title={e.title}>
+                            📅 <b>{fmtDay(e.startsAt)}</b> · {KIND_LABEL[e.kind]} · {e.company ?? e.title}
+                          </span>
+                        )) : null}
                       </div>
                     </td>
                   ))}
@@ -2652,6 +2696,12 @@ function TeamTab({ state, setState }: { state: TrackerState; setState: (s: Track
             </tbody>
           </table>
         </div>
+      </section>
+
+      <section>
+        <span id="corp-pipeline" />
+        <Exhibit n="T1b" title="Gautam’s companies — the types he tracks, the pipeline, and follow-ups from his calendar" />
+        <CorporatePipeline state={state} setState={setState} />
       </section>
 
       <section>
@@ -2673,6 +2723,8 @@ function TeamTab({ state, setState }: { state: TrackerState; setState: (s: Track
                   <TaskCard
                     key={x.key} t={x} p={state.progress[x.key]} today={today} color={p.color}
                     editable={canEditPerson(p.id)}
+                    waiting={waitingOn(x, state.progress)}
+                    cal={(state.corp?.events ?? []).filter((e) => e.taskKey === x.key)}
                     onSave={(stage, blocked, note) => save(x.key, stage, blocked, note)}
                     onVerified={setState}
                     comments={state.events.filter((e) => e.key === x.key && e.status === 'comment').reverse()}
@@ -2708,7 +2760,7 @@ function TeamTab({ state, setState }: { state: TrackerState; setState: (s: Track
                   if (!t) return null;
                   const change = e.toStage > e.fromStage
                     ? `✓ ${t.steps.slice(e.fromStage, e.toStage).map((x) => x.s).join(' · ')}`
-                    : e.toStage < e.fromStage ? `↩ back to step ${e.toStage + 1}` : e.status === 'comment' ? '💬 review comment' : e.status === 'blocked' ? '⚑ flagged blocked' : 'note';
+                    : e.toStage < e.fromStage ? `↩ back to step ${e.toStage + 1}` : e.status === 'comment' ? '💬 review comment' : e.status === 'calendar' ? '📅 calendar import' : e.status === 'blocked' ? '⚑ flagged blocked' : 'note';
                   return (
                     <tr key={`${e.at}-${i}`} className="border-t align-top" style={{ borderColor: '#EEEFE1' }}>
                       <td className="px-2.5 py-1.5 whitespace-nowrap tabular-nums" style={{ color: OLIVE }}>{fmtAt(e.at)}</td>
@@ -2787,32 +2839,198 @@ function TeamTab({ state, setState }: { state: TrackerState; setState: (s: Track
   );
 }
 
-/* ── rev. 7 budget: one shared exhibit (lib/smileclub/budget.ts) ── */
+/* ── Execution layer (25 Sep): playbooks, budget line detail, blockers, Gautam's pipeline ── */
 
-function BudgetExhibit({ n }: { n: string }) {
-  const segName = (id: SegmentId) => SEGMENTS.find((s) => s.id === id)!.name;
+/** Opens the Team tab at a task card. */
+function TaskLink({ k, children }: { k: string; children?: React.ReactNode }) {
+  const { goto } = useContext(SubNavContext);
+  const t = TASK_BY_KEY[k];
+  if (!t) return null;
   return (
-    <section>
-      <Exhibit n={n} title={`Proposed 30-day budget — ${fmtAed(TOTAL)}: ${fmtAed(COMMITTED)} allocated, including AED 3,500 conditional online funding, plus ${fmtAed(RESERVE.aed)} reserve · pending Mr Akbar’s sign-off`} />
-      <div className="grid gap-2 md:grid-cols-3">
+    <button
+      type="button"
+      onClick={() => { goto('team'); setTimeout(() => document.getElementById(`task-${k}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 200); }}
+      className="inline text-left font-bold underline decoration-dotted underline-offset-2 hover:decoration-solid"
+      style={{ color: BLUE }}
+      title="Opens the task in the Team task calendar"
+    >
+      {children ?? t.task} ↗
+    </button>
+  );
+}
+
+const CHANNEL_STYLE: Record<Channel, { fg: string; bg: string }> = {
+  'In person': { fg: '#2C5E3F', bg: '#e7efe6' },
+  WhatsApp: { fg: '#1f7a4d', bg: '#dff3e7' },
+  Phone: { fg: NAVY, bg: '#EEF1F6' },
+  Email: { fg: '#3f6f7c', bg: '#EEF4F6' },
+  LinkedIn: { fg: '#0a4f8f', bg: '#e6eef8' },
+  Online: { fg: '#5B4B8A', bg: '#efecf6' },
+  System: { fg: OLIVE, bg: '#F1F1EA' },
+  Print: { fg: '#7A5C2E', bg: '#f5eee2' },
+};
+
+function ChannelChip({ c }: { c: Channel }) {
+  const st = CHANNEL_STYLE[c];
+  return <span className="inline-block whitespace-nowrap rounded px-1.5 py-0.5 text-[9.5px] font-bold" style={{ color: st.fg, backgroundColor: st.bg }}>{c}</span>;
+}
+
+/** The step-by-step playbook for one segment. */
+function PlaybookSteps({ seg }: { seg: SegmentId }) {
+  const pb = PLAYBOOKS[seg];
+  const { goto } = useContext(SubNavContext);
+  return (
+    <div>
+      <div className="grid gap-2 md:grid-cols-4">
         {([
-          [`≈ ${fmtAed(CEILING.perMember)}`, 'Most we should spend to win one member', `The cheapest plan is AED ${CEILING.lowestAnnualFee.toLocaleString('en-US')} a year. If the check-ups and cleanings it includes cost about half of that, about AED 500 is left in year one. Spending no more than half of that to win a member gives ≈ AED ${CEILING.perMember}. Assumption to confirm with Finance.`],
-          [fmtAed(CEILING.total), 'The ceiling for 120 members', `${CEILING.members} × AED ${CEILING.perMember}. The plan stays below it: ${fmtAed(TOTAL)} ≈ AED ${Math.round(TOTAL / CEILING.members)} per member on average.`],
-          ['Cheapest first', 'How the money is split', 'The plan assumes existing-patient routes cost less. Actual paid-member costs determine the conditional online release and reserve allocation; the assumption is not yet a measured result.'],
-        ] as [string, string, string][]).map(([v, l, s]) => (
-          <div key={l} className="rounded-xl border bg-white px-3 py-2.5" style={{ borderColor: LINE }}>
-            <p className="text-[16px] font-bold tabular-nums" style={{ color: NAVY, fontFamily: 'Georgia, serif' }}>{v}</p>
-            <p className="text-[10.5px] font-bold uppercase tracking-wide" style={{ color: BLUE }}>{l}</p>
-            <p className="mt-0.5 text-[10px] leading-snug" style={{ color: OLIVE }}>{s}</p>
+          ['Accountable', pb.accountable],
+          ['Does the work', pb.doers],
+          ['Starts', pb.starts],
+          ['Trained by', pb.trained],
+        ] as [string, string][]).map(([l, v]) => (
+          <div key={l} className="rounded-lg px-2.5 py-2" style={{ backgroundColor: '#FAFAF6' }}>
+            <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: BLUE }}>{l}</p>
+            <p className="mt-0.5 text-[10.5px] font-semibold leading-snug" style={{ color: NAVY }}>{v}</p>
           </div>
         ))}
       </div>
+      <p className="mt-2 flex flex-wrap items-center gap-1.5 text-[10.5px]" style={{ color: '#3a4148' }}>
+        <b style={{ color: NAVY }}>How people are reached, in order:</b>
+        {pb.path.map((x, i) => <span key={x} className="flex items-center gap-1.5">{i ? <span style={{ color: OLIVE }}>→</span> : null}<span className="rounded-full px-2 py-0.5 font-semibold" style={{ backgroundColor: '#F1F1EA', color: NAVY }}>{x}</span></span>)}
+      </p>
+      <p className="mt-1 text-[10.5px] leading-snug" style={{ color: '#6d5a1d' }}><b>WhatsApp and digital:</b> {pb.digital}</p>
+      <div className="mt-2 overflow-x-auto rounded-xl border bg-white" style={{ borderColor: LINE }}>
+        <table className="w-full min-w-[820px] border-collapse text-[10.5px]">
+          <thead>
+            <tr className="text-left text-[9.5px] uppercase tracking-wide" style={{ color: OLIVE, backgroundColor: '#F7F7F0' }}>
+              <th className="w-[26px] px-2 py-2 font-bold">#</th>
+              <th className="w-[120px] px-2 py-2 font-bold">When</th>
+              <th className="w-[120px] px-2 py-2 font-bold">Who</th>
+              <th className="w-[90px] px-2 py-2 font-bold">How</th>
+              <th className="px-2 py-2 font-bold">Exactly what to do</th>
+              <th className="w-[170px] px-2 py-2 font-bold">Recorded where</th>
+            </tr>
+          </thead>
+          <tbody>
+            {pb.steps.map((st, i) => (
+              <tr key={i} className="border-t align-top" style={{ borderColor: '#EEEFE1' }}>
+                <td className="px-2 py-1.5 font-bold tabular-nums" style={{ color: CORAL }}>{i + 1}</td>
+                <td className="px-2 py-1.5 font-semibold" style={{ color: NAVY }}>{st.when}</td>
+                <td className="px-2 py-1.5" style={{ color: '#3a4148' }}>{st.who}</td>
+                <td className="px-2 py-1.5"><span className="flex flex-wrap gap-1">{st.how.map((c) => <ChannelChip key={c} c={c} />)}</span></td>
+                <td className="px-2 py-1.5 leading-snug" style={{ color: '#3a4148' }}>
+                  {st.do}
+                  {st.words ? <> <button type="button" onClick={() => goto(st.words!)} className="font-bold underline decoration-dotted" style={{ color: BLUE }}>The words ↗</button></> : null}
+                </td>
+                <td className="px-2 py-1.5 leading-snug" style={{ color: OLIVE }}>
+                  {st.record}
+                  {st.task ? <span className="mt-0.5 block text-[10px]"><TaskLink k={st.task}>Task</TaskLink></span> : null}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="mt-2 text-[9px] font-bold uppercase tracking-widest" style={{ color: BLUE }}>What gets tracked</p>
+      <ul className="mt-0.5 space-y-0.5">
+        {pb.track.map((x) => <li key={x} className="flex gap-2 text-[10.5px]" style={{ color: '#3a4148' }}><span className="mt-[5px] h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: NAVY }} />{x}</li>)}
+      </ul>
+    </div>
+  );
+}
+
+/** Mock-up of the dentist-signed invitation card — a design brief, not final artwork. */
+function InvitationCardMock() {
+  const [br, setBr] = useState<'alwasl' | 'tosun'>('alwasl');
+  const L = br === 'tosun'
+    ? { dir: 'ltr' as const, rec: 'Dr. ____________ size Smile Club’ı öneriyor', why: ['Kontrol ve temizlik', 'Tel / şeffaf plak bakımı', 'Diş eti sağlığı', 'Aile'], from: 'Aylık 99 AED’den başlayan', scan: 'Katılmak için okutun', desk: 'Bu kartı resepsiyona verin', code: 'SC-TOS', incl: ['Plana göre kontroller ve profesyonel temizlik', 'Acil diş sorunlarında destek', 'Öncelikli randevu', 'Uygun tedavilerde üye fiyatı'] }
+    : { dir: 'rtl' as const, rec: 'يوصيكم د. ____________ بالانضمام إلى Smile Club', why: ['فحوصات وتنظيف', 'العناية أثناء التقويم', 'صحة اللثة', 'العائلة'], from: 'من 99 درهماً شهرياً', scan: 'امسحوا الرمز للانضمام', desk: 'يرجى تسليم هذه البطاقة للاستقبال', code: 'SC-ALW', incl: ['فحوصات وتنظيف احترافي بحسب الخطة', 'مساعدة عند وجود مشكلة طارئة', 'أولوية في المواعيد', 'أسعار خاصة للأعضاء على العلاجات المؤهلة'] };
+  const face = 'relative flex aspect-[148/105] w-full flex-col rounded-lg border bg-white p-3 shadow-sm';
+  return (
+    <div className="mt-2 rounded-lg border p-2.5" style={{ borderColor: '#EEEFE1', backgroundColor: '#FAFAF6' }}>
+      <div className="mb-2 flex flex-wrap items-center gap-1.5">
+        <span className="text-[9px] font-bold uppercase tracking-widest" style={{ color: CORAL }}>Invitation card — mock-up for Mohan’s brief</span>
+        {([['alwasl', 'Al Wasl · AMC — Arabic + English'], ['tosun', 'Dr. Tosun Dental Clinic — Turkish + English']] as ['alwasl' | 'tosun', string][]).map(([id, l]) => (
+          <button key={id} type="button" onClick={() => setBr(id)} className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={br === id ? { backgroundColor: NAVY, color: 'white' } : { backgroundColor: '#F1F1EA', color: OLIVE }}>{l}</button>
+        ))}
+      </div>
+      <div className="grid gap-2 md:grid-cols-2">
+        <div className={face} style={{ borderColor: LINE }}>
+          <p className="text-[9px] font-bold uppercase tracking-[0.2em]" style={{ color: GOLD }}>Front</p>
+          <p className="text-[11px] font-bold tracking-wide" style={{ color: NAVY, fontFamily: 'Georgia, serif' }}>SMILE CLUB <span className="text-[9px] font-semibold" style={{ color: OLIVE }}>by Dental Nation</span></p>
+          <p className="mt-1.5 text-[12.5px] font-bold leading-tight" style={{ color: NAVY, fontFamily: 'Georgia, serif' }}>Dr ____________ recommends Smile Club for you</p>
+          <p dir={L.dir} className="text-[10.5px] font-semibold leading-tight" style={{ color: '#3a4148' }}>{L.rec}</p>
+          <div className="mt-1.5 grid grid-cols-2 gap-x-2 gap-y-0.5 text-[9.5px]" style={{ color: '#3a4148' }}>
+            {['Check-ups & cleaning', 'Braces / aligner care', 'Gum care', 'Family'].map((x, i) => <span key={x}>☐ {x} <span dir={L.dir} style={{ color: OLIVE }}>· {L.why[i]}</span></span>)}
+          </div>
+          <div className="mt-auto flex items-end justify-between gap-2 pt-1.5 text-[9.5px]" style={{ color: OLIVE }}>
+            <span>Signature ____________</span><span>Date ______</span>
+          </div>
+        </div>
+        <div className={face} style={{ borderColor: LINE }}>
+          <p className="text-[9px] font-bold uppercase tracking-[0.2em]" style={{ color: GOLD }}>Back</p>
+          <div className="flex gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-[10.5px] font-bold" style={{ color: NAVY }}>Your membership includes</p>
+              <ul className="mt-0.5 space-y-0.5 text-[9.5px] leading-tight" style={{ color: '#3a4148' }}>
+                {['Check-ups and a professional cleaning (depending on the plan)', 'Help with an urgent dental problem', 'Priority appointments', 'Member rates on eligible treatments'].map((x, i) => (
+                  <li key={x}>• {x}<span dir={L.dir} className="block" style={{ color: OLIVE }}>{L.incl[i]}</span></li>
+                ))}
+              </ul>
+            </div>
+            <div className="flex w-[74px] shrink-0 flex-col items-center">
+              <div className="grid h-[64px] w-[64px] grid-cols-5 gap-[2px] rounded border p-1" style={{ borderColor: NAVY }}>
+                {Array.from({ length: 25 }).map((_, i) => <span key={i} style={{ backgroundColor: [0, 1, 3, 5, 7, 9, 11, 12, 13, 15, 17, 19, 21, 23, 24].includes(i) ? NAVY : 'transparent' }} />)}
+              </div>
+              <p className="mt-0.5 text-center text-[8.5px] font-bold" style={{ color: NAVY }}>Scan to join<span dir={L.dir} className="block font-semibold" style={{ color: OLIVE }}>{L.scan}</span></p>
+              <p className="text-[8.5px] tabular-nums" style={{ color: OLIVE }}>{L.code}</p>
+            </div>
+          </div>
+          <p className="mt-auto pt-1 text-[11px] font-bold" style={{ color: CORAL }}>From AED 99 a month <span dir={L.dir} className="text-[10px] font-semibold" style={{ color: OLIVE }}>· {L.from}</span></p>
+          <p className="text-[9.5px]" style={{ color: OLIVE }}>Give this card to reception · <span dir={L.dir}>{L.desk}</span></p>
+        </div>
+      </div>
+      <p className="mt-1.5 text-[10px]" style={{ color: OLIVE }}>
+        A6 (148 × 105 mm), 350 gsm matte, both sides. The QR opens the joining page with the branch code; the dentist’s code is written on at signing.
+        Wording follows the scripts; translations are checked by native speakers before print. Not final artwork.
+      </p>
+    </div>
+  );
+}
+
+/* ── the budget, in three parts, every line explained ── */
+
+function BudgetExhibit({ n }: { n: string }) {
+  const segName = (id: SegmentId) => SEGMENTS.find((s) => s.id === id)!.name;
+  const [openLine, setOpenLine] = useState<string | null>(null);
+  return (
+    <section>
+      <Exhibit n={n} title={`Budget — ${fmtAed(TOTAL)} in three parts · pending Mr Akbar’s sign-off`} />
+      <div className="grid gap-2 md:grid-cols-3">
+        {([
+          [fmtAed(SPEND_NOW), 'Spend now', 'Released when Mr Akbar signs off. Every dirham is on a named line below, with who buys it and how.', NAVY],
+          [fmtAed(HELD), 'Online — on hold', 'Released on Mon 5 Oct only if a paid online member has cost AED 600 or less. Otherwise it stays unspent.', '#7a6420'],
+          [fmtAed(RESERVE.aed), 'Reserve', 'Released on Mon 5 Oct to whichever segment is winning members most cheaply.', OLIVE],
+        ] as [string, string, string, string][]).map(([v, l, s, c]) => (
+          <div key={l} className="rounded-xl border bg-white px-3 py-2.5" style={{ borderColor: LINE }}>
+            <p className="text-[18px] font-bold tabular-nums" style={{ color: c, fontFamily: 'Georgia, serif' }}>{v}</p>
+            <p className="text-[10.5px] font-bold uppercase tracking-wide" style={{ color: BLUE }}>{l}</p>
+            <p className="mt-0.5 text-[10.5px] leading-snug" style={{ color: '#3a4148' }}>{s}</p>
+          </div>
+        ))}
+      </div>
+      <p className="mt-2 text-[10.5px] leading-snug" style={{ color: OLIVE }}>
+        <b style={{ color: NAVY }}>Why {fmtAed(TOTAL)}:</b> a member on the cheapest plan (AED {CEILING.lowestAnnualFee.toLocaleString('en-US')} a year)
+        leaves about AED 500 after their included care; we spend at most half of that — about AED {CEILING.perMember} — to win one.
+        {' '}{CEILING.members} members × AED {CEILING.perMember} = {fmtAed(CEILING.total)} ceiling; this plan uses {fmtAed(TOTAL)} (≈ AED {Math.round(TOTAL / CEILING.members)} per member).
+        Staff and clinician time are not included. Finance confirms the ceiling on Fri 2 Oct.
+      </p>
       <div className="mt-2 overflow-x-auto rounded-xl border bg-white" style={{ borderColor: LINE }}>
         <table className="w-full min-w-[720px] border-collapse text-[10.5px]">
           <thead>
             <tr className="text-left text-[9.5px] uppercase tracking-wide" style={{ color: OLIVE, backgroundColor: '#F7F7F0' }}>
               <th className="px-2.5 py-2 font-bold">Segment</th><th className="px-2.5 py-2 text-center font-bold">Target</th>
-              <th className="px-2.5 py-2 font-bold">What the money buys</th><th className="px-2.5 py-2 text-right font-bold">Budget</th>
+              <th className="px-2.5 py-2 font-bold">What the money buys — click a line for how it is spent</th><th className="px-2.5 py-2 text-right font-bold">AED</th>
               <th className="px-2.5 py-2 text-right font-bold">Per member</th>
             </tr>
           </thead>
@@ -2824,58 +3042,280 @@ function BudgetExhibit({ n }: { n: string }) {
                   <td className="px-2.5 py-1.5 font-bold" style={{ color: NAVY }}>{segName(b.seg)}</td>
                   <td className="px-2.5 py-1.5 text-center font-bold tabular-nums" style={{ color: CORAL }}>{b.target}</td>
                   <td className="px-2.5 py-1.5" style={{ color: '#3a4148' }}>
-                    {b.lines.map((l) => (
-                      <span key={l.item} className="block">{l.item} — <b className="tabular-nums">{l.aed.toLocaleString('en-US')}</b>{l.note ? <span style={{ color: '#2C5E3F' }}> ({l.note})</span> : null}</span>
-                    ))}
-                    {b.gated ? <span className="block font-semibold" style={{ color: '#7a6420' }}>+ {b.gated.aed.toLocaleString('en-US')} held back: {b.gated.condition}</span> : null}
+                    {b.lines.map((l) => {
+                      const id = `${b.seg}:${l.item}`;
+                      const isOpen = openLine === id;
+                      return (
+                        <div key={l.item} className="py-0.5">
+                          <button type="button" onClick={() => setOpenLine(isOpen ? null : id)} className="flex w-full items-baseline gap-1.5 text-left">
+                            <span className="shrink-0 text-[10px] font-bold" style={{ color: BLUE }}>{isOpen ? '▾' : '▸'}</span>
+                            <span className="flex-1">{l.item}{l.note ? <span style={{ color: '#2C5E3F' }}> · {l.note}</span> : null}</span>
+                            <b className="shrink-0 tabular-nums" style={{ color: NAVY }}>{l.aed.toLocaleString('en-US')}</b>
+                          </button>
+                          {isOpen && l.exec ? (
+                            <div className="mt-1 mb-1.5 ml-4 rounded-lg px-2.5 py-2" style={{ backgroundColor: '#FAFAF6' }}>
+                              <div className="grid gap-1.5 md:grid-cols-2">
+                                {([['What exactly', l.exec.what], ['Who buys it, and how', l.exec.buy], ['Who uses it, and how', l.exec.use], ['How we see it worked', l.exec.track]] as [string, string][]).map(([h, v]) => (
+                                  <p key={h} className="text-[10.5px] leading-snug"><b style={{ color: NAVY }}>{h}:</b> {v}</p>
+                                ))}
+                              </div>
+                              <p className="mt-1 text-[10.5px]"><b style={{ color: NAVY }}>Task that spends it:</b> <TaskLink k={l.exec.task} /> <span style={{ color: OLIVE }}>· {OWNER_LABEL[TASK_BY_KEY[l.exec.task]?.who ?? 'fahad']} · {TASK_BY_KEY[l.exec.task]?.due}</span></p>
+                              {l.exec.mock === 'invite' ? <InvitationCardMock /> : null}
+                            </div>
+                          ) : null}
+                        </div>
+                      );
+                    })}
+                    {b.gated ? <p className="mt-0.5 font-semibold" style={{ color: '#7a6420' }}>+ {b.gated.aed.toLocaleString('en-US')} on hold: {b.gated.condition}</p> : null}
                   </td>
                   <td className="px-2.5 py-1.5 text-right font-bold tabular-nums" style={{ color: NAVY }}>{tot.toLocaleString('en-US')}</td>
                   <td className="px-2.5 py-1.5 text-right tabular-nums" style={{ color: OLIVE }}>~{Math.round(tot / b.target)}</td>
                 </tr>
               );
             })}
-            <tr className="border-t font-bold" style={{ borderColor: '#EEEFE1', backgroundColor: '#F7F7F0' }}>
-              <td className="px-2.5 py-1.5" style={{ color: NAVY }}>Allocated, incl. conditional</td>
-              <td className="px-2.5 py-1.5 text-center tabular-nums" style={{ color: CORAL }}>{SEGMENT_BUDGETS.reduce((a, b) => a + b.target, 0)}</td>
-              <td className="px-2.5 py-1.5" />
-              <td className="px-2.5 py-1.5 text-right tabular-nums" style={{ color: NAVY }}>{COMMITTED.toLocaleString('en-US')}</td>
-              <td className="px-2.5 py-1.5 text-right tabular-nums" style={{ color: OLIVE }}>~{Math.round(COMMITTED / 120)}</td>
-            </tr>
-            <tr className="border-t" style={{ borderColor: '#EEEFE1' }}>
-              <td className="px-2.5 py-1.5 font-bold" style={{ color: NAVY }}>Reserve</td><td />
-              <td className="px-2.5 py-1.5" style={{ color: '#3a4148' }}>{RESERVE.condition}</td>
-              <td className="px-2.5 py-1.5 text-right font-bold tabular-nums" style={{ color: NAVY }}>{RESERVE.aed.toLocaleString('en-US')}</td><td />
-            </tr>
+            {([
+              ['Spend now', SPEND_NOW, 'On sign-off'],
+              ['Online — on hold', HELD, 'Mon 5 Oct, only if a paid online member cost ≤ AED 600'],
+              ['Reserve', RESERVE.aed, 'Mon 5 Oct, to the cheapest segment per member'],
+            ] as [string, number, string][]).map(([l, v, w]) => (
+              <tr key={l} className="border-t" style={{ borderColor: '#EEEFE1', backgroundColor: '#F7F7F0' }}>
+                <td className="px-2.5 py-1.5 font-bold" style={{ color: NAVY }}>{l}</td><td />
+                <td className="px-2.5 py-1.5" style={{ color: OLIVE }}>{w}</td>
+                <td className="px-2.5 py-1.5 text-right font-bold tabular-nums" style={{ color: NAVY }}>{v.toLocaleString('en-US')}</td><td />
+              </tr>
+            ))}
             <tr className="border-t font-bold" style={{ borderColor: '#EEEFE1', backgroundColor: '#EEF1F6' }}>
-              <td className="px-2.5 py-1.5" colSpan={3} style={{ color: NAVY }}>Total</td>
+              <td className="px-2.5 py-1.5" style={{ color: NAVY }}>Total</td>
+              <td className="px-2.5 py-1.5 text-center tabular-nums" style={{ color: CORAL }}>{SEGMENT_BUDGETS.reduce((a, b) => a + b.target, 0)}</td>
+              <td />
               <td className="px-2.5 py-1.5 text-right tabular-nums" style={{ color: NAVY }}>{TOTAL.toLocaleString('en-US')}</td>
               <td className="px-2.5 py-1.5 text-right tabular-nums" style={{ color: OLIVE }}>~{Math.round(TOTAL / 120)}</td>
             </tr>
           </tbody>
         </table>
       </div>
-      <div className="mt-2 space-y-2">
-        <Note tone="blue">
-          The current allocations are chair AED 2,000; dentists’ own patients AED 2,000; companies AED 7,500; online
-          AED 7,000, including AED 3,500 conditional; families and neighbourhoods AED 5,500; reserve AED 3,000.
-          Community awareness is offline and results-only incentives are included in these amounts.
-        </Note>
-        <Note tone="gold">
-          AED 27,000 is the proposed marketing and delivery allocation, averaging AED 225 per target membership. It
-          excludes salaries, staff and clinician time and any additional included-care costs identified by Finance.
-          The indicative full-cost ceiling is AED 30,000, leaving at most AED 3,000 for excluded acquisition costs if
-          that ceiling is confirmed. Finance’s 2 Oct review must reconcile the costs before further funding is
-          released; the AED 250 ceiling is an assumption, not a verified margin.
-        </Note>
+      <div className="mt-2 rounded-xl border bg-white p-3" style={{ borderColor: LINE }}>
+        <p className="text-[11px] font-bold" style={{ color: NAVY }}>How anything gets bought — one route, one contact (Gautam)</p>
+        <ol className="mt-1 grid gap-1 md:grid-cols-2">
+          {PROCUREMENT_STEPS.map((x, i) => (
+            <li key={x} className="flex gap-2 text-[10.5px] leading-snug" style={{ color: '#3a4148' }}><b style={{ color: CORAL }}>{i + 1}.</b>{x}</li>
+          ))}
+        </ol>
+        <p className="mt-1 text-[10.5px]" style={{ color: OLIVE }}>
+          Ad spend (Google, Facebook/Instagram, LinkedIn) is paid by card by Fahad with daily caps; WhatsApp fees come on the Zavis
+          invoice; thank-yous and commissions are paid by Finance monthly, only on paid, active memberships. Orders: <TaskLink k="g-procure" /> · <TaskLink k="g-procure-2" />.
+        </p>
       </div>
     </section>
+  );
+}
+
+/* ── Gautam's companies: types, pipeline, calendar import ── */
+
+const KIND_LABEL: Record<EventKind, string> = { visit: 'Visit', 'follow-up': 'Follow-up', meeting: 'Meeting', proposal: 'Proposal', 'dental-day': 'Dental day', launch: 'Launch', other: 'Entry' };
+
+const fmtDay = (iso: string) => new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Dubai', weekday: 'short', day: 'numeric', month: 'short' }).format(new Date(iso));
+const fmtTime = (iso: string) => new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Dubai', hour: '2-digit', minute: '2-digit' }).format(new Date(iso));
+const dubaiDate = (iso: string) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Dubai' }).format(new Date(iso));
+
+/** Programme week (1–5) of a Dubai date. */
+function weekOf(dateIso: string): number {
+  if (dateIso <= '2026-09-28') return 1;
+  if (dateIso <= '2026-10-05') return 2;
+  if (dateIso <= '2026-10-12') return 3;
+  if (dateIso <= '2026-10-19') return 4;
+  return 5;
+}
+
+const EMPTY_CORP: CorpState = { companies: [], events: [], lastUpload: null };
+
+function CorporatePipeline({ state, setState }: { state: TrackerState; setState: (s: TrackerState) => void }) {
+  const corp = state.corp ?? EMPTY_CORP;
+  const canEdit = state.canEdit === 'all' || state.canEdit.includes('gautam');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [form, setForm] = useState({ name: '', type: 'sme' as CompanyType, area: '', staffBand: '', source: 'door' });
+  const eventsOf = (id: string) => corp.events.filter((e) => e.companyId === id);
+  const todayIso = state.today;
+  const upcoming = corp.events.filter((e) => dubaiDate(e.startsAt) >= todayIso).slice(0, 12);
+
+  const upload = async (file: File | undefined) => {
+    if (!file) return;
+    setBusy(true); setErr(null); setMsg(null);
+    const fd = new FormData();
+    fd.append('file', file);
+    const r = await uploadCalendarAction(fd);
+    setBusy(false);
+    if (!r.ok) { setErr(r.error); return; }
+    setState(r.state);
+    setMsg(`${r.summary.filed} Smile Club entries filed${r.summary.newCompanies ? ` · ${r.summary.newCompanies} new companies added (set their type)` : ''}${r.summary.removed ? ` · ${r.summary.removed} removed` : ''} · ${r.summary.ignored} other calendar entries ignored and not saved.`);
+  };
+  const save = async (c: Company, patch: Partial<Company>) => {
+    const x = { ...c, ...patch };
+    setBusy(true); setErr(null);
+    const r = await saveCompanyAction({ id: x.id, name: x.name, type: x.type, area: x.area ?? '', staffBand: x.staffBand ?? '', source: x.source ?? '', stage: x.stage, nextStep: x.nextStep ?? '', nextDate: x.nextDate ?? '', members: x.members, note: x.note ?? '' });
+    setBusy(false);
+    if (!r.ok) setErr(r.error); else setState(r.state);
+  };
+  const add = async () => {
+    setBusy(true); setErr(null); setMsg(null);
+    const r = await saveCompanyAction({ ...form, stage: 'target' });
+    setBusy(false);
+    if (!r.ok) { setErr(r.error); return; }
+    setState(r.state);
+    setForm({ ...form, name: '', area: '', staffBand: '' });
+  };
+  const input = 'rounded-md border px-2 py-1 text-[10.5px]';
+
+  return (
+    <div className="space-y-3">
+      <div className="overflow-x-auto rounded-xl border bg-white" style={{ borderColor: LINE }}>
+        <table className="w-full min-w-[760px] border-collapse text-[10.5px]">
+          <thead>
+            <tr className="text-left text-[9.5px] uppercase tracking-wide" style={{ color: OLIVE, backgroundColor: '#F7F7F0' }}>
+              <th className="px-2.5 py-2 font-bold">Company type Gautam tracks</th><th className="px-2.5 py-2 font-bold">Which companies</th>
+              <th className="px-2.5 py-2 font-bold">Who decides</th><th className="px-2.5 py-2 font-bold">Approach</th><th className="px-2.5 py-2 font-bold">When</th>
+              <th className="px-2.5 py-2 text-center font-bold">In pipeline</th>
+            </tr>
+          </thead>
+          <tbody>
+            {COMPANY_TYPES.map((t) => (
+              <tr key={t.id} className="border-t align-top" style={{ borderColor: '#EEEFE1' }}>
+                <td className="px-2.5 py-1.5 font-bold" style={{ color: NAVY }}>{t.label}</td>
+                <td className="px-2.5 py-1.5" style={{ color: '#3a4148' }}>{t.who}</td>
+                <td className="px-2.5 py-1.5" style={{ color: '#3a4148' }}>{t.decides}</td>
+                <td className="px-2.5 py-1.5" style={{ color: '#3a4148' }}>{t.approach}</td>
+                <td className="px-2.5 py-1.5" style={{ color: OLIVE }}>{t.when}</td>
+                <td className="px-2.5 py-1.5 text-center font-bold tabular-nums" style={{ color: CORAL }}>{corp.companies.filter((c) => c.type === t.id).length}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="flex flex-wrap gap-1.5">
+        {STAGES.map((st) => (
+          <span key={st.id} className="rounded-lg px-2.5 py-1 text-center" style={{ backgroundColor: st.id === 'lost' ? '#F1F1EA' : '#EEF1F6' }}>
+            <span className="block text-[15px] font-bold tabular-nums" style={{ color: NAVY, fontFamily: 'Georgia, serif' }}>{corp.companies.filter((c) => c.stage === st.id).length}</span>
+            <span className="block text-[9px] font-bold uppercase tracking-wide" style={{ color: OLIVE }}>{st.label}</span>
+          </span>
+        ))}
+        <span className="rounded-lg px-2.5 py-1 text-center" style={{ backgroundColor: '#e7efe6' }}>
+          <span className="block text-[15px] font-bold tabular-nums" style={{ color: '#2C5E3F', fontFamily: 'Georgia, serif' }}>{corp.companies.reduce((a, c) => a + c.members, 0)}</span>
+          <span className="block text-[9px] font-bold uppercase tracking-wide" style={{ color: '#2C5E3F' }}>Members (of 24)</span>
+        </span>
+      </div>
+
+      <div className="grid gap-2 md:grid-cols-2">
+        <div className="rounded-xl border bg-white p-3" style={{ borderColor: LINE }}>
+          <p className="text-[11px] font-bold" style={{ color: NAVY }}>Gautam’s calendar → follow-ups filed automatically</p>
+          <ol className="mt-1 space-y-0.5 text-[10.5px] leading-snug" style={{ color: '#3a4148' }}>
+            <li><b style={{ color: CORAL }}>1.</b> Name every Smile Club entry: <b style={{ color: NAVY }}>{CAL_RULE}</b> (e.g. “SC – Acme Trading – visit”).</li>
+            <li><b style={{ color: CORAL }}>2.</b> Export the calendar as an .ics file — Outlook: File › Save Calendar; Google: Settings › Import &amp; export › Export, then unzip.</li>
+            <li><b style={{ color: CORAL }}>3.</b> Upload it here every Friday, or after any change. Each entry is filed against its company and the right corporate task, stages move forward, and the next step is set from the next entry.</li>
+          </ol>
+          <p className="mt-1 text-[10px]" style={{ color: OLIVE }}>Only Smile Club entries dated 22 Sep–31 Oct are kept (title, time, place). Everything else in the file is ignored and never saved; attendees and descriptions are never read. Upload the full calendar — a future entry missing from a new upload is treated as cancelled.</p>
+          {canEdit ? (
+            <label className="mt-2 inline-flex cursor-pointer items-center gap-2 rounded-full px-3 py-1 text-[10.5px] font-bold text-white" style={{ backgroundColor: busy ? OLIVE : NAVY }}>
+              {busy ? 'Working…' : 'Upload calendar (.ics)'}
+              <input type="file" accept=".ics,text/calendar" className="hidden" disabled={busy} onChange={(e) => { void upload(e.target.files?.[0]); e.target.value = ''; }} />
+            </label>
+          ) : <p className="mt-2 text-[10.5px] font-semibold" style={{ color: OLIVE }}>Gautam (or Fahad) uploads; everyone sees the result.</p>}
+          {corp.lastUpload ? <p className="mt-1 text-[10px]" style={{ color: OLIVE }}>Last upload: {fmtAt(corp.lastUpload.at)} by {corp.lastUpload.by}</p> : null}
+          {msg ? <p className="mt-1 text-[10.5px] font-bold" style={{ color: '#2C5E3F' }}>{msg}</p> : null}
+          {err ? <p className="mt-1 text-[10.5px] font-bold" style={{ color: '#a04a38' }}>{err}</p> : null}
+        </div>
+        <div className="rounded-xl border bg-white p-3" style={{ borderColor: LINE }}>
+          <p className="text-[11px] font-bold" style={{ color: NAVY }}>Coming up — from the calendar</p>
+          {upcoming.length ? (
+            <ul className="mt-1 space-y-1">
+              {upcoming.map((e) => (
+                <li key={e.uid} className="flex flex-wrap items-baseline gap-1.5 text-[10.5px]" style={{ color: '#3a4148' }}>
+                  <b className="tabular-nums" style={{ color: NAVY }}>{fmtDay(e.startsAt)} {fmtTime(e.startsAt)}</b>
+                  <span className="rounded px-1.5 text-[9.5px] font-bold" style={{ backgroundColor: '#EEF1F6', color: NAVY }}>{KIND_LABEL[e.kind]}</span>
+                  <span className="font-semibold">{e.company ?? e.title}</span>
+                  <span style={{ color: OLIVE }}>→ <TaskLink k={e.taskKey}>{TASK_BY_KEY[e.taskKey]?.task}</TaskLink></span>
+                </li>
+              ))}
+            </ul>
+          ) : <p className="mt-1 text-[10.5px]" style={{ color: OLIVE }}>Nothing yet — appears after Gautam’s first calendar upload.</p>}
+        </div>
+      </div>
+
+      {canEdit ? (
+        <div className="flex flex-wrap items-center gap-1.5 rounded-xl border bg-white p-2.5" style={{ borderColor: LINE }}>
+          <span className="text-[10.5px] font-bold" style={{ color: NAVY }}>Add a company:</span>
+          <input className={`${input} min-w-[170px] flex-1`} style={{ borderColor: LINE }} placeholder="Company name" maxLength={120} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          <select className={input} style={{ borderColor: LINE }} value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as CompanyType })}>
+            {COMPANY_TYPES.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
+          </select>
+          <input className={`${input} w-[120px]`} style={{ borderColor: LINE }} placeholder="Area (e.g. JLT)" maxLength={80} value={form.area} onChange={(e) => setForm({ ...form, area: e.target.value })} />
+          <input className={`${input} w-[90px]`} style={{ borderColor: LINE }} placeholder="Staff (e.g. 50)" maxLength={40} value={form.staffBand} onChange={(e) => setForm({ ...form, staffBand: e.target.value })} />
+          <select className={input} style={{ borderColor: LINE }} value={form.source} onChange={(e) => setForm({ ...form, source: e.target.value })}>
+            {['door', 'warm introduction', 'broker', 'partner'].map((x) => <option key={x} value={x}>{x}</option>)}
+          </select>
+          <button type="button" disabled={busy || !form.name.trim()} onClick={add} className="rounded-full px-3 py-1 text-[10.5px] font-bold text-white disabled:opacity-40" style={{ backgroundColor: NAVY }}>Add</button>
+        </div>
+      ) : null}
+
+      <div className="overflow-x-auto rounded-xl border bg-white" style={{ borderColor: LINE }}>
+        <table className="w-full min-w-[820px] border-collapse text-[10.5px]">
+          <thead>
+            <tr className="text-left text-[9.5px] uppercase tracking-wide" style={{ color: OLIVE, backgroundColor: '#F7F7F0' }}>
+              <th className="px-2.5 py-2 font-bold">Company</th><th className="px-2.5 py-2 font-bold">Type</th><th className="px-2.5 py-2 font-bold">Stage</th>
+              <th className="px-2.5 py-2 font-bold">Next step</th><th className="px-2.5 py-2 font-bold">Calendar entries</th><th className="px-2.5 py-2 text-right font-bold">Members</th>
+            </tr>
+          </thead>
+          <tbody>
+            {corp.companies.length ? corp.companies.map((c) => {
+              const ev = eventsOf(c.id);
+              const past = ev.filter((e) => dubaiDate(e.startsAt) < todayIso);
+              return (
+                <tr key={c.id} className="border-t align-top" style={{ borderColor: '#EEEFE1' }}>
+                  <td className="px-2.5 py-1.5">
+                    <span className="font-bold" style={{ color: NAVY }}>{c.name}</span>
+                    <span className="block text-[9.5px]" style={{ color: OLIVE }}>{[c.area, c.staffBand ? `${c.staffBand} staff` : null, c.source].filter(Boolean).join(' · ')}</span>
+                  </td>
+                  <td className="px-2.5 py-1.5">
+                    {canEdit ? (
+                      <select className={input} style={{ borderColor: c.type === 'unsorted' ? CORAL : LINE }} value={c.type} disabled={busy} onChange={(e) => void save(c, { type: e.target.value as CompanyType })}>
+                        {c.type === 'unsorted' ? <option value="unsorted">Set the type…</option> : null}
+                        {COMPANY_TYPES.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
+                      </select>
+                    ) : <span style={{ color: '#3a4148' }}>{TYPE_LABEL[c.type]}</span>}
+                  </td>
+                  <td className="px-2.5 py-1.5">
+                    {canEdit ? (
+                      <select className={input} style={{ borderColor: LINE }} value={c.stage} disabled={busy} onChange={(e) => void save(c, { stage: e.target.value as Stage })}>
+                        {STAGES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+                      </select>
+                    ) : <span className="font-semibold" style={{ color: NAVY }}>{STAGES.find((s) => s.id === c.stage)?.label}</span>}
+                  </td>
+                  <td className="px-2.5 py-1.5" style={{ color: '#3a4148' }}>{c.nextDate ? <b className="tabular-nums" style={{ color: NAVY }}>{c.nextDate.slice(5)} </b> : null}{c.nextStep ?? <span style={{ color: OLIVE }}>—</span>}</td>
+                  <td className="px-2.5 py-1.5" style={{ color: OLIVE }}>{ev.length ? `${past.length} done · ${ev.length - past.length} planned` : '—'}</td>
+                  <td className="px-2.5 py-1.5 text-right">
+                    {canEdit ? (
+                      <input type="number" min={0} className={`${input} w-[64px] text-right`} style={{ borderColor: LINE }} defaultValue={c.members} disabled={busy}
+                        onBlur={(e) => { const v = Math.max(0, Math.round(Number(e.target.value) || 0)); if (v !== c.members) void save(c, { members: v }); }} />
+                    ) : <b className="tabular-nums" style={{ color: '#2C5E3F' }}>{c.members}</b>}
+                  </td>
+                </tr>
+              );
+            }) : (
+              <tr><td colSpan={6} className="px-2.5 py-2 text-[10.5px]" style={{ color: OLIVE }}>No companies yet — Gautam adds 40–60 by type (<TaskLink k="g-doors-15" />), or they appear from his calendar entries.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }
 
 /* ── rev. 6: the plan by segment (Mr Akbar, 23 Sep — "no one solution for all") ── */
 
 function SegmentsTab({ state }: { state: TrackerState }) {
-  const [open, setOpen] = useState<SegmentId | null>('patients');
+  const [open, setOpen] = useState<SegmentId | null>('chair');
   const { goto } = useContext(SubNavContext);
   const today = state.today;
   const segStats = (id: SegmentId) => {
@@ -2898,11 +3338,12 @@ function SegmentsTab({ state }: { state: TrackerState }) {
       <section>
         <Exhibit n="S1" title="The plan on one page" />
         <div className="overflow-x-auto rounded-xl border bg-white" style={{ borderColor: LINE }}>
-          <table className="w-full min-w-[820px] border-collapse text-[10.5px]">
+          <table className="w-full min-w-[940px] border-collapse text-[10.5px]">
             <thead>
               <tr className="text-left text-[9.5px] uppercase tracking-wide" style={{ color: OLIVE, backgroundColor: '#F7F7F0' }}>
-                <th className="px-2.5 py-2 font-bold">Segment</th><th className="px-2.5 py-2 font-bold">Who delivers it</th>
-                <th className="px-2.5 py-2 font-bold">When it starts</th><th className="px-2.5 py-2 text-center font-bold">Target</th>
+                <th className="px-2.5 py-2 font-bold">Segment</th><th className="px-2.5 py-2 font-bold">Who does it</th>
+                <th className="px-2.5 py-2 font-bold">How people are reached, in order</th>
+                <th className="px-2.5 py-2 font-bold">Starts</th><th className="px-2.5 py-2 text-center font-bold">Target</th>
                 <th className="px-2.5 py-2 text-right font-bold">Budget</th>
                 <th className="px-2.5 py-2 font-bold" style={{ width: 150 }}>Task progress</th>
               </tr>
@@ -2916,8 +3357,15 @@ function SegmentsTab({ state }: { state: TrackerState }) {
                       <button type="button" onClick={() => { setOpen(s.id); document.getElementById(`seg-${s.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }} className="text-left font-bold underline decoration-dotted underline-offset-2" style={{ color: NAVY }}>{s.name} ↓</button>
                       <span className="block text-[10px]" style={{ color: OLIVE }}>{s.who}</span>
                     </td>
-                    <td className="px-2.5 py-1.5" style={{ color: '#3a4148' }}>{s.messenger}</td>
-                    <td className="px-2.5 py-1.5" style={{ color: '#3a4148' }}>{s.unlock}</td>
+                    <td className="px-2.5 py-1.5" style={{ color: '#3a4148' }}>
+                      <b style={{ color: NAVY }}>{PLAYBOOKS[s.id].accountable}</b> <span style={{ color: OLIVE }}>accountable</span>
+                      <span className="block">{PLAYBOOKS[s.id].doers}</span>
+                    </td>
+                    <td className="px-2.5 py-1.5" style={{ color: '#3a4148' }}>
+                      <ol className="space-y-0.5">{PLAYBOOKS[s.id].path.map((x, i) => <li key={x}><b style={{ color: CORAL }}>{i + 1}.</b> {x}</li>)}</ol>
+                      <button type="button" onClick={() => { setOpen(s.id); document.getElementById(`seg-${s.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }} className="mt-0.5 text-[10px] font-bold underline decoration-dotted" style={{ color: BLUE }}>Step by step ↓</button>
+                    </td>
+                    <td className="px-2.5 py-1.5" style={{ color: '#3a4148' }}>{PLAYBOOKS[s.id].starts}</td>
                     <td className="px-2.5 py-1.5 text-center">
                       <span className="text-[15px] font-bold tabular-nums" style={{ color: CORAL, fontFamily: 'Georgia, serif' }}>{s.target}</span>
                       <span className="block text-[9px]" style={{ color: OLIVE }}>{s.targetNote}</span>
@@ -2935,7 +3383,7 @@ function SegmentsTab({ state }: { state: TrackerState }) {
                 );
               })}
               <tr className="border-t font-bold" style={{ borderColor: '#EEEFE1', backgroundColor: '#F7F7F0' }}>
-                <td className="px-2.5 py-1.5" colSpan={3} style={{ color: NAVY }}>Total — paid, active memberships by Wed 21 Oct</td>
+                <td className="px-2.5 py-1.5" colSpan={4} style={{ color: NAVY }}>Total — paid, active memberships by Wed 21 Oct</td>
                 <td className="px-2.5 py-1.5 text-center text-[15px] tabular-nums" style={{ color: CORAL, fontFamily: 'Georgia, serif' }}>{total}</td>
                 <td className="px-2.5 py-1.5 text-right tabular-nums" style={{ color: NAVY }}>{TOTAL.toLocaleString('en-US')}<span className="block text-[9px] font-normal" style={{ color: OLIVE }}>incl. {RESERVE.aed.toLocaleString('en-US')} reserve</span></td>
                 <td className="px-2.5 py-1.5" />
@@ -2948,7 +3396,8 @@ function SegmentsTab({ state }: { state: TrackerState }) {
       <BudgetExhibit n="S1b" />
 
       <section>
-        <Exhibit n="S2" title="Each segment — who, the message, how it is done, when it starts, what we will not do" />
+        <Exhibit n="S2" title="Each segment — the step-by-step playbook: who does what, when, in person or on WhatsApp, and what gets recorded" />
+        <p className="mb-2 text-[11px]" style={{ color: OLIVE }}>Team members execute these steps as written — nobody improvises the approach. Changes go through Fahad and are updated here.</p>
         <div className="space-y-2">
           {SEGMENTS.map((s) => {
             const st = segStats(s.id);
@@ -2966,7 +3415,9 @@ function SegmentsTab({ state }: { state: TrackerState }) {
                 </button>
                 {isOpen ? (
                   <div className="border-t px-3.5 py-3" style={{ borderColor: '#EEEFE1' }}>
-                    <div className="grid gap-3 md:grid-cols-2">
+                    <PlaybookSteps seg={s.id} />
+                    {s.id === 'corporate' ? <p className="mt-2 text-[10.5px]" style={{ color: '#3a4148' }}><b style={{ color: NAVY }}>Company types, the live pipeline and calendar follow-ups:</b> <button type="button" onClick={() => { goto('team'); setTimeout(() => document.getElementById('corp-pipeline')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 200); }} className="font-bold underline decoration-dotted" style={{ color: BLUE }}>Team → Gautam’s companies ↗</button></p> : null}
+                    <div className="mt-3 grid gap-3 border-t pt-3 md:grid-cols-2" style={{ borderColor: '#EEEFE1' }}>
                       <div>
                         <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: BLUE }}>Who they are</p>
                         <p className="mt-0.5 text-[11px] leading-snug" style={{ color: '#3a4148' }}>{s.who}</p>
@@ -2979,15 +3430,6 @@ function SegmentsTab({ state }: { state: TrackerState }) {
                         <p className="mt-2 text-[9px] font-bold uppercase tracking-widest" style={{ color: CORAL }}>When it starts</p>
                         <p className="mt-0.5 text-[11px] leading-snug" style={{ color: '#3a4148' }}>{s.unlock}</p>
                       </div>
-                    </div>
-                    <p className="mt-3 text-[9px] font-bold uppercase tracking-widest" style={{ color: BLUE }}>How it is done</p>
-                    <div className="mt-1 grid gap-2 md:grid-cols-2">
-                      {s.how.map((h) => (
-                        <div key={h.title} className="rounded-lg px-2.5 py-2" style={{ backgroundColor: '#FAFAF6' }}>
-                          <p className="text-[11px] font-bold" style={{ color: NAVY }}>{h.title}</p>
-                          <p className="mt-0.5 text-[10.5px] leading-snug" style={{ color: '#3a4148' }}>{h.body}</p>
-                        </div>
-                      ))}
                     </div>
                     {s.scripts ? (
                       <>

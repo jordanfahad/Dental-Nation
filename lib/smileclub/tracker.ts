@@ -13,6 +13,7 @@ import {
   type TrackerState,
   type VerifyResult,
 } from '@/lib/smileclub/team';
+import type { CalEvent, Company, CompanyType, CorpState, EventKind, Stage } from '@/lib/smileclub/corporate';
 
 /** Calendar day in Dubai — the clinics' day, independent of server timezone. */
 export function dubaiToday(): string {
@@ -85,7 +86,46 @@ export async function loadTracker(): Promise<TrackerState> {
       note: (e.note as string | null) ?? null,
     }));
   }
-  return { progress, events, canEdit, viewer, today, live: true };
+  const corp = await loadCorp(sb);
+  return { progress, events, canEdit, viewer, today, live: true, corp };
+}
+
+/** Gautam's pipeline and the follow-ups imported from his calendar. */
+export async function loadCorp(sb: NonNullable<ReturnType<typeof getSupabaseAdmin>>): Promise<CorpState> {
+  const [{ data: cs }, { data: ev }] = await Promise.all([
+    sb.from('sc_companies').select('id,name,type,area,staff_band,source,stage,next_step,next_date,members,note,updated_at,updated_by').order('name'),
+    sb.from('sc_calendar_events').select('uid,starts_at,ends_at,title,location,company_id,kind,task_key,uploaded_at,uploaded_by').order('starts_at'),
+  ]);
+  const companies: Company[] = (cs ?? []).map((c) => ({
+    id: c.id as string,
+    name: c.name as string,
+    type: (c.type as CompanyType) ?? 'unsorted',
+    area: (c.area as string | null) ?? null,
+    staffBand: (c.staff_band as string | null) ?? null,
+    source: (c.source as string | null) ?? null,
+    stage: (c.stage as Stage) ?? 'target',
+    nextStep: (c.next_step as string | null) ?? null,
+    nextDate: (c.next_date as string | null) ?? null,
+    members: Number(c.members ?? 0),
+    note: (c.note as string | null) ?? null,
+    updatedAt: (c.updated_at as string | null) ?? null,
+    updatedBy: (c.updated_by as string | null) ?? null,
+  }));
+  const nameOf = Object.fromEntries(companies.map((c) => [c.id, c.name]));
+  const rows = ev ?? [];
+  const events: CalEvent[] = rows.map((e) => ({
+    uid: e.uid as string,
+    startsAt: e.starts_at as string,
+    endsAt: (e.ends_at as string | null) ?? null,
+    title: e.title as string,
+    location: (e.location as string | null) ?? null,
+    companyId: (e.company_id as string | null) ?? null,
+    company: e.company_id ? nameOf[e.company_id as string] ?? null : null,
+    kind: (e.kind as EventKind) ?? 'other',
+    taskKey: e.task_key as string,
+  }));
+  const latest = rows.reduce<{ at: string; by: string } | null>((a, e) => (!a || (e.uploaded_at as string) > a.at ? { at: e.uploaded_at as string, by: (e.uploaded_by as string) ?? '' } : a), null);
+  return { companies, events, lastUpload: latest };
 }
 
 /** Rows to seed lane_e.tasks with (one per team task), used by the seeder. */
