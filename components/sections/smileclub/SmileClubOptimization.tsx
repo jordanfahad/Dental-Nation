@@ -15,7 +15,7 @@
 import { createContext, useContext, useState } from 'react';
 import { commentTeamTaskAction, updateTeamTaskAction, verifyCrmTestAction } from '@/app/(app)/smileclub-actions';
 import { SEGMENTS, type SegmentId } from '@/lib/smileclub/segments';
-import { BANNED_WORDS, BRANCH_LABEL, DENTISTS, SHOOT, scriptsFor, type Branch } from '@/lib/smileclub/scripts';
+import { AMC_LANG_NOTE, BANNED_TR_AR, BANNED_WORDS, BRANCH_LABEL, BRANCH_LANGS, DENTISTS, LANES, LANG_LABEL, LANG_REVIEW, PATIENT_SEGS, SHOOT, laneFor, langsFor, scriptsFor, type Branch, type Dentist, type DentistScripts, type Lang } from '@/lib/smileclub/scripts';
 import { BUDGET_BY_SEG, CEILING, COMMITTED, RESERVE, SEGMENT_BUDGETS, TOTAL, fmtAed, segmentTotal } from '@/lib/smileclub/budget';
 import {
   CRM_TEST_SPEC,
@@ -2438,10 +2438,10 @@ function TaskCard({ t, p, today, color, editable, onSave, onVerified, comments, 
       {t.verify ? <EvidenceBox p={p} editable={editable} onVerified={onVerified} /> : null}
       {t.scripts ? (
         <div className="mt-2 space-y-1.5">
-          <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: CORAL }}>The script — for review</p>
+          <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: CORAL }}>The scripts — for review</p>
           {t.scripts.map((id) => {
             const d = DENTISTS.find((x) => x.id === id);
-            return d ? <ScriptBlock key={id} label={`${d.name} · ${d.title} — 30-second video`} text={scriptsFor(d).video} tone={CORAL} /> : null;
+            return d ? <ShootScripts key={id} d={d} /> : null;
           })}
         </div>
       ) : null}
@@ -3074,17 +3074,66 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
-function ScriptBlock({ label, text, tone }: { label: string; text: string; tone: string }) {
+function ScriptBlock({ label, text, tone, lang }: { label: string; text: string; tone: string; lang?: Lang }) {
+  const rtl = lang === 'ar';
   return (
     <div className="rounded-lg border-l-4 bg-white px-2.5 py-2" style={{ borderColor: tone }}>
       <div className="flex items-center justify-between gap-2">
         <p className="text-[9.5px] font-bold uppercase tracking-wide" style={{ color: tone }}>{label}</p>
         <CopyButton text={text.replace(/^“|”$/g, '')} />
       </div>
-      <p className="mt-1 whitespace-pre-line text-[11px] leading-snug" style={{ color: NAVY }}>{text}</p>
+      <p dir={rtl ? 'rtl' : 'ltr'} lang={lang} className={`mt-1 whitespace-pre-line text-[11px] leading-snug${rtl ? ' text-right' : ''}`} style={{ color: NAVY }}>{text}</p>
     </div>
   );
 }
+
+/** One script in the dentist's two branch languages, side by side. */
+function BiScript({ d, label, tone, pick, combined }: { d: Dentist; label: string; tone: string; pick: (s: DentistScripts) => string; combined?: boolean }) {
+  const langs = langsFor(d);
+  const texts = langs.map((l) => pick(scriptsFor(d, l)));
+  return (
+    <div>
+      <div className="grid gap-2 md:grid-cols-2">
+        {langs.map((l, i) => <ScriptBlock key={l} lang={l} label={`${label} · ${LANG_LABEL[l]}`} text={texts[i]} tone={tone} />)}
+      </div>
+      {combined ? (
+        <p className="mt-1 flex items-center gap-1.5 text-[10px]" style={{ color: OLIVE }}>
+          Patient&apos;s language not on file? Send both in one message: <CopyButton text={texts.join('\n\n— — —\n\n')} />
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function TranslationNote({ d }: { d: Dentist }) {
+  const notes = langsFor(d).filter((l) => l !== 'en').map((l) => LANG_REVIEW[l]);
+  if (d.branch === 'amc') notes.push(AMC_LANG_NOTE);
+  return notes.length ? <p className="text-[10px] font-bold" style={{ color: '#8a6a1e' }}>⚠ {notes.join(' ')}</p> : null;
+}
+
+/** One filming appointment → two videos (Smile Club + the dentist's lane), each in the branch's two languages. */
+function ShootScripts({ d }: { d: Dentist }) {
+  const lane = LANES[laneFor(d)];
+  return (
+    <div className="space-y-1.5 rounded-lg border bg-white px-2.5 py-2" style={{ borderColor: '#EEEFE1' }}>
+      <p className="text-[11px] font-bold" style={{ color: NAVY }}>{d.name} <span className="font-semibold" style={{ color: OLIVE }}>· {d.title} · {BRANCH_LABEL[d.branch]}</span></p>
+      <p className="text-[10.5px] leading-snug" style={{ color: '#3a4148' }}>
+        One appointment, two videos — each filmed in {langsFor(d).map((l) => LANG_LABEL[l].split(' · ').pop()).join(' and ')}: four short takes, same set-up.
+      </p>
+      <BiScript d={d} label="Video 1 · Smile Club" tone={CORAL} pick={(s) => s.clubVideo} />
+      <BiScript d={d} label={`Video 2 · ${lane.name} (${lane.tag})`} tone={BLUE} pick={(s) => s.laneVideo} />
+      <p className="text-[10px] leading-snug" style={{ color: OLIVE }}>
+        <b>Video 2 offer:</b> {lane.offer} · page {lane.page}. {d.laneWhy ? `${d.laneWhy} ` : ''}Before publishing, confirm the price is still current and the offer is booked at {BRANCH_LABEL[d.branch]}.
+      </p>
+      <TranslationNote d={d} />
+    </div>
+  );
+}
+
+const BRANCH_TAB: [Branch | 'all', string][] = [
+  ['all', 'All branches'],
+  ...(['tosun', 'alwasl', 'amc'] as Branch[]).map((b): [Branch, string] => [b, `${BRANCH_LABEL[b]} · ${BRANCH_LANGS[b].map((l) => l.toUpperCase()).join(' + ')}`]),
+];
 
 function ScriptsTab() {
   const [branch, setBranch] = useState<Branch | 'all'>('all');
@@ -3094,60 +3143,83 @@ function ScriptsTab() {
   return (
     <div className="space-y-5">
       <p className="rounded-xl border-l-4 bg-white px-4 py-3 text-[12.5px] font-medium leading-snug" style={{ borderColor: GOLD, color: NAVY, fontFamily: 'Georgia, serif' }}>
-        <span className="font-bold">Every dentist presents Smile Club to their own patients — in their own name, with a reason that fits their work.</span>{' '}
-        An orthodontist talks about protecting a new smile, a periodontist about gums, a children&apos;s dentist about
-        family habits. Each dentist has three versions: one sentence in the chair, a WhatsApp message to their own
-        patients, and a 30-second video. Every dentist reads and approves their own before anything is used.
+        <span className="font-bold">Every dentist presents Smile Club to their own patients — in their own name, with a reason that fits their work, in the branch&apos;s languages.</span>{' '}
+        WhatsApp goes to three patient groups — active, inactive, dormant — one message per group, never addressed to
+        an individual. Every filming appointment gives Mohan two videos: Smile Club, and the dentist&apos;s own campaign
+        (braces planning, first visit, whitening, urgent care or restorations). Dr. Tosun Dental Clinic is a Turkish
+        specialty clinic, so its scripts are Turkish + English; Al Wasl and Al Maher are Arabic + English. Every dentist
+        approves their own version before anything is used.
       </p>
 
       <section>
-        <Exhibit n="DS1" title={`Mohan’s first shoot — ${SHOOT.date}, ${BRANCH_LABEL[SHOOT.branch]}`} />
+        <Exhibit n="DS1" title={`Mohan’s shoot — ${SHOOT.date}, ${BRANCH_LABEL[SHOOT.branch]}: two dentists, four videos, Turkish + English`} />
         <Card accent={CORAL}>
           <p className="text-[11px] leading-snug" style={{ color: '#3a4148' }}>
-            Two shoots confirmed: <b>{byId(SHOOT.dentists[0]).name}</b> and <b>{byId(SHOOT.dentists[1]).name}</b> — both
-            on Mohan&apos;s calendar with their scripts, open for team comments. Dr. Yasmin Youssef&apos;s video (filmed
-            23 Sep) is being finished from the team&apos;s comments on Thu 24 Sep. Optional third voice if time allows:
-            <b> {byId(SHOOT.suggested).name}</b>, also in clinic on Friday morning. Film each dentist&apos;s 30-second
-            script below (it replaces the earlier draft: it names the dentist and branch correctly and explains
-            &quot;urgent dental support&quot; in plain words). Written consent from any patient who appears; no patient
-            identifiable without it.
+            Two appointments confirmed: <b>{byId(SHOOT.dentists[0]).name}</b> and <b>{byId(SHOOT.dentists[1]).name}</b>. Each
+            gives two videos — Smile Club and the dentist&apos;s campaign — filmed in Turkish and English, so one
+            session produces four finished takes per dentist. Optional third dentist if time allows:
+            <b> {byId(SHOOT.suggested).name}</b>, also in clinic on Friday morning. Written consent from any patient who
+            appears; no patient identifiable without it.
           </p>
-          <div className="mt-2 grid gap-2 md:grid-cols-3">
-            {[...SHOOT.dentists, SHOOT.suggested].map((id) => {
-              const d = byId(id);
-              return <ScriptBlock key={id} label={`${d.name}${id === SHOOT.suggested ? ' (suggested)' : ''} — video`} text={scriptsFor(d).video} tone={CORAL} />;
-            })}
+          <ol className="mt-2 grid gap-1 text-[10.5px] leading-snug md:grid-cols-2" style={{ color: '#3a4148' }}>
+            {[
+              'Set up once — lighting, sound, the dentist in their clinic.',
+              'Video 1 (Smile Club) in Turkish, then straight away in English.',
+              'Change the framing or background, so the two videos do not look the same.',
+              'Video 2 (the dentist’s campaign) in Turkish, then in English. About 40–45 minutes per dentist.',
+              'A dentist not fluent in one of the languages films in the language they are comfortable in; the other gets subtitles — never read phonetically on camera.',
+              'Short cuts (15 s and 6 s) from every take for ads and WhatsApp status.',
+            ].map((x, i) => (
+              <li key={x} className="flex gap-1.5"><span className="font-bold" style={{ color: CORAL }}>{i + 1}.</span>{x}</li>
+            ))}
+          </ol>
+          <div className="mt-2 space-y-2">
+            {[...SHOOT.dentists, SHOOT.suggested].map((id) => (
+              <div key={id}>
+                {id === SHOOT.suggested ? <p className="mb-1 text-[9.5px] font-bold uppercase tracking-wide" style={{ color: OLIVE }}>Suggested third dentist — only if time allows</p> : null}
+                <ShootScripts d={byId(id)} />
+              </div>
+            ))}
           </div>
         </Card>
       </section>
 
       <section>
-        <Exhibit n="DS2" title={`All ${DENTISTS.length} dentists — three scripts each`} />
+        <Exhibit n="DS2" title={`All ${DENTISTS.length} dentists — chair sentence, three group messages, two videos`} />
         <div className="mb-2 flex flex-wrap gap-1.5">
-          {([['all', 'All branches'], ['tosun', BRANCH_LABEL.tosun], ['alwasl', BRANCH_LABEL.alwasl], ['amc', BRANCH_LABEL.amc]] as [Branch | 'all', string][]).map(([id, label]) => (
+          {BRANCH_TAB.map(([id, label]) => (
             <button key={id} type="button" onClick={() => setBranch(id)} className="rounded-full px-3 py-1 text-[11px] font-bold"
               style={branch === id ? { backgroundColor: NAVY, color: 'white' } : { backgroundColor: '#F1F1EA', color: OLIVE }}>{label}</button>
           ))}
         </div>
         <div className="space-y-2">
           {list.map((d) => {
-            const s = scriptsFor(d);
             const isOpen = open === d.id;
+            const lane = LANES[laneFor(d)];
             return (
               <div key={d.id} className="rounded-xl border bg-white" style={{ borderColor: isOpen ? BLUE : LINE }}>
                 <button type="button" onClick={() => setOpen(isOpen ? null : d.id)} className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left">
                   <span className="min-w-0 flex-1">
                     <span className="block text-[12px] font-bold" style={{ color: NAVY }}>{d.name} <span className="font-semibold" style={{ color: OLIVE }}>· {d.title}</span></span>
-                    <span className="block text-[10.5px]" style={{ color: OLIVE }}>{BRANCH_LABEL[d.branch]} · in clinic {d.days} · WhatsApp code {d.code}</span>
+                    <span className="block text-[10.5px]" style={{ color: OLIVE }}>
+                      {BRANCH_LABEL[d.branch]} · {langsFor(d).map((l) => l.toUpperCase()).join(' + ')} · in clinic {d.days} · second video: {lane.name} · WhatsApp code {d.code}
+                    </span>
                   </span>
                   <span className="shrink-0 text-[13px] font-bold" style={{ color: BLUE }}>{isOpen ? '▾' : '▸'}</span>
                 </button>
                 {isOpen ? (
-                  <div className="space-y-2 border-t px-3.5 py-3" style={{ borderColor: '#EEEFE1' }}>
+                  <div className="space-y-2.5 border-t px-3.5 py-3" style={{ borderColor: '#EEEFE1' }}>
                     {d.note ? <p className="text-[10.5px] font-bold" style={{ color: '#8a6a1e' }}>⚠ {d.note}</p> : null}
-                    <ScriptBlock label="1 · In the chair — one sentence at the end of the visit" text={s.chair} tone={BLUE} />
-                    <ScriptBlock label="2 · WhatsApp — only to this dentist’s own patients" text={s.whatsapp} tone="#2C5E3F" />
-                    <ScriptBlock label="3 · 30-second video" text={s.video} tone={CORAL} />
+                    <TranslationNote d={d} />
+                    <BiScript d={d} label="1 · In the chair" tone={BLUE} pick={(s) => s.chair} />
+                    {PATIENT_SEGS.map((g, i) => (
+                      <BiScript key={g.id} d={d} label={`2${'abc'[i]} · WhatsApp — ${g.label} · ${g.when}`} tone="#2C5E3F" pick={(s) => s.whatsapp[g.id]} combined />
+                    ))}
+                    <BiScript d={d} label="3 · Video 1 — Smile Club" tone={CORAL} pick={(s) => s.clubVideo} />
+                    <BiScript d={d} label={`4 · Video 2 — ${lane.name} (${lane.tag})`} tone={NAVY} pick={(s) => s.laneVideo} />
+                    <p className="text-[10px] leading-snug" style={{ color: OLIVE }}>
+                      <b>Video 2 offer:</b> {lane.offer} · page {lane.page}. {d.laneWhy ? `${d.laneWhy} ` : ''}Confirm the price is current and the offer is booked at {BRANCH_LABEL[d.branch]} before publishing.
+                    </p>
                   </div>
                 ) : null}
               </div>
@@ -3161,11 +3233,15 @@ function ScriptsTab() {
         <ul className="grid gap-1.5 md:grid-cols-2">
           {[
             'The dentist reads and approves their own version before it is used — nothing goes out in a name without approval.',
-            `Never the words ${BANNED_WORDS.map((w) => `“${w}”`).join(', ')} — Smile Club is a membership.`,
-            'WhatsApp goes only to the dentist’s own patients who agreed to be contacted — at most 20 a day, every reply answered the same day, any “STOP” honoured immediately.',
+            `Never the words ${BANNED_WORDS.map((w) => `“${w}”`).join(', ')} — nor ${BANNED_TR_AR.map((w) => `“${w}”`).join(', ')} in Turkish or Arabic. Smile Club is a membership.`,
+            'WhatsApp goes to group lists — active, inactive, dormant — built from each dentist’s own patients who agreed to be contacted. One message per group, with no patient names or personal details in the text.',
+            'At most 20 messages a day per dentist, every reply answered the same day, any “STOP” honoured immediately.',
+            'Language: send the patient’s own language when the CRM has it; otherwise one message with both — the branch language first, English second.',
+            'Dr. Tosun Dental Clinic: Turkish + English. Dental Nation Al Wasl: Arabic + English. Al Maher Medical Centre: Arabic + English (assumed — confirm with Dr Luvi).',
+            'Turkish and Arabic are draft translations: checked by a Turkish-speaking dentist at Dr. Tosun Dental Clinic and an Arabic-speaking dentist before anything is sent or filmed.',
             'Dentists who are in clinic one day a week (e.g. Dr. Hasna Alsaeed, Sundays): replies are answered by the branch desk on the other days, in the dentist’s name, and booked with them.',
             '“Help when you have an urgent dental problem” — say it this way; the internal name DN SOS means nothing to patients.',
-            'Arabic versions: to be translated and checked by an Arabic-speaking dentist before use.',
+            'Campaign videos quote the price on the live campaign page — check it on the day of publishing.',
           ].map((r) => (
             <li key={r} className="flex gap-2 text-[11px] leading-snug" style={{ color: '#3a4148' }}>
               <span className="mt-[6px] h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: BLUE }} />{r}
