@@ -48,6 +48,8 @@ export interface TeamTask {
   seg?: SegmentId;
   /** Evidence-verified task: completion is decided by checking an uploaded file. */
   verify?: 'crm-test';
+  /** Dentist ids whose scripts are shown on the task for team review. */
+  scripts?: string[];
 }
 
 export const TRACKER_SOURCE = 'smileclub-team';
@@ -626,6 +628,36 @@ const TASKS_RAW: TeamTask[] = [
       { s: 'Questions answered', how: '15 minutes with Fahad.' },
     ],
     done: 'Brief understood; questions answered.', to: 'layers', toLabel: 'Customer situations', weight: 1, subs: 0, subsNote: 'Enabler — every design depends on it' },
+  { key: 'm-video-yasmin', who: 'mohan', wk: 1, dueIso: '2026-09-24', due: 'Thu 24 Sep', task: 'Finish Dr. Yasmin Youssef’s video from the team’s comments', scripts: ['yasmin-youssef'],
+    objective: 'Apply the team’s and Fahad’s comments to the video filmed with Dr. Yasmin Youssef (Orthodontist, Dental Nation Al Wasl) and get it approved.',
+    why: 'It is the first dentist video — it sets the standard for every one that follows, so the comments need to land before the next shoots.',
+    steps: [
+      { s: 'Comments collected', how: 'Every comment from the team and Fahad added to this task (use “Add a comment” below) — nothing lost in chat.' },
+      { s: 'Edits made', how: 'Each comment applied, checked against Dr. Yasmin’s script below.' },
+      { s: 'Dentist approves', how: 'Dr. Yasmin Youssef approves the final cut.' },
+      { s: 'Final exported', how: 'Full version + 15 s and 6 s cuts, filed for use.' },
+    ],
+    done: 'Approved final video with short cuts, all comments resolved.', with: 'Fahad · Dr Luvi', to: 'scripts', toLabel: 'Dentist scripts', weight: 2, subs: 0, subsNote: 'Supports the dentists’ 24 and the website 12' },
+  { key: 'm-shoot-tosun', who: 'mohan', wk: 1, dueIso: '2026-09-25', due: 'Fri 25 Sep', task: 'Shoot 1 — Dr. Yahya Tosun (Dr. Tosun Dental Clinic)', scripts: ['yahya-tosun'],
+    objective: 'Film Dr. Yahya Tosun’s 30-second Smile Club video using his orthodontist script, and share a first cut for review.',
+    why: 'His own patients will see this video with his WhatsApp message — it has to sound like him and be accurate.',
+    steps: [
+      { s: 'Script approved', how: 'Dr. Yahya Tosun reads his script below and approves or adjusts it before filming.' },
+      { s: 'Consent ready', how: 'Written consent forms for anyone else who appears on camera.' },
+      { s: 'Filmed', how: 'At the clinic; clinical areas tidy, no patient identifiable without consent.' },
+      { s: 'First cut shared', how: 'Posted to this task for comments from the team.' },
+    ],
+    done: 'First cut shared here for review.', with: 'Dr. Yahya Tosun', to: 'scripts', toLabel: 'Dentist scripts', weight: 2, subs: 0, subsNote: 'Supports the dentists’ 24' },
+  { key: 'm-shoot-dilsad', who: 'mohan', wk: 1, dueIso: '2026-09-25', due: 'Fri 25 Sep', task: 'Shoot 2 — Dr. Dilsad Ozdogan (Dr. Tosun Dental Clinic)', scripts: ['dilsad-ozdogan'],
+    objective: 'Film Dr. Dilsad Ozdogan’s 30-second Smile Club video using her general-dentist script, and share a first cut for review.',
+    why: 'A general dentist speaks to the largest group of patients — prevention and check-ups — so this video will be used the most.',
+    steps: [
+      { s: 'Script approved', how: 'Dr. Dilsad Ozdogan reads her script below and approves or adjusts it before filming.' },
+      { s: 'Consent ready', how: 'Written consent forms for anyone else who appears on camera.' },
+      { s: 'Filmed', how: 'At the clinic; clinical areas tidy, no patient identifiable without consent.' },
+      { s: 'First cut shared', how: 'Posted to this task for comments from the team.' },
+    ],
+    done: 'First cut shared here for review.', with: 'Dr. Dilsad Ozdogan', to: 'scripts', toLabel: 'Dentist scripts', weight: 2, subs: 0, subsNote: 'Supports the dentists’ 24' },
   { key: 'm-banner', who: 'mohan', wk: 1, dueIso: '2026-09-24', due: 'Thu 24 Sep', task: 'Design the website banner (English and Arabic)',
     objective: 'A thin banner reading “Smile Club — dental care from AED 99/month → Join” that visitors can close.',
     why: 'It shows Smile Club to every website visitor at zero ad cost.',
@@ -808,6 +840,9 @@ const SEG_OF: Record<string, SegmentId> = {
   'd-pitch': 'chair',
   'm-invite': 'chair',
   'l-doctor-lists': 'patients',
+  'm-video-yasmin': 'patients',
+  'm-shoot-tosun': 'patients',
+  'm-shoot-dilsad': 'patients',
   'd-approve': 'patients',
   'd-active': 'patients',
   'd-inactive': 'patients',

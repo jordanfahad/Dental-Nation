@@ -13,7 +13,7 @@
  */
 
 import { createContext, useContext, useState } from 'react';
-import { updateTeamTaskAction, verifyCrmTestAction } from '@/app/(app)/smileclub-actions';
+import { commentTeamTaskAction, updateTeamTaskAction, verifyCrmTestAction } from '@/app/(app)/smileclub-actions';
 import { SEGMENTS, type SegmentId } from '@/lib/smileclub/segments';
 import { BANNED_WORDS, BRANCH_LABEL, DENTISTS, SHOOT, scriptsFor, type Branch } from '@/lib/smileclub/scripts';
 import { BUDGET_BY_SEG, CEILING, COMMITTED, RESERVE, SEGMENT_BUDGETS, TOTAL, fmtAed, segmentTotal } from '@/lib/smileclub/budget';
@@ -28,6 +28,7 @@ import {
   type Step,
   type Person,
   type Rag,
+  type TaskEvent,
   type TaskProgress,
   type TeamTask,
   type TrackerState,
@@ -2431,12 +2432,24 @@ function EvidenceBox({ p, editable, onVerified }: { p: TaskProgress | undefined;
   );
 }
 
-function TaskCard({ t, p, today, color, editable, onSave, onVerified }: {
+function TaskCard({ t, p, today, color, editable, onSave, onVerified, comments, canComment, onComment }: {
   t: TeamTask; p: TaskProgress | undefined; today: string; color: string; editable: boolean;
   onSave: (stage: number, blocked: boolean, note: string) => Promise<string | null>;
   onVerified: (s: TrackerState) => void;
+  comments: TaskEvent[];
+  canComment: boolean;
+  onComment: (text: string) => Promise<string | null>;
 }) {
   const stage = p?.stage ?? 0;
+  const [comment, setComment] = useState('');
+  const [cBusy, setCBusy] = useState(false);
+  const [cErr, setCErr] = useState<string | null>(null);
+  const sendComment = async () => {
+    setCBusy(true); setCErr(null);
+    const e = await onComment(comment);
+    setCBusy(false);
+    if (e) setCErr(e); else setComment('');
+  };
   const blocked = p?.status === 'blocked';
   const rag = ragFor(t, p, today);
   const pct = Math.round((stage / t.steps.length) * 100);
@@ -2491,6 +2504,32 @@ function TaskCard({ t, p, today, color, editable, onSave, onVerified }: {
       </div>
       <p className="mt-2 text-[10.5px] leading-snug" style={{ color: '#3a4148' }}><span className="font-bold" style={{ color: NAVY }}>Done looks like:</span> {t.done}</p>
       {t.verify ? <EvidenceBox p={p} editable={editable} onVerified={onVerified} /> : null}
+      {t.scripts ? (
+        <div className="mt-2 space-y-1.5">
+          <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: CORAL }}>The script — for review</p>
+          {t.scripts.map((id) => {
+            const d = DENTISTS.find((x) => x.id === id);
+            return d ? <ScriptBlock key={id} label={`${d.name} · ${d.title} — 30-second video`} text={scriptsFor(d).video} tone={CORAL} /> : null;
+          })}
+        </div>
+      ) : null}
+      {comments.length || canComment ? (
+        <div className="mt-2 rounded-lg border px-2.5 py-2" style={{ borderColor: '#EEEFE1' }}>
+          <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: BLUE }}>Team review{comments.length ? ` (${comments.length})` : ''}</p>
+          {comments.map((c, i) => (
+            <p key={`${c.at}-${i}`} className="mt-1 text-[10.5px] leading-snug" style={{ color: '#3a4148' }}>
+              <b style={{ color: NAVY }}>{c.actor}</b> <span style={{ color: OLIVE }}>· {fmtAt(c.at)}</span> — {c.note}
+            </p>
+          ))}
+          {canComment ? (
+            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+              <input value={comment} onChange={(e) => setComment(e.target.value)} maxLength={1000} placeholder="Add a comment for the team…" className="min-w-[200px] flex-1 rounded-md border px-2 py-1 text-[10.5px]" style={{ borderColor: LINE }} />
+              <button type="button" disabled={cBusy || !comment.trim()} onClick={sendComment} className="rounded-full px-2.5 py-1 text-[10.5px] font-bold text-white disabled:opacity-40" style={{ backgroundColor: BLUE }}>{cBusy ? 'Posting…' : 'Post comment'}</button>
+              {cErr ? <span className="text-[10px] font-bold" style={{ color: '#a04a38' }}>{cErr}</span> : null}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
       {p?.note ? <p className="mt-1 rounded px-2 py-1 text-[10.5px]" style={{ backgroundColor: '#FDF9EC', color: '#6d5a1d' }}>Latest note: {p.note}</p> : null}
       {p?.updatedAt ? <p className="mt-1 text-[9.5px]" style={{ color: OLIVE }}>Last updated {fmtAt(p.updatedAt)}{p.updatedBy ? ` by ${p.updatedBy}` : ''}</p> : null}
       {editable ? (
@@ -2702,6 +2741,14 @@ function TeamTab({ state, setState }: { state: TrackerState; setState: (s: Track
                     editable={canEditPerson(p.id)}
                     onSave={(stage, blocked, note) => save(x.key, stage, blocked, note)}
                     onVerified={setState}
+                    comments={state.events.filter((e) => e.key === x.key && e.status === 'comment').reverse()}
+                    canComment={!!state.viewer}
+                    onComment={async (text) => {
+                      const r = await commentTeamTaskAction({ key: x.key, text });
+                      if (!r.ok) return r.error;
+                      setState(r.state);
+                      return null;
+                    }}
                   />
                 ))}
               </div>
@@ -2727,7 +2774,7 @@ function TeamTab({ state, setState }: { state: TrackerState; setState: (s: Track
                   if (!t) return null;
                   const change = e.toStage > e.fromStage
                     ? `✓ ${t.steps.slice(e.fromStage, e.toStage).map((x) => x.s).join(' · ')}`
-                    : e.toStage < e.fromStage ? `↩ back to step ${e.toStage + 1}` : e.status === 'blocked' ? '⚑ flagged blocked' : 'note';
+                    : e.toStage < e.fromStage ? `↩ back to step ${e.toStage + 1}` : e.status === 'comment' ? '💬 review comment' : e.status === 'blocked' ? '⚑ flagged blocked' : 'note';
                   return (
                     <tr key={`${e.at}-${i}`} className="border-t align-top" style={{ borderColor: '#EEEFE1' }}>
                       <td className="px-2.5 py-1.5 whitespace-nowrap tabular-nums" style={{ color: OLIVE }}>{fmtAt(e.at)}</td>
@@ -3124,9 +3171,10 @@ function ScriptsTab() {
         <Exhibit n="DS1" title={`Mohan’s first shoot — ${SHOOT.date}, ${BRANCH_LABEL[SHOOT.branch]}`} />
         <Card accent={CORAL}>
           <p className="text-[11px] leading-snug" style={{ color: '#3a4148' }}>
-            Two dentists confirmed: <b>{byId(SHOOT.dentists[0]).name}</b> and <b>{byId(SHOOT.dentists[1]).name}</b>. The
-            third slot in the brief was blank — <b>{byId(SHOOT.suggested).name}</b> is also in clinic on Friday morning at
-            the same branch and would give the set a second general-dentist voice. Film each dentist&apos;s 30-second
+            Two shoots confirmed: <b>{byId(SHOOT.dentists[0]).name}</b> and <b>{byId(SHOOT.dentists[1]).name}</b> — both
+            on Mohan&apos;s calendar with their scripts, open for team comments. Dr. Yasmin Youssef&apos;s video (filmed
+            23 Sep) is being finished from the team&apos;s comments on Thu 24 Sep. Optional third voice if time allows:
+            <b> {byId(SHOOT.suggested).name}</b>, also in clinic on Friday morning. Film each dentist&apos;s 30-second
             script below (it replaces the earlier draft: it names the dentist and branch correctly and explains
             &quot;urgent dental support&quot; in plain words). Written consent from any patient who appears; no patient
             identifiable without it.

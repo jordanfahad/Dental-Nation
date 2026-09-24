@@ -189,3 +189,26 @@ export async function verifyCrmTestAction(formData: FormData): Promise<ProgressR
   revalidatePath('/impact');
   return { ok: true, state: await loadTracker() };
 }
+
+/**
+ * Review comment on any team task. Anyone signed in to the plan may comment
+ * (the team reviews each other's work — e.g. Mohan's videos); only owners
+ * move steps. Comments are appended to lane_e.task_events.
+ */
+export async function commentTeamTaskAction(input: { key: string; text: string }): Promise<ProgressResult> {
+  const task = TASK_BY_KEY[input.key];
+  if (!task) return { ok: false, error: 'Unknown task.' };
+  const { canEdit, viewer } = await editableFor();
+  if (!viewer && canEdit !== 'all') return { ok: false, error: 'Sign in to comment.' };
+  const text = (input.text ?? '').trim().slice(0, 1000);
+  if (!text) return { ok: false, error: 'Write a comment first.' };
+  const sb = getSupabaseAdmin();
+  if (!sb) return { ok: false, error: 'Tracking database unavailable.' };
+  const { data: row } = await sb.from('tasks').select('id,raw').eq('source', TRACKER_SOURCE).eq('external_id', externalIdFor(task.key)).maybeSingle();
+  if (!row) return { ok: false, error: 'Task not found in the tracker.' };
+  const stage = Number((row.raw as { stage?: number } | null)?.stage ?? 0);
+  const { error } = await sb.from('task_events').insert({ task_id: row.id, actor: viewer ?? 'Fahad (admin)', from_stage: stage, to_stage: stage, status: 'comment', note: text });
+  if (error) return { ok: false, error: error.message };
+  revalidatePath('/');
+  return { ok: true, state: await loadTracker() };
+}
