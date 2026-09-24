@@ -14,7 +14,8 @@
 
 import { Fragment, createContext, useContext, useState } from 'react';
 import { CLINIC_CLOSED, DAYS, FILMED, HOURS, SHOOT_PLAN, WARDROBE, dentistById, hoursOn, nextClinicDays, shootLoad } from '@/lib/smileclub/shoots';
-import { commentTeamTaskAction, reviewScriptAction, saveCompanyAction, sendScriptsForReviewAction, updateTeamTaskAction, uploadCalendarAction, verifyCrmTestAction } from '@/app/(app)/smileclub-actions';
+import { ALERT_RULES } from '@/lib/smileclub/alertRules';
+import { commentTeamTaskAction, previewAlertAction, reviewScriptAction, saveCompanyAction, sendScriptsForReviewAction, updateTeamTaskAction, uploadCalendarAction, verifyCrmTestAction } from '@/app/(app)/smileclub-actions';
 import { REVIEWERS, REVIEWER_BY_USER, reviewFor, reviewSummary, type ReviewEntry, type ReviewerState } from '@/lib/smileclub/review';
 import { PLAYBOOKS, type Channel } from '@/lib/smileclub/playbook';
 import { CAL_RULE, COMPANY_TYPES, STAGES, TYPE_LABEL, type CalEvent, type Company, type CompanyType, type CorpState, type EventKind, type Stage } from '@/lib/smileclub/corporate';
@@ -2809,6 +2810,11 @@ function TeamTab({ state, setState }: { state: TrackerState; setState: (s: Track
       </section>
 
       <section>
+        <Exhibit n="T6" title="Automatic email alerts — who gets what, and when" />
+        <AlertsPanel state={state} />
+      </section>
+
+      <section>
         <Exhibit n="T5" title="Branch pace — paid subscriptions per branch, cumulative" />
         <div className="overflow-x-auto rounded-xl border bg-white" style={{ borderColor: LINE }}>
           <table className="w-full border-collapse text-[11px]">
@@ -3701,6 +3707,66 @@ function ShootScripts({ d }: { d: Dentist }) {
         <b>Video 2 offer:</b> {lane.offer} · page {lane.page}. {d.laneWhy ? `${d.laneWhy} ` : ''}Before publishing, confirm the price is still current and the offer is booked at {BRANCH_LABEL[d.branch]}.
       </p>
       <ReviewPanel d={d} />
+    </div>
+  );
+}
+
+/* ── Email alerts (24 Sep) ── */
+function AlertsPanel({ state }: { state: TrackerState }) {
+  const isAdmin = state.canEdit === 'all';
+  const [busy, setBusy] = useState<string | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
+  const preview = async (k: 'shoot' | 'gautam' | 'luvi' | 'mohan') => {
+    setBusy(k); setMsg(null);
+    const r = await previewAlertAction(k);
+    setBusy(null); setMsg(r.message);
+  };
+  const label = (k: string) => k === 'shoot-tomorrow' ? 'Tomorrow’s shoot (17:00)' : k.startsWith('digest-') ? `${k.slice(7) === 'luvi' ? 'Dr Luvi' : k.slice(7) === 'gautam' ? 'Gautam' : 'Mohan'} status (09:00)` : k.startsWith('blocked-') ? 'Blocked task' : k;
+  return (
+    <div className="space-y-2">
+      <div className="overflow-x-auto rounded-xl border bg-white" style={{ borderColor: LINE }}>
+        <table className="w-full min-w-[760px] border-collapse text-[10.5px]">
+          <thead>
+            <tr className="text-left text-[9.5px] uppercase tracking-wide" style={{ color: OLIVE, backgroundColor: '#F7F7F0' }}>
+              <th className="px-2.5 py-2 font-bold">When</th><th className="px-2.5 py-2 font-bold">What it says</th><th className="px-2.5 py-2 font-bold">To</th><th className="px-2.5 py-2 font-bold">Copied</th>
+            </tr>
+          </thead>
+          <tbody>
+            {ALERT_RULES.map((r) => (
+              <tr key={r.what} className="border-t align-top" style={{ borderColor: '#EEEFE1' }}>
+                <td className="px-2.5 py-1.5 font-semibold" style={{ color: NAVY }}>{r.when}</td>
+                <td className="px-2.5 py-1.5" style={{ color: '#3a4148' }}>{r.what}</td>
+                <td className="px-2.5 py-1.5 font-semibold" style={{ color: NAVY }}>{r.to}</td>
+                <td className="px-2.5 py-1.5" style={{ color: OLIVE }}>{r.cc || '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="text-[10.5px] leading-snug" style={{ color: OLIVE }}>
+        Each alert goes at most once a day and only when there is something to say. Ms Shadi’s and Mohan’s email addresses are not on record yet — until they are added, they are named in the email but not sent it.
+      </p>
+      {isAdmin ? (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-[10.5px] font-bold" style={{ color: NAVY }}>Email me a preview:</span>
+          {([['shoot', 'Next shoot schedule'], ['gautam', 'Gautam’s status'], ['luvi', 'Dr Luvi’s status'], ['mohan', 'Mohan’s status']] as ['shoot' | 'gautam' | 'luvi' | 'mohan', string][]).map(([k, l]) => (
+            <button key={k} type="button" disabled={!!busy} onClick={() => preview(k)} className="rounded-full border px-2.5 py-1 text-[10.5px] font-bold disabled:opacity-40" style={{ borderColor: LINE, color: NAVY }}>{busy === k ? 'Sending…' : l}</button>
+          ))}
+          {msg ? <span className="text-[10.5px] font-bold" style={{ color: msg.startsWith('Preview emailed') ? '#2C5E3F' : '#a04a38' }}>{msg}</span> : null}
+        </div>
+      ) : null}
+      {state.alerts?.length ? (
+        <div className="rounded-xl border bg-white p-2.5" style={{ borderColor: LINE }}>
+          <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: BLUE }}>Recent automatic emails</p>
+          <ul className="mt-1 space-y-0.5">
+            {state.alerts.map((a, i) => (
+              <li key={`${a.kind}-${i}`} className="text-[10.5px]" style={{ color: '#3a4148' }}>
+                <b style={{ color: a.ok ? '#2C5E3F' : '#a04a38' }}>{a.ok ? '✓' : '✗'}</b> {fmtAt(a.sentAt)} · {label(a.kind)} · <span style={{ color: OLIVE }}>{a.note}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
     </div>
   );
 }

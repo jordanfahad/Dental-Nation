@@ -6,6 +6,7 @@ import { editableFor, loadReviews, loadTracker, seedRows } from '@/lib/smileclub
 import { DENTISTS, scriptHash } from '@/lib/smileclub/scripts';
 import { REVIEWER_BY_USER, type Decision, type ReviewEntry } from '@/lib/smileclub/review';
 import { mailDecision, mailSentForReview } from '@/lib/smileclub/reviewMail';
+import { alertBlocked, previewAlert } from '@/lib/smileclub/alerts';
 import {
   CAL_WINDOW,
   COMPANY_TYPES,
@@ -114,6 +115,7 @@ export async function updateTeamTaskAction(input: {
     note,
   });
   if (evErr) return { ok: false, error: evErr.message };
+  if (status === 'blocked' && prevStatus !== 'blocked') await alertBlocked(task, note, actor).catch(() => undefined);
 
   revalidatePath('/');
   revalidatePath('/impact');
@@ -425,4 +427,12 @@ export async function sendScriptsForReviewAction(input: { dentistIds: string[] }
   const m = await mailSentForReview(ds.map((d) => d.id));
   revalidatePath('/');
   return { ok: true, state: await loadTracker(), mail: m.note + (m.missing.length ? ` No address on record for: ${m.missing.join(', ')}.` : '') };
+}
+
+/** Fahad only: email himself a preview of any Smile Club alert. */
+export async function previewAlertAction(kind: 'shoot' | 'gautam' | 'luvi' | 'mohan'): Promise<{ ok: boolean; message: string }> {
+  const { canEdit } = await editableFor();
+  if (canEdit !== 'all') return { ok: false, message: 'Only Fahad can send previews.' };
+  if (!['shoot', 'gautam', 'luvi', 'mohan'].includes(kind)) return { ok: false, message: 'Unknown alert.' };
+  return { ok: true, message: await previewAlert(kind) };
 }

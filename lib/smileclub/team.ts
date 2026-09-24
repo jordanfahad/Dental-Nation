@@ -1056,6 +1056,8 @@ export interface TrackerState {
   corp?: CorpState;
   /** Script sign-off decisions and inputs (Ms Shadi, Dr Luvi, Gautam; Fahad). */
   reviews?: ReviewEntry[];
+  /** Recent automatic emails (lane_e.sc_alert_log). */
+  alerts?: { kind: string; day: string; sentAt: string; ok: boolean; note: string | null }[];
 }
 
 export type Rag = 'done' | 'blocked' | 'overdue' | 'due' | 'on_track' | 'not_started';
