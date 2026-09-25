@@ -13,7 +13,7 @@
  */
 
 import { Fragment, createContext, useContext, useState } from 'react';
-import { CLINIC_CLOSED, DAYS, FILMED, HOURS, SHOOT_PLAN, WARDROBE, dentistById, hoursOn, nextClinicDays, shootLoad } from '@/lib/smileclub/shoots';
+import { CLINIC_CLOSED, DAYS, FILMED, HOURS, NOT_FILMING, SHOOT_CHANGES, SHOOT_PLAN, SLOT_STATUS, WARDROBE, dentistById, hoursOn, nextClinicDays, shootLoad } from '@/lib/smileclub/shoots';
 import { ALERT_RULES } from '@/lib/smileclub/alertRules';
 import { commentTeamTaskAction, previewAlertAction, reviewScriptAction, saveCompanyAction, sendScriptsForReviewAction, updateTeamTaskAction, uploadCalendarAction, verifyCrmTestAction } from '@/app/(app)/smileclub-actions';
 import { REVIEWERS, REVIEWER_BY_USER, reviewFor, reviewSummary, type ReviewEntry, type ReviewerState } from '@/lib/smileclub/review';
@@ -3827,15 +3827,19 @@ function ShootSchedule() {
   const [showTable, setShowTable] = useState(false);
   return (
     <div className="space-y-2">
+      {SHOOT_CHANGES.map((c) => (
+        <p key={c} className="rounded-lg px-2.5 py-1.5 text-[10.5px] leading-snug" style={{ backgroundColor: '#FBEFEC', color: '#7a3a2e' }}><b>Schedule change —</b> {c}</p>
+      ))}
       <p className="rounded-lg px-2.5 py-1.5 text-[10.5px] leading-snug" style={{ backgroundColor: '#FDF9EC', color: '#6d5a1d' }}>
         <b>Wardrobe:</b> {WARDROBE.note} <TaskLink k="l-labcoats">Lab-coat task</TaskLink>
       </p>
       <div className="flex flex-wrap gap-1.5 text-[10.5px]" style={{ color: '#3a4148' }}>
         <b style={{ color: NAVY }}>Already filmed:</b>
         {FILMED.map((f) => <span key={f.id} className="rounded px-1.5 py-0.5" style={{ backgroundColor: '#e7efe6', color: '#2C5E3F' }}>✓ {dentistById(f.id).name} · {f.when} · {f.what}</span>)}
+        {NOT_FILMING.map((f) => <span key={f.id} className="rounded px-1.5 py-0.5" style={{ backgroundColor: '#F1F1EA', color: OLIVE }}>✕ {dentistById(f.id).name} — {f.why}</span>)}
       </div>
       {SHOOT_PLAN.map((day) => {
-        const keys = day.tasks ?? [`m-shoot-${day.key}`];
+        const keys = [...new Set([...(day.tasks ?? []), ...day.stops.flatMap((st) => st.slots.map((x) => x.task).filter((x): x is string => !!x)), `m-shoot-${day.key}`])];
         const tks = keys.map((k) => TASK_BY_KEY[k]).filter(Boolean);
         const tk = tks[0];
         const pct = tks.length ? Math.round((tks.reduce((a, t) => a + Math.min(1, (progress[t.key]?.stage ?? 0) / t.steps.length), 0) / tks.length) * 100) : 0;
@@ -3871,7 +3875,10 @@ function ShootSchedule() {
                                 {sl.only ? `Video 2 · ${LANES[laneFor(d)].name}` : `Smile Club + ${LANES[laneFor(d)].name}`}
                                 <span className="block text-[9.5px]" style={{ color: OLIVE }}>{langsFor(d).map((l) => LANG_LABEL[l].split(' · ').pop()).join(' + ')} · {load.takes} takes · ≈{load.minutes} min</span>
                               </td>
-                              <td className="py-1 pr-2"><span className="rounded-full px-2 py-0.5 text-[9.5px] font-bold" style={{ color: badge.fg, backgroundColor: badge.bg }}>{badge.text}</span></td>
+                              <td className="py-1 pr-2">
+                                {sl.status ? <span className="mb-0.5 block text-[9.5px] font-bold" style={{ color: sl.status === 'confirmed' ? '#2C5E3F' : sl.status === 'proposed' ? '#7a6420' : OLIVE }}>{sl.status === 'confirmed' ? '✓ ' : ''}{SLOT_STATUS[sl.status]}</span> : null}
+                                <span className="rounded-full px-2 py-0.5 text-[9.5px] font-bold" style={{ color: badge.fg, backgroundColor: badge.bg }}>{badge.text}</span>
+                              </td>
                               <td className="py-1 text-[9.5px]" style={{ color: OLIVE }}>
                                 {sl.note ? <span className="block">{sl.note}</span> : null}
                                 Backup: {nextClinicDays(d.id, day.iso).join(' · ') || '—'}

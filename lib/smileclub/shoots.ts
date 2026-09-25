@@ -37,11 +37,32 @@ export const HOURS: Record<string, Partial<Record<Day, string>>> = {
 
 export interface ShootSlot {
   id: string;
+  /** Start time, or the confirmed range (e.g. 11:00–12:00). */
   time: string;
   /** Only the campaign video is still needed. */
   only?: 'lane';
   note?: string;
+  /** confirmed = MJ confirmed with the dentist; proposed = offered, not yet confirmed; plan = our proposal, not yet arranged by MJ. */
+  status?: 'confirmed' | 'proposed' | 'plan';
+  /** An existing task that already covers this slot (kept out of the day's generated task). */
+  task?: string;
 }
+
+export const SLOT_STATUS: Record<NonNullable<ShootSlot['status']>, string> = {
+  confirmed: 'Confirmed by MJ',
+  proposed: 'Proposed — dentist available, to confirm',
+  plan: 'Planned — not yet arranged by MJ',
+};
+
+/** Changes to the plan, newest first. */
+export const SHOOT_CHANGES: string[] = [
+  'Thu 24 Sep (MJ): Fri 25 Sep shoot cancelled — Dr. Yahya Tosun has back-to-back patients and Dr. Dilsad Ozdogan was not ready; both confirmed for Mon 28 Sep. Saturday re-timed; Dr. Helmi Shaath is not renewing (no shoot); Dr. Ghada Hussain is travelling until 2 Oct (moved to Sat 3 Oct).',
+];
+
+/** Dentists taken off the shoot plan, with the reason. */
+export const NOT_FILMING: { id: string; why: string }[] = [
+  { id: 'helmi-shaath', why: 'Not renewing with Dental Nation (MJ, 24 Sep) — no shoot.' },
+];
 
 export interface ShootDay {
   key: string;
@@ -68,48 +89,47 @@ export const FILMED: { id: string; when: string; what: string }[] = [
  * Times are proposals: Dr Luvi blocks each slot in the dentist's diary.
  */
 export const SHOOT_PLAN: ShootDay[] = [
-  { key: 'fri25', iso: '2026-09-25', label: 'Fri 25 Sep', tasks: ['m-shoot-tosun', 'm-shoot-dilsad'], stops: [
-    { branch: 'tosun', slots: [
-      { id: 'yahya-tosun', time: '10:00', note: 'Confirmed with Mohan: 10:00–12:00' },
-      { id: 'dilsad-ozdogan', time: '12:00', note: 'Confirmed with Mohan: 12:00–14:00' },
-    ] },
-  ] },
   { key: 'sat26', iso: '2026-09-26', label: 'Sat 26 Sep', stops: [
     { branch: 'alwasl', slots: [
-      { id: 'ghada-hussain', time: '09:00' },
-      { id: 'helmi-shaath', time: '09:45' },
-      { id: 'safwan-sultan', time: '10:30' },
-      { id: 'chahira-berlarbi', time: '11:15' },
-      { id: 'ali-ghasemi', time: '12:15', note: 'Starts at 12:00 on Saturdays' },
+      { id: 'safwan-sultan', time: '11:00–12:00', status: 'confirmed' },
+      { id: 'chahira-berlarbi', time: '12:00–13:00', status: 'confirmed' },
+      { id: 'ali-ghasemi', time: '13:00–14:00', status: 'confirmed' },
     ] },
   ] },
   { key: 'sun27', iso: '2026-09-27', label: 'Sun 27 Sep', stops: [
     { branch: 'alwasl', slots: [
-      { id: 'hasna-alsaeed', time: '09:00', note: 'In clinic on Sundays only' },
-      { id: 'yasmin-youssef', time: '09:45', only: 'lane', note: 'Video 1 already filmed — campaign video only' },
+      { id: 'hasna-alsaeed', time: '09:00', status: 'plan', note: 'In clinic on Sundays only' },
+      { id: 'yasmin-youssef', time: '09:45', only: 'lane', status: 'plan', note: 'Video 1 already filmed — campaign video only' },
     ] },
     { branch: 'amc', slots: [
-      { id: 'suzanna-almaali', time: '11:00', note: 'In clinic on Sundays only' },
-      { id: 'maher-selman', time: '11:45' },
-      { id: 'leila-mostawe', time: '12:30' },
+      { id: 'suzanna-almaali', time: '11:00', status: 'plan', note: 'In clinic on Sundays only' },
+      { id: 'maher-selman', time: '11:45', status: 'plan' },
+      { id: 'leila-mostawe', time: '12:30', status: 'plan' },
     ] },
   ] },
   { key: 'mon28', iso: '2026-09-28', label: 'Mon 28 Sep', stops: [
     { branch: 'tosun', slots: [
-      { id: 'maysoon-abdelmajeed', time: '08:30', note: 'Skip if already filmed on Fri 25 Sep' },
-      { id: 'maysoun-ahmad', time: '09:15', note: 'In clinic on Mondays only' },
-      { id: 'sevinc-behruzoglu', time: '10:00' },
+      { id: 'maysoun-ahmad', time: '08:30', status: 'plan', note: 'In clinic on Mondays only — not yet in MJ’s schedule' },
+      { id: 'sevinc-behruzoglu', time: '09:15', status: 'plan', note: 'Not yet in MJ’s schedule' },
+      { id: 'yahya-tosun', time: '10:00', status: 'confirmed', task: 'm-shoot-tosun', note: 'Moved from Fri 25 Sep' },
+      { id: 'dilsad-ozdogan', time: '12:00', status: 'confirmed', task: 'm-shoot-dilsad', note: 'Moved from Fri 25 Sep' },
+      { id: 'bulent-ozdogan', time: '13:00–14:00', status: 'proposed', note: 'Available on Monday (usually Tue, Thu, Sat)' },
+      { id: 'maysoon-abdelmajeed', time: '15:00–16:00', status: 'confirmed', note: 'Outside the usual Monday hours — confirmed by MJ' },
     ] },
   ] },
   { key: 'tue29', iso: '2026-09-29', label: 'Tue 29 Sep', stops: [
     { branch: 'tosun', slots: [
-      { id: 'sathyapriya-surendar', time: '09:00', note: 'Tuesday hours end at 12:00' },
-      { id: 'bulent-ozdogan', time: '09:45' },
+      { id: 'sathyapriya-surendar', time: '09:00', status: 'plan', note: 'Tuesday hours end at 12:00' },
     ] },
   ] },
   { key: 'thu01', iso: '2026-10-01', label: 'Thu 1 Oct', stops: [
     { branch: 'alwasl', slots: [
-      { id: 'mohammad-qasem', time: '09:00', note: 'In clinic on Thursdays only' },
+      { id: 'mohammad-qasem', time: '09:00', status: 'plan', note: 'In clinic on Thursdays only' },
+    ] },
+  ] },
+  { key: 'sat03', iso: '2026-10-03', label: 'Sat 3 Oct', stops: [
+    { branch: 'alwasl', slots: [
+      { id: 'ghada-hussain', time: '09:00', status: 'plan', note: 'Travelling until 2 Oct (MJ) — Saturdays only' },
     ] },
   ] },
 ];

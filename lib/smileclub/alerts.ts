@@ -3,7 +3,7 @@ import { OPS_ALERT_FROM } from '@/config/ops';
 import { emailConfigured, sendEmail } from '@/lib/notify/email';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
 import { BRANCH_LABEL, LANES, LANG_LABEL, laneFor, langsFor } from '@/lib/smileclub/scripts';
-import { SHOOT_PLAN, WARDROBE, dentistById, hoursOn, nextClinicDays, shootLoad } from '@/lib/smileclub/shoots';
+import { SHOOT_PLAN, SLOT_STATUS, WARDROBE, dentistById, hoursOn, nextClinicDays, shootLoad } from '@/lib/smileclub/shoots';
 import { reviewFor } from '@/lib/smileclub/review';
 import { loadCorp, loadReviews } from '@/lib/smileclub/tracker';
 import { OWNER_LABEL, TASK_BY_KEY, TEAM_TASKS, TOTAL_WEIGHT, TRACKER_SOURCE, externalIdFor, type Person, type TeamTask } from '@/lib/smileclub/team';
@@ -122,8 +122,8 @@ export async function buildShootEmail(sb: Sb, today: string) {
     const load = shootLoad(d, sl.only);
     if (!r.final) notFinal.push(`${d.name} (backup: ${nextClinicDays(d.id, day.iso).join(' or ') || 'to agree'})`);
     rows.push([
-      `<b style="color:#B45F53">${esc(sl.time)}</b>`,
-      `<b>${esc(d.name)}</b><br><span style="color:#767769">${esc(d.title)}</span>`,
+      `<b style="color:#B45F53">${esc(sl.time)}</b>${sl.status ? `<br><span style="font-size:11px;color:${sl.status === 'confirmed' ? '#2C5E3F' : '#7a6420'}">${esc(SLOT_STATUS[sl.status])}</span>` : ''}`,
+      `<b>${esc(d.name)}</b><br><span style="color:#767769">${esc(d.title)}${sl.note ? ` · ${esc(sl.note)}` : ''}</span>`,
       esc(BRANCH_LABEL[st.branch]),
       esc(hoursOn(d.id, day.iso) ?? '—'),
       `${esc(sl.only ? `Campaign video only — ${LANES[laneFor(d)].name}` : `Smile Club + ${LANES[laneFor(d)].name}`)}<br><span style="color:#767769">${esc(langsFor(d).map((l) => LANG_LABEL[l].split(' · ').pop()!).join(' + '))} · ≈${load.minutes} min</span>`,

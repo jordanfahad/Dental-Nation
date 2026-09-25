@@ -698,7 +698,7 @@ const TASKS_RAW: TeamTask[] = [
       { s: 'Final exported', how: 'Full version + 15 s and 6 s cuts, filed for use.' },
     ],
     done: 'Approved final video with short cuts, all comments resolved.', with: 'Fahad · Dr Luvi', to: 'scripts', toLabel: 'Dentist scripts', weight: 2, subs: 0, subsNote: 'Supports the dentists’ 24 and the website 12' },
-  { key: 'm-shoot-tosun', who: 'mohan', wk: 1, dueIso: '2026-09-25', due: 'Fri 25 Sep', task: 'Shoot 1 — Dr. Yahya Tosun (Dr. Tosun Dental Clinic)', scripts: ['yahya-tosun'],
+  { key: 'm-shoot-tosun', who: 'mohan', wk: 1, dueIso: '2026-09-28', due: 'Mon 28 Sep, 10:00 (moved from Fri 25 Sep)', task: 'Shoot 1 — Dr. Yahya Tosun (Dr. Tosun Dental Clinic)', scripts: ['yahya-tosun'],
     objective: 'One appointment, two videos: Dr. Yahya Tosun’s Smile Club video and The DN Scan (braces & aligner planning) video — each filmed in Turkish and English — with first cuts shared for review.',
     why: 'Dr. Tosun Dental Clinic is a Turkish specialty clinic, so patients hear their own dentist in Turkish first. Filming the campaign video in the same session doubles what one appointment gives us.',
     steps: [
@@ -708,7 +708,7 @@ const TASKS_RAW: TeamTask[] = [
       { s: 'First cuts shared', how: 'All four posted to this task for comments from the team.' },
     ],
     done: 'Four first cuts (two videos × Turkish and English) shared here for review.', with: 'Dr. Yahya Tosun', to: 'scripts', toLabel: 'Dentist scripts', weight: 2, subs: 0, subsNote: 'Supports the dentists’ 24' },
-  { key: 'm-shoot-dilsad', who: 'mohan', wk: 1, dueIso: '2026-09-25', due: 'Fri 25 Sep', task: 'Shoot 2 — Dr. Dilsad Ozdogan (Dr. Tosun Dental Clinic)', scripts: ['dilsad-ozdogan'],
+  { key: 'm-shoot-dilsad', who: 'mohan', wk: 1, dueIso: '2026-09-28', due: 'Mon 28 Sep, 12:00 (moved from Fri 25 Sep)', task: 'Shoot 2 — Dr. Dilsad Ozdogan (Dr. Tosun Dental Clinic)', scripts: ['dilsad-ozdogan'],
     objective: 'One appointment, two videos: Dr. Dilsad Ozdogan’s Smile Club video and The DN Glow Up (whitening) video — each filmed in Turkish and English — with first cuts shared for review.',
     why: 'A general dentist speaks to the largest group of patients, so the Smile Club video will be used the most. Glow Up has no video yet and its Facebook/Instagram campaign is waiting for one.',
     steps: [
@@ -967,9 +967,9 @@ const SEG_OF: Record<string, SegmentId> = {
 };
 
 /** One Mohan task per planned shoot day (lib/smileclub/shoots.ts — from Dr Luvi's doctors' calendar). */
-const SHOOT_TASKS: TeamTask[] = SHOOT_PLAN.filter((day) => !day.tasks).map((day) => {
-  const ids = day.stops.flatMap((st) => st.slots.map((x) => x.id));
-  const where = day.stops.map((st) => `${BRANCH_LABEL[st.branch]} (${st.slots.map((x) => `${x.time} ${dentistById(x.id).name}${x.only ? ' — campaign video only' : ''}`).join(', ')})`).join('; then ');
+const SHOOT_TASKS: TeamTask[] = SHOOT_PLAN.filter((day) => !day.tasks && day.stops.some((st) => st.slots.some((x) => !x.task))).map((day) => {
+  const ids = day.stops.flatMap((st) => st.slots.filter((x) => !x.task).map((x) => x.id));
+  const where = day.stops.map((st) => `${BRANCH_LABEL[st.branch]} (${st.slots.filter((x) => !x.task).map((x) => `${x.time} ${dentistById(x.id).name}${x.only ? ' — campaign video only' : ''}`).join(', ')})`).join('; then ');
   return {
     key: `m-shoot-${day.key}`, who: 'mohan' as const, wk: day.iso <= '2026-09-28' ? 1 : 2, dueIso: day.iso, due: day.label,
     task: `Shoot day — ${day.stops.map((st) => BRANCH_LABEL[st.branch]).join(' → ')} · ${ids.length} dentist${ids.length === 1 ? '' : 's'}`,
