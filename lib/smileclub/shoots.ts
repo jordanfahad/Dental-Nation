@@ -56,8 +56,12 @@ export const SLOT_STATUS: Record<NonNullable<ShootSlot['status']>, string> = {
 
 /** Changes to the plan, newest first. */
 export const SHOOT_CHANGES: string[] = [
+  'Fri 25 Sep (MJ): Al Maher — Dr. Suzanna Almaali and Dr. Maher Selman proposed for Sun 27 Sep, times to be confirmed by email; Dr. Leila Mostawe confirms once the DN lab coat arrives (planned Tue 29 Sep). Saturday and Monday unchanged.',
   'Thu 24 Sep (MJ): Fri 25 Sep shoot cancelled — Dr. Yahya Tosun has back-to-back patients and Dr. Dilsad Ozdogan was not ready; both confirmed for Mon 28 Sep. Saturday re-timed; Dr. Helmi Shaath is not renewing (no shoot); Dr. Ghada Hussain is travelling until 2 Oct (moved to Sat 3 Oct).',
 ];
+
+/** Who arranges the slots with the dentists. */
+export const COORDINATOR = 'MJ Torreta confirms every slot with the dentists; Mohan and Fahad coordinate the shoots with her.';
 
 /** Dentists taken off the shoot plan, with the reason. */
 export const NOT_FILMING: { id: string; why: string }[] = [
@@ -102,9 +106,8 @@ export const SHOOT_PLAN: ShootDay[] = [
       { id: 'yasmin-youssef', time: '09:45', only: 'lane', status: 'plan', note: 'Video 1 already filmed — campaign video only' },
     ] },
     { branch: 'amc', slots: [
-      { id: 'suzanna-almaali', time: '11:00', status: 'plan', note: 'In clinic on Sundays only' },
-      { id: 'maher-selman', time: '11:45', status: 'plan' },
-      { id: 'leila-mostawe', time: '12:30', status: 'plan' },
+      { id: 'suzanna-almaali', time: '11:00', status: 'proposed', note: 'MJ proposing Sunday — time to be confirmed by email' },
+      { id: 'maher-selman', time: '11:45', status: 'proposed', note: 'MJ proposing Sunday — time to be confirmed by email' },
     ] },
   ] },
   { key: 'mon28', iso: '2026-09-28', label: 'Mon 28 Sep', stops: [
@@ -120,6 +123,9 @@ export const SHOOT_PLAN: ShootDay[] = [
   { key: 'tue29', iso: '2026-09-29', label: 'Tue 29 Sep', stops: [
     { branch: 'tosun', slots: [
       { id: 'sathyapriya-surendar', time: '09:00', status: 'plan', note: 'Tuesday hours end at 12:00' },
+    ] },
+    { branch: 'amc', slots: [
+      { id: 'leila-mostawe', time: '11:00', status: 'plan', note: 'MJ confirms once the DN lab coat arrives (Mon 28 Sep) — earliest clinic day after it' },
     ] },
   ] },
   { key: 'thu01', iso: '2026-10-01', label: 'Thu 1 Oct', stops: [

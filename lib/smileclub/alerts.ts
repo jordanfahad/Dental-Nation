@@ -133,7 +133,7 @@ export async function buildShootEmail(sb: Sb, today: string) {
   const n = rows.length;
   const where = day.stops.map((s) => BRANCH_LABEL[s.branch]).join(' → ');
   const subject = `Tomorrow’s Smile Club shoot — ${day.label} · ${where} · ${n} dentist${n === 1 ? '' : 's'}${notFinal.length ? ` · ${notFinal.length} not yet approved` : ''}`;
-  const body = `<p>Hi MJ,</p><p>Here is tomorrow’s Smile Club filming schedule. Please make sure each dentist’s slot is blocked in their diary and the branch desk knows Mohan is coming. Mohan should arrive 15 minutes before the first slot.</p>
+  const body = `<p>Hi MJ,</p><p>Here is tomorrow’s Smile Club filming schedule. As shoot coordinator, please confirm each slot with the dentist, make sure it is blocked in their diary, and tell the branch desk Mohan is coming. Mohan arrives 15 minutes before the first slot.</p>
 ${table(['Time', 'Dentist', 'Clinic', 'In clinic', 'What is filmed', 'Scripts'], rows)}
 ${notFinal.length ? `<p style="background:#FBEFEC;padding:8px;border-radius:6px"><b>Not yet approved:</b> ${esc(notFinal.join('; '))}. Ms Shadi, Dr Luvi and Gautam — please approve tonight on the dashboard; otherwise the dentist is filmed on the backup day.</p>` : '<p style="color:#2C5E3F"><b>All scripts for tomorrow are approved.</b></p>'}
 ${tomorrow < WARDROBE.arrives ? `<p style="background:#FDF9EC;padding:8px;border-radius:6px"><b>Wardrobe:</b> ${esc(WARDROBE.note)}</p>` : '<p><b>Wardrobe:</b> well-fitting DN scrubs or the DN-branded lab coat.</p>'}

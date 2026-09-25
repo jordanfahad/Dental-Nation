@@ -13,7 +13,7 @@
  */
 
 import { Fragment, createContext, useContext, useState } from 'react';
-import { CLINIC_CLOSED, DAYS, FILMED, HOURS, NOT_FILMING, SHOOT_CHANGES, SHOOT_PLAN, SLOT_STATUS, WARDROBE, dentistById, hoursOn, nextClinicDays, shootLoad } from '@/lib/smileclub/shoots';
+import { CLINIC_CLOSED, COORDINATOR, DAYS, FILMED, HOURS, NOT_FILMING, SHOOT_CHANGES, SHOOT_PLAN, SLOT_STATUS, WARDROBE, dentistById, hoursOn, nextClinicDays, shootLoad } from '@/lib/smileclub/shoots';
 import { ALERT_RULES } from '@/lib/smileclub/alertRules';
 import { commentTeamTaskAction, previewAlertAction, reviewScriptAction, saveCompanyAction, sendScriptsForReviewAction, updateTeamTaskAction, uploadCalendarAction, verifyCrmTestAction } from '@/app/(app)/smileclub-actions';
 import { REVIEWERS, REVIEWER_BY_USER, reviewFor, reviewSummary, type ReviewEntry, type ReviewerState } from '@/lib/smileclub/review';
@@ -3827,6 +3827,7 @@ function ShootSchedule() {
   const [showTable, setShowTable] = useState(false);
   return (
     <div className="space-y-2">
+      <p className="rounded-lg px-2.5 py-1.5 text-[10.5px] leading-snug" style={{ backgroundColor: '#EEF1F6', color: NAVY }}><b>Coordinator:</b> {COORDINATOR}</p>
       {SHOOT_CHANGES.map((c) => (
         <p key={c} className="rounded-lg px-2.5 py-1.5 text-[10.5px] leading-snug" style={{ backgroundColor: '#FBEFEC', color: '#7a3a2e' }}><b>Schedule change —</b> {c}</p>
       ))}
