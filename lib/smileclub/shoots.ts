@@ -5,7 +5,7 @@
  * which dentist, which clinic and what time. Each appointment films two videos
  * (Smile Club + the dentist's campaign) in the dentist's languages.
  */
-import { BRANCH_LABEL, DENTISTS, langsFor, type Branch, type Dentist } from '@/lib/smileclub/scripts';
+import { ANNOUNCE, BRANCH_LABEL, DENTISTS, langsFor, type Branch, type Dentist } from '@/lib/smileclub/scripts';
 
 export type Day = 'Sun' | 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat';
 export const DAYS: Day[] = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -56,6 +56,7 @@ export const SLOT_STATUS: Record<NonNullable<ShootSlot['status']>, string> = {
 
 /** Changes to the plan, newest first. */
 export const SHOOT_CHANGES: string[] = [
+  'Fri 25 Sep (Dr. Yahya Tosun): asks to film after returning from Türkiye so he can practise both languages — MJ checking new dates; Mon 28 Sep stays pencilled until a new date is confirmed. He also asked for a partnership announcement video (Dr. Tosun Dental Clinic is now part of Dental Nation) — added as his third video, to go out before the clinic’s Smile Club campaign.',
   'Fri 25 Sep (MJ): Al Maher — Dr. Suzanna Almaali and Dr. Maher Selman proposed for Sun 27 Sep, times to be confirmed by email; Dr. Leila Mostawe confirms once the DN lab coat arrives (planned Tue 29 Sep). Saturday and Monday unchanged.',
   'Thu 24 Sep (MJ): Fri 25 Sep shoot cancelled — Dr. Yahya Tosun has back-to-back patients and Dr. Dilsad Ozdogan was not ready; both confirmed for Mon 28 Sep. Saturday re-timed; Dr. Helmi Shaath is not renewing (no shoot); Dr. Ghada Hussain is travelling until 2 Oct (moved to Sat 3 Oct).',
 ];
@@ -114,7 +115,7 @@ export const SHOOT_PLAN: ShootDay[] = [
     { branch: 'tosun', slots: [
       { id: 'maysoun-ahmad', time: '08:30', status: 'plan', note: 'In clinic on Mondays only — not yet in MJ’s schedule' },
       { id: 'sevinc-behruzoglu', time: '09:15', status: 'plan', note: 'Not yet in MJ’s schedule' },
-      { id: 'yahya-tosun', time: '10:00', status: 'confirmed', task: 'm-shoot-tosun', note: 'Moved from Fri 25 Sep' },
+      { id: 'yahya-tosun', time: '10:00', status: 'proposed', task: 'm-shoot-tosun', note: 'Asked to move after his Türkiye trip — new date to confirm. Three videos incl. the partnership announcement' },
       { id: 'dilsad-ozdogan', time: '12:00', status: 'confirmed', task: 'm-shoot-dilsad', note: 'Moved from Fri 25 Sep' },
       { id: 'bulent-ozdogan', time: '13:00–14:00', status: 'proposed', note: 'Available on Monday (usually Tue, Thu, Sat)' },
       { id: 'maysoon-abdelmajeed', time: '15:00–16:00', status: 'confirmed', note: 'Outside the usual Monday hours — confirmed by MJ' },
@@ -145,7 +146,8 @@ const fmt = (iso: string) => { const d = new Date(`${iso}T12:00:00Z`); return `$
 
 /** Takes and minutes for one appointment. */
 export function shootLoad(d: Dentist, only?: 'lane') {
-  const takes = langsFor(d).length * (only ? 1 : 2);
+  const videos = only ? 1 : 2 + (ANNOUNCE.dentists.includes(d.id) ? 1 : 0);
+  const takes = langsFor(d).length * videos;
   return { takes, minutes: takes * 10 + 5 };
 }
 

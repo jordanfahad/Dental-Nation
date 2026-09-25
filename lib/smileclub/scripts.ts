@@ -377,7 +377,43 @@ export interface DentistScripts {
   clubVideo: string;
   /** Video 2 — the dentist's lane campaign, filmed in the same session. */
   laneVideo: string;
+  /** Video 3 — partnership announcement (Dr. Tosun Dental Clinic joining Dental Nation). */
+  announceVideo?: string;
 }
+
+/**
+ * Partnership announcement (25 Sep, requested by Dr. Yahya Tosun): patients do
+ * not know yet that Dr. Tosun Dental Clinic is part of Dental Nation — it goes
+ * out BEFORE the clinic's Smile Club videos and messages, framed as an upgrade.
+ * Facts to confirm with Gautam before filming: team, prices, records and
+ * accepted insurance stay the same; announcement date.
+ */
+export const ANNOUNCE: { dentists: string[]; confirm: string[]; video: Partial<Record<Lang, string[]>> } = {
+  dentists: ['yahya-tosun'],
+  confirm: [
+    'The team, clinic, prices, patient records and accepted insurance really stay the same (the script promises “nothing you value changes”).',
+    'The announcement date — agreed by Gautam and Dr. Yahya Tosun (they have started a roadmap).',
+    'Whether other Dr. Tosun Dental Clinic dentists appear, or only Dr. Yahya Tosun.',
+  ],
+  video: {
+    en: [
+      '[On camera, in the clinic] Hi, I’m Dr. Yahya Tosun, with some good news for our patients.',
+      'Dr. Tosun Dental Clinic is now part of Dental Nation.',
+      'Nothing you value changes — the same team, the same clinic, the same care you trust.',
+      'What you gain is more: Dental Nation’s specialists across Dubai, help when you have an urgent dental problem, and Smile Club membership to keep your check-ups on track.',
+      'It’s an upgrade for our patients — and we’re proud of it.',
+      '[End card] Dr. Tosun Dental Clinic — now part of Dental Nation.',
+    ],
+    tr: [
+      '[Kamerada, klinikte] Merhaba, ben Dr. Yahya Tosun. Hastalarımıza güzel bir haberim var.',
+      'Dr. Tosun Dental Clinic artık Dental Nation ailesinin bir parçası.',
+      'Değer verdiğiniz hiçbir şey değişmiyor — aynı ekip, aynı klinik, güvendiğiniz aynı özen.',
+      'Kazandığınız ise daha fazlası: Dubai genelinde Dental Nation uzmanları, acil bir diş sorununuz olduğunda destek ve kontrollerinizi düzenli tutan Smile Club üyeliği.',
+      'Bu, hastalarımız için bir yükseltme — ve bununla gurur duyuyoruz.',
+      '[Kapanış kartı] Dr. Tosun Dental Clinic — artık Dental Nation ailesinin bir parçası.',
+    ],
+  },
+};
 
 export function scriptsFor(d: Dentist, lang: Lang): DentistScripts {
   const c = COPY[lang];
@@ -392,6 +428,7 @@ export function scriptsFor(d: Dentist, lang: Lang): DentistScripts {
     whatsapp: { active: wa('active'), inactive: wa('inactive'), dormant: wa('dormant') },
     clubVideo: [c.vIntro(name, title, where), a.why, `${c.vWhy} ${c.offer}`, c.vKeep, c.vEnd].join('\n'),
     laneVideo: LANE_VIDEO[laneFor(d)][lang](name, title, where).join('\n'),
+    ...(ANNOUNCE.dentists.includes(d.id) && ANNOUNCE.video[lang] ? { announceVideo: ANNOUNCE.video[lang]!.join('\n') } : {}),
   };
 }
 

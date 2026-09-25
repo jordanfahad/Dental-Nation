@@ -20,7 +20,7 @@ import { REVIEWERS, REVIEWER_BY_USER, reviewFor, reviewSummary, type ReviewEntry
 import { PLAYBOOKS, type Channel } from '@/lib/smileclub/playbook';
 import { CAL_RULE, COMPANY_TYPES, STAGES, TYPE_LABEL, type CalEvent, type Company, type CompanyType, type CorpState, type EventKind, type Stage } from '@/lib/smileclub/corporate';
 import { SEGMENTS, type SegmentId } from '@/lib/smileclub/segments';
-import { BANNED_TR_AR, BANNED_WORDS, BRANCH_LABEL, BRANCH_LANGS, DENTISTS, LANES, LANG_LABEL, PATIENT_SEGS, SCRIPT_STATUS, SHOOT, laneFor, langsFor, scriptsFor, type Branch, type Dentist, type DentistScripts, type Lang } from '@/lib/smileclub/scripts';
+import { ANNOUNCE, BANNED_TR_AR, BANNED_WORDS, BRANCH_LABEL, BRANCH_LANGS, DENTISTS, LANES, LANG_LABEL, PATIENT_SEGS, SCRIPT_STATUS, SHOOT, laneFor, langsFor, scriptsFor, type Branch, type Dentist, type DentistScripts, type Lang } from '@/lib/smileclub/scripts';
 import { BUDGET_BY_SEG, CEILING, HELD, PROCUREMENT_STEPS, RESERVE, SEGMENT_BUDGETS, SPEND_NOW, TOTAL, fmtAed, segmentTotal } from '@/lib/smileclub/budget';
 import {
   CRM_TEST_SPEC,
@@ -3696,6 +3696,18 @@ function ReviewOverview() {
   );
 }
 
+/** Video 3 for Dr. Yahya Tosun: the partnership announcement, filmed first and published first. */
+function AnnounceBlock({ d, n = '' }: { d: Dentist; n?: string }) {
+  return (
+    <div className="space-y-1">
+      <BiScript d={d} label={`${n}Video 3 — Partnership announcement (publish first)`} tone={GOLD} pick={(s) => s.announceVideo ?? ''} />
+      <p className="text-[10px] leading-snug" style={{ color: '#6d5a1d' }}>
+        <b>Before filming, Gautam confirms:</b> {ANNOUNCE.confirm.join(' ')} <TaskLink k="g-announce">Announcement task</TaskLink>
+      </p>
+    </div>
+  );
+}
+
 /** One filming appointment → two videos (Smile Club + the dentist's lane), each in the dentist's languages. */
 function ShootScripts({ d }: { d: Dentist }) {
   const lane = LANES[laneFor(d)];
@@ -3707,6 +3719,7 @@ function ShootScripts({ d }: { d: Dentist }) {
       </p>
       <BiScript d={d} label="Video 1 · Smile Club" tone={CORAL} pick={(s) => s.clubVideo} />
       <BiScript d={d} label={`Video 2 · ${lane.name} (${lane.tag})`} tone={BLUE} pick={(s) => s.laneVideo} />
+      {scriptsFor(d, 'en').announceVideo ? <AnnounceBlock d={d} /> : null}
       <p className="text-[10px] leading-snug" style={{ color: OLIVE }}>
         <b>Video 2 offer:</b> {lane.offer} · page {lane.page}. {d.laneWhy ? `${d.laneWhy} ` : ''}Before publishing, confirm the price is still current and the offer is booked at {BRANCH_LABEL[d.branch]}.
       </p>
@@ -3986,6 +3999,7 @@ function ScriptsTab() {
                     ))}
                     <BiScript d={d} label="3 · Video 1 — Smile Club" tone={CORAL} pick={(s) => s.clubVideo} />
                     <BiScript d={d} label={`4 · Video 2 — ${lane.name} (${lane.tag})`} tone={NAVY} pick={(s) => s.laneVideo} />
+                    {scriptsFor(d, 'en').announceVideo ? <AnnounceBlock d={d} n="5 · " /> : null}
                     <p className="text-[10px] leading-snug" style={{ color: OLIVE }}>
                       <b>Video 2 offer:</b> {lane.offer} · page {lane.page}. {d.laneWhy ? `${d.laneWhy} ` : ''}Confirm the price is current and the offer is booked at {BRANCH_LABEL[d.branch]} before publishing.
                     </p>
