@@ -15,7 +15,7 @@
 import { Fragment, createContext, useContext, useState } from 'react';
 import { CLINIC_CLOSED, COORDINATOR, DAYS, FILMED, HOURS, NOT_FILMING, SHOOT_CHANGES, SHOOT_PLAN, SLOT_STATUS, WARDROBE, dentistById, hoursOn, nextClinicDays, shootLoad } from '@/lib/smileclub/shoots';
 import { ALERT_CAP, ALERT_RULES, PREVIEWS } from '@/lib/smileclub/alertRules';
-import { CASTING, CONCEPTS, type Concept } from '@/lib/smileclub/creative';
+import { CASTING, CONCEPTS, video2, type Concept } from '@/lib/smileclub/creative';
 import { commentTeamTaskAction, previewAlertAction, reviewScriptAction, saveCompanyAction, sendScriptsForReviewAction, updateTeamTaskAction, uploadCalendarAction, verifyCrmTestAction } from '@/app/(app)/smileclub-actions';
 import { REVIEWERS, REVIEWER_BY_USER, reviewFor, reviewSummary, type ReviewEntry, type ReviewerState } from '@/lib/smileclub/review';
 import { PLAYBOOKS, type Channel } from '@/lib/smileclub/playbook';
@@ -3727,11 +3727,13 @@ function ShootScripts({ d }: { d: Dentist }) {
         One appointment, two videos — each filmed in {langsFor(d).map((l) => LANG_LABEL[l].split(' · ').pop()).join(' and ')}: {langsFor(d).length * 2} takes, same set-up. Video 1 runs about 35–45 seconds, Video 2 about 25–30 — time both in rehearsal.
       </p>
       <BiScript d={d} label="Video 1 · Smile Club" tone={CORAL} pick={(s) => s.clubVideo} />
-      <BiScript d={d} label={`Video 2 · ${lane.name} (${lane.tag})`} tone={BLUE} pick={(s) => s.laneVideo} />
+      <BiScript d={d} label={`Video 2 · ${video2(d.id)?.name ?? `${lane.name} (${lane.tag})`}`} tone={BLUE} pick={(s) => s.laneVideo} />
       {scriptsFor(d, 'en').announceVideo ? <AnnounceBlock d={d} /> : null}
+      {video2(d.id)?.story ? null : (
       <p className="text-[10px] leading-snug" style={{ color: OLIVE }}>
         <b>Video 2 offer:</b> {noPrices(d) ? `${lane.name} — the price is not said on camera or in messages at this clinic; the ad and the team give it` : lane.offer} · page {lane.page}. {d.laneWhy ? `${d.laneWhy} ` : ''}Before publishing, confirm the price is still current and the offer is booked at {BRANCH_LABEL[d.branch]}.
       </p>
+      )}
       <ReviewPanel d={d} />
     </div>
   );
@@ -4105,7 +4107,7 @@ function ShootSchedule() {
                                 <span className="block text-[9.5px]" style={{ color: OLIVE }}>{d.title} · in clinic {hoursOn(d.id, day.iso) ?? '—'}</span>
                               </td>
                               <td className="py-1 pr-2" style={{ color: '#3a4148' }}>
-                                {sl.only ? `Video 2 · ${LANES[laneFor(d)].name}` : `Smile Club + ${LANES[laneFor(d)].name}`}
+                                {sl.only ? `Video 2 · ${video2(d.id)?.name ?? LANES[laneFor(d)].name}` : `Smile Club + ${video2(d.id)?.name ?? LANES[laneFor(d)].name}`}
                                 <span className="block text-[9.5px]" style={{ color: OLIVE }}>{langsFor(d).map((l) => LANG_LABEL[l].split(' · ').pop()).join(' + ')} · {load.takes} takes · ≈{load.minutes} min</span>
                               </td>
                               <td className="py-1 pr-2">
@@ -4207,7 +4209,7 @@ function ScriptsTab() {
                   <span className="min-w-0 flex-1">
                     <span className="block text-[12px] font-bold" style={{ color: NAVY }}>{d.name} <span className="font-semibold" style={{ color: OLIVE }}>· {d.title}</span></span>
                     <span className="block text-[10.5px]" style={{ color: OLIVE }}>
-                      {BRANCH_LABEL[d.branch]} · {langsFor(d).map((l) => l.toUpperCase()).join(' + ')} · in clinic {d.days} · second video: {lane.name} · WhatsApp code {d.code}
+                      {BRANCH_LABEL[d.branch]} · {langsFor(d).map((l) => l.toUpperCase()).join(' + ')} · in clinic {d.days} · second video: {video2(d.id)?.name ?? lane.name} · WhatsApp code {d.code}
                     </span>
                   </span>
                   {(() => { const b = reviewBadge(d, trkReviews); return <span className="shrink-0 rounded-full px-2 py-0.5 text-[9.5px] font-bold" style={{ color: b.fg, backgroundColor: b.bg }}>{b.text}</span>; })()}
@@ -4222,11 +4224,13 @@ function ScriptsTab() {
                       <BiScript key={g.id} d={d} label={`2${'abc'[i]} · WhatsApp — ${g.label} · ${g.when}`} tone="#2C5E3F" pick={(s) => s.whatsapp[g.id]} combined />
                     ))}
                     <BiScript d={d} label="3 · Video 1 — Smile Club" tone={CORAL} pick={(s) => s.clubVideo} />
-                    <BiScript d={d} label={`4 · Video 2 — ${lane.name} (${lane.tag})`} tone={NAVY} pick={(s) => s.laneVideo} />
+                    <BiScript d={d} label={`4 · Video 2 — ${video2(d.id)?.name ?? `${lane.name} (${lane.tag})`}`} tone={NAVY} pick={(s) => s.laneVideo} />
                     {scriptsFor(d, 'en').announceVideo ? <AnnounceBlock d={d} n="5 · " /> : null}
+                    {video2(d.id)?.story ? null : (
                     <p className="text-[10px] leading-snug" style={{ color: OLIVE }}>
                       <b>Video 2 offer:</b> {noPrices(d) ? `${lane.name} — the price is not said on camera or in messages at this clinic; the ad and the team give it` : lane.offer} · page {lane.page}. {d.laneWhy ? `${d.laneWhy} ` : ''}Confirm the price is current and the offer is booked at {BRANCH_LABEL[d.branch]} before publishing.
                     </p>
+                    )}
                   </div>
                 ) : null}
               </div>

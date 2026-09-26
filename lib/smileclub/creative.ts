@@ -261,6 +261,27 @@ export const CONCEPTS: Record<string, Concept> = {
     confirm: [CONFIRM_PLANS, 'How many professional cleanings a year each plan includes.'],
   },
 
+  firstvisit: {
+    id: 'firstvisit', name: '“When should my child first see a dentist?”', kind: 'club',
+    audience: 'Parents of babies and young children',
+    need: 'Not knowing when to start — and worrying the first visit will scare them',
+    angle: 'Prevention and a happy start', tier: 'Family plan',
+    execution: 'Opens on a tiny toothbrush and a parent typing the question into a search bar; the doctor with a young patient counting teeth playfully (written parental consent) or with a toy model.',
+    beats: [
+      { v: 'A tiny toothbrush on the sink; a parent types into a search bar.',
+        os: { en: 'When should my child first see a dentist?', ar: 'متى يزور طفلي طبيب الأسنان لأول مرة؟' } },
+      { v: 'Doctor to camera, smiling.', who: 'doctor',
+        say: { en: 'Earlier than most parents think — when the first tooth appears, or by their first birthday.', ar: 'في وقت أبكر مما يظن معظم الأهل: عند ظهور السن الأولى، أو قبل عيد الميلاد الأول.' } },
+      { v: 'Doctor with a young patient, counting teeth together (or a toy model).', who: 'doctor',
+        say: { en: 'Those first visits are short and fun — so children grow up comfortable at the dentist, not scared of it.', ar: 'الزيارات الأولى قصيرة وممتعة، فيكبر الأطفال وهم مرتاحون عند طبيب الأسنان، لا خائفون منه.' } },
+      { v: 'Family calendar graphic: the child’s check-ups appear next to the parents’.', who: 'doctor',
+        os: { en: 'The whole family’s check-ups — one plan', ar: 'فحوصات العائلة كلها — خطة واحدة' },
+        say: { en: 'Smile Club’s Family plan puts everyone’s check-ups on one plan — so the kids’ visits happen on time.', ar: 'خطة العائلة من Smile Club تجمع فحوصات الجميع في خطة واحدة، لتتم زيارات الأطفال في موعدها.' } },
+      { v: 'End card.', os: { en: 'Start early, smile for life. Smile Club by Dental Nation — message us on WhatsApp.', ar: 'ابدؤوا مبكراً لابتسامة تدوم. Smile Club من دنتال نيشن — راسلونا على واتساب.' } },
+    ],
+    confirm: ['The Family plan: that it is on sale now, its price, who it covers and what it includes — Gautam.', 'Written parental consent for any child on camera.'],
+  },
+
   /* ── Campaign (lane) videos ── */
 
   'lane-scan': {
@@ -353,24 +374,33 @@ export const CONCEPTS: Record<string, Concept> = {
 
 /** Which story each doctor films — different stories, matched to specialty, clinic and audience. */
 export const CASTING: Record<string, { club: string; lane?: string; hookB?: boolean; why: string }> = {
-  'hasna-alsaeed': { club: 'braces', lane: 'lane-scan', why: 'Consultant orthodontist — the cost question every braces patient asks.' },
-  'yasmin-youssef': { club: 'braces', lane: 'lane-scan', hookB: true, why: 'Orthodontist — Video 1 already filmed; Sunday is the campaign video with the second opening.' },
-  'safwan-sultan': { club: 'subscriptions', lane: 'lane-firstlook', why: 'General dentist — the affordability story for young professionals.' },
-  'chahira-berlarbi': { club: 'postponer', lane: 'lane-firstlook', hookB: true, why: 'General dentist — the busy professional who keeps rescheduling.' },
+  // Al Wasl
+  'hasna-alsaeed': { club: 'braces', lane: 'tooold', why: 'Consultant orthodontist — the cost question every braces patient asks, then adults who think it is too late. Her first story already sells The DN Scan, so she does not film the Scan ad.' },
+  'yasmin-youssef': { club: 'braces', lane: 'lane-scan', hookB: true, why: 'Orthodontist — Video 1 already filmed; Sunday is The DN Scan ad with the second opening.' },
+  'safwan-sultan': { club: 'subscriptions', lane: 'lane-firstlook', why: 'General dentist — the affordability story, and Al Wasl’s First Look ad.' },
+  'chahira-berlarbi': { club: 'postponer', lane: 'honest', why: 'General dentist — the busy professional who keeps rescheduling, and the way back after a long gap.' },
   'ali-ghasemi': { club: 'bigday', lane: 'lane-glowup', why: 'Hygienist — cleanings before the big day, and whitening.' },
-  'ghada-hussain': { club: 'family', lane: 'lane-firstlook', why: 'Children’s dentist — the family story.' },
-  'mohammad-qasem': { club: 'gums', lane: 'lane-firstlook', hookB: true, why: 'Periodontist — bleeding gums and prevention.' },
+  'ghada-hussain': { club: 'family', lane: 'firstvisit', why: 'Children’s dentist — the family story, and when a child should first see a dentist.' },
+  'mohammad-qasem': { club: 'gums', lane: 'toothache', why: 'Periodontist — bleeding gums, and why waiting for pain costs more.' },
+  // Al Maher Medical Centre
   'maher-selman': { club: 'toothache', lane: 'lane-sos', why: 'Endodontist — he sees what waiting for the toothache costs; urgent care.' },
-  'suzanna-almaali': { club: 'tooold', lane: 'lane-scan', hookB: true, why: 'Specialist orthodontist — adults who think they are too old for braces.' },
-  'leila-mostawe': { club: 'honest', lane: 'lane-firstlook', why: 'General dentist — the judgement-free way back after a long gap.' },
-  'yahya-tosun': { club: 'tooold', lane: 'lane-scan', why: 'Specialist orthodontist — adults and aligners (no prices at his clinic).' },
+  'suzanna-almaali': { club: 'tooold', lane: 'lane-scan', hookB: true, why: 'Specialist orthodontist — adults who think they are too old for braces; The DN Scan ad.' },
+  'leila-mostawe': { club: 'honest', lane: 'lane-firstlook', why: 'General dentist — the judgement-free way back; Al Maher’s First Look ad.' },
+  // Dr. Tosun Dental Clinic — no prices
+  'yahya-tosun': { club: 'tooold', lane: 'lane-scan', why: 'Specialist orthodontist — adults and aligners; The DN Scan ad (no prices).' },
   'dilsad-ozdogan': { club: 'bigday', lane: 'lane-glowup', why: 'Glow Up doctor — the big day and whitening (no prices).' },
-  'bulent-ozdogan': { club: 'toothache', lane: 'lane-firstlook', why: 'General dentist — prevention before pain (no prices).' },
-  'sevinc-behruzoglu': { club: 'postponer', lane: 'lane-firstlook', hookB: true, why: 'General dentist — the postponer (no prices).' },
-  'maysoon-abdelmajeed': { club: 'honest', lane: 'lane-firstlook', hookB: true, why: 'General dentist — the way back after a long gap (no prices).' },
-  'maysoun-ahmad': { club: 'family', lane: 'lane-firstlook', why: 'General dentist — the family story for Arabic-speaking families (no prices).' },
-  'sathyapriya-surendar': { club: 'gums', lane: 'lane-firstlook', why: 'Periodontist — gums and prevention (no prices).' },
+  'bulent-ozdogan': { club: 'toothache', lane: 'lane-firstlook', why: 'General dentist — prevention before pain; the clinic’s First Look ad in Turkish (no prices).' },
+  'sevinc-behruzoglu': { club: 'postponer', lane: 'family', why: 'General dentist — the postponer and the family story for Turkish-speaking patients (no prices).' },
+  'maysoon-abdelmajeed': { club: 'honest', lane: 'subscriptions', why: 'General dentist — the way back after a long gap, and care that is planned, not postponed, for Arabic-speaking patients (no prices).' },
+  'maysoun-ahmad': { club: 'family', lane: 'postponer', why: 'General dentist — the family story and the postponer for Arabic-speaking patients (no prices).' },
+  'sathyapriya-surendar': { club: 'gums', lane: 'bigday', why: 'Periodontist — gums and prevention, and cleanings before the big day, for English-speaking patients (no prices).' },
 };
+
+/** What the second video is: a campaign ad, or a second Smile Club story. */
+export function video2(id: string): { name: string; story: boolean } | null {
+  const c = CASTING[id]?.lane ? CONCEPTS[CASTING[id].lane!] : null;
+  return c ? { name: c.kind === 'club' ? `Smile Club story 2 — ${c.name}` : c.name, story: c.kind === 'club' } : null;
+}
 
 const LBL: Record<Lang, { os: string; doctor: string; vo: string; card: string; missing: string }> = {
   en: { os: 'ON SCREEN', doctor: 'DOCTOR', vo: 'VOICE-OVER', card: 'Name card', missing: '' },

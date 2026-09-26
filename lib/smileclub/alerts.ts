@@ -6,6 +6,7 @@ import { BRANCH_LABEL, DENTISTS, LANES, LANG_LABEL, laneFor, langsFor } from '@/
 import { SHOOT_PLAN, SLOT_STATUS, WARDROBE, dentistById, hoursOn, nextClinicDays, shootLoad } from '@/lib/smileclub/shoots';
 import { REVIEWERS, reviewFor, type ReviewEntry, type ReviewerId } from '@/lib/smileclub/review';
 import { loadCorp, loadReviews } from '@/lib/smileclub/tracker';
+import { video2 } from '@/lib/smileclub/creative';
 import type { CorpState } from '@/lib/smileclub/corporate';
 import { buildMetaLeadsDigest, metaSectionHtml, type MetaLeadsDigest } from '@/lib/ops/metaLeadsDigest';
 import { CONTENTOS_LEADS, contentosFlags, contentosStatsHtml, fetchContentos, type ContentosLeads } from '@/lib/ops/contentosLeads';
@@ -485,7 +486,7 @@ export function buildShootEmail(ctx: Ctx): { subject: string; html: string } | n
       `<b>${esc(d.name)}</b><br><span style="color:#767769">${esc(d.title)}${sl.note ? ` · ${esc(sl.note)}` : ''}</span>`,
       esc(BRANCH_LABEL[st.branch]),
       esc(hoursOn(d.id, day.iso) ?? '—'),
-      `${esc(sl.only ? `Campaign video only — ${LANES[laneFor(d)].name}` : `Smile Club + ${LANES[laneFor(d)].name}`)}<br><span style="color:#767769">${esc(langsFor(d).map((l) => LANG_LABEL[l].split(' · ').pop()!).join(' + '))} · ≈${load.minutes} min</span>`,
+      `${esc(sl.only ? `Video 2 only — ${video2(d.id)?.name ?? LANES[laneFor(d)].name}` : `Smile Club + ${video2(d.id)?.name ?? LANES[laneFor(d)].name}`)}<br><span style="color:#767769">${esc(langsFor(d).map((l) => LANG_LABEL[l].split(' · ').pop()!).join(' + '))} · ≈${load.minutes} min</span>`,
       r.final ? '<b style="color:#2C5E3F">Approved ✓</b>' : `<b style="color:#a04a38">Waiting on ${esc(missing.map((x) => x.name).join(', '))}</b><br><span style="color:#767769;font-size:11px">backup: ${esc(nextClinicDays(d.id, day.iso).join(' or ') || 'to agree')}</span>`,
     ]);
   }
