@@ -6,6 +6,7 @@ import { BRANCH_LABEL, LANES, LANG_LABEL, laneFor, langsFor } from '@/lib/smilec
 import { SHOOT_PLAN, SLOT_STATUS, WARDROBE, dentistById, hoursOn, nextClinicDays, shootLoad } from '@/lib/smileclub/shoots';
 import { reviewFor } from '@/lib/smileclub/review';
 import { loadCorp, loadReviews } from '@/lib/smileclub/tracker';
+import { buildMetaLeadsDigest } from '@/lib/ops/metaLeadsDigest';
 import { OWNER_LABEL, TASK_BY_KEY, TEAM_TASKS, TOTAL_WEIGHT, TRACKER_SOURCE, externalIdFor, type Person, type TeamTask } from '@/lib/smileclub/team';
 
 /**
@@ -257,6 +258,16 @@ export async function runSmileClubAlerts(): Promise<string[]> {
       await logSent(sb, 'shoot-tomorrow', today, { ok: true, recipients: [], note: 'no shoot tomorrow — nothing sent' });
     }
   }
+  if (hour === 9 && !(await alreadySent(sb, 'meta-leads', today))) {
+    const m = await buildMetaLeadsDigest(sb, today).catch(() => null);
+    if (m) {
+      const r = await send(['luvi'], ['akbar', 'shadi', 'fahad'], m.subject, shell('Meta leads — daily analysis', m.body));
+      await logSent(sb, 'meta-leads', today, r);
+      out.push(`meta-leads: ${r.note}`);
+    } else {
+      await logSent(sb, 'meta-leads', today, { ok: true, recipients: [], note: 'no Meta data — nothing sent' });
+    }
+  }
   if (hour === 9) {
     for (const who of ['gautam', 'luvi', 'mohan'] as const) {
       const kind = `digest-${who}`;
@@ -289,7 +300,7 @@ ${waits.length ? `<p>It is waiting on: ${esc(waits.map((n) => `${OWNER_LABEL[n.w
 }
 
 /** Preview any alert to Fahad only (admin button). */
-export async function previewAlert(kind: 'shoot' | 'gautam' | 'luvi' | 'mohan'): Promise<string> {
+export async function previewAlert(kind: 'shoot' | 'gautam' | 'luvi' | 'mohan' | 'meta'): Promise<string> {
   const sb = getSupabaseAdmin();
   if (!sb) return 'Tracking database unavailable.';
   await loadStoredEmails(sb);
@@ -301,6 +312,9 @@ export async function previewAlert(kind: 'shoot' | 'gautam' | 'luvi' | 'mohan'):
       const nextDay = SHOOT_PLAN.find((d) => d.iso > today);
       if (nextDay) m = await buildShootEmail(sb, addDays(nextDay.iso, -1));
     }
+  } else if (kind === 'meta') {
+    const d = await buildMetaLeadsDigest(sb, today);
+    m = d ? { subject: d.subject, html: shell('Meta leads — daily analysis', d.body) } : null;
   } else {
     m = await buildDigest(sb, kind, today);
   }

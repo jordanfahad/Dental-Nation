@@ -3892,12 +3892,12 @@ function AlertsPanel({ state }: { state: TrackerState }) {
   const isAdmin = state.canEdit === 'all';
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
-  const preview = async (k: 'shoot' | 'gautam' | 'luvi' | 'mohan') => {
+  const preview = async (k: 'shoot' | 'gautam' | 'luvi' | 'mohan' | 'meta') => {
     setBusy(k); setMsg(null);
     const r = await previewAlertAction(k);
     setBusy(null); setMsg(r.message);
   };
-  const label = (k: string) => k === 'shoot-tomorrow' ? 'Tomorrow’s shoot (17:00)' : k.startsWith('digest-') ? `${k.slice(7) === 'luvi' ? 'Dr Luvi' : k.slice(7) === 'gautam' ? 'Gautam' : 'Mohan'} status (09:00)` : k.startsWith('blocked-') ? 'Blocked task' : k;
+  const label = (k: string) => k === 'shoot-tomorrow' ? 'Tomorrow’s shoot (17:00)' : k === 'meta-leads' ? 'Meta leads analysis (09:00)' : k === 'shoot-today-signoff' ? 'Shoot-day sign-off nudge (07:00)' : k.startsWith('digest-') ? `${k.slice(7) === 'luvi' ? 'Dr Luvi' : k.slice(7) === 'gautam' ? 'Gautam' : 'Mohan'} status (09:00)` : k.startsWith('blocked-') ? 'Blocked task' : k;
   return (
     <div className="space-y-2">
       <div className="overflow-x-auto rounded-xl border bg-white" style={{ borderColor: LINE }}>
@@ -3925,7 +3925,7 @@ function AlertsPanel({ state }: { state: TrackerState }) {
       {isAdmin ? (
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="text-[10.5px] font-bold" style={{ color: NAVY }}>Email me a preview:</span>
-          {([['shoot', 'Next shoot schedule'], ['gautam', 'Gautam’s status'], ['luvi', 'Dr Luvi’s status'], ['mohan', 'Mohan’s status']] as ['shoot' | 'gautam' | 'luvi' | 'mohan', string][]).map(([k, l]) => (
+          {([['meta', 'Meta leads analysis'], ['shoot', 'Next shoot schedule'], ['gautam', 'Gautam’s status'], ['luvi', 'Dr Luvi’s status'], ['mohan', 'Mohan’s status']] as ['shoot' | 'gautam' | 'luvi' | 'mohan' | 'meta', string][]).map(([k, l]) => (
             <button key={k} type="button" disabled={!!busy} onClick={() => preview(k)} className="rounded-full border px-2.5 py-1 text-[10.5px] font-bold disabled:opacity-40" style={{ borderColor: LINE, color: NAVY }}>{busy === k ? 'Sending…' : l}</button>
           ))}
           {msg ? <span className="text-[10.5px] font-bold" style={{ color: msg.startsWith('Preview emailed') ? '#2C5E3F' : '#a04a38' }}>{msg}</span> : null}

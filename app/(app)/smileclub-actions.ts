@@ -433,9 +433,9 @@ export async function sendScriptsForReviewAction(input: { dentistIds: string[] }
 }
 
 /** Fahad only: email himself a preview of any Smile Club alert. */
-export async function previewAlertAction(kind: 'shoot' | 'gautam' | 'luvi' | 'mohan'): Promise<{ ok: boolean; message: string }> {
+export async function previewAlertAction(kind: 'shoot' | 'gautam' | 'luvi' | 'mohan' | 'meta'): Promise<{ ok: boolean; message: string }> {
   const { canEdit } = await editableFor();
   if (canEdit !== 'all') return { ok: false, message: 'Only Fahad can send previews.' };
-  if (!['shoot', 'gautam', 'luvi', 'mohan'].includes(kind)) return { ok: false, message: 'Unknown alert.' };
+  if (!['shoot', 'gautam', 'luvi', 'mohan', 'meta'].includes(kind)) return { ok: false, message: 'Unknown alert.' };
   return { ok: true, message: await previewAlert(kind) };
 }
