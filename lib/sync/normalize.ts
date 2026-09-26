@@ -165,11 +165,17 @@ export function normalizeLeads(
     const patientName = patientHeader ? (raw.data[patientHeader] ?? '').trim() : '';
     const contact = contactHeader ? (raw.data[contactHeader] ?? '').trim() : '';
 
-    // Skip junk rows: "no inquiries about the ads" markers, or rows missing BOTH
-    // a patient name and a contact number (month banners, blanks).
+    // Skip junk rows: "no inquiries about the ads" markers, or rows with neither
+    // a patient name nor a contact number (month banners, blanks) — unless the
+    // row is plainly a lead anyway: a real date AND an inquiry platform. Since
+    // 20 Sep the Al Wasl desk logs Meta/website leads with date, platform,
+    // service and follow-ups but no name or number; those were all dropped.
     const joined = Object.values(raw.data).join(' ').toLowerCase();
     if (joined.includes('no inquir')) continue;
-    if (!patientName && !contact) continue;
+    const dateHeader = source.columns['inquiry_date'];
+    const platformHeader = source.columns['channel_source'];
+    const looksLikeLead = !!(dateHeader && asLeadDate(raw.data[dateHeader]) && platformHeader && (raw.data[platformHeader] ?? '').trim());
+    if (!patientName && !contact && !looksLikeLead) continue;
 
     const obj: Partial<NormalizedLead> = {};
     for (const field of LEAD_FIELDS) {
