@@ -15,7 +15,8 @@ import type { getSupabaseAdmin } from '@/lib/supabase/server';
 
 type Sb = NonNullable<ReturnType<typeof getSupabaseAdmin>>;
 
-export const CONTENTOS_LEADS = 'https://contentos.dentalnation.com/ads/meta/leads';
+import { CONTENTOS_LEADS } from '@/lib/ops/contentosLeads';
+export { CONTENTOS_LEADS };
 
 const addDays = (iso: string, n: number) => { const d = new Date(`${iso}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 const label = (iso: string) => { const d = new Date(`${iso}T12:00:00Z`); return `${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getUTCDay()]} ${d.getUTCDate()} ${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][d.getUTCMonth()]}`; };
@@ -124,11 +125,10 @@ ${camps.map((x) => `<tr>${[esc(x.c.replace(/^Leads \| WhatsApp \| /, '').replace
   return { day: label(y), headline, flags, statsHtml, campaignsHtml, sourcesHtml };
 }
 
-/** The Meta section of a morning briefing: intro line, red flags, figures, campaigns, sources. */
-export function metaSectionHtml(m: MetaLeadsDigest, intro: string): string {
+/** The Meta section of a morning briefing: intro, red flags, ContentOS figures, ad figures, campaigns, sources. */
+export function metaSectionHtml(m: MetaLeadsDigest | null, intro: string, flags: string[], contentosHtml: string): string {
   return `<p>${intro}</p>
-${m.flags.length ? `<ol style="margin:4px 0 12px;padding-left:18px">${m.flags.map((f) => `<li style="margin-bottom:6px">${f}</li>`).join('')}</ol>` : '<p style="color:#2C5E3F"><b>No red flags yesterday.</b></p>'}
-${m.statsHtml}
-${m.campaignsHtml}
-${m.sourcesHtml}`;
+${flags.length ? `<ol style="margin:4px 0 12px;padding-left:18px">${flags.map((f) => `<li style="margin-bottom:6px">${f}</li>`).join('')}</ol>` : '<p style="color:#2C5E3F"><b>No red flags.</b></p>'}
+${contentosHtml}
+${m ? `${m.statsHtml}\n${m.campaignsHtml}\n${m.sourcesHtml}` : `<p style="color:#767769;font-size:12px"><a href="${CONTENTOS_LEADS}" style="color:#5793A3;font-weight:bold">Open the Lead Analysis in ContentOS</a> for the ranked call list.</p>`}`;
 }

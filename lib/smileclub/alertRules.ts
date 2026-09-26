@@ -4,7 +4,7 @@
  * day — one 09:00 morning briefing and at most one evening email.
  */
 export const ALERT_RULES = [
-  { when: '09:00 daily — morning briefing', what: 'Meta leads red flags (Dr Luvi’s actions) · the whole team’s status: Gautam, Dr Luvi, Mohan, Fahad — score vs plan, due, overdue, blocked, who is waiting on whom · script sign-off status · next shoot · company pipeline · what happened since yesterday', to: 'Mr Akbar', cc: '' },
+  { when: '09:00 daily — morning briefing', what: 'Meta leads red flags from ContentOS Lead Analysis and the ad/tracker data — leads going quiet, slow first reply, leads to call now, chats not reaching the CRM, expensive chats, spend with no leads (Dr Luvi’s actions) · the whole team’s status: Gautam, Dr Luvi, Mohan, Fahad — score vs plan, due, overdue, blocked, who is waiting on whom · script sign-off status · next shoot · company pipeline · what happened since yesterday', to: 'Mr Akbar', cc: '' },
   { when: '09:00 daily — morning briefing', what: 'Meta leads red flags for her action · scripts waiting on her approval (filming soonest first) · her tasks, the receptionists’ and dentists’ tasks she updates, score and dependencies · since yesterday', to: 'Dr Luvi', cc: '' },
   { when: '09:00 daily — morning briefing', what: 'Meta leads red flags (aware) · scripts waiting on her approval · sign-off decisions since yesterday', to: 'Ms Shadi', cc: '' },
   { when: '09:00 — morning briefing, when he has something', what: 'Scripts waiting on his approval · his tasks, score and dependencies · company pipeline and today’s calendar entries · since yesterday', to: 'Gautam', cc: '' },

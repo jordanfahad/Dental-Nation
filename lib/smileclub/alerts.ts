@@ -8,6 +8,7 @@ import { REVIEWERS, reviewFor, type ReviewEntry, type ReviewerId } from '@/lib/s
 import { loadCorp, loadReviews } from '@/lib/smileclub/tracker';
 import type { CorpState } from '@/lib/smileclub/corporate';
 import { buildMetaLeadsDigest, metaSectionHtml, type MetaLeadsDigest } from '@/lib/ops/metaLeadsDigest';
+import { CONTENTOS_LEADS, contentosFlags, contentosStatsHtml, fetchContentos, type ContentosLeads } from '@/lib/ops/contentosLeads';
 import { OWNER_LABEL, TEAM_TASKS, TOTAL_WEIGHT, TRACKER_SOURCE, type Person, type TeamTask } from '@/lib/smileclub/team';
 
 /**
@@ -18,8 +19,9 @@ import { OWNER_LABEL, TEAM_TASKS, TOTAL_WEIGHT, TRACKER_SOURCE, type Person, typ
  * and go into the person's next email.
  *
  *   09:00  Morning briefing — ONE email per person with only what applies to
- *          them: Meta leads red flags (Dr Luvi to act; Mr Akbar, Ms Shadi,
- *          Fahad aware); scripts waiting on their approval (Ms Shadi, Dr Luvi,
+ *          them: Meta leads red flags from ContentOS Lead Analysis (read live
+ *          at send time) plus the ad and tracker checks (Dr Luvi to act;
+ *          Mr Akbar, Ms Shadi, Fahad aware); scripts waiting on their approval (Ms Shadi, Dr Luvi,
  *          Gautam); their tasks and completion score (Gautam, Dr Luvi, Mohan,
  *          Fahad); the whole team's status (Mr Akbar, Fahad); what happened
  *          since yesterday. Sent 09:00–10:59; skipped when there is nothing.
@@ -178,6 +180,8 @@ interface Ctx {
   reviews: ReviewEntry[];
   events: TaskEv[];
   meta: MetaLeadsDigest | null;
+  /** ContentOS Lead Analysis (lead quality, follow-up, CRM gaps), read at send time. */
+  contentos: ContentosLeads | null;
   corp: CorpState | null;
 }
 
@@ -185,17 +189,18 @@ async function loadCtx(sb: Sb, today: string, since: string, withMeta: boolean):
   const p = await loadProgress(sb);
   const byId: Record<string, TeamTask> = {};
   for (const t of TEAM_TASKS) if (p[t.key]) byId[p[t.key].id] = t;
-  const [reviews, ev, meta, corp] = await Promise.all([
+  const [reviews, ev, meta, contentos, corp] = await Promise.all([
     loadReviews(sb),
     sb.from('task_events').select('task_id,actor,status,note,at,from_stage,to_stage').gte('at', since).order('at'),
     withMeta ? buildMetaLeadsDigest(sb, today).catch(() => null) : Promise.resolve(null),
+    withMeta ? fetchContentos() : Promise.resolve(null),
     loadCorp(sb).catch(() => null),
   ]);
   const events = (ev.data ?? []).filter((e) => byId[e.task_id as string]).map((e) => ({
     task: byId[e.task_id as string], actor: (e.actor as string) ?? '', status: (e.status as string) ?? '', note: (e.note as string | null) ?? null,
     at: e.at as string, from: (e.from_stage as number | null) ?? null, to: (e.to_stage as number | null) ?? null,
   }));
-  return { today, since, p, reviews, events, meta, corp };
+  return { today, since, p, reviews, events, meta, contentos, corp };
 }
 
 const isDone = (t: TeamTask, p: Prog) => (p[t.key]?.stage ?? 0) >= t.steps.length || p[t.key]?.status === 'done';
@@ -414,13 +419,19 @@ export function buildBriefing(ctx: Ctx, who: Who): { subject: string; html: stri
   const parts: string[] = [];
   const bits: string[] = [];
 
-  if (ctx.meta && META_READERS.includes(who)) {
+  if ((ctx.meta || ctx.contentos) && META_READERS.includes(who)) {
     const m = ctx.meta;
-    const n = m.flags.length;
-    const intro = `Yesterday (${esc(m.day)}): <b>${esc(m.headline)}</b>. ${n ? (who === 'luvi'
+    const c = ctx.contentos;
+    // ContentOS first (follow-up and lead quality), then the ad and tracker checks; its bookings flag replaces the tracker's conversions flag.
+    const flags = [...(c ? contentosFlags(c) : []), ...(m?.flags ?? []).filter((f) => !(c && f.includes('No conversions recorded')))];
+    const n = flags.length;
+    const intro = `${m ? `Yesterday (${esc(m.day)}): <b>${esc(m.headline)}</b>. ` : ''}${n ? (who === 'luvi'
       ? `<b style="color:#a04a38">${plural(n, 'red flag')} for your action</b> — please take them up with the team today.`
       : `<b style="color:#a04a38">${plural(n, 'red flag')}</b> — Dr Luvi has these as her actions today; shown so you are aware.`) : ''}`;
-    parts.push(h3(`Meta leads — ${n ? plural(n, 'red flag') : 'no red flags'}`, n ? RED : '#244260') + metaSectionHtml(m, intro));
+    const coHtml = c
+      ? `${h4(`From ContentOS Lead Analysis${c.asOf ? ` · ${esc(c.asOf)}` : ''}`)}${contentosStatsHtml(c)}<p style="color:#767769;font-size:12px"><a href="${CONTENTOS_LEADS}" style="color:#5793A3;font-weight:bold">Open the ranked call list in ContentOS</a> — chat numbers open in the Zavis CRM.</p>${h4('Ads and the In-House Lead Tracker')}`
+      : '<p style="color:#767769;font-size:12px">ContentOS could not be read this morning — the flags below come from the Meta ad data and the In-House Lead Tracker.</p>';
+    parts.push(h3(`Meta leads — ${n ? plural(n, 'red flag') : 'no red flags'}`, n ? RED : '#244260') + metaSectionHtml(m, intro, flags, coHtml));
     if (n) bits.push(plural(n, 'lead red flag'));
   }
   if (isReviewer(who)) {
