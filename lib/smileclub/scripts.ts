@@ -53,23 +53,23 @@ export const BRANCH_LANGS: Record<Branch, Lang[]> = {
 export const LANG_LABEL: Record<Lang, string> = { en: 'English', tr: 'Türkçe · Turkish', ar: 'العربية · Arabic' };
 
 /** Authorship and sign-off — shown on every script. Approvals are recorded on the system (lib/smileclub/review.ts). */
-export const SCRIPT_STATUS = 'Created and reviewed by Fahad (pre-final). Final check and approval required from Ms Shadi, Dr Luvi and Gautam — inputs are shared here on the system, and every decision goes into the team’s next Smile Club email.';
+export const SCRIPT_STATUS = 'Created and reviewed by Fahad (pre-final). Final check and approval required from Ms Shadi, Dr Luvi and Gautam. Inputs are shared here on the system, and every decision goes into the team’s next Smile Club email.';
 
 export const PATIENT_SEGS: { id: PatientSeg; label: string; when: string }[] = [
-  { id: 'active', label: 'Active — check-up due', when: 'Wave 1 · from Tue 29 Sep' },
-  { id: 'inactive', label: 'Inactive — last seen 6–18 months ago', when: 'Wave 2 · from Mon 5 Oct' },
-  { id: 'dormant', label: 'Dormant — last seen over 18 months ago', when: 'Wave 3 · from Mon 12 Oct' },
+  { id: 'active', label: 'Active (check-up due)', when: 'Wave 1 · from Tue 29 Sep' },
+  { id: 'inactive', label: 'Inactive (last seen 6–18 months ago)', when: 'Wave 2 · from Mon 5 Oct' },
+  { id: 'dormant', label: 'Dormant (last seen over 18 months ago)', when: 'Wave 3 · from Mon 12 Oct' },
 ];
 
 export interface Lane { name: string; tag: string; page: string; offer: string }
 
 /** The lane campaigns that already run on dentalnation.com (Ads → Lanes & landing pages). */
 export const LANES: Record<LaneId, Lane> = {
-  scan: { name: 'The DN Scan', tag: 'Lane J', page: '/en/scan', offer: 'Braces & aligner planning — 3D scan, specialist consultation and written plan, AED 499, fully deducted if treatment goes ahead' },
-  firstlook: { name: 'The DN First Look', tag: 'Lane B', page: '/en/first-look', offer: 'Welcome visit — full examination, digital X-rays and professional clean, AED 799 all-inclusive' },
+  scan: { name: 'The DN Scan', tag: 'Lane J', page: '/en/scan', offer: 'Braces and aligner planning: 3D scan, specialist consultation and written plan, AED 499, fully deducted if treatment goes ahead' },
+  firstlook: { name: 'The DN First Look', tag: 'Lane B', page: '/en/first-look', offer: 'Welcome visit: full examination, digital X-rays and professional clean, AED 799 all-inclusive' },
   glowup: { name: 'The DN Glow Up', tag: 'Lane E', page: '/en/glow-up', offer: 'Zoom whitening, dentist-supervised, about one hour, AED 1,699 all-inclusive' },
   sos: { name: 'Urgent dental care (DN SOS)', tag: 'Lane D', page: '/en/sos', offer: 'Seen within 60 minutes, AED 699 all-inclusive, at Al Maher Medical Centre' },
-  restore: { name: 'Restore', tag: 'Lane C', page: '/en/care-journeys/restore', offer: 'Crowns, bridges and implants — consultation from AED 1,000, full cost in writing first' },
+  restore: { name: 'Restore', tag: 'Lane C', page: '/en/care-journeys/restore', offer: 'Crowns, bridges and implants: consultation from AED 1,000, full cost in writing first' },
 };
 
 const LANE_BY_SPECIALTY: Record<Specialty, LaneId> = {
@@ -98,24 +98,24 @@ export interface Dentist {
 
 export const DENTISTS: Dentist[] = [
   { id: 'yahya-tosun', name: 'Dr. Yahya Tosun', title: 'Specialist Orthodontist', branch: 'tosun', specialty: 'ortho', days: 'Mon–Tue, Thu–Sat', code: 'SC-DR-TOSUN' },
-  { id: 'dilsad-ozdogan', name: 'Dr. Dilsad Ozdogan', title: 'General Dentist', branch: 'tosun', specialty: 'general', days: 'Tue–Sat', code: 'SC-DR-DILSAD', lane: 'glowup', laneWhy: 'Glow Up has no video yet — its Facebook/Instagram campaign is waiting for creative, so this is the most useful second video.' },
-  { id: 'maysoon-abdelmajeed', name: 'Dr. Maysoon Abdelmajeed', title: 'General Dentist', branch: 'tosun', specialty: 'general', days: 'Mon–Tue, Thu–Sat', code: 'SC-DR-MAYSOON', langs: ['ar', 'en'], langWhy: 'Speaks English and Arabic — Arabic + English, not Turkish (confirmed by Dr Luvi, 24 Sep).', ar: { name: 'د. ميسون عبد المجيد', title: 'طبيبة أسنان عامة' } },
+  { id: 'dilsad-ozdogan', name: 'Dr. Dilsad Ozdogan', title: 'General Dentist', branch: 'tosun', specialty: 'general', days: 'Tue–Sat', code: 'SC-DR-DILSAD', lane: 'glowup', laneWhy: 'Glow Up has no video yet and its Facebook/Instagram campaign is waiting for creative, so this is the most useful second video.' },
+  { id: 'maysoon-abdelmajeed', name: 'Dr. Maysoon Abdelmajeed', title: 'General Dentist', branch: 'tosun', specialty: 'general', days: 'Mon–Tue, Thu–Sat', code: 'SC-DR-MAYSOON', langs: ['ar', 'en'], langWhy: 'Speaks English and Arabic, so Arabic + English, not Turkish (confirmed by Dr Luvi, 24 Sep).', ar: { name: 'د. ميسون عبد المجيد', title: 'طبيبة أسنان عامة' } },
   { id: 'bulent-ozdogan', name: 'Dr. Bulent Ozdogan', title: 'General Dentist', branch: 'tosun', specialty: 'general', days: 'Tue, Thu, Sat', code: 'SC-DR-BULENT' },
   { id: 'sevinc-behruzoglu', name: 'Dr. Sevinc Behruzoglu', title: 'General Dentist', branch: 'tosun', specialty: 'general', days: 'Mon, Wed', code: 'SC-DR-SEVINC' },
-  { id: 'maysoun-ahmad', name: 'Dr. Maysoun Ahmad', title: 'General Dentist', branch: 'tosun', specialty: 'general', days: 'Mon', code: 'SC-DR-MAYSOUN', langs: ['ar', 'en'], langWhy: 'Speaks English and Arabic — Arabic + English, not Turkish (confirmed by Dr Luvi, 24 Sep).', ar: { name: 'د. ميسون أحمد', title: 'طبيبة أسنان عامة' } },
-  { id: 'sathyapriya-surendar', name: 'Dr. Sathyapriya Surendar', title: 'Periodontist', branch: 'tosun', specialty: 'perio', days: 'Tue–Wed', code: 'SC-DR-SATHYA', langs: ['en'], langWhy: 'Indian periodontist who sees English-speaking patients — English only (confirmed by Fahad).' },
+  { id: 'maysoun-ahmad', name: 'Dr. Maysoun Ahmad', title: 'General Dentist', branch: 'tosun', specialty: 'general', days: 'Mon', code: 'SC-DR-MAYSOUN', langs: ['ar', 'en'], langWhy: 'Speaks English and Arabic, so Arabic + English, not Turkish (confirmed by Dr Luvi, 24 Sep).', ar: { name: 'د. ميسون أحمد', title: 'طبيبة أسنان عامة' } },
+  { id: 'sathyapriya-surendar', name: 'Dr. Sathyapriya Surendar', title: 'Periodontist', branch: 'tosun', specialty: 'perio', days: 'Tue–Wed', code: 'SC-DR-SATHYA', langs: ['en'], langWhy: 'Indian periodontist who sees English-speaking patients. English only (confirmed by Fahad).' },
 
   { id: 'hasna-alsaeed', name: 'Dr. Hasna Alsaeed', title: 'Consultant Orthodontist', branch: 'alwasl', specialty: 'ortho', days: 'Sun', code: 'SC-DR-HASNA', ar: { name: 'د. حسناء السعيد', title: 'استشارية تقويم الأسنان' } },
-  { id: 'ali-ghasemi', name: 'Dr. Ali Ghasemi', title: 'Hygienist', branch: 'alwasl', specialty: 'hygiene', days: 'Sat–Thu', code: 'SC-DR-ALI', langs: ['en'], langWhy: 'Speaks English and Farsi, with conversational Arabic only — cannot film in Arabic, so English only (confirmed by Dr Luvi, 24 Sep).', ar: { name: 'د. علي قاسمي', title: 'أخصائي صحة الفم والأسنان' } },
+  { id: 'ali-ghasemi', name: 'Dr. Ali Ghasemi', title: 'Hygienist', branch: 'alwasl', specialty: 'hygiene', days: 'Sat–Thu', code: 'SC-DR-ALI', langs: ['en'], langWhy: 'Speaks English and Farsi, with conversational Arabic only. Cannot film in Arabic, so English only (confirmed by Dr Luvi, 24 Sep).', ar: { name: 'د. علي قاسمي', title: 'أخصائي صحة الفم والأسنان' } },
   { id: 'safwan-sultan', name: 'Dr. M Safwan Sultan', title: 'General Dentist', branch: 'alwasl', specialty: 'general', days: 'Sat–Thu', code: 'SC-DR-SAFWAN', ar: { name: 'د. م. صفوان سلطان', title: 'طبيب أسنان عام' } },
   { id: 'yasmin-youssef', name: 'Dr. Yasmin Youssef', title: 'Orthodontist', branch: 'alwasl', specialty: 'ortho', days: 'Sun', code: 'SC-DR-YASMIN', ar: { name: 'د. ياسمين يوسف', title: 'طبيبة تقويم الأسنان' } },
   { id: 'ghada-hussain', name: 'Dr. Ghada Hussain', title: 'Pedodontist (children’s dentist)', branch: 'alwasl', specialty: 'pedo', days: 'Sat', code: 'SC-DR-GHADA', ar: { name: 'د. غادة حسين', title: 'طبيبة أسنان الأطفال' } },
   { id: 'mohammad-qasem', name: 'Dr. Mohammad Qasem', title: 'Periodontist', branch: 'alwasl', specialty: 'perio', days: 'Thu', code: 'SC-DR-QASEM', ar: { name: 'د. محمد قاسم', title: 'أخصائي أمراض اللثة' } },
-  { id: 'helmi-shaath', name: 'Dr. Helmi Shaath', title: 'Prosthodontist', branch: 'alwasl', specialty: 'prostho', days: 'Sat', code: 'SC-DR-HELMI', ar: { name: 'د. حلمي شعث', title: 'أخصائي تركيبات الأسنان' }, note: 'Not renewing with Dental Nation (MJ, 24 Sep) — no shoot. Confirm with Dr Luvi whether his patients still get Smile Club messages in his name.' },
-  { id: 'chahira-berlarbi', name: 'Dr. Chahira Berlarbi', title: 'Dentist', branch: 'alwasl', specialty: 'general', days: 'Mon–Thu, Sat', code: 'SC-DR-CHAHIRA', ar: { name: 'د. شهيرة برلاربي', title: 'طبيبة أسنان' }, note: 'Specialty not listed on the schedule — using the general script; confirm with Dr Luvi.' },
+  { id: 'helmi-shaath', name: 'Dr. Helmi Shaath', title: 'Prosthodontist', branch: 'alwasl', specialty: 'prostho', days: 'Sat', code: 'SC-DR-HELMI', ar: { name: 'د. حلمي شعث', title: 'أخصائي تركيبات الأسنان' }, note: 'Not renewing with Dental Nation (MJ, 24 Sep), so no shoot. Confirm with Dr Luvi whether his patients still get Smile Club messages in his name.' },
+  { id: 'chahira-berlarbi', name: 'Dr. Chahira Berlarbi', title: 'Dentist', branch: 'alwasl', specialty: 'general', days: 'Mon–Thu, Sat', code: 'SC-DR-CHAHIRA', ar: { name: 'د. شهيرة برلاربي', title: 'طبيبة أسنان' }, note: 'Specialty not listed on the schedule, so the general script is used; confirm with Dr Luvi.' },
 
   { id: 'maher-selman', name: 'Dr. Maher Selman', title: 'Consultant Endodontist & Implantologist', branch: 'amc', specialty: 'endo', days: 'Sun–Mon, Wed–Thu', code: 'SC-DR-MAHER', ar: { name: 'د. ماهر سلمان', title: 'استشاري علاج العصب وطبيب زراعة الأسنان' } },
-  { id: 'suzanna-almaali', name: 'Dr. Suzanna Almaali', title: 'Specialist Orthodontist', branch: 'amc', specialty: 'ortho', days: 'Sun', code: 'SC-DR-SUZANNA', ar: { name: 'د. سوزانا المعالي', title: 'أخصائية تقويم الأسنان' }, note: 'Asked (26 Sep, via MJ) to refine the Arabic of her WhatsApp messages herself, and to speak the Arabic videos in her own dialect. Videos: yes — all Arabic videos are now spoken in the dentist’s own dialect. Messages: her edited Arabic goes in when she sends it (WORDING below) and comes back for approval.' },
+  { id: 'suzanna-almaali', name: 'Dr. Suzanna Almaali', title: 'Specialist Orthodontist', branch: 'amc', specialty: 'ortho', days: 'Sun', code: 'SC-DR-SUZANNA', ar: { name: 'د. سوزانا المعالي', title: 'أخصائية تقويم الأسنان' }, note: 'Asked (26 Sep, via MJ) to refine the Arabic of her WhatsApp messages herself, and to speak the Arabic videos in her own dialect. Videos: yes. All Arabic videos are now spoken in the dentist’s own dialect. Messages: her edited Arabic goes in when she sends it (WORDING below) and comes back for approval.' },
   { id: 'leila-mostawe', name: 'Dr. Leila Mostawe', title: 'General Dentist', branch: 'amc', specialty: 'general', days: 'Sun, Tue, Thu', code: 'SC-DR-LEILA', ar: { name: 'د. ليلى مستاوي', title: 'طبيبة أسنان عامة' } },
 ];
 
@@ -123,7 +123,7 @@ export const laneFor = (d: Dentist): LaneId => d.lane ?? LANE_BY_SPECIALTY[d.spe
 
 /** Branches whose dentists do not mention prices (26 Sep — Dr. Tosun and Dr. Dilsad: educational content only). */
 export const NO_PRICE_BRANCHES: Branch[] = ['tosun'];
-export const NO_PRICE_WHY = 'Dr. Tosun Dental Clinic’s dentists are not comfortable mentioning prices (Dr. Tosun and Dr. Dilsad, 26 Sep) — their scripts are educational only; the team explains plans and fees when a patient replies or asks.';
+export const NO_PRICE_WHY = 'Dr. Tosun Dental Clinic’s dentists are not comfortable mentioning prices (Dr. Tosun and Dr. Dilsad, 26 Sep), so their scripts are educational only; the team explains plans and fees when a patient replies or asks.';
 export const noPrices = (d: Dentist) => NO_PRICE_BRANCHES.includes(d.branch);
 export const langsFor = (d: Dentist): Lang[] => d.langs ?? BRANCH_LANGS[d.branch];
 
@@ -136,13 +136,13 @@ const TITLE: Record<'tr' | 'ar', Record<Specialty, string>> = {
 /** Why THIS dentist's patients should care — the specialty angle. */
 const ANGLE: Record<Lang, Record<Specialty, { chair: string; why: string }>> = {
   en: {
-    ortho: { chair: 'While we straighten your teeth, keeping them clean and healthy matters just as much — Smile Club puts your check-ups and cleanings into the plan.', why: 'A straight smile deserves to stay healthy — with braces or aligners, regular check-ups and professional cleaning matter even more.' },
-    general: { chair: 'The best way to avoid bigger problems is to keep your check-ups and cleanings on track — Smile Club makes that simple for the whole year.', why: 'Most dental problems start small — catching them early keeps treatment simple and costs down.' },
-    perio: { chair: 'Healthy gums need regular maintenance. With Smile Club, preventive visits are planned for the year, making them easier to keep track of.', why: 'Healthy gums are the foundation of a healthy smile — and they need regular care, not just a visit when something bleeds or hurts.' },
+    ortho: { chair: 'While we straighten your teeth, keeping them clean and healthy matters just as much. Smile Club puts your check-ups and cleanings into the plan.', why: 'A straight smile should stay healthy. With braces or aligners, regular check-ups and professional cleaning matter even more.' },
+    general: { chair: 'The best way to avoid bigger problems is to keep your check-ups and cleanings on track. Smile Club makes that simple for the whole year.', why: 'Most dental problems start small. Catching them early keeps treatment simple and costs down.' },
+    perio: { chair: 'Healthy gums need regular maintenance. With Smile Club, preventive visits are planned for the year, making them easier to keep track of.', why: 'Healthy gums need regular care, not just a visit when something bleeds or hurts.' },
     hygiene: { chair: 'A professional cleaning every six months is one of the simplest ways to care for your teeth and gums. Depending on the plan, Smile Club includes a professional cleaning and helps you plan regular care.', why: 'A professional cleaning every six months is one of the simplest ways to care for your teeth and gums.' },
-    pedo: { chair: 'Good habits start young — Smile Club helps the whole family keep regular check-ups, children included.', why: 'Good dental habits start young — regular check-ups help children grow up with healthy, confident smiles.' },
-    prostho: { chair: 'If you’re planning crowns, bridges or dentures, members pay member rates on eligible treatments — and regular check-ups help your new teeth last.', why: 'Crowns, bridges and dentures last longest when they are looked after with regular check-ups.' },
-    endo: { chair: 'After a root canal or an implant, regular check-ups protect the work we’ve done — and members pay member rates on eligible treatments.', why: 'After a root canal or an implant, regular check-ups are what protect the work — and your investment.' },
+    pedo: { chair: 'Good habits start young. Smile Club helps the whole family keep regular check-ups, children included.', why: 'Good dental habits start young. Regular check-ups help children grow up with healthy teeth.' },
+    prostho: { chair: 'If you’re planning crowns, bridges or dentures, members pay member rates on eligible treatments. Regular check-ups also help your new teeth last.', why: 'Crowns, bridges and dentures last longest when they are looked after with regular check-ups.' },
+    endo: { chair: 'After a root canal or an implant, regular check-ups protect the work we’ve done. Members also pay member rates on eligible treatments.', why: 'After a root canal or an implant, regular check-ups protect the work you’ve paid for.' },
   },
   tr: {
     ortho: { chair: 'Dişlerinizi düzeltirken onları temiz ve sağlıklı tutmak da aynı derecede önemlidir. Smile Club, seçtiğiniz plana göre diş kontrolleri ve profesyonel diş temizliği sunar.', why: 'Düzgün dişlerin sağlıklı kalması da önemlidir. Diş teli ya da şeffaf plak kullanırken düzenli diş kontrolleri ve profesyonel diş temizliği daha da önemlidir.' },
@@ -155,8 +155,8 @@ const ANGLE: Record<Lang, Record<Specialty, { chair: string; why: string }>> = {
   },
   ar: {
     ortho: { chair: 'خلال تقويم أسنانكم، لا تقلّ العناية بنظافتها وصحتها أهمية. وعضوية Smile Club تتضمن فحوصات دورية وتنظيفاً احترافياً للأسنان بحسب الخطة.', why: 'الابتسامة المتناسقة تستحق أن تبقى صحية. ومع التقويم الثابت أو قوالب التقويم الشفافة، تصبح الفحوصات الدورية والتنظيف الاحترافي للأسنان أكثر أهمية.' },
-    general: { chair: 'أفضل طريقة لتجنّب المشكلات الكبيرة هي الالتزام بالفحوصات الدورية والتنظيف الاحترافي للأسنان. وعضوية Smile Club تسهّل ذلك طوال العام.', why: 'معظم مشاكل الأسنان تبدأ صغيرة — واكتشافها مبكراً يجعل العلاج أبسط والتكلفة أقل.' },
-    perio: { chair: 'اللثة السليمة تحتاج إلى عناية منتظمة. ومع Smile Club، تُخطّط الزيارات الوقائية طوال العام لتسهيل الالتزام بها.', why: 'اللثة السليمة هي أساس الابتسامة الصحية — وتحتاج إلى عناية منتظمة، لا إلى زيارة فقط عند النزيف أو الألم.' },
+    general: { chair: 'أفضل طريقة لتجنّب المشكلات الكبيرة هي الالتزام بالفحوصات الدورية والتنظيف الاحترافي للأسنان. وعضوية Smile Club تسهّل ذلك طوال العام.', why: 'معظم مشاكل الأسنان تبدأ صغيرة، واكتشافها مبكراً يجعل العلاج أبسط والتكلفة أقل.' },
+    perio: { chair: 'اللثة السليمة تحتاج إلى عناية منتظمة. ومع Smile Club، تُخطّط الزيارات الوقائية طوال العام لتسهيل الالتزام بها.', why: 'اللثة السليمة هي أساس الابتسامة الصحية، وتحتاج إلى عناية منتظمة، لا إلى زيارة فقط عند النزيف أو الألم.' },
     hygiene: { chair: 'التنظيف الاحترافي للأسنان كل ستة أشهر من أبسط طرق العناية بها. وعضوية Smile Club تتضمن التنظيف بحسب الخطة، وتساعد على التخطيط للعناية المنتظمة.', why: 'التنظيف الاحترافي للأسنان كل ستة أشهر من أبسط طرق العناية بالأسنان واللثة.' },
     pedo: { chair: 'العادات الجيدة تبدأ منذ الصغر. وعضوية Smile Club تساعد العائلة كلها، بما فيها الأطفال، على الالتزام بالفحوصات الدورية.', why: 'العادات الصحية للأسنان تبدأ منذ الصغر، والفحوصات الدورية تساعد الأطفال على النمو بابتسامات صحية وواثقة.' },
     prostho: { chair: 'عند التخطيط لتيجان أو جسور أو أطقم أسنان، تتوفر أسعار خاصة للأعضاء للعلاجات المؤهلة. كما تساعد الفحوصات الدورية على إطالة عمر الأسنان الجديدة.', why: 'التيجان والجسور وأطقم الأسنان تدوم أطول عندما تتم متابعتها بالفحوصات الدورية.' },
@@ -189,13 +189,13 @@ const COPY: Record<Lang, {
   en: {
     offer: OFFER,
     offerEdu: 'Depending on the plan, membership includes regular check-ups and a professional cleaning, help when you have an urgent dental problem, priority appointments, and member benefits on eligible treatments.',
-    vTip: 'A simple rule: see your dentist every six months, even when nothing hurts — most problems are far easier to treat when they are caught early.',
+    vTip: 'A simple rule: see your dentist every six months, even when nothing hurts. Most problems are far easier to treat when they are caught early.',
     partOf: ', part of Dental Nation',
     hello: (name, from) => `Hello, this is ${name} from ${from}.`,
     seg: {
       active: 'Your next check-up is coming up, so it’s a good moment to tell you about something new.',
       inactive: 'It’s been a while since your last visit, and I wanted to check in.',
-      dormant: 'It’s been a long time since we last saw you — you are always welcome back, with no pressure at all.',
+      dormant: 'It’s been a long time since we last saw you. You are always welcome back, with no pressure at all.',
     },
     club: {
       active: 'Smile Club is a simple way to keep your dental care on track all year, instead of waiting until something hurts.',
@@ -205,13 +205,13 @@ const COPY: Record<Lang, {
     cta: {
       active: 'Just reply to this message and my team will explain the plans and, if you would like, arrange your check-up.',
       inactive: 'Reply to this message and my team will explain the plans and find a time that suits you.',
-      dormant: 'If you’d like to hear more, just reply and my team will explain — no obligation.',
+      dormant: 'If you’d like to hear more, just reply and my team will explain. There’s no obligation.',
     },
     stop: '(Reply STOP if you’d prefer not to receive these messages.)',
-    invite: 'I’ve signed an invitation for you — the front desk can explain the plans in a minute.',
+    invite: 'I’ve signed an invitation for you. The front desk can explain the plans in a minute.',
     vIntro: (name, title, where) => `[On camera, in the clinic] Hi, I’m ${name}, ${title} at ${where}.`,
     vWhy: 'That’s why we created Smile Club by Dental Nation.',
-    vKeep: 'It’s care that keeps you ahead of problems — not just treatment when something hurts.',
+    vKeep: 'The idea is simple: regular care, so small problems stay small.',
     vEnd: '[End card] Ask at reception, scan the QR code, or message us on WhatsApp to join Smile Club.',
   },
   tr: {
@@ -265,7 +265,7 @@ const COPY: Record<Lang, {
     },
     stop: '(لإيقاف استلام هذه الرسائل، يرجى الرد بكلمة STOP.)',
     invite: 'وقّعت دعوة خاصة بكم، ويمكن لفريق الاستقبال شرح الخطط في دقيقة.',
-    vIntro: (name, title, where) => `[أمام الكاميرا، في العيادة] مرحباً، أنا ${name}، ${title} في ${where}.`,
+    vIntro: (name, title, where) => `[أمام الكاميرا، في العيادة] مرحباً، أنا ${name}, ${title} في ${where}.`,
     vWhy: 'لهذا أطلقنا Smile Club من دنتال نيشن.',
     vKeep: 'إنها عناية تساعد على استباق المشكلات، وليست مجرد علاج عند الشعور بالألم.',
     vEnd: '[البطاقة الختامية] للانضمام إلى Smile Club، يمكن الاستفسار لدى الاستقبال، أو مسح رمز QR، أو مراسلتنا عبر واتساب.',
@@ -280,9 +280,9 @@ const LANE_VIDEO: Record<LaneId, Record<Lang, LaneLines>> = {
     en: (n, t, w) => [
       `[On camera] Thinking about braces or clear aligners? I’m ${n}, ${t} at ${w}.`,
       'Before you commit to anything, see your plan: a 3D scan of your teeth, a consultation with an orthodontist, and a written treatment plan.',
-      'It’s called The DN Scan — AED 499, and the full amount is deducted from your treatment if you go ahead.',
-      'No pressure, no guesswork — just a clear plan for your smile.',
-      '[End card] Book The DN Scan — link in the ad, or message us on WhatsApp.',
+      'It’s called The DN Scan. It costs AED 499, and the full amount is deducted from your treatment if you go ahead.',
+      'You get a clear plan for your smile, with no pressure to start.',
+      '[End card] Book The DN Scan through the link in the ad, or message us on WhatsApp.',
     ],
     tr: (n, t, w) => [
       `[Kamerada] Diş teli ya da şeffaf plak mı düşünüyorsunuz? Ben ${n}. ${t} olarak ${w} ekibindeyim.`,
@@ -292,7 +292,7 @@ const LANE_VIDEO: Record<LaneId, Record<Lang, LaneLines>> = {
       '[Kapanış kartı] The DN Scan randevusu için reklamdaki bağlantıyı kullanın ya da bize WhatsApp üzerinden yazın.',
     ],
     ar: (n, t, w) => [
-      `[أمام الكاميرا] هل تفكّرون في التقويم الثابت أو قوالب التقويم الشفافة؟ أنا ${n}، ${t} في ${w}.`,
+      `[أمام الكاميرا] هل تفكّرون في التقويم الثابت أو قوالب التقويم الشفافة؟ أنا ${n}, ${t} في ${w}.`,
       'قبل أي التزام، يمكنكم الاطّلاع على خطة العلاج: مسح ثلاثي الأبعاد لأسنانكم، واستشارة مع أخصائي تقويم الأسنان، وخطة علاج مكتوبة.',
       'اسمه The DN Scan، بسعر 499 درهماً. ويُخصم المبلغ كاملاً من تكلفة العلاج إذا بدأتم العلاج.',
       'بلا ضغط وبلا تخمين، فقط خطة واضحة لابتسامتكم.',
@@ -303,9 +303,9 @@ const LANE_VIDEO: Record<LaneId, Record<Lang, LaneLines>> = {
     en: (n, t, w) => [
       `[On camera] Hi, I’m ${n}, ${t} at ${w}.`,
       'If it’s been a while since your last check-up, the easiest way to start is The DN First Look.',
-      'One visit: a full examination, digital X-rays and a professional clean — AED 799, all-inclusive, no surprises.',
-      'You leave knowing exactly where your teeth stand, and what — if anything — needs doing.',
-      '[End card] Book The DN First Look — link in the ad, or message us on WhatsApp.',
+      'One visit: a full examination, digital X-rays and a professional clean, for AED 799 all-inclusive.',
+      'You leave knowing exactly where your teeth stand and what, if anything, needs doing.',
+      '[End card] Book The DN First Look through the link in the ad, or message us on WhatsApp.',
     ],
     tr: (n, t, w) => [
       `[Kamerada] Merhaba, ben ${n}. ${t} olarak ${w} ekibindeyim.`,
@@ -315,7 +315,7 @@ const LANE_VIDEO: Record<LaneId, Record<Lang, LaneLines>> = {
       '[Kapanış kartı] The DN First Look randevusu için reklamdaki bağlantıyı kullanın ya da bize WhatsApp üzerinden yazın.',
     ],
     ar: (n, t, w) => [
-      `[أمام الكاميرا] مرحباً، أنا ${n}، ${t} في ${w}.`,
+      `[أمام الكاميرا] مرحباً، أنا ${n}, ${t} في ${w}.`,
       'إذا مرّ وقت على آخر فحص دوري لأسنانكم، فأسهل بداية هي The DN First Look.',
       'زيارة واحدة: فحص شامل، وأشعة رقمية، وتنظيف احترافي للأسنان، بسعر 799 درهماً شاملاً كل شيء، بلا مفاجآت.',
       'بعد الزيارة، تتضح حالة أسنانكم وما يحتاج إلى علاج، إن وُجد.',
@@ -324,23 +324,23 @@ const LANE_VIDEO: Record<LaneId, Record<Lang, LaneLines>> = {
   },
   glowup: {
     en: (n, t, w) => [
-      `[On camera] Coffee, tea, or simply time — teeth lose their brightness. I’m ${n}, ${t} at ${w}.`,
+      `[On camera] Coffee, tea, or simply time, teeth lose their brightness. I’m ${n}, ${t} at ${w}.`,
       'The DN Glow Up is professional Zoom whitening, supervised by a dentist, in about an hour.',
-      'AED 1,699, all-inclusive — we check your teeth first to assess whether whitening is suitable for you.',
-      'Professional care for a brighter smile.',
-      '[End card] Book The DN Glow Up — link in the ad, or message us on WhatsApp.',
+      'It’s AED 1,699 all-inclusive, and we check your teeth first to see whether whitening is suitable for you.',
+      'A brighter smile, with a dentist in charge.',
+      '[End card] Book The DN Glow Up, link in the ad, or message us on WhatsApp.',
     ],
     tr: (n, t, w) => [
       `[Kamerada] Dişler, kahve, çay veya zamanın etkisiyle parlaklığını kaybedebilir. Ben ${n}. ${t} olarak ${w} ekibindeyim.`,
       'The DN Glow Up, diş hekimi gözetiminde yaklaşık bir saat süren profesyonel Zoom diş beyazlatma işlemidir.',
-      'Her şey dahil 1.699 AED — önce dişlerinizi kontrol edip beyazlatmanın size uygun olup olmadığını değerlendiriyoruz.',
+      'Her şey dahil 1.699 AED, önce dişlerinizi kontrol edip beyazlatmanın size uygun olup olmadığını değerlendiriyoruz.',
       'Daha parlak bir gülüş için profesyonel bakım.',
       '[Kapanış kartı] The DN Glow Up randevusu için reklamdaki bağlantıyı kullanın ya da bize WhatsApp üzerinden yazın.',
     ],
     ar: (n, t, w) => [
-      `[أمام الكاميرا] القهوة والشاي ومرور الوقت — كلها تُفقد الأسنان لمعانها. أنا ${n}، ${t} في ${w}.`,
+      `[أمام الكاميرا] القهوة والشاي ومرور الوقت، كلها تُفقد الأسنان لمعانها. أنا ${n}, ${t} في ${w}.`,
       'The DN Glow Up هو تبييض احترافي للأسنان بتقنية Zoom، بإشراف طبيب أسنان، في نحو ساعة.',
-      'بسعر 1,699 درهماً شاملاً كل شيء — نفحص أسنانكم أولاً لتقييم مدى ملاءمة التبييض لكم.',
+      'بسعر 1,699 درهماً شاملاً كل شيء، نفحص أسنانكم أولاً لتقييم مدى ملاءمة التبييض لكم.',
       'عناية احترافية من أجل ابتسامة أكثر إشراقاً.',
       '[البطاقة الختامية] لحجز The DN Glow Up، يمكن استخدام الرابط في الإعلان أو مراسلتنا عبر واتساب.',
     ],
@@ -349,19 +349,19 @@ const LANE_VIDEO: Record<LaneId, Record<Lang, LaneLines>> = {
     en: (n, t, w) => [
       `[On camera] Toothache, a broken tooth, a swelling that won’t wait? I’m ${n}, ${t} at ${w}.`,
       'With Dental Nation’s urgent dental care, you’re seen within 60 minutes.',
-      'AED 699, all-inclusive — you know the price before you arrive.',
+      'It’s AED 699, all-inclusive. You know the price before you arrive.',
       'Don’t wait for the pain to get worse. Call us to arrange an urgent appointment.',
-      '[End card] Tap to call now — urgent dental care, seen within 60 minutes.',
+      '[End card] Tap to call now. Urgent dental care, seen within 60 minutes.',
     ],
     tr: (n, t, w) => [
       `[Kamerada] Diş ağrısı, kırık diş ya da gecikmeden değerlendirilmesi gereken bir şişlik mi var? Ben ${n}. ${t} olarak ${w} ekibindeyim.`,
       'Dental Nation acil diş sağlığı hizmetinde 60 dakika içinde muayene olursunuz.',
-      'Her şey dahil 699 AED — fiyatı gelmeden önce bilirsiniz.',
+      'Her şey dahil 699 AED, fiyatı gelmeden önce bilirsiniz.',
       'Ağrının artmasını beklemeyin. Acil bir randevu ayarlamak için bizi arayın.',
       '[Kapanış kartı] Hemen arayın: acil diş sağlığı hizmeti, 60 dakika içinde muayene.',
     ],
     ar: (n, t, w) => [
-      `[أمام الكاميرا] ألم في الأسنان، أو سن مكسور، أو تورّم لا يحتمل الانتظار؟ أنا ${n}، ${t} في ${w}.`,
+      `[أمام الكاميرا] ألم في الأسنان، أو سن مكسور، أو تورّم لا يحتمل الانتظار؟ أنا ${n}, ${t} في ${w}.`,
       'مع خدمة العناية العاجلة بالأسنان من دنتال نيشن، تُجرى المعاينة خلال 60 دقيقة.',
       'بسعر 699 درهماً شاملاً كل شيء، وتعرفون السعر قبل الوصول.',
       'لا داعي لانتظار اشتداد الألم؛ يمكنكم الاتصال بنا لترتيب موعد عاجل.',
@@ -370,21 +370,21 @@ const LANE_VIDEO: Record<LaneId, Record<Lang, LaneLines>> = {
   },
   restore: {
     en: (n, t, w) => [
-      `[On camera] Missing a tooth — or several? I’m ${n}, ${t} at ${w}.`,
+      `[On camera] Missing a tooth, or several? I’m ${n}, ${t} at ${w}.`,
       'A missing tooth affects how you eat, how you smile, and the teeth around the gap.',
       'It starts with a consultation from AED 1,000: we examine, plan, and give you the full cost in writing before anything begins.',
-      'Crowns, bridges or implants — the right option for you, explained clearly.',
-      '[End card] Book your Restore consultation — link in the ad, or message us on WhatsApp.',
+      'Crowns, bridges or implants: we explain which option is right for you.',
+      '[End card] Book your Restore consultation, link in the ad, or message us on WhatsApp.',
     ],
     tr: (n, t, w) => [
       `[Kamerada] Eksik bir ya da birkaç dişiniz mi var? Ben ${n}. ${t} olarak ${w} ekibindeyim.`,
       'Eksik bir diş, yemek yemenizi, gülümsemenizi ve boşluğun çevresindeki dişleri etkiler.',
       'İlk adım, 1.000 AED’den başlayan bir danışma randevusudur. Sizi muayene eder, planınızı hazırlar ve tedavi başlamadan önce toplam ücreti yazılı olarak veririz.',
-      'Kron, köprü ya da implant — size uygun seçenek, açıkça anlatılır.',
+      'Kron, köprü ya da implant, size uygun seçenek, açıkça anlatılır.',
       '[Kapanış kartı] Restore danışma randevusu için reklamdaki bağlantıyı kullanın ya da bize WhatsApp üzerinden yazın.',
     ],
     ar: (n, t, w) => [
-      `[أمام الكاميرا] هل لديكم سن مفقود أو أكثر؟ أنا ${n}، ${t} في ${w}.`,
+      `[أمام الكاميرا] هل لديكم سن مفقود أو أكثر؟ أنا ${n}, ${t} في ${w}.`,
       'فقدان سن واحد يؤثر على طريقة الأكل والابتسامة، وعلى الأسنان المحيطة بالفراغ.',
       'الخطوة الأولى استشارة تبدأ من 1,000 درهم. نجري الفحص ونضع الخطة، ونقدّم التكلفة الكاملة كتابةً قبل البدء بأي إجراء.',
       'تيجان أو جسور أو زراعة أسنان، مع شرح واضح للخيار المناسب لكم.',
@@ -401,10 +401,10 @@ const LANE_VIDEO_EDU: Partial<Record<LaneId, Record<Lang, LaneLines>>> = {
   scan: {
     en: (n, t, w) => [
       `[On camera] Thinking about braces or clear aligners? I’m ${n}, ${t} at ${w}.`,
-      'The first step isn’t the braces — it’s the plan. A 3D scan shows exactly how your teeth sit and how they can move.',
-      'With the scan, an orthodontist can show you your options — braces or clear aligners — and roughly how long treatment takes, before you commit to anything.',
-      'No pressure, no guesswork — just a clear plan for your smile.',
-      '[End card] Book The DN Scan — link in the ad, or message us on WhatsApp.',
+      'The first step isn’t the braces. It’s the plan. A 3D scan shows exactly how your teeth sit and how they can move.',
+      'With the scan, an orthodontist can show you your options (braces or clear aligners) and roughly how long treatment takes, before you commit to anything.',
+      'You get a clear plan for your smile, with no pressure to start.',
+      '[End card] Book The DN Scan through the link in the ad, or message us on WhatsApp.',
     ],
     tr: (n, t, w) => [
       `[Kamerada] Diş teli ya da şeffaf plak mı düşünüyorsunuz? Ben ${n}. ${t} olarak ${w} ekibindeyim.`,
@@ -414,7 +414,7 @@ const LANE_VIDEO_EDU: Partial<Record<LaneId, Record<Lang, LaneLines>>> = {
       '[Kapanış kartı] The DN Scan randevusu için reklamdaki bağlantıyı kullanın ya da bize WhatsApp üzerinden yazın.',
     ],
     ar: (n, t, w) => [
-      `[أمام الكاميرا] هل تفكّرون في التقويم الثابت أو قوالب التقويم الشفافة؟ أنا ${n}، ${t} في ${w}.`,
+      `[أمام الكاميرا] هل تفكّرون في التقويم الثابت أو قوالب التقويم الشفافة؟ أنا ${n}, ${t} في ${w}.`,
       'الخطوة الأولى ليست التقويم نفسه، بل الخطة. فالمسح ثلاثي الأبعاد يُظهر بدقة وضع أسنانكم وكيف يمكن تحريكها.',
       'ومن خلال المسح، يستطيع أخصائي التقويم أن يشرح لكم الخيارات المتاحة، التقويم الثابت أو القوالب الشفافة، والمدة التقريبية للعلاج، قبل أي التزام.',
       'بلا ضغط وبلا تخمين، فقط خطة واضحة لابتسامتكم.',
@@ -424,10 +424,10 @@ const LANE_VIDEO_EDU: Partial<Record<LaneId, Record<Lang, LaneLines>>> = {
   firstlook: {
     en: (n, t, w) => [
       `[On camera] Hi, I’m ${n}, ${t} at ${w}.`,
-      'Many dental problems — early decay, gum disease, an old filling starting to fail — don’t hurt at the start.',
+      'Many dental problems don’t hurt at the start: early decay, gum disease, an old filling starting to fail.',
       'That’s why a full examination with digital X-rays and a professional clean matters: it finds what you can’t feel yet, while treatment is still simple.',
       'If it’s been a while since your last check-up, The DN First Look is the easiest way to start again.',
-      '[End card] Book The DN First Look — link in the ad, or message us on WhatsApp.',
+      '[End card] Book The DN First Look through the link in the ad, or message us on WhatsApp.',
     ],
     tr: (n, t, w) => [
       `[Kamerada] Merhaba, ben ${n}. ${t} olarak ${w} ekibindeyim.`,
@@ -437,7 +437,7 @@ const LANE_VIDEO_EDU: Partial<Record<LaneId, Record<Lang, LaneLines>>> = {
       '[Kapanış kartı] The DN First Look randevusu için reklamdaki bağlantıyı kullanın ya da bize WhatsApp üzerinden yazın.',
     ],
     ar: (n, t, w) => [
-      `[أمام الكاميرا] مرحباً، أنا ${n}، ${t} في ${w}.`,
+      `[أمام الكاميرا] مرحباً، أنا ${n}, ${t} في ${w}.`,
       'كثير من مشكلات الأسنان، مثل التسوّس في بدايته أو أمراض اللثة أو حشوة قديمة بدأت تتلف، لا تسبّب ألماً في البداية.',
       'لذلك يهمّ الفحص الشامل مع الأشعة الرقمية والتنظيف الاحترافي للأسنان، فهو يكشف ما لا تشعرون به بعد، حين يكون العلاج ما زال بسيطاً.',
       'إذا مرّ وقت على آخر فحص دوري لأسنانكم، فأسهل بداية هي The DN First Look.',
@@ -446,11 +446,11 @@ const LANE_VIDEO_EDU: Partial<Record<LaneId, Record<Lang, LaneLines>>> = {
   },
   glowup: {
     en: (n, t, w) => [
-      `[On camera] Coffee, tea, or simply time — teeth lose their brightness. I’m ${n}, ${t} at ${w}.`,
+      `[On camera] Coffee, tea, or simply time, teeth lose their brightness. I’m ${n}, ${t} at ${w}.`,
       'Most staining comes from what we drink and from time itself. It sits in the outer layer of the tooth, which is why professional whitening can lift it.',
-      'The DN Glow Up is professional Zoom whitening, supervised by a dentist, in about an hour — and we check your teeth first, because whitening isn’t right for everyone.',
-      'Professional care for a brighter smile.',
-      '[End card] Book The DN Glow Up — link in the ad, or message us on WhatsApp.',
+      'The DN Glow Up is professional Zoom whitening, supervised by a dentist, in about an hour. We check your teeth first, because whitening isn’t right for everyone.',
+      'A brighter smile, with a dentist in charge.',
+      '[End card] Book The DN Glow Up, link in the ad, or message us on WhatsApp.',
     ],
     tr: (n, t, w) => [
       `[Kamerada] Dişler, kahve, çay veya zamanın etkisiyle parlaklığını kaybedebilir. Ben ${n}. ${t} olarak ${w} ekibindeyim.`,
@@ -460,7 +460,7 @@ const LANE_VIDEO_EDU: Partial<Record<LaneId, Record<Lang, LaneLines>>> = {
       '[Kapanış kartı] The DN Glow Up randevusu için reklamdaki bağlantıyı kullanın ya da bize WhatsApp üzerinden yazın.',
     ],
     ar: (n, t, w) => [
-      `[أمام الكاميرا] القهوة والشاي ومرور الوقت — كلها تُفقد الأسنان لمعانها. أنا ${n}، ${t} في ${w}.`,
+      `[أمام الكاميرا] القهوة والشاي ومرور الوقت، كلها تُفقد الأسنان لمعانها. أنا ${n}, ${t} في ${w}.`,
       'معظم التصبّغات سببها ما نشربه ومرور الوقت، وتكون في الطبقة الخارجية للسن، ولهذا يمكن للتبييض الاحترافي أن يزيلها.',
       'The DN Glow Up هو تبييض احترافي للأسنان بتقنية Zoom، بإشراف طبيب أسنان، في نحو ساعة. ونفحص أسنانكم أولاً، لأن التبييض لا يناسب الجميع.',
       'عناية احترافية من أجل ابتسامة أكثر إشراقاً.',
@@ -473,7 +473,7 @@ const PRICE = /AED|درهم|\d{3,}/;
 
 /** Arabic videos are spoken in the dentist's own dialect (26 Sep); the written Arabic is the reference. */
 export const SPOKEN_AR_NOTE = '[ملاحظة للطبيب: تحدّثوا بلهجتكم المحكية المعتادة، لا بالفصحى. النص أدناه مرجع للنقاط الأساسية؛ حافظوا على المعنى والمعلومات، والصياغة لكم.]';
-export const SPOKEN_AR_WHY = 'Arabic videos: spoken in the dentist’s own dialect, not written Arabic (Dr. Suzanna’s request, 26 Sep — applied to every Arabic video). The Arabic below is the reference for the key points and the subtitles; the facts must not change.';
+export const SPOKEN_AR_WHY = 'Arabic videos are spoken in the dentist’s own dialect, not written Arabic (Dr. Suzanna’s request, 26 Sep, applied to every Arabic video). The Arabic below is the reference for the key points and the subtitles; the facts must not change.';
 
 /**
  * A dentist's own wording, once they send it — replaces the generated text for
@@ -505,25 +505,25 @@ export const ANNOUNCE: { dentists: string[]; confirm: string[]; video: Partial<R
   dentists: ['yahya-tosun'],
   confirm: [
     'The team, clinic, prices, patient records and accepted insurance really stay the same (the script promises “nothing you value changes”).',
-    'The announcement date — agreed by Gautam and Dr. Yahya Tosun (they have started a roadmap).',
+    'The announcement date, to be agreed by Gautam and Dr. Yahya Tosun (they have started a roadmap).',
     'Whether other Dr. Tosun Dental Clinic dentists appear, or only Dr. Yahya Tosun.',
   ],
   video: {
     en: [
       '[On camera, in the clinic] Hi, I’m Dr. Yahya Tosun, with some good news for our patients.',
       'Dr. Tosun Dental Clinic is now part of Dental Nation.',
-      'Nothing you value changes — the same team, the same clinic, the same care you trust.',
+      'Nothing you value changes: the same team, the same clinic, the same care you trust.',
       'What you gain is more: Dental Nation’s specialists across Dubai, help when you have an urgent dental problem, and Smile Club membership to keep your check-ups on track.',
-      'It’s an upgrade for our patients — and we’re proud of it.',
-      '[End card] Dr. Tosun Dental Clinic — now part of Dental Nation.',
+      'It’s an upgrade for our patients, and we’re proud of it.',
+      '[End card] Dr. Tosun Dental Clinic, now part of Dental Nation.',
     ],
     tr: [
       '[Kamerada, klinikte] Merhaba, ben Dr. Yahya Tosun. Hastalarımıza güzel bir haberim var.',
       'Dr. Tosun Dental Clinic artık Dental Nation ailesinin bir parçası.',
-      'Değer verdiğiniz hiçbir şey değişmiyor — aynı ekip, aynı klinik, güvendiğiniz aynı özen.',
+      'Değer verdiğiniz hiçbir şey değişmiyor: aynı ekip, aynı klinik, güvendiğiniz aynı özen.',
       'Kazandığınız ise daha fazlası: Dubai genelinde Dental Nation uzmanları, acil bir diş sorununuz olduğunda destek ve kontrollerinizi düzenli tutan Smile Club üyeliği.',
-      'Bu, hastalarımız için bir yükseltme — ve bununla gurur duyuyoruz.',
-      '[Kapanış kartı] Dr. Tosun Dental Clinic — artık Dental Nation ailesinin bir parçası.',
+      'Bu, hastalarımız için bir yükseltme ve bununla gurur duyuyoruz.',
+      '[Kapanış kartı] Dr. Tosun Dental Clinic, artık Dental Nation ailesinin bir parçası.',
     ],
   },
 };

@@ -3914,9 +3914,9 @@ function CreativeConcepts() {
     <div className="space-y-2">
       <Card>
         <p className="text-[11px] leading-snug" style={{ color: '#3a4148' }}>
-          From “here is Smile Club and its benefits” to “here is a situation you recognise — and here is how Smile Club fits into your life”.
+          From “here is Smile Club and its benefits” to “here is a situation you recognise, and here is how Smile Club fits into your life”.
           Every video opens on a hook, never “Hi, I’m Dr…” (the doctor gets an on-screen name card); speaks to one audience and one need with the
-          tier that fits; makes one point, not every benefit; and uses short scenes, on-screen text and on-screen pricing — the doctor brings the credibility.
+          tier that fits; makes one point, not every benefit; and uses short scenes, on-screen text and on-screen pricing, with the doctor bringing the credibility.
           Dr. Tosun Dental Clinic’s doctors never say or show a price, so the price-led stories are filmed by doctors at Al Wasl and Al Maher.
           Arabic is spoken in the doctor’s own dialect. The chair sentence and WhatsApp messages are unchanged.
         </p>
@@ -4187,7 +4187,7 @@ function ScriptsTab() {
       </section>
 
       <section>
-        <Exhibit n="DS1b" title="Creative direction v2 — a situation people recognise, then how Smile Club fits (Mr Akbar and Ms Shadi, 26 Sep)" />
+        <Exhibit n="DS1b" title="Creative direction v2: a situation people recognise, then how Smile Club fits (Mr Akbar and Ms Shadi, 26 Sep)" />
         <CreativeConcepts />
       </section>
 

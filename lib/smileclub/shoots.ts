@@ -50,15 +50,15 @@ export interface ShootSlot {
 
 export const SLOT_STATUS: Record<NonNullable<ShootSlot['status']>, string> = {
   confirmed: 'Confirmed by MJ',
-  proposed: 'Proposed — dentist available, to confirm',
-  plan: 'Planned — not yet arranged by MJ',
+  proposed: 'Proposed: dentist available, to confirm',
+  plan: 'Planned: not yet arranged by MJ',
 };
 
 /** Changes to the plan, newest first. */
 export const SHOOT_CHANGES: string[] = [
-  'Fri 25 Sep (Dr. Yahya Tosun): asks to film after returning from Türkiye so he can practise both languages — MJ checking new dates; Mon 28 Sep stays pencilled until a new date is confirmed. He also asked for a partnership announcement video (Dr. Tosun Dental Clinic is now part of Dental Nation) — added as his third video, to go out before the clinic’s Smile Club campaign.',
-  'Fri 25 Sep (MJ): Al Maher — Dr. Suzanna Almaali and Dr. Maher Selman proposed for Sun 27 Sep, times to be confirmed by email; Dr. Leila Mostawe confirms once the DN lab coat arrives (planned Tue 29 Sep). Saturday and Monday unchanged.',
-  'Thu 24 Sep (MJ): Fri 25 Sep shoot cancelled — Dr. Yahya Tosun has back-to-back patients and Dr. Dilsad Ozdogan was not ready; both confirmed for Mon 28 Sep. Saturday re-timed; Dr. Helmi Shaath is not renewing (no shoot); Dr. Ghada Hussain is travelling until 2 Oct (moved to Sat 3 Oct).',
+  'Fri 25 Sep (Dr. Yahya Tosun): asks to film after returning from Türkiye so he can practise both languages. MJ is checking new dates; Mon 28 Sep stays pencilled until a new date is confirmed. He also asked for a partnership announcement video (Dr. Tosun Dental Clinic is now part of Dental Nation), added as his third video, to go out before the clinic’s Smile Club campaign.',
+  'Fri 25 Sep (MJ): Al Maher: Dr. Suzanna Almaali and Dr. Maher Selman proposed for Sun 27 Sep, times to be confirmed by email; Dr. Leila Mostawe confirms once the DN lab coat arrives (planned Tue 29 Sep). Saturday and Monday unchanged.',
+  'Thu 24 Sep (MJ): Fri 25 Sep shoot cancelled. Dr. Yahya Tosun has back-to-back patients and Dr. Dilsad Ozdogan was not ready; both confirmed for Mon 28 Sep. Saturday re-timed; Dr. Helmi Shaath is not renewing (no shoot); Dr. Ghada Hussain is travelling until 2 Oct (moved to Sat 3 Oct).',
 ];
 
 /** Who arranges the slots with the dentists. */
@@ -66,7 +66,7 @@ export const COORDINATOR = 'MJ Torreta confirms every slot with the dentists; Mo
 
 /** Dentists taken off the shoot plan, with the reason. */
 export const NOT_FILMING: { id: string; why: string }[] = [
-  { id: 'helmi-shaath', why: 'Not renewing with Dental Nation (MJ, 24 Sep) — no shoot.' },
+  { id: 'helmi-shaath', why: 'Not renewing with Dental Nation (MJ, 24 Sep), so no shoot.' },
 ];
 
 export interface ShootDay {
@@ -86,7 +86,7 @@ export const WARDROBE = {
 
 /** Already filmed. */
 export const FILMED: { id: string; when: string; what: string }[] = [
-  { id: 'yasmin-youssef', when: 'Wed 23 Sep', what: 'Video 1 (Smile Club) — being finished from the team’s comments' },
+  { id: 'yasmin-youssef', when: 'Wed 23 Sep', what: 'Video 1 (Smile Club), being finished from the team’s comments' },
 ];
 
 /**
@@ -104,21 +104,21 @@ export const SHOOT_PLAN: ShootDay[] = [
   { key: 'sun27', iso: '2026-09-27', label: 'Sun 27 Sep', stops: [
     { branch: 'alwasl', slots: [
       { id: 'hasna-alsaeed', time: '09:00', status: 'plan', note: 'In clinic on Sundays only' },
-      { id: 'yasmin-youssef', time: '09:45', only: 'lane', status: 'plan', note: 'Video 1 already filmed — campaign video only' },
+      { id: 'yasmin-youssef', time: '09:45', only: 'lane', status: 'plan', note: 'Video 1 already filmed, so campaign video only' },
     ] },
     { branch: 'amc', slots: [
-      { id: 'suzanna-almaali', time: '11:00', status: 'proposed', note: 'MJ proposing Sunday — time to be confirmed by email' },
-      { id: 'maher-selman', time: '11:45', status: 'proposed', note: 'MJ proposing Sunday — time to be confirmed by email' },
+      { id: 'suzanna-almaali', time: '11:00', status: 'proposed', note: 'MJ proposing Sunday; time to be confirmed by email' },
+      { id: 'maher-selman', time: '11:45', status: 'proposed', note: 'MJ proposing Sunday; time to be confirmed by email' },
     ] },
   ] },
   { key: 'mon28', iso: '2026-09-28', label: 'Mon 28 Sep', stops: [
     { branch: 'tosun', slots: [
-      { id: 'maysoun-ahmad', time: '08:30', status: 'plan', note: 'In clinic on Mondays only — not yet in MJ’s schedule' },
+      { id: 'maysoun-ahmad', time: '08:30', status: 'plan', note: 'In clinic on Mondays only; not yet in MJ’s schedule' },
       { id: 'sevinc-behruzoglu', time: '09:15', status: 'plan', note: 'Not yet in MJ’s schedule' },
-      { id: 'yahya-tosun', time: '10:00', status: 'proposed', task: 'm-shoot-tosun', note: 'Asked to move after his Türkiye trip — new date to confirm. Three videos incl. the partnership announcement' },
+      { id: 'yahya-tosun', time: '10:00', status: 'proposed', task: 'm-shoot-tosun', note: 'Asked to move after his Türkiye trip; new date to confirm. Three videos, including the partnership announcement' },
       { id: 'dilsad-ozdogan', time: '12:00', status: 'confirmed', task: 'm-shoot-dilsad', note: 'Moved from Fri 25 Sep' },
       { id: 'bulent-ozdogan', time: '13:00–14:00', status: 'proposed', note: 'Available on Monday (usually Tue, Thu, Sat)' },
-      { id: 'maysoon-abdelmajeed', time: '15:00–16:00', status: 'confirmed', note: 'Outside the usual Monday hours — confirmed by MJ' },
+      { id: 'maysoon-abdelmajeed', time: '15:00–16:00', status: 'confirmed', note: 'Outside the usual Monday hours; confirmed by MJ' },
     ] },
   ] },
   { key: 'tue29', iso: '2026-09-29', label: 'Tue 29 Sep', stops: [
@@ -126,7 +126,7 @@ export const SHOOT_PLAN: ShootDay[] = [
       { id: 'sathyapriya-surendar', time: '09:00', status: 'plan', note: 'Tuesday hours end at 12:00' },
     ] },
     { branch: 'amc', slots: [
-      { id: 'leila-mostawe', time: '11:00', status: 'plan', note: 'MJ confirms once the DN lab coat arrives (Mon 28 Sep) — earliest clinic day after it' },
+      { id: 'leila-mostawe', time: '11:00', status: 'plan', note: 'MJ confirms once the DN lab coat arrives (Mon 28 Sep): earliest clinic day after it' },
     ] },
   ] },
   { key: 'thu01', iso: '2026-10-01', label: 'Thu 1 Oct', stops: [
@@ -136,7 +136,7 @@ export const SHOOT_PLAN: ShootDay[] = [
   ] },
   { key: 'sat03', iso: '2026-10-03', label: 'Sat 3 Oct', stops: [
     { branch: 'alwasl', slots: [
-      { id: 'ghada-hussain', time: '09:00', status: 'plan', note: 'Travelling until 2 Oct (MJ) — Saturdays only' },
+      { id: 'ghada-hussain', time: '09:00', status: 'plan', note: 'Travelling until 2 Oct (MJ); in clinic Saturdays only' },
     ] },
   ] },
 ];
