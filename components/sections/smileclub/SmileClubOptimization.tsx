@@ -15,6 +15,7 @@
 import { Fragment, createContext, useContext, useState } from 'react';
 import { CLINIC_CLOSED, COORDINATOR, DAYS, FILMED, HOURS, NOT_FILMING, SHOOT_CHANGES, SHOOT_PLAN, SLOT_STATUS, WARDROBE, dentistById, hoursOn, nextClinicDays, shootLoad } from '@/lib/smileclub/shoots';
 import { ALERT_CAP, ALERT_RULES, PREVIEWS } from '@/lib/smileclub/alertRules';
+import { CASTING, CONCEPTS, type Concept } from '@/lib/smileclub/creative';
 import { commentTeamTaskAction, previewAlertAction, reviewScriptAction, saveCompanyAction, sendScriptsForReviewAction, updateTeamTaskAction, uploadCalendarAction, verifyCrmTestAction } from '@/app/(app)/smileclub-actions';
 import { REVIEWERS, REVIEWER_BY_USER, reviewFor, reviewSummary, type ReviewEntry, type ReviewerState } from '@/lib/smileclub/review';
 import { PLAYBOOKS, type Channel } from '@/lib/smileclub/playbook';
@@ -3890,6 +3891,42 @@ function MonthView({ state, focus }: { state: TrackerState; focus: Person | 'all
   );
 }
 
+/* ── Creative direction v2 (26 Sep) ── */
+function CreativeConcepts() {
+  const castOf = (id: string) => DENTISTS.filter((d) => CASTING[d.id]?.club === id || CASTING[d.id]?.lane === id);
+  const card = (c: Concept) => (
+    <div key={c.id} className="rounded-xl border bg-white p-3" style={{ borderColor: LINE }}>
+      <p className="text-[12px] font-bold" style={{ color: NAVY }}>{c.name}</p>
+      <p className="mt-0.5 text-[10.5px] leading-snug" style={{ color: '#3a4148' }}><b>For:</b> {c.audience} · <b>Need:</b> {c.need}</p>
+      <p className="text-[10.5px] leading-snug" style={{ color: '#3a4148' }}><b>Angle:</b> {c.angle} · <b>Tier:</b> {c.tier}</p>
+      <p className="mt-1 text-[10.5px] italic leading-snug" style={{ color: OLIVE }}>Hook: {c.beats[0].os?.en ?? c.beats[0].say?.en}</p>
+      <p className="mt-1 text-[10.5px] leading-snug" style={{ color: '#3a4148' }}><b>Filmed as:</b> {c.execution}</p>
+      <p className="mt-1 text-[10.5px] font-semibold leading-snug" style={{ color: BLUE }}>
+        {castOf(c.id).map((d) => `${d.name}${noPrices(d) ? ' (no prices)' : ''}`).join(' · ') || '—'}
+      </p>
+      <p className="mt-1 text-[10px] leading-snug" style={{ color: '#7a6420' }}><b>Confirm before filming:</b> {c.confirm.join(' ')}</p>
+    </div>
+  );
+  const all = Object.values(CONCEPTS);
+  return (
+    <div className="space-y-2">
+      <Card>
+        <p className="text-[11px] leading-snug" style={{ color: '#3a4148' }}>
+          From “here is Smile Club and its benefits” to “here is a situation you recognise — and here is how Smile Club fits into your life”.
+          Every video opens on a hook, never “Hi, I’m Dr…” (the doctor gets an on-screen name card); speaks to one audience and one need with the
+          tier that fits; makes one point, not every benefit; and uses short scenes, on-screen text and on-screen pricing — the doctor brings the credibility.
+          Dr. Tosun Dental Clinic’s doctors never say or show a price, so the price-led stories are filmed by doctors at Al Wasl and Al Maher.
+          Arabic is spoken in the doctor’s own dialect. The chair sentence and WhatsApp messages are unchanged.
+        </p>
+      </Card>
+      <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: CORAL }}>Smile Club stories</p>
+      <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">{all.filter((c) => c.kind === 'club').map(card)}</div>
+      <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: CORAL }}>Campaign videos</p>
+      <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">{all.filter((c) => c.kind === 'lane').map(card)}</div>
+    </div>
+  );
+}
+
 /* ── Email alerts (24 Sep) ── */
 function AlertsPanel({ state }: { state: TrackerState }) {
   const isAdmin = state.canEdit === 'all';
@@ -4145,6 +4182,11 @@ function ScriptsTab() {
           </ol>
           <div className="mt-2"><ShootSchedule /></div>
         </Card>
+      </section>
+
+      <section>
+        <Exhibit n="DS1b" title="Creative direction v2 — a situation people recognise, then how Smile Club fits (Mr Akbar and Ms Shadi, 26 Sep)" />
+        <CreativeConcepts />
       </section>
 
       <section>

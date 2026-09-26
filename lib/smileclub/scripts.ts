@@ -23,6 +23,8 @@
  * and clinic days only — no personal data.
  */
 
+import { CASTING, CONCEPTS, renderConcept } from '@/lib/smileclub/creative';
+
 export type Branch = 'tosun' | 'alwasl' | 'amc';
 export type Specialty = 'ortho' | 'general' | 'perio' | 'hygiene' | 'pedo' | 'prostho' | 'endo';
 export type Lang = 'en' | 'tr' | 'ar';
@@ -540,11 +542,16 @@ export function scriptsFor(d: Dentist, lang: Lang): DentistScripts {
   const title = lang === 'en' ? d.title : lang === 'ar' && d.ar ? d.ar.title : TITLE[lang][d.specialty];
   const wa = (s: PatientSeg) => [c.hello(name, from), c.seg[s], a.why, `${c.club[s]} ${offer}`, c.cta[s], c.stop].join('\n\n');
   const own = WORDING[d.id]?.[lang];
+  // Creative direction v2 (26 Sep, Mr Akbar and Ms Shadi): each doctor films a story for one audience and need.
+  const cast = CASTING[d.id];
+  const who = { name, title, where };
+  const clubStory = cast ? renderConcept(CONCEPTS[cast.club], lang, who, edu, cast.hookB) : null;
+  const laneStory = cast?.lane ? renderConcept(CONCEPTS[cast.lane], lang, who, edu, cast.hookB) : null;
   return {
     chair: own?.chair ?? `“${a.chair} ${c.invite}”`,
     whatsapp: { active: own?.whatsapp?.active ?? wa('active'), inactive: own?.whatsapp?.inactive ?? wa('inactive'), dormant: own?.whatsapp?.dormant ?? wa('dormant') },
-    clubVideo: spoken(own?.clubVideo ?? [c.vIntro(name, title, where), a.why, `${c.vWhy} ${offer}`, ...(edu ? [c.vTip] : []), c.vKeep, c.vEnd].join('\n')),
-    laneVideo: spoken(own?.laneVideo ?? laneLines(name, title, where).join('\n')),
+    clubVideo: spoken(own?.clubVideo ?? clubStory ?? [c.vIntro(name, title, where), a.why, `${c.vWhy} ${offer}`, ...(edu ? [c.vTip] : []), c.vKeep, c.vEnd].join('\n')),
+    laneVideo: spoken(own?.laneVideo ?? laneStory ?? laneLines(name, title, where).join('\n')),
     ...(ANNOUNCE.dentists.includes(d.id) && ANNOUNCE.video[lang] ? { announceVideo: spoken(ANNOUNCE.video[lang]!.join('\n')) } : {}),
   };
 }
