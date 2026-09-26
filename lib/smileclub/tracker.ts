@@ -90,7 +90,7 @@ export async function loadTracker(): Promise<TrackerState> {
   const [corp, reviews, al] = await Promise.all([
     loadCorp(sb),
     loadReviews(sb),
-    sb.from('sc_alert_log').select('kind,day,sent_at,ok,note').order('sent_at', { ascending: false }).limit(12),
+    sb.from('sc_alert_log').select('kind,day,sent_at,ok,note').order('sent_at', { ascending: false }).limit(16),
   ]);
   const alerts = (al.data ?? []).map((a) => ({ kind: a.kind as string, day: a.day as string, sentAt: a.sent_at as string, ok: !!a.ok, note: (a.note as string | null) ?? null }));
   return { progress, events, canEdit, viewer, today, live: true, corp, reviews, alerts };

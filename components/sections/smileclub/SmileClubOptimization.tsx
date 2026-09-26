@@ -14,7 +14,7 @@
 
 import { Fragment, createContext, useContext, useState } from 'react';
 import { CLINIC_CLOSED, COORDINATOR, DAYS, FILMED, HOURS, NOT_FILMING, SHOOT_CHANGES, SHOOT_PLAN, SLOT_STATUS, WARDROBE, dentistById, hoursOn, nextClinicDays, shootLoad } from '@/lib/smileclub/shoots';
-import { ALERT_RULES } from '@/lib/smileclub/alertRules';
+import { ALERT_CAP, ALERT_RULES, PREVIEWS } from '@/lib/smileclub/alertRules';
 import { commentTeamTaskAction, previewAlertAction, reviewScriptAction, saveCompanyAction, sendScriptsForReviewAction, updateTeamTaskAction, uploadCalendarAction, verifyCrmTestAction } from '@/app/(app)/smileclub-actions';
 import { REVIEWERS, REVIEWER_BY_USER, reviewFor, reviewSummary, type ReviewEntry, type ReviewerState } from '@/lib/smileclub/review';
 import { PLAYBOOKS, type Channel } from '@/lib/smileclub/playbook';
@@ -3585,7 +3585,7 @@ function reviewBadge(d: Dentist, entries: ReviewEntry[]) {
   return { text: 'Pre-final — not sent', fg: '#7a6420', bg: '#FDF9EC' };
 }
 
-/** Fahad's pre-final → Ms Shadi, Dr Luvi and Gautam approve; inputs on the system, every decision emailed. */
+/** Fahad's pre-final → Ms Shadi, Dr Luvi and Gautam approve; inputs on the system, every decision in the team's next Smile Club email. */
 function ReviewPanel({ d }: { d: Dentist }) {
   const ctx = useContext(TrackerCtx);
   const [note, setNote] = useState('');
@@ -3618,7 +3618,7 @@ function ReviewPanel({ d }: { d: Dentist }) {
           {r.sent ? `· sent for sign-off ${fmtAt(r.sent.at)}` : '· not yet sent for sign-off'}
         </span>
       </div>
-      {!r.final ? <p className="mt-0.5 text-[10px] leading-snug" style={{ color: '#3a4148' }}>Final check and approval required from Ms Shadi, Dr Luvi and Gautam — inputs shared here on the system; every decision is emailed.</p> : null}
+      {!r.final ? <p className="mt-0.5 text-[10px] leading-snug" style={{ color: '#3a4148' }}>Final check and approval required from Ms Shadi, Dr Luvi and Gautam — inputs shared here on the system; every decision goes into the team’s next Smile Club email.</p> : null}
       {d.langWhy ? <p className="mt-0.5 text-[10px] font-semibold" style={{ color: NAVY }}>Languages: {langsFor(d).map((l) => LANG_LABEL[l].split(' · ').pop()).join(' + ')} — {d.langWhy}</p> : null}
       <div className="mt-1 flex flex-wrap gap-1.5">
         {REVIEWERS.map((x) => {
@@ -3650,7 +3650,7 @@ function ReviewPanel({ d }: { d: Dentist }) {
           {isAdmin ? REVIEWERS.filter((x) => r.per[x.id].state !== 'approved').map((x) => (
             <button key={x.id} type="button" disabled={busy} onClick={() => recordEmail(x.id)} className="rounded-full border px-2.5 py-1 text-[10.5px] font-bold disabled:opacity-40" style={{ borderColor: '#cfe0cd', color: '#2C5E3F' }} title={`${x.name} approved by email — record it here`}>{x.name} approved by email ✓</button>
           )) : null}
-          {isAdmin && !r.sent ? <button type="button" disabled={busy} onClick={() => run(() => sendScriptsForReviewAction({ dentistIds: [d.id] }))} className="rounded-full px-2.5 py-1 text-[10.5px] font-bold text-white disabled:opacity-40" style={{ backgroundColor: NAVY }}>Send for sign-off (email)</button> : null}
+          {isAdmin && !r.sent ? <button type="button" disabled={busy} onClick={() => run(() => sendScriptsForReviewAction({ dentistIds: [d.id] }))} className="rounded-full px-2.5 py-1 text-[10.5px] font-bold text-white disabled:opacity-40" style={{ backgroundColor: NAVY }}>Send for sign-off</button> : null}
         </div>
       ) : state?.live ? <p className="mt-1 text-[10px]" style={{ color: OLIVE }}>Ms Shadi, Dr Luvi and Gautam approve here, signed in as themselves; Fahad adds input.</p> : null}
       {msg ? <p className="mt-1 text-[10px] font-bold" style={{ color: '#2C5E3F' }}>{msg}</p> : null}
@@ -3688,11 +3688,11 @@ function ReviewOverview() {
       <p className="mt-1 text-[10.5px] leading-snug" style={{ color: '#3a4148' }}>
         {SCRIPT_STATUS} Nothing is filmed or sent until a dentist’s scripts show <b style={{ color: '#2C5E3F' }}>Final ✓</b>. An approval
         counts only for the wording it was given on — if the wording changes, it comes back for a re-check. Each reviewer gets an
-        email when scripts are sent, whenever someone decides or adds input, and a reminder at 09:00 Dubai while anything waits on them.
+        email — in their 09:00 morning briefing and, when something new needs them, one evening email — listing the scripts waiting on them and every decision since; nothing arrives as a separate email.
       </p>
       {isAdmin && unsent.length ? (
         <button type="button" disabled={busy} onClick={sendAll} className="mt-1.5 rounded-full px-3 py-1 text-[10.5px] font-bold text-white disabled:opacity-40" style={{ backgroundColor: NAVY }}>
-          {busy ? 'Sending…' : `Send ${unsent.length} not-yet-sent script set${unsent.length === 1 ? '' : 's'} for sign-off (email)`}
+          {busy ? 'Sending…' : `Send ${unsent.length} not-yet-sent script set${unsent.length === 1 ? '' : 's'} for sign-off`}
         </button>
       ) : null}
       {msg ? <p className="mt-1 text-[10.5px] font-bold" style={{ color: '#2C5E3F' }}>{msg}</p> : null}
@@ -3892,12 +3892,13 @@ function AlertsPanel({ state }: { state: TrackerState }) {
   const isAdmin = state.canEdit === 'all';
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
-  const preview = async (k: 'shoot' | 'gautam' | 'luvi' | 'mohan' | 'meta') => {
+  const preview = async (k: string) => {
     setBusy(k); setMsg(null);
     const r = await previewAlertAction(k);
     setBusy(null); setMsg(r.message);
   };
-  const label = (k: string) => k === 'shoot-tomorrow' ? 'Tomorrow’s shoot (17:00)' : k === 'meta-leads' ? 'Meta leads analysis (09:00)' : k === 'shoot-today-signoff' ? 'Shoot-day sign-off nudge (07:00)' : k.startsWith('digest-') ? `${k.slice(7) === 'luvi' ? 'Dr Luvi' : k.slice(7) === 'gautam' ? 'Gautam' : 'Mohan'} status (09:00)` : k.startsWith('blocked-') ? 'Blocked task' : k;
+  const person: Record<string, string> = { akbar: 'Mr Akbar', luvi: 'Dr Luvi', shadi: 'Ms Shadi', gautam: 'Gautam', mohan: 'Mohan', fahad: 'Fahad', mj: 'MJ' };
+  const label = (k: string) => k === 'shoot-tomorrow' ? 'Tomorrow’s shoot (17:00)' : k.startsWith('am:') ? `${person[k.slice(3)] ?? k.slice(3)} — morning briefing (09:00)` : k.startsWith('pm:') ? `${person[k.slice(3)] ?? k.slice(3)} — evening update` : k === 'meta-leads' ? 'Meta leads analysis (09:00, before 27 Sep)' : k === 'shoot-today-signoff' ? 'Shoot-day sign-off nudge (07:00, before 27 Sep)' : k.startsWith('digest-') ? `${person[k.slice(7)] ?? k.slice(7)} status (09:00, before 27 Sep)` : k.startsWith('blocked-') ? 'Blocked task (instant, before 27 Sep)' : k;
   return (
     <div className="space-y-2">
       <div className="overflow-x-auto rounded-xl border bg-white" style={{ borderColor: LINE }}>
@@ -3919,13 +3920,32 @@ function AlertsPanel({ state }: { state: TrackerState }) {
           </tbody>
         </table>
       </div>
+      <div className="overflow-x-auto rounded-xl border bg-white" style={{ borderColor: LINE }}>
+        <table className="w-full min-w-[560px] border-collapse text-[10.5px]">
+          <thead>
+            <tr className="text-left text-[9.5px] uppercase tracking-wide" style={{ color: OLIVE, backgroundColor: '#F7F7F0' }}>
+              <th className="px-2.5 py-2 font-bold">Person</th><th className="px-2.5 py-2 font-bold">Morning</th><th className="px-2.5 py-2 font-bold">Evening</th><th className="px-2.5 py-2 font-bold">Most in a day</th>
+            </tr>
+          </thead>
+          <tbody>
+            {ALERT_CAP.map((r) => (
+              <tr key={r.who} className="border-t align-top" style={{ borderColor: '#EEEFE1' }}>
+                <td className="px-2.5 py-1.5 font-semibold" style={{ color: NAVY }}>{r.who}</td>
+                <td className="px-2.5 py-1.5" style={{ color: '#3a4148' }}>{r.morning}</td>
+                <td className="px-2.5 py-1.5" style={{ color: '#3a4148' }}>{r.evening}</td>
+                <td className="px-2.5 py-1.5 font-bold tabular-nums" style={{ color: '#2C5E3F' }}>{r.max}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
       <p className="text-[10.5px] leading-snug" style={{ color: OLIVE }}>
-        Each alert goes at most once a day and only when there is something to say. Mohan receives his at his temporary address until he has a Dental Nation email.
+        Nobody gets more than two Smile Club emails a day — the system holds back any third. Sign-off decisions, scripts sent for approval, final approvals, blocked tasks and review comments show on the dashboard at once and go into the person’s next email instead of arriving one by one. Mohan receives his at his temporary address until he has a Dental Nation email.
       </p>
       {isAdmin ? (
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="text-[10.5px] font-bold" style={{ color: NAVY }}>Email me a preview:</span>
-          {([['meta', 'Meta leads analysis'], ['shoot', 'Next shoot schedule'], ['gautam', 'Gautam’s status'], ['luvi', 'Dr Luvi’s status'], ['mohan', 'Mohan’s status']] as ['shoot' | 'gautam' | 'luvi' | 'mohan' | 'meta', string][]).map(([k, l]) => (
+          {PREVIEWS.map(({ kind: k, label: l }) => (
             <button key={k} type="button" disabled={!!busy} onClick={() => preview(k)} className="rounded-full border px-2.5 py-1 text-[10.5px] font-bold disabled:opacity-40" style={{ borderColor: LINE, color: NAVY }}>{busy === k ? 'Sending…' : l}</button>
           ))}
           {msg ? <span className="text-[10.5px] font-bold" style={{ color: msg.startsWith('Preview emailed') ? '#2C5E3F' : '#a04a38' }}>{msg}</span> : null}

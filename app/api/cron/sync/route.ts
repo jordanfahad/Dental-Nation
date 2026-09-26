@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { runSync } from '@/lib/sync';
-import { runReviewReminder } from '@/lib/smileclub/reviewMail';
 import { runSmileClubAlerts } from '@/lib/smileclub/alerts';
+import { runContentosProbe } from '@/lib/ops/contentosProbe';
+import { getSupabaseAdmin } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // Pro allows up to ~300s; sync stays within budget.
@@ -25,10 +26,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
   const summary = await runSync('cron');
-  // Smile Club script sign-off: one reminder email a day (09:00 Dubai) to each reviewer with scripts waiting.
-  await runReviewReminder().catch(() => undefined);
-  // Smile Club alerts: 17:00 tomorrow's shoot schedule; 09:00 personal status digests (once a day each).
+  // Smile Club emails — at most two per person a day: 09:00 morning briefing; 17:00 shoot schedule or evening update.
   await runSmileClubAlerts().catch(() => undefined);
+  // One-off: read the ContentOS Meta leads page from the server (stored once; see lib/ops/contentosProbe.ts).
+  const sb = getSupabaseAdmin();
+  if (sb) await runContentosProbe(sb).catch(() => undefined);
   const httpStatus = summary.status === 'failed' ? 502 : 200;
   return NextResponse.json(summary, { status: httpStatus });
 }

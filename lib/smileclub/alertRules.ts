@@ -1,11 +1,38 @@
-/** The Smile Club email alert rules, as shown on the Team tab (implemented in lib/smileclub/alerts.ts). */
+/**
+ * The Smile Club email alerts, as shown on the Team tab (implemented in
+ * lib/smileclub/alerts.ts). Since 26 Sep: at most TWO emails per person per
+ * day — one 09:00 morning briefing and at most one evening email.
+ */
 export const ALERT_RULES = [
-  { when: 'Daily 09:00 Dubai', what: 'Meta leads analysis for yesterday: leads, spend, cost per lead vs the week, leads logged and followed up in the In-House Lead Tracker, conversions — and the red flags (leads not logged, no follow-up, spend with no leads, cost-per-lead jumps, volume drops, stale data)', to: 'Dr Luvi', cc: 'Mr Akbar, Ms Shadi, Fahad' },
-  { when: 'Shoot days, 07:00 Dubai — only if that day’s dentists are not all approved', what: 'Today’s shoot: which dentists still need approval, from whom, before which slot — and the backup day', to: 'Ms Shadi, Dr Luvi, Gautam', cc: 'Fahad' },
-  { when: 'Daily 17:00 Dubai (sent by 22:00 at the latest) — only if there is a shoot tomorrow', what: 'Tomorrow’s shoot schedule: time, dentist, clinic, clinic hours, what is filmed, languages, scripts approved or not (with backup day), wardrobe', to: 'MJ', cc: 'Dr Luvi, Mr Akbar, Ms Shadi, Gautam, Fahad, Mohan' },
-  { when: 'Daily 09:00 Dubai, Mon–Sat (Sunday only if something is due that day) — skipped when nothing is due, overdue, blocked or waiting', what: 'Gautam’s status: completion score vs plan, due today, overdue, who is waiting on him, what he is waiting on, next 3 days, company pipeline and today’s calendar entries', to: 'Gautam', cc: 'Mr Akbar, Fahad' },
-  { when: 'Same rule as above', what: 'Dr Luvi’s status: her score, plus the receptionists’ and dentists’ tasks she updates — due, overdue, dependencies both ways', to: 'Dr Luvi', cc: 'Mr Akbar, Fahad' },
-  { when: 'Same rule as above', what: 'Mohan’s status: score, due and overdue, today’s and tomorrow’s shoots, new review comments on his work', to: 'Mohan', cc: 'Mr Akbar, Fahad' },
-  { when: 'Immediately, when anyone flags a task “blocked”', what: 'Which task, the note, and what it is waiting on', to: 'Fahad and the owners of the tasks it waits on', cc: 'The task owner' },
-  { when: 'Sign-off (already live)', what: 'Scripts sent for approval, every decision, final approval, 09:00 reminder while anything waits', to: 'Ms Shadi, Dr Luvi, Gautam, Fahad', cc: '' },
+  { when: '09:00 daily — morning briefing', what: 'Meta leads red flags (Dr Luvi’s actions) · the whole team’s status: Gautam, Dr Luvi, Mohan, Fahad — score vs plan, due, overdue, blocked, who is waiting on whom · script sign-off status · next shoot · company pipeline · what happened since yesterday', to: 'Mr Akbar', cc: '' },
+  { when: '09:00 daily — morning briefing', what: 'Meta leads red flags for her action · scripts waiting on her approval (filming soonest first) · her tasks, the receptionists’ and dentists’ tasks she updates, score and dependencies · since yesterday', to: 'Dr Luvi', cc: '' },
+  { when: '09:00 daily — morning briefing', what: 'Meta leads red flags (aware) · scripts waiting on her approval · sign-off decisions since yesterday', to: 'Ms Shadi', cc: '' },
+  { when: '09:00 — morning briefing, when he has something', what: 'Scripts waiting on his approval · his tasks, score and dependencies · company pipeline and today’s calendar entries · since yesterday', to: 'Gautam', cc: '' },
+  { when: '09:00 — morning briefing, when he has something', what: 'His tasks and score · today’s and tomorrow’s shoots · final approvals (cleared to film) · review comments on his work', to: 'Mohan', cc: '' },
+  { when: '09:00 daily — morning briefing', what: 'Everything above in one email: red flags, team status, his own tasks, every sign-off decision since yesterday', to: 'Fahad', cc: '' },
+  { when: '17:00 — only the evening before a shoot', what: 'Tomorrow’s schedule: time, dentist, clinic, hours, what is filmed, languages · who still has to approve which dentist tonight (with the backup day) · wardrobe · the team’s updates since the morning', to: 'MJ', cc: 'Dr Luvi, Mr Akbar, Ms Shadi, Gautam, Fahad, Mohan' },
+  { when: '17:00 — other evenings, only if something new needs them', what: 'Scripts just sent for their approval · a task flagged blocked that waits on them · a finished task that unblocks theirs · review comments on their work · for Fahad: every sign-off decision', to: 'Whoever has something to act on', cc: '' },
+] as const;
+
+/** The most anyone receives in a day. */
+export const ALERT_CAP = [
+  { who: 'Mr Akbar', morning: 'Briefing', evening: 'Shoot schedule (copied), evenings before a shoot', max: 2 },
+  { who: 'Dr Luvi', morning: 'Briefing', evening: 'Shoot schedule (copied) or her evening update', max: 2 },
+  { who: 'Ms Shadi', morning: 'Briefing', evening: 'Shoot schedule (copied) or her evening update', max: 2 },
+  { who: 'Gautam', morning: 'Briefing (when he has something)', evening: 'Shoot schedule (copied) or his evening update', max: 2 },
+  { who: 'Mohan', morning: 'Briefing (when he has something)', evening: 'Shoot schedule (copied) or his evening update', max: 2 },
+  { who: 'Fahad', morning: 'Briefing', evening: 'Shoot schedule (copied) or his evening update', max: 2 },
+  { who: 'MJ', morning: '—', evening: 'Shoot schedule (to her), evenings before a shoot', max: 1 },
+] as const;
+
+/** Emails Fahad can preview to himself. */
+export const PREVIEWS = [
+  { kind: 'am:akbar', label: 'Mr Akbar’s briefing' },
+  { kind: 'am:luvi', label: 'Dr Luvi’s briefing' },
+  { kind: 'am:shadi', label: 'Ms Shadi’s briefing' },
+  { kind: 'am:gautam', label: 'Gautam’s briefing' },
+  { kind: 'am:mohan', label: 'Mohan’s briefing' },
+  { kind: 'am:fahad', label: 'My briefing' },
+  { kind: 'shoot', label: 'Next shoot (17:00)' },
+  { kind: 'pm:fahad', label: 'My evening update' },
 ] as const;

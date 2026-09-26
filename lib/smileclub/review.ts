@@ -3,7 +3,8 @@
  * (pre-final); Ms Shadi, Dr Luvi and Gautam each give the final approval on the
  * system. An approval counts only for the exact wording it was given on
  * (scriptHash) — any later change needs a fresh approval. Every decision and
- * input is emailed (lib/smileclub/reviewMail.ts). Rows: lane_e.sc_script_reviews.
+ * input goes into the team's next Smile Club email (lib/smileclub/alerts.ts —
+ * at most two a day per person). Rows: lane_e.sc_script_reviews.
  */
 import { DENTISTS, scriptHash, type Dentist } from '@/lib/smileclub/scripts';
 

@@ -44,7 +44,7 @@ export const BRANCH_LANGS: Record<Branch, Lang[]> = {
 export const LANG_LABEL: Record<Lang, string> = { en: 'English', tr: 'Türkçe · Turkish', ar: 'العربية · Arabic' };
 
 /** Authorship and sign-off — shown on every script. Approvals are recorded on the system (lib/smileclub/review.ts). */
-export const SCRIPT_STATUS = 'Created and reviewed by Fahad (pre-final). Final check and approval required from Ms Shadi, Dr Luvi and Gautam — inputs are shared here on the system, and every decision is emailed.';
+export const SCRIPT_STATUS = 'Created and reviewed by Fahad (pre-final). Final check and approval required from Ms Shadi, Dr Luvi and Gautam — inputs are shared here on the system, and every decision goes into the team’s next Smile Club email.';
 
 export const PATIENT_SEGS: { id: PatientSeg; label: string; when: string }[] = [
   { id: 'active', label: 'Active — check-up due', when: 'Wave 1 · from Tue 29 Sep' },

@@ -6,10 +6,11 @@ import type { getSupabaseAdmin } from '@/lib/supabase/server';
  * Built from the data the dashboard already syncs: Meta ad-level insights
  * (lane_e.meta_ad_insights_raw — spend and leads per ad per day) and the
  * In-House Lead Tracker (lane_e.raw_lead_tracker — what the team logged and
- * followed up). The ContentOS leads page (Zavis) shows the same Meta leads
- * but sits behind Zavis's login, so the email links to it rather than reading it.
+ * followed up). Since 26 Sep it is a section of each person's 09:00 morning
+ * briefing (lib/smileclub/alerts.ts) rather than an email of its own; the
+ * ContentOS leads page is linked for the individual leads.
  *
- * The email carries counts only — never patient names or phone numbers.
+ * Counts only — never patient names or phone numbers.
  */
 
 type Sb = NonNullable<ReturnType<typeof getSupabaseAdmin>>;
@@ -35,7 +36,17 @@ const converted = (r: Record<string, unknown>) => {
   return !/not converted/.test(t) && /converted|booked|\byes\b/.test(t);
 };
 
-export interface MetaLeadsDigest { subject: string; body: string; flags: number }
+export interface MetaLeadsDigest {
+  /** Yesterday, e.g. "Fri 25 Sep". */
+  day: string;
+  /** "54 leads · AED 307 · AED 6/lead". */
+  headline: string;
+  /** Red flags as HTML, most serious first. */
+  flags: string[];
+  statsHtml: string;
+  campaignsHtml: string;
+  sourcesHtml: string;
+}
 
 export async function buildMetaLeadsDigest(sb: Sb, today: string): Promise<MetaLeadsDigest | null> {
   const y = addDays(today, -1);
@@ -98,22 +109,26 @@ export async function buildMetaLeadsDigest(sb: Sb, today: string): Promise<MetaL
   if (!loggedY.length && !loggedD2.length) flags.push('<b>Tracker not updated:</b> no Meta leads logged for the last two days.');
 
   const row = (k: string, v: string) => `<tr><td style="padding:4px 8px;color:#767769">${k}</td><td style="padding:4px 8px;font-weight:bold">${v}</td></tr>`;
-  const body = `<p>Good morning Dr Luvi,</p>
-<p>Here is yesterday’s Meta (Facebook / Instagram) lead analysis${flags.length ? `, with <b style="color:#a04a38">${flags.length} red flag${flags.length === 1 ? '' : 's'}</b> for your attention` : ' — no red flags'}.</p>
-<table style="border-collapse:collapse;font-size:13px;margin:6px 0 12px">
+  const statsHtml = `<table style="border-collapse:collapse;font-size:13px;margin:6px 0 12px">
 ${row(`Leads · ${label(y)}`, `${yT.leads} <span style="font-weight:normal;color:#767769">(7-day daily average ${Math.round(avgLeads)})</span>`)}
 ${row('Spend', `${aed(yT.spend)} <span style="font-weight:normal;color:#767769">(7 days: ${aed(wkSpend)})</span>`)}
 ${row('Cost per lead', `${cplY === null ? '—' : aed(cplY)} <span style="font-weight:normal;color:#767769">(7-day ${cpl7 === null ? '—' : aed(cpl7)})</span>`)}
 ${row(`Logged in the tracker · ${label(d2)}`, `${loggedD2.length} of ${d2Meta} Meta leads`)}
 ${row(`Logged so far · ${label(y)}`, `${loggedY.length} of ${yT.leads}`)}
 ${row('Converted / booked · last 7 days', `${conv7} of ${last7.length} logged`)}
-</table>
-${flags.length ? `<h3 style="font-size:14px;margin:12px 0 4px;color:#a04a38">Red flags</h3><ol style="margin:4px 0 12px;padding-left:18px">${flags.map((f) => `<li style="margin-bottom:6px">${f}</li>`).join('')}</ol>` : ''}
-<h3 style="font-size:14px;margin:12px 0 4px">By campaign — yesterday vs the 7 days before</h3>
-<table style="border-collapse:collapse;width:100%;font-size:13px"><tr>${['Campaign', 'Spend', 'Leads', 'Cost/lead', '7-day cost/lead'].map((h) => `<th style="text-align:left;background:#F1F1EA;color:#767769;font-size:11px;text-transform:uppercase;padding:6px">${h}</th>`).join('')}</tr>
-${camps.map((x) => `<tr>${[esc(x.c.replace(/^Leads \| WhatsApp \| /, '').replace(/ \| Dubai.*$/, '')), aed(x.ys), String(x.yl), x.ycpl === null ? '—' : aed(x.ycpl), x.wcpl === null ? '—' : aed(x.wcpl)].map((c) => `<td style="border-top:1px solid #E6E6DA;padding:6px">${c}</td>`).join('')}</tr>`).join('')}</table>
-<p style="margin-top:12px"><a href="${CONTENTOS_LEADS}" style="color:#5793A3;font-weight:bold">Open the Meta leads list in ContentOS</a> to see and action individual leads.</p>
-<p style="color:#767769;font-size:12px">Sources: Meta ad data (fetched ${esc(lastFetch.slice(0, 16).replace('T', ' '))} UTC) and the In-House Lead Tracker (synced ${esc(lastSync.slice(0, 16).replace('T', ' '))} UTC). Counts only — no patient details. Copied: Mr Akbar, Ms Shadi, Fahad.</p>`;
-  const subject = `Meta leads — ${label(y)}: ${yT.leads} leads · ${aed(yT.spend)} · ${cplY === null ? 'no leads' : `${aed(cplY)}/lead`}${flags.length ? ` · ${flags.length} red flag${flags.length === 1 ? '' : 's'}` : ''}`;
-  return { subject, body, flags: flags.length };
+</table>`;
+  const campaignsHtml = `<table style="border-collapse:collapse;width:100%;font-size:13px"><tr>${['Campaign · yesterday', 'Spend', 'Leads', 'Cost/lead', '7-day cost/lead'].map((h) => `<th style="text-align:left;background:#F1F1EA;color:#767769;font-size:11px;text-transform:uppercase;padding:6px">${h}</th>`).join('')}</tr>
+${camps.map((x) => `<tr>${[esc(x.c.replace(/^Leads \| WhatsApp \| /, '').replace(/ \| Dubai.*$/, '')), aed(x.ys), String(x.yl), x.ycpl === null ? '—' : aed(x.ycpl), x.wcpl === null ? '—' : aed(x.wcpl)].map((c) => `<td style="border-top:1px solid #E6E6DA;padding:6px">${c}</td>`).join('')}</tr>`).join('')}</table>`;
+  const sourcesHtml = `<p style="color:#767769;font-size:12px">Sources: Meta ad data (fetched ${esc(lastFetch.slice(0, 16).replace('T', ' '))} UTC) and the In-House Lead Tracker (synced ${esc(lastSync.slice(0, 16).replace('T', ' '))} UTC). Counts only — no patient details. <a href="${CONTENTOS_LEADS}" style="color:#5793A3;font-weight:bold">Open the Meta leads list in ContentOS</a> to see and action individual leads.</p>`;
+  const headline = `${yT.leads} leads · ${aed(yT.spend)} · ${cplY === null ? 'no leads' : `${aed(cplY)}/lead`}`;
+  return { day: label(y), headline, flags, statsHtml, campaignsHtml, sourcesHtml };
+}
+
+/** The Meta section of a morning briefing: intro line, red flags, figures, campaigns, sources. */
+export function metaSectionHtml(m: MetaLeadsDigest, intro: string): string {
+  return `<p>${intro}</p>
+${m.flags.length ? `<ol style="margin:4px 0 12px;padding-left:18px">${m.flags.map((f) => `<li style="margin-bottom:6px">${f}</li>`).join('')}</ol>` : '<p style="color:#2C5E3F"><b>No red flags yesterday.</b></p>'}
+${m.statsHtml}
+${m.campaignsHtml}
+${m.sourcesHtml}`;
 }

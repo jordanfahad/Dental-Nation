@@ -2,11 +2,11 @@
 
 import { revalidatePath } from 'next/cache';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
-import { editableFor, loadReviews, loadTracker, seedRows } from '@/lib/smileclub/tracker';
+import { editableFor, loadTracker, seedRows } from '@/lib/smileclub/tracker';
 import { DENTISTS, scriptHash } from '@/lib/smileclub/scripts';
-import { REVIEWER_BY_USER, type Decision, type ReviewEntry } from '@/lib/smileclub/review';
-import { mailDecision, mailSentForReview } from '@/lib/smileclub/reviewMail';
-import { alertBlocked, previewAlert } from '@/lib/smileclub/alerts';
+import { REVIEWER_BY_USER, type Decision } from '@/lib/smileclub/review';
+import { nextEmailNote, previewAlert } from '@/lib/smileclub/alerts';
+import { PREVIEWS } from '@/lib/smileclub/alertRules';
 import {
   CAL_WINDOW,
   COMPANY_TYPES,
@@ -115,7 +115,6 @@ export async function updateTeamTaskAction(input: {
     note,
   });
   if (evErr) return { ok: false, error: evErr.message };
-  if (status === 'blocked' && prevStatus !== 'blocked') await alertBlocked(task, note, actor).catch(() => undefined);
 
   revalidatePath('/');
   revalidatePath('/impact');
@@ -388,7 +387,8 @@ export type ReviewResult = { ok: true; state: TrackerState; mail: string } | { o
  * Approve, request changes on, or add input to one dentist's scripts. Approvals
  * and change requests only from the named reviewers, signed in as themselves;
  * Fahad (admin) may add input. Each decision is pinned to the current wording
- * (scriptHash) and emailed to Fahad and the other reviewers.
+ * (scriptHash). Not emailed on its own (26 Sep: at most two alert emails a
+ * day) — Fahad and the other reviewers get it in their next Smile Club email.
  */
 export async function reviewScriptAction(input: { dentistId: string; decision: string; note?: string; onBehalf?: string }): Promise<ReviewResult> {
   const d = DENTISTS.find((x) => x.id === input.dentistId);
@@ -410,14 +410,11 @@ export async function reviewScriptAction(input: { dentistId: string; decision: s
   const row = { dentist_id: d.id, reviewer: reviewer ?? 'fahad', decision, note, hash: scriptHash(d), actor: actorName };
   const { error } = await sb.from('sc_script_reviews').insert(row);
   if (error) return { ok: false, error: error.message };
-  const entries = await loadReviews(sb);
-  const entry: ReviewEntry = { dentistId: row.dentist_id, reviewer: row.reviewer as ReviewEntry['reviewer'], decision, note, hash: row.hash, actor: row.actor, at: new Date().toISOString() };
-  const m = await mailDecision(entry, entries);
   revalidatePath('/');
-  return { ok: true, state: await loadTracker(), mail: m.note + (m.missing.length ? ` No address on record for: ${m.missing.join(', ')}.` : '') };
+  return { ok: true, state: await loadTracker(), mail: nextEmailNote() };
 }
 
-/** Fahad marks dentists' scripts as created and reviewed (pre-final) and emails the three reviewers. */
+/** Fahad marks dentists' scripts as created and reviewed (pre-final); the three reviewers see them in their next Smile Club email. */
 export async function sendScriptsForReviewAction(input: { dentistIds: string[] }): Promise<ReviewResult> {
   const { canEdit, viewer } = await editableFor();
   if (canEdit !== 'all') return { ok: false, error: 'Only Fahad can send scripts for sign-off.' };
@@ -427,15 +424,14 @@ export async function sendScriptsForReviewAction(input: { dentistIds: string[] }
   if (!sb) return { ok: false, error: 'Tracking database unavailable.' };
   const { error } = await sb.from('sc_script_reviews').insert(ds.map((d) => ({ dentist_id: d.id, reviewer: 'fahad', decision: 'sent', note: null, hash: scriptHash(d), actor: viewer ?? 'Fahad (admin)' })));
   if (error) return { ok: false, error: error.message };
-  const m = await mailSentForReview(ds.map((d) => d.id));
   revalidatePath('/');
-  return { ok: true, state: await loadTracker(), mail: m.note + (m.missing.length ? ` No address on record for: ${m.missing.join(', ')}.` : '') };
+  return { ok: true, state: await loadTracker(), mail: nextEmailNote() };
 }
 
-/** Fahad only: email himself a preview of any Smile Club alert. */
-export async function previewAlertAction(kind: 'shoot' | 'gautam' | 'luvi' | 'mohan' | 'meta'): Promise<{ ok: boolean; message: string }> {
+/** Fahad only: email himself a preview of any Smile Club email. */
+export async function previewAlertAction(kind: string): Promise<{ ok: boolean; message: string }> {
   const { canEdit } = await editableFor();
   if (canEdit !== 'all') return { ok: false, message: 'Only Fahad can send previews.' };
-  if (!['shoot', 'gautam', 'luvi', 'mohan', 'meta'].includes(kind)) return { ok: false, message: 'Unknown alert.' };
+  if (!PREVIEWS.some((p) => p.kind === kind)) return { ok: false, message: 'Unknown email.' };
   return { ok: true, message: await previewAlert(kind) };
 }
