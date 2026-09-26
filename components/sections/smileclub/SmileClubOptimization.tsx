@@ -2631,7 +2631,7 @@ function TeamTab({ state, setState }: { state: TrackerState; setState: (s: Track
       </section>
 
       <section>
-        <Exhibit n="T1" title="The calendar — seven responsible teams × five weeks, each week closing on its checkpoint" />
+        <Exhibit n="T1" title="Calendar — every date with its highlights; click a day to expand" />
         <div className="mb-2 flex flex-wrap gap-1.5">
           {([['all', 'Everyone'], ...TEAM.map((p) => [p.id, p.name])] as [Person | 'all', string][]).map(([id, label]) => (
             <button
@@ -2643,6 +2643,11 @@ function TeamTab({ state, setState }: { state: TrackerState; setState: (s: Track
             </button>
           ))}
         </div>
+        <MonthView state={state} focus={focus} />
+      </section>
+
+      <section>
+        <Exhibit n="T1a" title="By team — seven responsible teams × five weeks, each week closing on its checkpoint" />
         <div className="overflow-x-auto rounded-xl border bg-white" style={{ borderColor: LINE }}>
           <table className="w-full min-w-[860px] border-collapse text-[10.5px]">
             <thead>
@@ -3724,6 +3729,160 @@ function ShootScripts({ d }: { d: Dentist }) {
         <b>Video 2 offer:</b> {lane.offer} · page {lane.page}. {d.laneWhy ? `${d.laneWhy} ` : ''}Before publishing, confirm the price is still current and the offer is booked at {BRANCH_LABEL[d.branch]}.
       </p>
       <ReviewPanel d={d} />
+    </div>
+  );
+}
+
+/* ── Month view (26 Sep, Mr Akbar): every date with its highlights; click a day to expand ── */
+
+const CHECKPOINT_DAYS: Record<string, string> = {
+  '2026-09-28': 'Day-7 checkpoint · 36 planned (minimum 30)',
+  '2026-10-05': 'Day-14 checkpoint · 60 planned (minimum 50) · funding review',
+  '2026-10-12': 'Day-21 checkpoint · 88 planned (minimum 75)',
+  '2026-10-21': 'Day-30 close · 120 paid memberships',
+};
+
+const isoAdd = (iso: string, n: number) => { const d = new Date(`${iso}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const WDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const longDay = (iso: string) => { const d = new Date(`${iso}T12:00:00Z`); return `${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][d.getUTCDay()]} ${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}`; };
+
+function MonthView({ state, focus }: { state: TrackerState; focus: Person | 'all' }) {
+  const today = state.today;
+  const [sel, setSel] = useState<string | null>(today >= '2026-09-21' && today <= '2026-11-01' ? today : null);
+  const days = Array.from({ length: 42 }, (_, i) => isoAdd('2026-09-21', i)); // Mon 21 Sep → Sun 1 Nov
+  const tasksOn = (iso: string) => TEAM_TASKS.filter((t) => t.dueIso === iso && (focus === 'all' || t.who === focus));
+  const shootsOn = (iso: string) => (focus === 'all' || focus === 'mohan' ? SHOOT_PLAN.filter((d) => d.iso === iso) : []);
+  const calOn = (iso: string) => (focus === 'all' || focus === 'gautam' ? (state.corp?.events ?? []).filter((e) => dubaiDate(e.startsAt) === iso) : []);
+  const person = (p: Person) => TEAM.find((x) => x.id === p)!;
+
+  const cell = (iso: string) => {
+    const ts = tasksOn(iso);
+    const rags = ts.map((t) => ragFor(t, state.progress[t.key], today));
+    const done = rags.filter((r) => r === 'done').length;
+    const late = rags.filter((r) => r === 'overdue' || r === 'blocked').length;
+    const shoots = shootsOn(iso);
+    const nShoot = shoots.reduce((a, d) => a + d.stops.reduce((b, s) => b + s.slots.length, 0), 0);
+    const cal = calOn(iso);
+    const cp = CHECKPOINT_DAYS[iso];
+    const d = new Date(`${iso}T12:00:00Z`);
+    const inWindow = iso >= '2026-09-22' && iso <= '2026-10-21';
+    const isToday = iso === today;
+    const isSel = iso === sel;
+    const empty = !ts.length && !nShoot && !cal.length && !cp;
+    return (
+      <button
+        key={iso} type="button" onClick={() => setSel(isSel ? null : iso)}
+        className="flex min-h-[92px] flex-col gap-0.5 rounded-lg border p-1.5 text-left transition hover:shadow-sm"
+        style={{ borderColor: isSel ? NAVY : isToday ? CORAL : LINE, borderWidth: isSel || isToday ? 2 : 1, backgroundColor: inWindow ? 'white' : '#FAFAF6', opacity: inWindow || !empty ? 1 : 0.55 }}
+        aria-pressed={isSel} aria-label={`${longDay(iso)}: ${ts.length} tasks due${nShoot ? `, ${nShoot} shoots` : ''}${cp ? `, ${cp}` : ''}`}
+      >
+        <span className="flex items-baseline justify-between">
+          <span className="text-[12px] font-bold tabular-nums" style={{ color: isToday ? CORAL : NAVY }}>{d.getUTCDate()}{d.getUTCDate() === 1 || iso === days[0] ? <span className="ml-0.5 text-[9px] font-semibold" style={{ color: OLIVE }}>{MONTHS[d.getUTCMonth()]}</span> : null}</span>
+          {isToday ? <span className="text-[8.5px] font-bold uppercase" style={{ color: CORAL }}>today</span> : null}
+        </span>
+        {cp ? <span className="rounded px-1 text-[9px] font-bold leading-tight text-white" style={{ backgroundColor: CORAL }}>⚑ {cp.split(' · ')[0]}</span> : null}
+        {nShoot ? <span className="rounded px-1 text-[9px] font-semibold leading-tight" style={{ backgroundColor: '#FBEFEC', color: '#7a3a2e' }}>🎬 {nShoot} shoot{nShoot === 1 ? '' : 's'} · {[...new Set(shoots.flatMap((s) => s.stops.map((x) => x.branch === 'tosun' ? 'Tosun' : x.branch === 'alwasl' ? 'Al Wasl' : 'AMC')))].join(' + ')}</span> : null}
+        {ts.length ? <span className="text-[9.5px] leading-tight" style={{ color: '#3a4148' }}><b style={{ color: NAVY }}>{ts.length}</b> due{done ? <span style={{ color: '#2C5E3F' }}> · {done} done</span> : null}{late ? <b style={{ color: '#a04a38' }}> · {late} late</b> : null}</span> : null}
+        {ts.length ? (
+          <span className="flex flex-wrap gap-0.5">
+            {[...new Set(ts.map((t) => t.who))].map((p) => <span key={p} className="h-1.5 w-3 rounded-full" style={{ backgroundColor: person(p).color }} title={person(p).name} />)}
+          </span>
+        ) : null}
+        {cal.length ? <span className="text-[9px] leading-tight" style={{ color: BLUE }}>📅 {cal.length} company meeting{cal.length === 1 ? '' : 's'}</span> : null}
+      </button>
+    );
+  };
+
+  const detail = (iso: string) => {
+    const ts = tasksOn(iso);
+    const shoots = shootsOn(iso);
+    const cal = calOn(iso);
+    const cp = CHECKPOINT_DAYS[iso];
+    return (
+      <div className="rounded-xl border bg-white p-3" style={{ borderColor: NAVY }}>
+        <div className="flex items-baseline justify-between gap-2">
+          <p className="text-[13px] font-bold" style={{ color: NAVY, fontFamily: 'Georgia, serif' }}>{longDay(iso)}</p>
+          <button type="button" onClick={() => setSel(null)} className="text-[10.5px] font-bold underline decoration-dotted" style={{ color: BLUE }}>Close</button>
+        </div>
+        {cp ? <p className="mt-1 rounded-md px-2 py-1 text-[11px] font-bold text-white" style={{ backgroundColor: CORAL }}>⚑ {cp}</p> : null}
+        {shoots.length ? (
+          <div className="mt-2">
+            <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: CORAL }}>Video shoots</p>
+            {shoots.flatMap((day) => day.stops.map((st) => (
+              <div key={st.branch} className="mt-0.5">
+                <p className="text-[10px] font-bold" style={{ color: BLUE }}>{BRANCH_LABEL[st.branch]}</p>
+                <ul className="space-y-0.5">
+                  {st.slots.map((sl) => (
+                    <li key={sl.id} className="text-[10.5px]" style={{ color: '#3a4148' }}>
+                      <b className="tabular-nums" style={{ color: CORAL }}>{sl.time}</b> {dentistById(sl.id).name}
+                      {sl.status ? <span style={{ color: sl.status === 'confirmed' ? '#2C5E3F' : '#7a6420' }}> · {SLOT_STATUS[sl.status]}</span> : null}
+                      {sl.note ? <span style={{ color: OLIVE }}> · {sl.note}</span> : null}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )))}
+          </div>
+        ) : null}
+        {ts.length ? (
+          <div className="mt-2">
+            <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: BLUE }}>Tasks due ({ts.length})</p>
+            <ul className="mt-0.5 space-y-1">
+              {ts.map((t) => {
+                const pr = state.progress[t.key];
+                const rag = ragFor(t, pr, today);
+                const pct = Math.round(((pr?.stage ?? 0) / t.steps.length) * 100);
+                const wait = waitingOn(t, state.progress);
+                return (
+                  <li key={t.key} className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10.5px]" style={{ color: '#3a4148' }}>
+                    <RagPill rag={rag} />
+                    <b style={{ color: person(t.who).color }}>{person(t.who).name}</b>
+                    <TaskLink k={t.key}>{t.task}</TaskLink>
+                    <span className="w-[60px]"><Bar pct={pct} color={rag === 'overdue' || rag === 'blocked' ? CORAL : NAVY} h={4} /></span>
+                    <span className="tabular-nums" style={{ color: OLIVE }}>{pct}%</span>
+                    {wait.length && rag !== 'done' ? <span style={{ color: '#a04a38' }}>⏳ waiting on {[...new Set(wait.map((w) => OWNER_LABEL[w.who]))].join(', ')}</span> : null}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ) : null}
+        {cal.length ? (
+          <div className="mt-2">
+            <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: BLUE }}>Gautam’s company meetings</p>
+            <ul className="mt-0.5 space-y-0.5">
+              {cal.map((e) => <li key={e.uid} className="text-[10.5px]" style={{ color: '#3a4148' }}><b className="tabular-nums" style={{ color: NAVY }}>{fmtTime(e.startsAt)}</b> {KIND_LABEL[e.kind]} · {e.company ?? e.title}</li>)}
+            </ul>
+          </div>
+        ) : null}
+        {!cp && !shoots.length && !ts.length && !cal.length ? <p className="mt-1 text-[10.5px]" style={{ color: OLIVE }}>Nothing scheduled{focus === 'all' ? '' : ' for this person'} on this day.</p> : null}
+      </div>
+    );
+  };
+
+  const weeks = Array.from({ length: 6 }, (_, w) => days.slice(w * 7, w * 7 + 7));
+  const selWeek = sel ? weeks.findIndex((wk) => wk.includes(sel)) : -1;
+  return (
+    <div>
+      <div className="mb-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px]" style={{ color: OLIVE }}>
+        <span><b style={{ color: CORAL }}>⚑</b> checkpoint</span><span>🎬 video shoots</span><span><b style={{ color: NAVY }}>n</b> tasks due · done · late</span><span>📅 company meetings</span>
+        <span className="flex items-center gap-1">{TEAM.map((p) => <span key={p.id} className="flex items-center gap-0.5"><span className="h-1.5 w-3 rounded-full" style={{ backgroundColor: p.color }} />{p.name}</span>)}</span>
+      </div>
+      <div className="overflow-x-auto">
+        <div className="min-w-[720px] space-y-1">
+          <div className="grid grid-cols-7 gap-1">
+            {WDAYS.map((w) => <p key={w} className="px-1 text-[9.5px] font-bold uppercase tracking-wide" style={{ color: OLIVE }}>{w}</p>)}
+          </div>
+          {weeks.map((wk, i) => (
+            <Fragment key={wk[0]}>
+              <div className="grid grid-cols-7 gap-1">{wk.map(cell)}</div>
+              {i === selWeek && sel ? detail(sel) : null}
+            </Fragment>
+          ))}
+        </div>
+      </div>
+      <p className="mt-1 text-[10px]" style={{ color: OLIVE }}>The 30-day window is 22 Sep – 21 Oct; days outside it are faded. Click a day to open it, click again to close. The person buttons above filter this view too.</p>
     </div>
   );
 }
