@@ -20,7 +20,7 @@ import { REVIEWERS, REVIEWER_BY_USER, reviewFor, reviewSummary, type ReviewEntry
 import { PLAYBOOKS, type Channel } from '@/lib/smileclub/playbook';
 import { CAL_RULE, COMPANY_TYPES, STAGES, TYPE_LABEL, type CalEvent, type Company, type CompanyType, type CorpState, type EventKind, type Stage } from '@/lib/smileclub/corporate';
 import { SEGMENTS, type SegmentId } from '@/lib/smileclub/segments';
-import { ANNOUNCE, BANNED_TR_AR, BANNED_WORDS, BRANCH_LABEL, BRANCH_LANGS, DENTISTS, LANES, LANG_LABEL, PATIENT_SEGS, SCRIPT_STATUS, SHOOT, laneFor, langsFor, scriptsFor, type Branch, type Dentist, type DentistScripts, type Lang } from '@/lib/smileclub/scripts';
+import { ANNOUNCE, BANNED_TR_AR, BANNED_WORDS, BRANCH_LABEL, BRANCH_LANGS, DENTISTS, LANES, LANG_LABEL, NO_PRICE_WHY, PATIENT_SEGS, SCRIPT_STATUS, SHOOT, SPOKEN_AR_WHY, laneFor, langsFor, noPrices, scriptsFor, type Branch, type Dentist, type DentistScripts, type Lang } from '@/lib/smileclub/scripts';
 import { BUDGET_BY_SEG, CEILING, HELD, PROCUREMENT_STEPS, RESERVE, SEGMENT_BUDGETS, SPEND_NOW, TOTAL, fmtAed, segmentTotal } from '@/lib/smileclub/budget';
 import {
   CRM_TEST_SPEC,
@@ -3620,6 +3620,9 @@ function ReviewPanel({ d }: { d: Dentist }) {
       </div>
       {!r.final ? <p className="mt-0.5 text-[10px] leading-snug" style={{ color: '#3a4148' }}>Final check and approval required from Ms Shadi, Dr Luvi and Gautam — inputs shared here on the system; every decision goes into the team’s next Smile Club email.</p> : null}
       {d.langWhy ? <p className="mt-0.5 text-[10px] font-semibold" style={{ color: NAVY }}>Languages: {langsFor(d).map((l) => LANG_LABEL[l].split(' · ').pop()).join(' + ')} — {d.langWhy}</p> : null}
+      {noPrices(d) ? <p className="mt-0.5 text-[10px] font-semibold" style={{ color: '#7a6420' }}>No prices: {NO_PRICE_WHY}</p> : null}
+      {langsFor(d).includes('ar') ? <p className="mt-0.5 text-[10px] font-semibold" style={{ color: '#7a6420' }}>{SPOKEN_AR_WHY}</p> : null}
+      {d.note ? <p className="mt-0.5 text-[10px]" style={{ color: '#3a4148' }}><b>Note:</b> {d.note}</p> : null}
       <div className="mt-1 flex flex-wrap gap-1.5">
         {REVIEWERS.map((x) => {
           const st = REVIEW_STATE[r.per[x.id].state];
@@ -3726,7 +3729,7 @@ function ShootScripts({ d }: { d: Dentist }) {
       <BiScript d={d} label={`Video 2 · ${lane.name} (${lane.tag})`} tone={BLUE} pick={(s) => s.laneVideo} />
       {scriptsFor(d, 'en').announceVideo ? <AnnounceBlock d={d} /> : null}
       <p className="text-[10px] leading-snug" style={{ color: OLIVE }}>
-        <b>Video 2 offer:</b> {lane.offer} · page {lane.page}. {d.laneWhy ? `${d.laneWhy} ` : ''}Before publishing, confirm the price is still current and the offer is booked at {BRANCH_LABEL[d.branch]}.
+        <b>Video 2 offer:</b> {noPrices(d) ? `${lane.name} — the price is not said on camera or in messages at this clinic; the ad and the team give it` : lane.offer} · page {lane.page}. {d.laneWhy ? `${d.laneWhy} ` : ''}Before publishing, confirm the price is still current and the offer is booked at {BRANCH_LABEL[d.branch]}.
       </p>
       <ReviewPanel d={d} />
     </div>
@@ -4180,7 +4183,7 @@ function ScriptsTab() {
                     <BiScript d={d} label={`4 · Video 2 — ${lane.name} (${lane.tag})`} tone={NAVY} pick={(s) => s.laneVideo} />
                     {scriptsFor(d, 'en').announceVideo ? <AnnounceBlock d={d} n="5 · " /> : null}
                     <p className="text-[10px] leading-snug" style={{ color: OLIVE }}>
-                      <b>Video 2 offer:</b> {lane.offer} · page {lane.page}. {d.laneWhy ? `${d.laneWhy} ` : ''}Confirm the price is current and the offer is booked at {BRANCH_LABEL[d.branch]} before publishing.
+                      <b>Video 2 offer:</b> {noPrices(d) ? `${lane.name} — the price is not said on camera or in messages at this clinic; the ad and the team give it` : lane.offer} · page {lane.page}. {d.laneWhy ? `${d.laneWhy} ` : ''}Confirm the price is current and the offer is booked at {BRANCH_LABEL[d.branch]} before publishing.
                     </p>
                   </div>
                 ) : null}
