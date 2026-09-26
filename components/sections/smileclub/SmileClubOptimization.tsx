@@ -3731,7 +3731,7 @@ function ShootScripts({ d }: { d: Dentist }) {
       {scriptsFor(d, 'en').announceVideo ? <AnnounceBlock d={d} /> : null}
       {video2(d.id)?.story ? null : (
       <p className="text-[10px] leading-snug" style={{ color: OLIVE }}>
-        <b>Video 2 offer:</b> {noPrices(d) ? `${lane.name} — the price is not said on camera or in messages at this clinic; the ad and the team give it` : lane.offer} · page {lane.page}. {d.laneWhy ? `${d.laneWhy} ` : ''}Before publishing, confirm the price is still current and the offer is booked at {BRANCH_LABEL[d.branch]}.
+        <b>Video 2 offer:</b> {noPrices(d) ? `${lane.name}: the price is not said on camera or in messages at this clinic; the ad and the team give it` : lane.offer} · page {lane.page}. {d.laneWhy ? `${d.laneWhy} ` : ''}Before publishing, confirm the price is still current and the offer is booked at {BRANCH_LABEL[d.branch]}.
       </p>
       )}
       <ReviewPanel d={d} />
@@ -4228,7 +4228,7 @@ function ScriptsTab() {
                     {scriptsFor(d, 'en').announceVideo ? <AnnounceBlock d={d} n="5 · " /> : null}
                     {video2(d.id)?.story ? null : (
                     <p className="text-[10px] leading-snug" style={{ color: OLIVE }}>
-                      <b>Video 2 offer:</b> {noPrices(d) ? `${lane.name} — the price is not said on camera or in messages at this clinic; the ad and the team give it` : lane.offer} · page {lane.page}. {d.laneWhy ? `${d.laneWhy} ` : ''}Confirm the price is current and the offer is booked at {BRANCH_LABEL[d.branch]} before publishing.
+                      <b>Video 2 offer:</b> {noPrices(d) ? `${lane.name}: the price is not said on camera or in messages at this clinic; the ad and the team give it` : lane.offer} · page {lane.page}. {d.laneWhy ? `${d.laneWhy} ` : ''}Confirm the price is current and the offer is booked at {BRANCH_LABEL[d.branch]} before publishing.
                     </p>
                     )}
                   </div>
