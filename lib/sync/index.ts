@@ -70,6 +70,49 @@ async function mirrorBronze(
   }
 }
 
+/** Strip NUL characters, which Postgres rejects in text and jsonb. */
+function scrub<T>(v: T): T {
+  if (typeof v === 'string') return v.replace(/\u0000/g, '') as T;
+  if (Array.isArray(v)) return v.map(scrub) as T;
+  if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([k, x]) => [k.replace(/\u0000/g, ''), scrub(x)])) as T;
+  return v;
+}
+
+/**
+ * Upsert rows in batches without losing a batch to one bad row (26 Sep: a
+ * silently failing 500-row batch dropped every Inhouse Lead Tracker lead after
+ * 19 Sep). Duplicate ids are collapsed (last wins); a failing batch is split
+ * in halves down to single rows, so only the offending row is skipped — and
+ * each skipped row is reported as a data gap with the database's reason.
+ */
+async function safeUpsert(
+  supabase: AdminClient,
+  table: string,
+  rows: { id: string }[],
+  gaps: DataGap[],
+  label: string,
+): Promise<number> {
+  const unique = [...new Map(rows.map((r) => [r.id, scrub(r)])).values()];
+  if (unique.length < rows.length) {
+    gaps.push({ area: 'tracking', detail: `${label}: ${rows.length - unique.length} duplicate row id(s) merged`, owner: 'Data/Analytics' });
+  }
+  const failed: string[] = [];
+  const put = async (batch: { id: string }[]): Promise<void> => {
+    if (!batch.length) return;
+    const { error } = await supabase.from(table).upsert(batch, { onConflict: 'id' });
+    if (!error) return;
+    if (batch.length === 1) { failed.push(`${batch[0].id} — ${error.message}`); return; }
+    const mid = Math.ceil(batch.length / 2);
+    await put(batch.slice(0, mid));
+    await put(batch.slice(mid));
+  };
+  for (let i = 0; i < unique.length; i += 500) await put(unique.slice(i, i + 500));
+  if (failed.length) {
+    gaps.push({ area: 'tracking', detail: `${label}: ${failed.length} row(s) not saved — ${failed.slice(0, 3).join('; ')}${failed.length > 3 ? ' …' : ''}`, owner: 'Data/Analytics' });
+  }
+  return unique.length - failed.length;
+}
+
 /** Derive §B channel_status rows from the paid channels present in performance. */
 function deriveChannelStatus(perf: PerfRow[]): ChannelStatus[] {
   const channels = [...new Set(perf.map((r) => r.channel).filter(Boolean))];
@@ -530,9 +573,7 @@ export async function runSync(trigger: SyncTrigger): Promise<SyncSummary> {
     }
   }
   if (leads.length > 0) {
-    for (let i = 0; i < leads.length; i += 500) {
-      await supabase.from('leads').upsert(leads.slice(i, i + 500), { onConflict: 'id' });
-    }
+    await safeUpsert(supabase, 'leads', leads, dataGaps, 'Inhouse Lead Tracker → leads');
   }
   // Bookings: store ONLY non-test rows (seed/zavis/test/sagar excluded).
   const realBookings = bookings
