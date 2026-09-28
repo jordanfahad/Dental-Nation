@@ -708,7 +708,7 @@ const TASKS_RAW: TeamTask[] = [
       { s: 'Final exported', how: 'Full version + 15 s and 6 s cuts, filed for use.' },
     ],
     done: 'Approved final video with short cuts, all comments resolved.', with: 'Fahad · Dr Luvi', to: 'scripts', toLabel: 'Dentist scripts', weight: 2, subs: 0, subsNote: 'Supports the dentists’ 24 and the website 12' },
-  { key: 'm-shoot-tosun', needs: ['g-announce'], who: 'mohan', wk: 2, dueIso: '2026-10-03', due: 'Sat 3 Oct (pencilled): The DN Scan ad and the announcement. Smile Club video filmed Mon 28 Sep', task: 'Shoot 1 — Dr. Yahya Tosun (Dr. Tosun Dental Clinic)', scripts: ['yahya-tosun'],
+  { key: 'm-shoot-tosun', needs: ['g-announce', 'f-reschedule'], who: 'mohan', wk: 2, dueIso: '2026-10-03', due: 'On hold: new date agreed with MJ by Wed 30 Sep. Smile Club video filmed Mon 28 Sep', task: 'Shoot 1 — Dr. Yahya Tosun (Dr. Tosun Dental Clinic)', scripts: ['yahya-tosun'],
     objective: 'One appointment, three videos with Dr. Yahya Tosun: the partnership announcement (Dr. Tosun Dental Clinic is now part of Dental Nation), his Smile Club video and The DN Scan (braces & aligner planning) video — each filmed in Turkish and English — with first cuts shared for review.',
     why: 'Patients do not know yet that the clinic is part of Dental Nation, so the announcement goes out first and makes the Smile Club videos make sense. Dr. Tosun asked for time to practise so both languages sound natural — use a prompter.',
     steps: [
@@ -718,7 +718,7 @@ const TASKS_RAW: TeamTask[] = [
       { s: 'First cuts shared', how: 'All six posted to this task for comments; the announcement cut first.' },
     ],
     done: 'Six first cuts (three videos × Turkish and English) shared here for review; the announcement is approved to publish first.', with: 'Dr. Yahya Tosun', to: 'scripts', toLabel: 'Dentist scripts', weight: 2, subs: 0, subsNote: 'Supports the dentists’ 24' },
-  { key: 'm-shoot-dilsad', who: 'mohan', wk: 2, dueIso: '2026-10-03', due: 'Sat 3 Oct, 11:00 pencilled (missed Mon 28 Sep, not available)', task: 'Shoot 2 — Dr. Dilsad Ozdogan (Dr. Tosun Dental Clinic)', scripts: ['dilsad-ozdogan'],
+  { key: 'm-shoot-dilsad', needs: ['f-reschedule'], who: 'mohan', wk: 2, dueIso: '2026-10-03', due: 'On hold: new date agreed with MJ by Wed 30 Sep (missed Mon 28 Sep, not available)', task: 'Shoot 2 — Dr. Dilsad Ozdogan (Dr. Tosun Dental Clinic)', scripts: ['dilsad-ozdogan'],
     objective: 'One appointment, two videos: Dr. Dilsad Ozdogan’s Smile Club video and The DN Glow Up (whitening) video — each filmed in Turkish and English — with first cuts shared for review.',
     why: 'A general dentist speaks to the largest group of patients, so the Smile Club video will be used the most. Glow Up has no video yet and its Facebook/Instagram campaign is waiting for one.',
     steps: [
@@ -899,6 +899,55 @@ const TASKS_RAW: TeamTask[] = [
       { s: 'AMC: 12', how: 'Same.' },
     ],
     done: 'Each branch at 12.', to: 'mandate', toLabel: 'What counts as a member', weight: 10, subs: 6, subsNote: '+6 → 36 of the chair 36 (dentist recommends, you close)' },
+  /* ── 28 Sep meeting (Ms Shadi, Dr Luvi, Gautam, Fahad): get the video format right before filming more ── */
+  { key: 'l-samples', who: 'luvi', wk: 2, dueIso: '2026-09-29', due: 'Tue 29 Sep, 12:00', task: 'Share sample videos for Mohan’s direction',
+    objective: 'Send Fahad and Mohan a few examples of videos you like (dental or health, any source): the style, pace, structure and editing we are aiming for.',
+    why: 'The first videos (Dr. Safwan and Dr. Ali) were not approved. Clear examples are the fastest way to show Mohan what good looks like before he films anyone else.',
+    steps: [
+      { s: 'Samples chosen', how: 'Pick three to five videos you like. For each, note in one line what you like about it (the opening, the pace, the look, the editing).' },
+      { s: 'Shared', how: 'Send the links to Fahad and Mohan, or post them to this task.' },
+    ],
+    done: 'Sample videos with a one-line note each, shared with Fahad and Mohan.', with: 'Fahad, Mohan', to: 'scripts', toLabel: 'Shoot schedule & scripts', weight: 1, subs: 0, subsNote: 'Sets the standard for every dentist video' },
+  { key: 'g-samples', who: 'gautam', wk: 2, dueIso: '2026-09-29', due: 'Tue 29 Sep, 12:00', task: 'Share sample videos for Mohan’s direction',
+    objective: 'Send Fahad and Mohan a few examples of videos you like (dental or health, any source): the style, pace, structure and editing we are aiming for.',
+    why: 'The first videos (Dr. Safwan and Dr. Ali) were not approved. Clear examples are the fastest way to show Mohan what good looks like before he films anyone else.',
+    steps: [
+      { s: 'Samples chosen', how: 'Pick three to five videos you like. For each, note in one line what you like about it (the opening, the pace, the look, the editing).' },
+      { s: 'Shared', how: 'Send the links to Fahad and Mohan, or post them to this task.' },
+    ],
+    done: 'Sample videos with a one-line note each, shared with Fahad and Mohan.', with: 'Fahad, Mohan', to: 'scripts', toLabel: 'Shoot schedule & scripts', weight: 1, subs: 0, subsNote: 'Sets the standard for every dentist video' },
+  { key: 'f-mj-pause', who: 'fahad', wk: 2, dueIso: '2026-09-28', due: 'Mon 28 Sep', task: 'Tell MJ the shoot rescheduling is paused',
+    objective: 'Email MJ that no new shoots are booked until the template videos are approved, and that the new schedule follows by Wed 30 Sep.',
+    why: 'MJ was about to confirm new dates with the doctors. Pausing now avoids booking doctors for a format that is about to change.',
+    steps: [
+      { s: 'Email sent', how: 'Email MJ (copy Dr Luvi and Mohan): shoots on hold, the scripts stay as approved, new schedule by Wed 30 Sep.' },
+    ],
+    done: 'MJ informed; no doctor booked until the template is approved.', with: 'MJ, Dr Luvi, Mohan', to: 'scripts', toLabel: 'Shoot schedule & scripts', weight: 1, subs: 0, subsNote: 'Keeps the doctors’ time for the right format' },
+  { key: 'm-template', needs: ['l-samples', 'g-samples'], who: 'mohan', wk: 2, dueIso: '2026-09-29', due: 'Tue 29 Sep, end of day', task: 'Make one or two template videos from the samples',
+    objective: 'With Fahad, re-edit or re-shoot one or two videos in the style of the samples. These become the template (structure, style, editing) for every other doctor.',
+    why: 'Getting one or two videos right first is quicker than re-doing many. Once approved, the template is copied for the remaining doctors.',
+    steps: [
+      { s: 'Samples reviewed', how: 'Go through Dr Luvi’s and Gautam’s samples with Fahad; agree what to copy: the opening, pace, look, on-screen text and music.' },
+      { s: 'Template videos made', how: 'Re-edit the existing footage (Dr. Safwan, Dr. Ali, Dr. Tosun) or film one new video in that style.' },
+      { s: 'Shared for approval', how: 'Post the one or two videos to this task and send them to Ms Shadi, Dr Luvi and Gautam.' },
+    ],
+    done: 'One or two template videos shared with Ms Shadi, Dr Luvi and Gautam for approval.', with: 'Fahad', to: 'scripts', toLabel: 'Shoot schedule & scripts', weight: 2, subs: 0, subsNote: 'The template every dentist video follows' },
+  { key: 'f-template-ok', needs: ['m-template'], who: 'fahad', wk: 2, dueIso: '2026-09-30', due: 'Wed 30 Sep, 12:00', task: 'Template videos approved by Ms Shadi, Dr Luvi and Gautam',
+    objective: 'Get the template videos approved, or the changes needed, from Ms Shadi, Dr Luvi and Gautam.',
+    why: 'No more doctors are filmed until the format is approved.',
+    steps: [
+      { s: 'Feedback collected', how: 'Collect comments from Ms Shadi, Dr Luvi and Gautam on the template videos.' },
+      { s: 'Approved', how: 'Changes made with Mohan and the final template approved by all three.' },
+    ],
+    done: 'Template approved by Ms Shadi, Dr Luvi and Gautam.', with: 'Ms Shadi, Dr Luvi, Gautam, Mohan', to: 'scripts', toLabel: 'Shoot schedule & scripts', weight: 1, subs: 0, subsNote: 'Unlocks the remaining shoots' },
+  { key: 'f-reschedule', needs: ['f-template-ok'], who: 'fahad', wk: 2, dueIso: '2026-09-30', due: 'Wed 30 Sep, end of day', task: 'Share the approved template with Mohan and agree the new shoot schedule with MJ',
+    objective: 'Brief Mohan on the approved template, and agree new dates with MJ for every doctor still to film.',
+    why: 'The shoots restart only on the approved format, with dates the doctors have confirmed.',
+    steps: [
+      { s: 'Mohan briefed', how: 'Walk Mohan through the approved template: what to copy for every doctor.' },
+      { s: 'Schedule agreed', how: 'MJ confirms a date and time with each doctor still to film; the dates go into the shoot calendar on this dashboard.' },
+    ],
+    done: 'Mohan briefed on the template; new shoot dates confirmed by MJ and entered in the calendar.', with: 'Mohan, MJ', to: 'scripts', toLabel: 'Shoot schedule & scripts', weight: 1, subs: 0, subsNote: 'Restarts the dentist videos' },
 ];
 
 const SEG_OF: Record<string, SegmentId> = {
