@@ -482,7 +482,7 @@ export function buildShootEmail(ctx: Ctx): { subject: string; html: string } | n
     const missing = REVIEWERS.filter((x) => r.per[x.id].state !== 'approved');
     if (!r.final) { notFinal++; for (const x of missing) pendingOn[x.id].push(d.name); }
     rows.push([
-      `<b style="color:#B45F53">${esc(sl.time)}</b>${sl.status ? `<br><span style="font-size:11px;color:${sl.status === 'confirmed' ? '#2C5E3F' : '#7a6420'}">${esc(SLOT_STATUS[sl.status])}</span>` : ''}`,
+      `<b style="color:#B45F53">${esc(sl.time)}</b>${sl.status ? `<br><span style="font-size:11px;color:${(sl.status === 'confirmed' || sl.status === 'filmed') ? '#2C5E3F' : '#7a6420'}">${esc(SLOT_STATUS[sl.status])}</span>` : ''}`,
       `<b>${esc(d.name)}</b><br><span style="color:#767769">${esc(d.title)}${sl.note ? ` · ${esc(sl.note)}` : ''}</span>`,
       esc(BRANCH_LABEL[st.branch]),
       esc(hoursOn(d.id, day.iso) ?? '—'),

@@ -3822,7 +3822,7 @@ function MonthView({ state, focus }: { state: TrackerState; focus: Person | 'all
                   {st.slots.map((sl) => (
                     <li key={sl.id} className="text-[10.5px]" style={{ color: '#3a4148' }}>
                       <b className="tabular-nums" style={{ color: CORAL }}>{sl.time}</b> {dentistById(sl.id).name}
-                      {sl.status ? <span style={{ color: sl.status === 'confirmed' ? '#2C5E3F' : '#7a6420' }}> · {SLOT_STATUS[sl.status]}</span> : null}
+                      {sl.status ? <span style={{ color: (sl.status === 'confirmed' || sl.status === 'filmed') ? '#2C5E3F' : '#7a6420' }}> · {SLOT_STATUS[sl.status]}</span> : null}
                       {sl.note ? <span style={{ color: OLIVE }}> · {sl.note}</span> : null}
                     </li>
                   ))}
@@ -4111,7 +4111,7 @@ function ShootSchedule() {
                                 <span className="block text-[9.5px]" style={{ color: OLIVE }}>{langsFor(d).map((l) => LANG_LABEL[l].split(' · ').pop()).join(' + ')} · {load.takes} takes · ≈{load.minutes} min</span>
                               </td>
                               <td className="py-1 pr-2">
-                                {sl.status ? <span className="mb-0.5 block text-[9.5px] font-bold" style={{ color: sl.status === 'confirmed' ? '#2C5E3F' : sl.status === 'proposed' ? '#7a6420' : OLIVE }}>{sl.status === 'confirmed' ? '✓ ' : ''}{SLOT_STATUS[sl.status]}</span> : null}
+                                {sl.status ? <span className="mb-0.5 block text-[9.5px] font-bold" style={{ color: (sl.status === 'confirmed' || sl.status === 'filmed') ? '#2C5E3F' : sl.status === 'proposed' ? '#7a6420' : OLIVE }}>{(sl.status === 'confirmed' || sl.status === 'filmed') ? '✓ ' : ''}{SLOT_STATUS[sl.status]}</span> : null}
                                 <span className="rounded-full px-2 py-0.5 text-[9.5px] font-bold" style={{ color: badge.fg, backgroundColor: badge.bg }}>{badge.text}</span>
                               </td>
                               <td className="py-1 text-[9.5px]" style={{ color: OLIVE }}>

@@ -42,13 +42,14 @@ export interface ShootSlot {
   /** Only the campaign video is still needed. */
   only?: 'lane';
   note?: string;
-  /** confirmed = MJ confirmed with the dentist; proposed = offered, not yet confirmed; plan = our proposal, not yet arranged by MJ. */
-  status?: 'confirmed' | 'proposed' | 'plan';
+  /** filmed = done; confirmed = MJ confirmed with the dentist; proposed = offered, not yet confirmed; plan = our proposal, not yet arranged by MJ. */
+  status?: 'filmed' | 'confirmed' | 'proposed' | 'plan';
   /** An existing task that already covers this slot (kept out of the day's generated task). */
   task?: string;
 }
 
 export const SLOT_STATUS: Record<NonNullable<ShootSlot['status']>, string> = {
+  filmed: 'Filmed ✓',
   confirmed: 'Confirmed by MJ',
   proposed: 'Proposed: dentist available, to confirm',
   plan: 'Planned: not yet arranged by MJ',
@@ -56,6 +57,7 @@ export const SLOT_STATUS: Record<NonNullable<ShootSlot['status']>, string> = {
 
 /** Changes to the plan, newest first. */
 export const SHOOT_CHANGES: string[] = [
+  'Mon 28 Sep (Fahad): filmed so far, all Smile Club videos: Dr. Yasmin Youssef (Tue 22 Sep), Dr. M Safwan Sultan and Dr. Ali Ghasemi (Sat 26 Sep), Dr. Yahya Tosun (Mon 28 Sep). No shoot on Sun 27 Sep. Dr. Chahira Berlarbi (Sat 26) and the other Mon 28 doctors were not available (Dr. Tosun Dental Clinic transition and doctors’ schedules). Every missed doctor is pencilled on their next clinic day for MJ to confirm; second videos for Dr. Safwan, Dr. Ali and Dr. Tosun are pencilled too.',
   'Fri 25 Sep (Dr. Yahya Tosun): asks to film after returning from Türkiye so he can practise both languages. MJ is checking new dates; Mon 28 Sep stays pencilled until a new date is confirmed. He also asked for a partnership announcement video (Dr. Tosun Dental Clinic is now part of Dental Nation), added as his third video, to go out before the clinic’s Smile Club campaign.',
   'Fri 25 Sep (MJ): Al Maher: Dr. Suzanna Almaali and Dr. Maher Selman proposed for Sun 27 Sep, times to be confirmed by email; Dr. Leila Mostawe confirms once the DN lab coat arrives (planned Tue 29 Sep). Saturday and Monday unchanged.',
   'Thu 24 Sep (MJ): Fri 25 Sep shoot cancelled. Dr. Yahya Tosun has back-to-back patients and Dr. Dilsad Ozdogan was not ready; both confirmed for Mon 28 Sep. Saturday re-timed; Dr. Helmi Shaath is not renewing (no shoot); Dr. Ghada Hussain is travelling until 2 Oct (moved to Sat 3 Oct).',
@@ -86,7 +88,10 @@ export const WARDROBE = {
 
 /** Already filmed. */
 export const FILMED: { id: string; when: string; what: string }[] = [
-  { id: 'yasmin-youssef', when: 'Wed 23 Sep', what: 'Video 1 (Smile Club), being finished from the team’s comments' },
+  { id: 'yasmin-youssef', when: 'Tue 22 Sep', what: 'Video 1 (Smile Club), being finished from the team’s comments' },
+  { id: 'safwan-sultan', when: 'Sat 26 Sep', what: 'Video 1 (Smile Club)' },
+  { id: 'ali-ghasemi', when: 'Sat 26 Sep', what: 'Video 1 (Smile Club)' },
+  { id: 'yahya-tosun', when: 'Mon 28 Sep', what: 'Video 1 (Smile Club)' },
 ];
 
 /**
@@ -96,29 +101,13 @@ export const FILMED: { id: string; when: string; what: string }[] = [
 export const SHOOT_PLAN: ShootDay[] = [
   { key: 'sat26', iso: '2026-09-26', label: 'Sat 26 Sep', stops: [
     { branch: 'alwasl', slots: [
-      { id: 'safwan-sultan', time: '11:00–12:00', status: 'confirmed' },
-      { id: 'chahira-berlarbi', time: '12:00–13:00', status: 'confirmed' },
-      { id: 'ali-ghasemi', time: '13:00–14:00', status: 'confirmed' },
-    ] },
-  ] },
-  { key: 'sun27', iso: '2026-09-27', label: 'Sun 27 Sep', stops: [
-    { branch: 'alwasl', slots: [
-      { id: 'hasna-alsaeed', time: '09:00', status: 'plan', note: 'In clinic on Sundays only' },
-      { id: 'yasmin-youssef', time: '09:45', only: 'lane', status: 'plan', note: 'Video 1 already filmed, so campaign video only' },
-    ] },
-    { branch: 'amc', slots: [
-      { id: 'suzanna-almaali', time: '11:00', status: 'proposed', note: 'MJ proposing Sunday; time to be confirmed by email' },
-      { id: 'maher-selman', time: '11:45', status: 'proposed', note: 'MJ proposing Sunday; time to be confirmed by email' },
+      { id: 'safwan-sultan', time: '11:00–12:00', status: 'filmed', note: 'Smile Club video filmed; second video pencilled for Wed 30 Sep' },
+      { id: 'ali-ghasemi', time: '13:00–14:00', status: 'filmed', note: 'Smile Club video filmed; second video pencilled for Wed 30 Sep' },
     ] },
   ] },
   { key: 'mon28', iso: '2026-09-28', label: 'Mon 28 Sep', stops: [
     { branch: 'tosun', slots: [
-      { id: 'maysoun-ahmad', time: '08:30', status: 'plan', note: 'In clinic on Mondays only; not yet in MJ’s schedule' },
-      { id: 'sevinc-behruzoglu', time: '09:15', status: 'plan', note: 'Not yet in MJ’s schedule' },
-      { id: 'yahya-tosun', time: '10:00', status: 'proposed', task: 'm-shoot-tosun', note: 'Asked to move after his Türkiye trip; new date to confirm. Three videos, including the partnership announcement' },
-      { id: 'dilsad-ozdogan', time: '12:00', status: 'confirmed', task: 'm-shoot-dilsad', note: 'Moved from Fri 25 Sep' },
-      { id: 'bulent-ozdogan', time: '13:00–14:00', status: 'proposed', note: 'Available on Monday (usually Tue, Thu, Sat)' },
-      { id: 'maysoon-abdelmajeed', time: '15:00–16:00', status: 'confirmed', note: 'Outside the usual Monday hours; confirmed by MJ' },
+      { id: 'yahya-tosun', time: '10:00', status: 'filmed', task: 'm-shoot-tosun', note: 'Smile Club video filmed; The DN Scan ad and the partnership announcement pencilled for Sat 3 Oct' },
     ] },
   ] },
   { key: 'tue29', iso: '2026-09-29', label: 'Tue 29 Sep', stops: [
@@ -126,17 +115,48 @@ export const SHOOT_PLAN: ShootDay[] = [
       { id: 'sathyapriya-surendar', time: '09:00', status: 'plan', note: 'Tuesday hours end at 12:00' },
     ] },
     { branch: 'amc', slots: [
-      { id: 'leila-mostawe', time: '11:00', status: 'plan', note: 'MJ confirms once the DN lab coat arrives (Mon 28 Sep): earliest clinic day after it' },
+      { id: 'leila-mostawe', time: '11:00', status: 'plan', note: 'MJ confirms once the DN lab coat arrives (Mon 28 Sep)' },
+    ] },
+  ] },
+  { key: 'wed30', iso: '2026-09-30', label: 'Wed 30 Sep', stops: [
+    { branch: 'alwasl', slots: [
+      { id: 'chahira-berlarbi', time: '09:30', status: 'plan', note: 'Missed Sat 26 Sep (not available); MJ to confirm' },
+      { id: 'ali-ghasemi', time: '11:00', only: 'lane', status: 'plan', note: 'Second video only; Smile Club video filmed Sat 26 Sep' },
+      { id: 'safwan-sultan', time: '12:30', only: 'lane', status: 'plan', note: 'Second video only; Smile Club video filmed Sat 26 Sep' },
     ] },
   ] },
   { key: 'thu01', iso: '2026-10-01', label: 'Thu 1 Oct', stops: [
     { branch: 'alwasl', slots: [
       { id: 'mohammad-qasem', time: '09:00', status: 'plan', note: 'In clinic on Thursdays only' },
     ] },
+    { branch: 'amc', slots: [
+      { id: 'maher-selman', time: '11:30', status: 'plan', note: 'Missed Sun 27 Sep (no shoot); MJ to confirm' },
+    ] },
   ] },
   { key: 'sat03', iso: '2026-10-03', label: 'Sat 3 Oct', stops: [
     { branch: 'alwasl', slots: [
       { id: 'ghada-hussain', time: '09:00', status: 'plan', note: 'Travelling until 2 Oct (MJ); in clinic Saturdays only' },
+    ] },
+    { branch: 'tosun', slots: [
+      { id: 'dilsad-ozdogan', time: '11:00', status: 'plan', task: 'm-shoot-dilsad', note: 'Missed Mon 28 Sep (not available); MJ to confirm' },
+      { id: 'bulent-ozdogan', time: '11:45', status: 'plan', note: 'Missed Mon 28 Sep (not available); MJ to confirm' },
+      { id: 'maysoon-abdelmajeed', time: '13:00', status: 'plan', note: 'Missed Mon 28 Sep (not available); MJ to confirm' },
+      { id: 'yahya-tosun', time: '14:00', only: 'lane', status: 'plan', task: 'm-shoot-tosun', note: 'The DN Scan ad and the partnership announcement; Smile Club video filmed Mon 28 Sep' },
+    ] },
+  ] },
+  { key: 'sun04', iso: '2026-10-04', label: 'Sun 4 Oct', stops: [
+    { branch: 'alwasl', slots: [
+      { id: 'hasna-alsaeed', time: '09:00', status: 'plan', note: 'Missed Sun 27 Sep (no shoot); in clinic on Sundays only' },
+      { id: 'yasmin-youssef', time: '09:45', only: 'lane', status: 'plan', note: 'Second video only; Smile Club video filmed Tue 22 Sep' },
+    ] },
+    { branch: 'amc', slots: [
+      { id: 'suzanna-almaali', time: '11:30', status: 'plan', note: 'Missed Sun 27 Sep (no shoot); in clinic on Sundays only' },
+    ] },
+  ] },
+  { key: 'mon05', iso: '2026-10-05', label: 'Mon 5 Oct', stops: [
+    { branch: 'tosun', slots: [
+      { id: 'maysoun-ahmad', time: '08:30', status: 'plan', note: 'Missed Mon 28 Sep (not available); in clinic on Mondays only' },
+      { id: 'sevinc-behruzoglu', time: '09:15', status: 'plan', note: 'Missed Mon 28 Sep (not available); in clinic Mon and Wed' },
     ] },
   ] },
 ];
