@@ -432,7 +432,7 @@ export function buildBriefing(ctx: Ctx, who: Who): { subject: string; html: stri
     const coHtml = c
       ? `${h4(`From ContentOS Lead Analysis${c.asOf ? ` · ${esc(c.asOf)}` : ''}`)}${contentosStatsHtml(c)}<p style="color:#767769;font-size:12px"><a href="${CONTENTOS_LEADS}" style="color:#5793A3;font-weight:bold">Open the ranked call list in ContentOS</a> — chat numbers open in the Zavis CRM.</p>${h4('Ads and the In-House Lead Tracker')}`
       : '<p style="color:#767769;font-size:12px">ContentOS could not be read this morning — the flags below come from the Meta ad data and the In-House Lead Tracker.</p>';
-    parts.push(h3(`Leads by platform and Meta ads: ${n ? plural(n, 'red flag') : 'no red flags'}`, n ? RED : '#244260') + metaSectionHtml(m, intro, flags, coHtml));
+    parts.push(h3(`Leads, revenue and Meta ads: ${n ? plural(n, 'red flag') : 'no red flags'}`, n ? RED : '#244260') + metaSectionHtml(m, intro, flags, coHtml));
     if (n) bits.push(plural(n, 'lead red flag'));
   }
   if (isReviewer(who)) {
