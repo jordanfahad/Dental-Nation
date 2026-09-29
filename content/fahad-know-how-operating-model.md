@@ -14,10 +14,11 @@ These are the rules the whole model is built on. Every department, meeting and h
 2. **Revenue and margin are owned by different people.** Marketing is paid to grow revenue. Trading is paid to protect margin. They are forced to negotiate every promotion. This is the single most important design choice.
 3. **Product enters through one door, gets sold through many.** Buying and Planning decide what comes in. Online, stores, marketplaces and CRM are all channels selling the same stock pool.
 4. **Stores are a channel and a fulfilment node, not a separate business.** Store teams sell online stock, fulfil online orders, take online returns and feed customer insight back. They are measured on omni-channel contribution, not just till sales.
-5. **Nothing goes live without three sign-offs.** Live and in stock (Content + Planning), margin-approved (Trading), traffic-planned (Marketing).
-6. **One set of numbers.** Finance publishes the daily and weekly figures. Every meeting argues from the same sheet.
+5. **Nothing goes live without four sign-offs.** Live and in stock (Content + Planning), margin-approved (Trading), traffic-planned (Marketing), tested and passed (QA).
+6. **One set of numbers.** Finance publishes the daily and weekly figures and Analytics reconciles every dashboard to them. Every meeting argues from the same sheet.
 7. **Fixed cadence, named owners, written decisions.** Every meeting has an owner, an input pack, a decision log. Anything not decided in a meeting is escalated to the VP within 24 hours, not left open.
 8. **Tech capacity is a commercial decision.** The trade meeting sets development priority by expected revenue impact.
+9. **Every project has one plan and one owner.** The PMO turns decisions into dated plans with named owners, and surfaces slips and blockers every week before they become surprises.
 
 ---
 
@@ -36,7 +37,10 @@ VP, E-commerce & Omni-channel  (P&L owner)
 ├── Development
 │     ├── Front-end            Site, checkout, mobile, A/B builds
 │     ├── Back-end             Integrations, OMS, PIM, payments, search
-│     └── QA                   Release testing, peak readiness, incident follow-up
+│     └── Platform & DevOps    Hosting, release pipeline, security, monitoring
+├── Quality Assurance (QA)     Release, promotion and campaign testing, peak readiness, defect follow-up
+├── Analytics & Insights       Tracking, attribution, dashboards, A/B read-outs, forecasting models
+├── Project Management (PMO)   Project plans, owners, deadlines, dependencies, weekly status
 ├── Finance                    P&L, budget control, reconciliation, business cases
 │
 └── Retail Operations (dotted line: reports to Group Retail, works daily with E-commerce)
@@ -173,6 +177,33 @@ Each profile has the same seven fields so the UI can render them identically.
 - **Outputs produced:** Goods-in report (triggers Content), dispatch SLA report, returns report, stock count exceptions.
 - **KPIs:** Receipt-to-available time, dispatch within SLA, delivery success rate, return processing time, stock accuracy.
 
+### 3.10 Project Management (PMO)
+- **Mandate:** Own delivery. Every cross-team project has one plan, a named owner for each task and a date, and slips are seen early.
+- **Owns:** Project portfolio and priorities (from the trade meeting), plans and timelines, owners, dependencies and resource clashes, RAID log (risks, actions, issues, decisions), weekly status, go-live readiness.
+- **Inputs needed:** Decisions and priorities (VP, trade meeting), launch calendar (Buying), campaign briefs and dates (Marketing), sprint capacity (Development), defect escape report (QA), budget per project (Finance).
+- **Outputs produced:** Weekly project status (on track / at risk / late) to the VP, delivery plan and dependencies (Development), go-live readiness checklist (QA), integrated campaign plan (Marketing), blockers needing a decision (trade meeting).
+- **KPIs:** Projects delivered on time, milestones slipped vs plan, days a blocker stays open, budget vs plan per project, go-lives with a signed readiness checklist.
+- **Talks daily to:** Development, Marketing, Content. Weekly to the VP, Trading, QA, Analytics, Finance, Retail Operations.
+- **Escalation rule:** A milestone more than 5 working days late, or a blocker open for more than 48 hours, goes to the VP in the Friday flash with a recovery plan.
+
+### 3.11 Analytics & Insights
+- **Mandate:** Own measurement. Track every channel end to end and turn the data into decisions: what is working, what is not, and why.
+- **Owns:** Tracking and tagging plan (site, app, ads, CRM), attribution and funnel reporting, dashboards and self-serve data, A/B test design and read-outs, segmentation and forecasting models, data quality.
+- **Inputs needed:** Event and order data feeds (Development), spend and campaign data (Marketing), financial actuals to reconcile (Finance), store and contact-centre data (Retail Operations).
+- **Outputs produced:** Performance section of the trade pack (Trading), campaign, funnel and A/B read-outs (Marketing), demand forecast inputs (Planning), KPI dashboard reconciled to Finance (VP), tracking requirements (Development).
+- **KPIs:** Tracking coverage of key journeys, gap vs Finance numbers, dashboard freshness, tests read out on time, decisions taken from insight reports.
+- **Talks daily to:** Marketing, Trading, Development. Weekly to Finance, Planning, the VP, PMO. Monthly to Buying.
+- **Escalation rule:** Any KPI more than 2% away from the Finance figure is flagged before the Monday trade meeting. The Finance number stands until the gap is reconciled.
+
+### 3.12 Quality Assurance (QA)
+- **Mandate:** Own quality before go-live. Nothing reaches a customer untested: releases, promotions, campaigns and content are checked against a written standard.
+- **Owns:** Test plans and regression testing, release and promotion testing (price, checkout, store POS parity), campaign and content checks (links, copy, pricing, brand), peak readiness and load tests, defect tracking and root-cause follow-up.
+- **Inputs needed:** Release candidates (Development), promotion setup and terms (Trading), campaign assets and landing pages (Marketing), pages and creative for spot checks (Content), go-live readiness checklist (PMO).
+- **Outputs produced:** Test results and defects (Development), promotion test sign-off (Trading), campaign QA checklist (Marketing), defect escape report (PMO).
+- **KPIs:** Defects found after go-live, test coverage of critical journeys, go-lives passed first time, time to verify a fix, pricing errors reaching customers.
+- **Talks daily to:** Development, Content. Weekly to Marketing, Trading, PMO, Retail Operations.
+- **Escalation rule:** QA can stop any release or campaign that fails a critical check. Overriding QA needs the VP’s written sign-off in the decision log.
+
 ---
 
 ## 4. Interaction map
@@ -210,6 +241,19 @@ Format: Sender to Receiver | What passes between them | Artefact | Cadence.
 | Finance | Marketing | Spend validation, invoice approval, ROI review | Spend tracker | Weekly |
 | Finance | Planning | Inventory valuation, provisions | Stock valuation | Monthly |
 | VP | All | Decisions, priorities, escalation rulings | Decision log | Weekly |
+| VP | PMO | Project priorities from the trade meeting | Decision log | Weekly |
+| PMO | VP | Status of every project, slips and blockers | Weekly project status (RAG) | Weekly |
+| PMO | Development | Integrated plan, dependencies, dates | Delivery plan | Weekly |
+| PMO | QA | What goes live when, readiness items | Go-live checklist | Per release / campaign |
+| Development | QA | Release candidate with test notes | Release ticket | Per release |
+| QA | Development | Defects found, go / no-go | Test report | Per release |
+| Marketing | QA | Campaign assets, landing pages, offer terms before launch | Campaign QA checklist | Min 2 days before live |
+| QA | PMO | Defects that reached customers, root cause | Defect escape report | Weekly |
+| Development | Analytics | Event and order data feeds | Tracking spec, data pipeline | Daily |
+| Finance | Analytics | Actuals to reconcile dashboards | Flash report | Daily |
+| Analytics | Trading | Channel, funnel and campaign performance | Trade pack, performance section | Weekly (Sun) |
+| Analytics | Marketing | Campaign, funnel and A/B read-outs | Performance dashboard | Daily + per test |
+| Analytics | Planning | Demand forecast inputs | Forecast model | Weekly |
 
 ---
 
@@ -217,11 +261,12 @@ Format: Sender to Receiver | What passes between them | Artefact | Cadence.
 
 | When | Forum | Owner | Attendees | Input pack | Decisions |
 |---|---|---|---|---|---|
-| Daily 9:00 | Daily flash | Finance | Trading, Marketing, Planning, CS, Warehouse (async) | Yesterday's revenue, margin, orders, traffic, dispatch, contact rate | Same-day fixes only: spend shifts, site issues, stock issues |
-| Monday 10:00 | Trade meeting (60 min) | Trading | VP, all heads, Head of Retail | Trade pack (Planning + Trading + Finance) | Winners pushed, losers marked down, promotions approved, Development priority set, store transfers agreed |
+| Daily 9:00 | Daily flash | Finance | Trading, Marketing, Planning, Analytics, CS, Warehouse (async) | Yesterday's revenue, margin, orders, traffic, dispatch, contact rate | Same-day fixes only: spend shifts, site issues, stock issues |
+| Monday 10:00 | Trade meeting (60 min) | Trading | VP, all heads, Head of Retail | Trade pack (Planning + Trading + Finance + Analytics) | Winners pushed, losers marked down, promotions approved, Development priority set, store transfers agreed |
 | Tuesday | Marketing + Content sync | Marketing | Digital, Offline, Content, VM | Campaign calendar, asset status, backlog | This week's campaign, email plan, assets, store roll-out |
 | Wednesday | Buying + Planning review | Planning | Buying, Trading, Warehouse | OTB, intake status, ageing report | Reorders, cancellations, transfers, markdown proposals for Monday |
-| Thursday | Product + Tech stand-up | Development | Marketing, Content, CS, Store Fulfilment | Release plan, incident log, test results | Release go/no-go, bug priority, freeze windows |
+| Wednesday | Project status review (30 min) | PMO | Development, QA, Marketing, Content, Analytics | Project plans, RAG status, RAID log | Re-plan slipped milestones, clear blockers, escalate to the VP |
+| Thursday | Product + Tech stand-up | Development | Marketing, Content, QA, PMO, CS, Store Fulfilment | Release plan, incident log, QA test results | Release go/no-go (with QA sign-off), bug priority, freeze windows |
 | Thursday | Store ops call | Store Management | Planning, Trading, Store Fulfilment, CS | Store trade report, fulfilment SLA | Staffing for campaigns, stock moves, price compliance |
 | Friday 15:00 | VP flash | Finance | VP, Group leadership | One-page flash | Escalations, spend approvals |
 | Monthly | P&L and reforecast | Finance | VP, all heads | P&L by channel and category | Budget moves, headcount, reforecast |
@@ -352,19 +397,23 @@ Each scenario is a swimlane: step number, department, action, artefact, elapsed 
 
 R = Responsible, A = Accountable, C = Consulted, I = Informed
 
-| Decision | VP | Buying | Planning | Marketing | Trading | Content | Dev | Finance | Retail Ops |
-|---|---|---|---|---|---|---|---|---|---|
-| What to buy | A | R | C | C | C | I | | I | C |
-| How much to buy | A | C | R | I | C | | | C | I |
-| Launch date | I | R | C | A | C | C | C | | C |
-| Promotion go/no-go | escalation | C | C | R | A | I | I | C | I |
-| Price and markdown | I | C | C | I | A/R | | | C | I |
-| Which products get shot first | | C | | C | A | R | | | |
-| Dev priority | A | | | C | R | C | R | | C |
-| Marketing spend allocation | A | | | R | C | | | C | |
-| Store stock transfers | | I | R | | A | | | | C |
-| Site incident response | I | | | C | C | | A/R | | C |
-| Budget and headcount | A | C | C | C | C | C | C | R | C |
+| Decision | VP | Buying | Planning | Marketing | Trading | Content | Dev | QA | Analytics | PMO | Finance | Retail Ops |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| What to buy | A | R | C | C | C | I | | | C | | I | C |
+| How much to buy | A | C | R | I | C | | | | C | | C | I |
+| Launch date | I | R | C | A | C | C | C | C | | C | | C |
+| Promotion go/no-go | escalation | C | C | R | A | I | I | C | C | | C | I |
+| Price and markdown | I | C | C | I | A/R | | | | C | | C | I |
+| Which products get shot first | | C | | C | A | R | | | | | | |
+| Dev priority | A | | | C | R | C | R | | C | C | | C |
+| Project plan and deadlines | A | | | C | C | C | C | C | | R | I | I |
+| Go-live quality sign-off | escalation | | | C | C | C | R | A/R | | I | | |
+| KPI definitions and dashboards | A | | | C | C | | C | | R | | C | |
+| Tracking and measurement plan | | | | C | | | R | | A/R | I | | |
+| Marketing spend allocation | A | | | R | C | | | | C | | C | |
+| Store stock transfers | | I | R | | A | | | | | | | C |
+| Site incident response | I | | | C | C | | A/R | C | | I | | C |
+| Budget and headcount | A | C | C | C | C | C | C | C | C | C | R | C |
 
 ---
 
@@ -379,7 +428,10 @@ R = Responsible, A = Accountable, C = Consulted, I = Informed
 | Offline Marketing | Growth (offline) | Community events, corporate tie-ups, signage, referral programmes |
 | Trading | Revenue management | Treatment plan conversion, pricing and offer governance, filling empty chair-hours, margin per treatment |
 | Content | Patient education & brand | Treatment pages, doctor profiles, before/after, bilingual content |
-| Development | Systems | HMS, CRM, WhatsApp automation, Lane E, integrations |
+| Development | Development team (Systems) | HMS, CRM, WhatsApp automation, landing pages, Lane E, integrations |
+| Quality Assurance | Quality assurance (QA) | Checks everything before patients see it: system releases, WhatsApp flows, ads, videos, landing pages, price and offer messages |
+| Analytics & Insights | Analytics & BI | Lead to booking to treatment funnel, campaign and video performance, attribution, dashboards, data quality |
+| Project Management (PMO) | Project management (PMO) | One plan per project (campaigns, video shoots, clinic launches, system rollouts), owners, deadlines, approvals, weekly status |
 | Finance | Finance | P&L per clinic and per doctor, marketing ROI, one set of numbers |
 | Store Management | Clinic managers | Clinic P&L, staffing, in-clinic conversion, patient feedback |
 | Visual Merchandising | Clinic experience | Reception, signage, campaign visibility in clinic |

@@ -34,7 +34,10 @@ const SHORT: Record<string, { retail: string; dental: string }> = {
   marketing: { retail: 'Marketing', dental: 'Growth' },
   trading: { retail: 'Trading', dental: 'Rev Mgmt' },
   content: { retail: 'Content', dental: 'Education' },
-  development: { retail: 'Development', dental: 'Systems' },
+  development: { retail: 'Development', dental: 'Dev team' },
+  qa: { retail: 'QA', dental: 'QA' },
+  analytics: { retail: 'Analytics', dental: 'Analytics' },
+  pmo: { retail: 'PMO', dental: 'PMO' },
   finance: { retail: 'Finance', dental: 'Finance' },
   retail_ops: { retail: 'Retail Ops', dental: 'Clinic Ops' },
 };
@@ -220,7 +223,7 @@ function StructureTab({ mode, sel, setSel }: { mode: Mode; sel: string | null; s
         </div>
         <p className="mb-1 mt-3 text-[9px] font-bold uppercase tracking-widest" style={{ color: BLUE }}>Enabling functions — nothing sells without them</p>
         <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3">
-          {row(['content', 'development', 'finance']).map((d) => (
+          {row(['pmo', 'analytics', 'content', 'development', 'qa', 'finance']).map((d) => (
             <Node key={d.id} d={d} mode={mode} selected={sel === d.id} onSelect={(i) => setSel(sel === i ? null : i)} />
           ))}
         </div>
@@ -335,7 +338,7 @@ function CadenceTab({ mode }: { mode: Mode }) {
       </div>
       <p className="mt-3 rounded-lg px-3 py-2 text-[11px] font-medium" style={{ backgroundColor: '#FDF9EC', color: '#6d5a1d' }}>
         {mode === 'dental'
-          ? 'Dental Nation translation: same skeleton — daily 9:00 flash on yesterday’s revenue and bookings, one Monday meeting on one report (chair utilisation, plan conversion, campaign results), Friday flash to the CEO. Anything undecided reaches the CEO within 24 hours with a one-page brief from each side.'
+          ? 'Dental Nation translation: same skeleton — daily 9:00 flash on yesterday’s revenue and bookings, one Monday meeting on one report (chair utilisation, plan conversion, campaign results), Friday flash to the CEO. Anything undecided reaches the CEO within 24 hours with a one-page brief from each side. The PMO runs a Wednesday project review, Analytics reconciles every dashboard to Finance, and nothing reaches patients without QA sign-off.'
           : 'Anything undecided in its forum reaches the VP within 24 hours with a one-page brief from each side.'}
       </p>
     </div>
@@ -438,7 +441,7 @@ function ScenariosTab({ mode }: { mode: Mode }) {
 
 /* ── decisions (RACI + read-across) tab ────────────────────────── */
 
-const RACI_COLS = ['vp', 'buying', 'planning', 'marketing', 'trading', 'content', 'development', 'finance', 'retail_ops'];
+const RACI_COLS = ['vp', 'buying', 'planning', 'marketing', 'trading', 'content', 'development', 'qa', 'analytics', 'pmo', 'finance', 'retail_ops'];
 
 function roleTone(v: string) {
   if (v.includes('A')) return { bg: GOLD, tx: '#5a4a10' };
