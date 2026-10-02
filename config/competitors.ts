@@ -25,6 +25,8 @@ export interface CompetitorDef {
   facts: { label: string; value: string; source: string }[];
   /** Patients treated per year as the company states it, or null. */
   claimedPatientsPerYear: number | null;
+  /** Patients a year implied by an outside revenue estimate, with how it was worked out. */
+  revenueCheck?: { patientsPerYear: number; note: string };
   /** Lead to treated-patient conversion assumed for the cross-check (low, high). */
   leadToPatient: [number, number];
 }
@@ -74,6 +76,7 @@ export const COMPETITORS: CompetitorDef[] = [
       { label: 'Lead capture', value: 'Free online consultation forms, WhatsApp, dedicated Facebook/Instagram landing pages (landing.dentakay.com, smile.dentakay.com)', source: 'public landing pages' },
     ],
     claimedPatientsPerYear: 15000,
+    revenueCheck: { patientsPerYear: 2600, note: 'ZoomInfo puts revenue at about USD 7.8 million a year; at a typical USD 3,000 implant or veneer package that is about 2,600 patients a year' },
     // Dental tourism: most enquiries never travel. 10–20% of leads becoming patients is the planning range.
     leadToPatient: [0.1, 0.2],
   },

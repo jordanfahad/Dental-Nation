@@ -70,6 +70,8 @@ function CompetitorBlock({ c, s, own }: { c: CompetitorDef; s: CompetitorSnapsho
     );
   }
   const t = totals(s);
+  // Markets report different lengths of history; the last 24 months is where all of them have data.
+  const trend = s.brandTrend.slice(-24);
   const o = own ? totals(own) : null;
   const uae = s.markets.find((m) => m.market === 'UAE') ?? null;
   const ksa = s.markets.find((m) => m.market === 'Saudi Arabia') ?? null;
@@ -77,19 +79,22 @@ function CompetitorBlock({ c, s, own }: { c: CompetitorDef; s: CompetitorSnapsho
   const implied = c.claimedPatientsPerYear
     ? ([c.claimedPatientsPerYear / 12 / c.leadToPatient[1], c.claimedPatientsPerYear / 12 / c.leadToPatient[0]] as [number, number])
     : null;
+  const byRevenue = c.revenueCheck
+    ? ([c.revenueCheck.patientsPerYear / 12 / c.leadToPatient[1], c.revenueCheck.patientsPerYear / 12 / c.leadToPatient[0]] as [number, number])
+    : null;
   const sortedMarkets = [...s.markets].sort((a, b) => (b.organicVisits ?? 0) + (b.paidVisits ?? 0) - (a.organicVisits ?? 0) - (a.paidVisits ?? 0));
   const top = sortedMarkets[0];
-  const trendLast = s.brandTrend.at(-1)?.searches ?? null;
-  const trendYearAgo = s.brandTrend.length >= 12 ? s.brandTrend.at(-12)!.searches : null;
+  const trendLast = trend.at(-1)?.searches ?? null;
+  const trendYearAgo = trend.length >= 13 ? trend.at(-13)!.searches : null;
   const brandGrowth = trendLast != null && trendYearAgo ? trendLast / trendYearAgo - 1 : null;
 
   const kpis: KpiItem[] = [
     { label: 'Google visits / month (est.)', value: int(t.search), gapDetail: 'no search data' },
     { label: 'of which paid (Google Ads)', value: int(t.paid) },
     { label: 'Est. Google Ads spend / month', value: t.adSpendAed ? `AED ${int(t.adSpendAed)}` : 'none seen' },
-    { label: 'Brand searches / month', value: int(t.brandSearches), deltaPct: brandGrowth, spark: s.brandTrend.map((x) => x.searches) },
+    { label: 'Brand searches / month', value: int(t.brandSearches), deltaPct: brandGrowth, spark: trend.map((x) => x.searches) },
     { label: 'Google traffic from brand searches', value: pct(t.brandShare) },
-    { label: 'Leads / month (est.)', value: implied ? `${int(Math.min(searchLeads[0], implied[0]))}–${int(Math.max(searchLeads[1], implied[1]))}` : `${int(searchLeads[0])}–${int(searchLeads[1])}` },
+    { label: 'Leads / month from Google (est.)', value: `${int(searchLeads[0])}–${int(searchLeads[1])}` },
   ];
 
   return (
@@ -169,8 +174,8 @@ function CompetitorBlock({ c, s, own }: { c: CompetitorDef; s: CompetitorSnapsho
         <Card>
           <SectionHeader tag="C3" eyebrow="Brand affinity" title={`People searching “${c.brandKeyword}” each month`} />
           <div className="px-5 pb-5 pt-4">
-            {s.brandTrend.length ? (
-              <TrendChart data={s.brandTrend} series={[{ key: 'searches', label: 'Brand searches', color: '#B45F53', kind: 'area' }]} xFormat="month" height={200} />
+            {trend.length ? (
+              <TrendChart data={trend} series={[{ key: 'searches', label: 'Brand searches', color: '#B45F53', kind: 'area' }]} xFormat="month" height={200} />
             ) : (
               <DataGapInline detail="no brand search history returned" owner={ownerFor('tracking')} />
             )}
@@ -211,6 +216,13 @@ function CompetitorBlock({ c, s, own }: { c: CompetitorDef; s: CompetitorSnapsho
                 a year, about {int(c.claimedPatientsPerYear! / 12)} a month. In dental tourism {pct(c.leadToPatient[0])}–{pct(c.leadToPatient[1])} of
                 leads travel and get treated, so that needs <b className="text-ink">{int(implied[0])}–{int(implied[1])} leads a month</b> from
                 all channels (Google, Facebook, Instagram, agents, referrals).
+              </p>
+            ) : null}
+            {byRevenue && c.revenueCheck ? (
+              <p className="mt-2">
+                <b className="text-ink">3. From their revenue:</b> {c.revenueCheck.note}, about {int(c.revenueCheck.patientsPerYear / 12)} patients a
+                month, which needs <b className="text-ink">{int(byRevenue[0])}–{int(byRevenue[1])} leads a month</b>. Their own patient claim
+                looks overstated, so the real figure is most likely nearer this one.
               </p>
             ) : null}
             <p className="mt-2">
