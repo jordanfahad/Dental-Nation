@@ -22,7 +22,7 @@ import { COMPETITORS, OWN, type CompetitorDef, type Market } from '@/config/comp
 
 const LABS = 'https://api.dataforseo.com/v3/dataforseo_labs/google';
 /** Bump when the snapshot gains fields: older snapshots are then refreshed on the next sync. */
-const SNAPSHOT_VERSION = 2;
+const SNAPSHOT_VERSION = 3;
 const WEEK_MS = 7 * 86400_000;
 /** A failed read (no credit, outage) is retried after this long instead of waiting a week. */
 const RETRY_MS = 6 * 3600_000;
@@ -78,7 +78,7 @@ export interface CompetitorSnapshot {
 }
 
 /** Sites that compete for the same searches without being clinics: encyclopaedias, publishers, platforms, retailers. */
-const NOT_A_CLINIC = /wikipedia|healthline|webmd|nhs\.uk|mayoclinic|clevelandclinic|medicalnewstoday|verywell|youtube|facebook|instagram|tiktok|reddit|quora|pinterest|amazon|colgate|oral-?b|sensodyne|listerine|bupa|dentaly|bookimed|whatclinic|flymedi|trustpilot|medigo|qunomedical|clinicsoncall|theratravel|britannica|ada\.org|mouthhealthy|humana|aetna|cigna|deltadental|yelp|tripadvisor|google|apple|news|magazine|\.gov|\.edu|doctolib|zocdoc|practo|smile\.direct|invisalign|aligner|sci|journal|ncbi|pubmed/i;
+const NOT_A_CLINIC = /wikipedia|wikihow|healthline|doctissimo|gutefrage|justanswer|noon\.com|crest\.com|pierrefabre|sunstar|muenchener-verein|dentolo|zahn\.de|dentnet|smile2impress|webmd|nhs\.uk|mayoclinic|clevelandclinic|medicalnewstoday|verywell|youtube|facebook|instagram|tiktok|reddit|quora|pinterest|amazon|colgate|oral-?b|sensodyne|listerine|bupa|dentaly|bookimed|whatclinic|flymedi|trustpilot|medigo|qunomedical|clinicsoncall|theratravel|britannica|ada\.org|mouthhealthy|humana|aetna|cigna|deltadental|yelp|tripadvisor|google|apple|news|magazine|\.gov|\.edu|doctolib|zocdoc|practo|smile\.direct|invisalign|aligner|sci|journal|ncbi|pubmed/i;
 /** Peer brand keyword from its domain: the first label, with hyphens as spaces ("vera-smile.com" → "vera smile"). */
 const brandOfDomain = (d: string) => d.replace(/^www\./, '').split('.')[0].replace(/-/g, ' ');
 
@@ -197,7 +197,8 @@ async function buildSnapshot(auth: string, c: CompetitorDef): Promise<Competitor
     if (r.error) { errors.push(`${m.name} peers: ${r.error}`); return { market: m.name, rows: [] as PeerRow[] }; }
     const items = ((get(r.result, 'items') as unknown[] | null) ?? [])
       .map((i) => ({ domain: String(get(i, 'domain') ?? ''), shared: num(get(i, 'intersections')), etv: num(get(i, 'full_domain_metrics.organic.etv')) ?? num(get(i, 'metrics.organic.etv')) }))
-      .filter((x) => x.domain && x.domain !== c.domain && !NOT_A_CLINIC.test(x.domain))
+      // A clinic, even a chain, does not get 300k+ Google visits a month: above that it is a publisher, retailer or insurer.
+      .filter((x) => x.domain && x.domain !== c.domain && !NOT_A_CLINIC.test(x.domain) && (x.etv ?? 0) < 300_000)
       .slice(0, 8);
     const rows = await Promise.all(items.map(async (x): Promise<PeerRow> => {
       const bk = brandOfDomain(x.domain);
