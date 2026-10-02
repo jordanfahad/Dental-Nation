@@ -15,6 +15,25 @@ export interface Market {
   peers?: boolean;
   /** Two-letter country code for the Meta Ad Library (EU countries only: that is where Meta discloses every ad). */
   adLibrary?: string;
+  /** Home market whose organic traffic is mostly blog reading (toothpaste, brushes), not patients. */
+  homeBlog?: boolean;
+}
+
+/**
+ * How organic Google visits become leads. Not every visit is a prospect: brand
+ * searches convert well, treatment and price searches moderately, and blog
+ * reading in the home market hardly at all. Rates from dental clinic site
+ * benchmarks (2026); ranges, not points.
+ */
+export interface OrganicLeadModel {
+  /** Share of brand-search visits that enquire. */
+  brandRate: [number, number];
+  /** Share of non-brand visits that carry treatment or price intent. */
+  commercialShare: [number, number];
+  /** The same share in a home-blog market. */
+  homeBlogCommercialShare: number;
+  /** Share of commercial visits that enquire. */
+  enquiryRate: [number, number];
 }
 
 export interface SocialProfile { platform: string; handle: string; followers: number; source: string }
@@ -65,7 +84,7 @@ export const GBP_AED = 4.7;
  * close the gap. Values are computed on the page; the words live here.
  */
 export interface GapDimension {
-  key: 'brand' | 'organic' | 'keywords' | 'authority' | 'social' | 'reviews' | 'paid' | 'leads' | 'footprint' | 'languages';
+  key: 'returning' | 'brand' | 'organic' | 'keywords' | 'authority' | 'social' | 'reviews' | 'paid' | 'leads' | 'footprint' | 'languages';
   label: string;
   missing: string;
   effort: string;
@@ -74,7 +93,8 @@ export interface GapDimension {
 }
 
 export const GAP_DIMENSIONS: GapDimension[] = [
-  { key: 'leads', label: 'Net leads a month', missing: 'Volume: our paid budget and reach are a fraction of theirs, and a share of our leads go quiet because the first reply is slow.', effort: 'Scale paid media (below), a reply-within-minutes routine at the front desk, and one treatment coordinator per clinic to work the lead list.', level: 'High' },
+  { key: 'returning', label: 'Returning patients a month', missing: 'Nothing: this is our advantage. Dental tourism patients make one trip; ours come back for recalls, hygiene visits and Smile Club.', effort: 'Protect it: Smile Club, recalls and reviews. Every returning patient is a lead we do not have to buy.', level: 'Low' },
+  { key: 'leads', label: 'New leads a month', missing: 'Volume: our paid budget and reach are a fraction of theirs, and a share of our leads go quiet because the first reply is slow.', effort: 'Scale paid media (below), a reply-within-minutes routine at the front desk, and one treatment coordinator per clinic to work the lead list.', level: 'High' },
   { key: 'paid', label: 'Paid media a month (est.)', missing: 'Budget and a creative pipeline. Dentakay runs language-specific Meta and Google campaigns with dedicated landing pages.', effort: 'Step the budget up as cost per lead holds: AED 25k by month 3, AED 60k by month 6, AED 100k by month 12. One performance marketer, weekly creative refresh from the doctor video programme.', level: 'High' },
   { key: 'brand', label: 'Brand searches a month', missing: 'Years of ads, reviews and word of mouth under one consistent name. Ours started a year ago and is rising fast.', effort: 'Keep the curve: consistent naming on every profile and ad, reviews after every visit, doctor videos, the Smile Club announcements. 24 to 36 months to 5,000 a month.', level: 'Medium' },
   { key: 'organic', label: 'Organic Google visits a month', missing: 'A content engine. Dentakay publishes treatment, price and blog pages in five languages; we have 284 ranked keywords in one market.', effort: 'One SEO lead and two writers (or an agency) producing 30 to 40 English and Arabic pages a month: treatment, price, doctor and area pages. AED 25k to 40k a month; 12 to 24 months to 10,000 visits.', level: 'High' },
@@ -110,6 +130,7 @@ export interface CompetitorDef {
   channels: ChannelModel[];
   traffic: TrafficModel;
   googleAds: GoogleAdsBenchmark;
+  organicLeads: OrganicLeadModel;
 }
 
 const UAE: Market = { code: 2784, name: 'UAE', lang: 'en', peers: true };
@@ -136,6 +157,8 @@ const DENTAL_TOURISM_TRAFFIC: TrafficModel = {
   ],
 };
 
+const ORGANIC_LEADS: OrganicLeadModel = { brandRate: [0.03, 0.05], commercialShare: [0.25, 0.4], homeBlogCommercialShare: 0.1, enquiryRate: [0.01, 0.03] };
+
 const DENTAL_TOURISM_GOOGLE_ADS: GoogleAdsBenchmark = {
   markets: ['UK', 'France', 'USA', 'Germany', 'Turkey'],
   marketsRunning: 5,
@@ -147,7 +170,7 @@ const DENTAL_TOURISM_GOOGLE_ADS: GoogleAdsBenchmark = {
 
 const DENTAL_TOURISM_CHANNELS: ChannelModel[] = [
   { key: 'meta-paid', label: 'Meta ads (Facebook, Instagram)', share: [0.4, 0.55], basis: 'Cheapest lead source for dental tourism (GBP 8–35 a lead); dedicated FB/IG landing pages; the Ad Library shows what is live', own: ['paid-social'] },
-  { key: 'google-organic', label: 'Google search (organic)', share: [0.15, 0.25], basis: 'Measured: Google visits × 1–3% enquiry rate (the table above)', own: ['website', 'gmb', 'ai-chat'] },
+  { key: 'google-organic', label: 'Google search (organic)', share: [0.15, 0.25], basis: 'Measured: brand visits × 3–5%, plus treatment and price visits (25–40% of the rest; 10% in the home blog market) × 1–3%', own: ['website', 'gmb', 'ai-chat'] },
   { key: 'google-paid', label: 'Google Ads', share: [0.05, 0.15], basis: 'GBP 45–120 a lead; a GBP 1,500–3,000 monthly budget gives 20–40 enquiries. DataForSEO sees no paid clicks this month, so the low end applies now', own: ['paid-search'] },
   { key: 'social-organic', label: 'Social and YouTube (organic)', share: [0.08, 0.15], basis: 'Followers × 0.05–0.2% enquiring a month: 190k Instagram, 105k Facebook, 185k YouTube', own: ['social-organic', 'influencer'] },
   { key: 'aggregators', label: 'Medical tourism platforms (Bookimed, WhatClinic, Flymedi)', share: [0.05, 0.1], basis: 'Listed on every major platform; platforms charge 10–20% commission, so clinics cap this', own: ['affiliate', 'partnership'] },
@@ -168,6 +191,7 @@ export const OWN: CompetitorDef = {
   channels: DENTAL_TOURISM_CHANNELS,
   traffic: DENTAL_TOURISM_TRAFFIC,
   googleAds: { ...DENTAL_TOURISM_GOOGLE_ADS, markets: ['UAE'], marketsRunning: 1 },
+  organicLeads: ORGANIC_LEADS,
 };
 
 export const COMPETITORS: CompetitorDef[] = [
@@ -188,7 +212,7 @@ export const COMPETITORS: CompetitorDef[] = [
       { code: 2124, name: 'Canada', lang: 'en' },
       UAE,
       { code: 2682, name: 'Saudi Arabia', lang: 'ar' },
-      { code: 2792, name: 'Turkey', lang: 'tr' },
+      { code: 2792, name: 'Turkey', lang: 'tr', homeBlog: true },
     ],
     facts: [
       { label: 'Founded', value: '2009, Istanbul (Dr Gülay Akay)', source: 'clinic listings (Bookimed, Flymedi), read 2 Oct 2026' },
@@ -214,6 +238,7 @@ export const COMPETITORS: CompetitorDef[] = [
     channels: DENTAL_TOURISM_CHANNELS,
     traffic: DENTAL_TOURISM_TRAFFIC,
     googleAds: DENTAL_TOURISM_GOOGLE_ADS,
+    organicLeads: ORGANIC_LEADS,
   },
 ];
 

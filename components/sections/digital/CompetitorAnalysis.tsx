@@ -27,12 +27,15 @@ interface OwnSide {
   tracker30: number;
   reviews: number;
   rating: number | null;
+  /** Practo, last 30 days: patients on their first recorded visit, and patients seen again. */
+  newPatients30: number;
+  returning30: number;
 }
 
 async function ownSide(): Promise<OwnSide> {
   const to = new Date().toISOString().slice(0, 10);
   const from = new Date(Date.now() - 90 * 86400_000).toISOString().slice(0, 10);
-  const out: OwnSide = { from, to, enquiries: {}, total: 0, followers: {}, metaSpend30: 0, googleSpend30: 0, metaGross30: 0, metaNet30: 0, googleConv30: 0, tracker30: 0, reviews: 0, rating: null };
+  const out: OwnSide = { from, to, enquiries: {}, total: 0, followers: {}, metaSpend30: 0, googleSpend30: 0, metaGross30: 0, metaNet30: 0, googleConv30: 0, tracker30: 0, reviews: 0, rating: null, newPatients30: 0, returning30: 0 };
   try {
     const perf = await getChannelPerformance({ from, to });
     for (const ch of perf.channels) { out.enquiries[ch.key] = ch.enquiries; out.total += ch.enquiries; }
@@ -43,12 +46,20 @@ async function ownSide(): Promise<OwnSide> {
     for (const r of (data ?? []) as { channel: string; value: number | string }[]) if (!(r.channel in out.followers)) out.followers[r.channel] = Number(r.value) || 0;
     const d30 = new Date(Date.now() - 30 * 86400_000).toISOString().slice(0, 10);
     const act = (actions: unknown, t: string) => (Array.isArray(actions) ? (actions as { action_type: string; value: string }[]).filter((x) => x.action_type === t).reduce((n, x) => n + (Number(x.value) || 0), 0) : 0);
-    const [meta, gads, rev, trk] = await Promise.all([
+    const [meta, gads, rev, trk, appts] = await Promise.all([
       db.from('meta_insights_raw').select('spend, data').gte('date', d30),
       db.from('google_ads_insights_raw').select('spend, conversions').gte('date', d30),
       db.from('gmb_reviews').select('rating'),
       db.from('raw_lead_tracker').select('data'),
+      db.from('practo_appointments_raw').select('mr_no, appt_date, status').not('mr_no', 'is', null),
     ]);
+    // New = first appointment in the Practo record (the record starts at the sync, so some "new" are older patients).
+    const first = new Map<string, string>();
+    const rows = ((appts.data ?? []) as { mr_no: string; appt_date: string; status: string | null }[]).filter((r) => !/cancel/i.test(r.status ?? ''));
+    for (const r of rows) if (!first.has(r.mr_no) || r.appt_date < first.get(r.mr_no)!) first.set(r.mr_no, r.appt_date);
+    const seenNew = new Set<string>(), seenBack = new Set<string>();
+    for (const r of rows) if (r.appt_date >= d30) (r.appt_date === first.get(r.mr_no) ? seenNew : seenBack).add(r.mr_no);
+    out.newPatients30 = seenNew.size; out.returning30 = seenBack.size;
     for (const r of (meta.data ?? []) as { spend: number | null; data: { actions?: unknown } | null }[]) {
       out.metaSpend30 += Number(r.spend ?? 0);
       const a = r.data?.actions;
@@ -158,7 +169,15 @@ function CompetitorBlock({ c, s, own, mine }: { c: CompetitorDef; s: CompetitorS
   const o = own ? totals(own, OWN) : null;
   const uae = s.markets.find((m) => m.market === 'UAE') ?? null;
   const ksa = s.markets.find((m) => m.market === 'Saudi Arabia') ?? null;
-  const searchLeads: [number, number] = [t.search * 0.01, t.search * 0.03];
+  // Organic leads: brand visits convert well; the rest only where there is treatment or price intent; home-market blog traffic hardly at all.
+  const ol = c.organicLeads;
+  const brandV = sum(s.markets.map((m) => m.brandVisits));
+  const homeOrganic = sum(s.markets.filter((m) => c.markets.find((x) => x.name === m.market)?.homeBlog).map((m) => (m.organicVisits ?? 0) - (m.brandVisits ?? 0)));
+  const otherOrganic = Math.max(0, t.organic - brandV - homeOrganic);
+  const searchLeads: [number, number] = [
+    brandV * ol.brandRate[0] + (otherOrganic * ol.commercialShare[0] + homeOrganic * ol.homeBlogCommercialShare) * ol.enquiryRate[0],
+    brandV * ol.brandRate[1] + (otherOrganic * ol.commercialShare[1] + homeOrganic * ol.homeBlogCommercialShare) * ol.enquiryRate[1],
+  ];
   const implied = c.claimedPatientsPerYear
     ? ([c.claimedPatientsPerYear / 12 / c.leadToPatient[1], c.claimedPatientsPerYear / 12 / c.leadToPatient[0]] as [number, number])
     : null;
@@ -195,7 +214,7 @@ function CompetitorBlock({ c, s, own, mine }: { c: CompetitorDef; s: CompetitorS
         ? s.metaAds.error
           ? `Ad Library could not be read (${s.metaAds.error})`
           : `${s.metaAds.activeAds} ads live in ${s.metaAds.countries.join('/')} right now${s.metaAds.euReach ? `, reaching ${int(s.metaAds.euReach)} people in the EU` : ''}${Object.keys(s.metaAds.platforms).length ? ` (${Object.entries(s.metaAds.platforms).map(([k, v]) => `${k} ${v}`).join(', ')})` : ''}`
-        : ch.key === 'google-organic' ? `measured: ${int(t.organic)} organic Google visits a month`
+        : ch.key === 'google-organic' ? `measured: ${int(brandV)} brand visits × ${pct(ol.brandRate[0])}–${pct(ol.brandRate[1])}, plus ${int(otherOrganic)} other visits (${pct(ol.commercialShare[0])}–${pct(ol.commercialShare[1])} with treatment intent) and ${int(homeOrganic)} home-market blog visits × ${pct(ol.enquiryRate[0])}–${pct(ol.enquiryRate[1])}`
         : ch.key === 'google-paid' ? (paidOff ? `benchmark for a brand of this size: about ${int(t.paid)} clicks for AED ${int(t.adSpendAed)} a month across ${ga.marketsRunning} markets` : `measured: ${int(t.paid)} paid Google clicks a month`)
         : ch.key === 'social-organic' ? `${int(sum(c.social.map((x) => x.followers)))} followers across ${c.social.map((x) => x.platform).join(', ')}`
         : null;
@@ -237,7 +256,8 @@ function CompetitorBlock({ c, s, own, mine }: { c: CompetitorDef; s: CompetitorS
   const theirPaid = 20_000 * GBP_AED * 0.5 + t.adSpendAed; // Meta midpoint of GBP 10k–25k plus the Google figure
   const gapRows = GAP_DIMENSIONS.map((g) => {
     const v = {
-      leads: { theirs: netLeads, ours: ownNetLeads, fmtT: `${int(netLeads)} (est.)`, fmtO: `${int(ownNetLeads)} (Meta net + Google, last 30 days; ${int(mine.tracker30)} enquiries logged)` },
+      returning: { theirs: Math.round(netLeads * 0.07), ours: mine.returning30, fmtT: `about ${int(netLeads * 0.07)} (5–10% of leads; one trip, no recall)`, fmtO: `${int(mine.returning30)} patients seen again (Practo, last 30 days)` },
+      leads: { theirs: netLeads, ours: ownNetLeads, fmtT: `${int(netLeads)} (est.), almost all new`, fmtO: `${int(ownNetLeads)} (Meta net + Google, last 30 days; ${int(mine.tracker30)} enquiries logged; ${int(mine.newPatients30)} first visits in Practo)` },
       paid: { theirs: theirPaid, ours: ownMetaSpend, fmtT: `AED ${int(theirPaid)} (est.)`, fmtO: `AED ${int(ownMetaSpend)} (last 30 days)` },
       brand: { theirs: t.brandSearches, ours: o?.brandSearches ?? 0, fmtT: int(t.brandSearches), fmtO: int(o?.brandSearches) },
       organic: { theirs: t.organic, ours: o?.organic ?? 0, fmtT: int(t.organic), fmtO: int(o?.organic) },
@@ -290,7 +310,8 @@ function CompetitorBlock({ c, s, own, mine }: { c: CompetitorDef; s: CompetitorS
           </table>
           <Takeaway>
             In one line: {c.name} is a 15-year brand spending roughly {int(theirPaid / Math.max(ownMetaSpend, 1))} times our media budget, with a content and video engine in five
-            languages. The gap is not one thing: it is budget (paid media), production (content and video) and operations (lead handling and
+            languages, and it has to buy almost every patient with ads because dental tourism patients do not come back. We have {int(mine.returning30)} returning
+            patients a month that they do not; the target is to grow new leads while keeping that base, not to match their volume. The gap is not one thing: it is budget (paid media), production (content and video) and operations (lead handling and
             capacity), built over years. The roadmap below sequences it; the first three months cost little and fix the leaks before the budget goes up.
           </Takeaway>
           <div className="mt-3 grid gap-3 md:grid-cols-3">
@@ -451,8 +472,9 @@ function CompetitorBlock({ c, s, own, mine }: { c: CompetitorDef; s: CompetitorS
           <div className="px-5 pb-5 pt-4 text-[12.5px] leading-snug text-ink-soft">
             <p className="text-ink"><b>About {int(mid(grossLeads))} gross enquiries a month, {int(netLeads)} net leads, {int(patients)} new patients.</b> Their real numbers are private, so the net figure is estimated three ways and the upper end is used:</p>
             <p className="mt-2">
-              <b className="text-ink">1. From Google traffic:</b> {int(t.search)} Google visits a month × 1–3% who send a form or
-              WhatsApp = <b className="text-ink">{int(searchLeads[0])}–{int(searchLeads[1])} leads a month</b> from Google alone.
+              <b className="text-ink">1. From Google traffic:</b> {int(brandV)} brand-search visits × {pct(ol.brandRate[0])}–{pct(ol.brandRate[1])}, plus the
+              treatment and price searches among the other {int(otherOrganic + homeOrganic)} visits × {pct(ol.enquiryRate[0])}–{pct(ol.enquiryRate[1])} =
+              <b className="text-ink"> {int(searchLeads[0])}–{int(searchLeads[1])} leads a month</b> from Google search. Blog reading (most of the Turkish traffic) is not counted as prospects.
             </p>
             {implied ? (
               <p className="mt-2">
