@@ -22,6 +22,11 @@ import { COMPETITORS, OWN, type CompetitorDef, type Market } from '@/config/comp
 
 const LABS = 'https://api.dataforseo.com/v3/dataforseo_labs/google';
 const WEEK_MS = 7 * 86400_000;
+/** A failed read (no credit, outage) is retried after this long instead of waiting a week. */
+const RETRY_MS = 6 * 3600_000;
+
+/** True when the snapshot holds real figures (at least one market answered). */
+export const hasData = (s: CompetitorSnapshot | null | undefined): s is CompetitorSnapshot => !!s && s.markets.some((m) => m.organicVisits !== null);
 
 export interface MarketRow {
   market: string;
@@ -177,10 +182,18 @@ export async function refreshCompetitorSnapshots(force = false): Promise<{ refre
   const db = getSupabaseAdmin();
   if (!db) return { refreshed: [], note: 'no database' };
   const all = [OWN, ...COMPETITORS];
-  const { data } = await db.from('competitor_snapshots').select('domain, fetched_at').in('domain', all.map((c) => c.domain)).order('fetched_at', { ascending: false });
-  const latest = new Map<string, string>();
-  for (const r of (data ?? []) as { domain: string; fetched_at: string }[]) if (!latest.has(r.domain)) latest.set(r.domain, r.fetched_at);
-  const due = all.filter((c) => force || !latest.has(c.domain) || Date.now() - Date.parse(latest.get(c.domain)!) > WEEK_MS);
+  const { data } = await db.from('competitor_snapshots').select('domain, fetched_at, data').in('domain', all.map((c) => c.domain)).order('fetched_at', { ascending: false }).limit(40);
+  const lastGood = new Map<string, number>();
+  const lastTry = new Map<string, number>();
+  for (const r of (data ?? []) as { domain: string; fetched_at: string; data: CompetitorSnapshot }[]) {
+    const at = Date.parse(r.fetched_at);
+    if (!lastTry.has(r.domain)) lastTry.set(r.domain, at);
+    if (!lastGood.has(r.domain) && hasData(r.data)) lastGood.set(r.domain, at);
+  }
+  const now = Date.now();
+  const due = all.filter((c) => force || (
+    now - (lastGood.get(c.domain) ?? 0) > WEEK_MS && now - (lastTry.get(c.domain) ?? 0) > RETRY_MS
+  ));
   if (!due.length) return { refreshed: [] };
   const auth = await readCreds();
   if (!auth) return { refreshed: [], note: 'DataForSEO not configured' };
@@ -198,6 +211,9 @@ export async function getCompetitorSnapshots(): Promise<Map<string, CompetitorSn
   const out = new Map<string, CompetitorSnapshot>();
   if (!db) return out;
   const { data } = await db.from('competitor_snapshots').select('domain, data, fetched_at').order('fetched_at', { ascending: false }).limit(50);
-  for (const r of (data ?? []) as { domain: string; data: CompetitorSnapshot }[]) if (!out.has(r.domain)) out.set(r.domain, r.data);
+  const rows = (data ?? []) as { domain: string; data: CompetitorSnapshot }[];
+  // Latest snapshot with real figures; otherwise the latest attempt (so the page can say why it is empty).
+  for (const r of rows) if (!out.has(r.domain) && hasData(r.data)) out.set(r.domain, r.data);
+  for (const r of rows) if (!out.has(r.domain)) out.set(r.domain, r.data);
   return out;
 }

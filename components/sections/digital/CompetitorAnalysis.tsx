@@ -4,7 +4,7 @@ import { KpiBand, type KpiItem } from '@/components/charts/KpiBand';
 import { TrendChart } from '@/components/charts/Charts';
 import { ownerFor } from '@/config/data-gap-owners';
 import { COMPETITORS, OWN, type CompetitorDef } from '@/config/competitors';
-import { getCompetitorSnapshots, type CompetitorSnapshot } from '@/lib/analytics/competitor';
+import { getCompetitorSnapshots, hasData, type CompetitorSnapshot } from '@/lib/analytics/competitor';
 import { dubaiDateLabel } from '@/lib/dates';
 
 const int = (n: number | null | undefined) => (n == null ? '—' : Math.round(n).toLocaleString('en-US'));
@@ -35,7 +35,8 @@ function totals(s: CompetitorSnapshot) {
  */
 export async function CompetitorAnalysis() {
   const snaps = await getCompetitorSnapshots().catch(() => new Map<string, CompetitorSnapshot>());
-  const own = snaps.get(OWN.domain) ?? null;
+  const ownSnap = snaps.get(OWN.domain) ?? null;
+  const own = hasData(ownSnap) ? ownSnap : null;
   return (
     <div className="space-y-4">
       {COMPETITORS.map((c) => (
@@ -46,12 +47,23 @@ export async function CompetitorAnalysis() {
 }
 
 function CompetitorBlock({ c, s, own }: { c: CompetitorDef; s: CompetitorSnapshot | null; own: CompetitorSnapshot | null }) {
-  if (!s) {
+  if (!hasData(s)) {
+    const tried = s as CompetitorSnapshot | null;
+    const noCredit = tried?.errors.some((e) => /402/.test(e));
     return (
       <Card>
         <SectionHeader tag="C1" eyebrow="Competitor analysis" title={`${c.name} (${c.domain})`} />
         <div className="px-5 pb-5 pt-4">
-          <DataGapInline detail="First DataForSEO read runs on the next sync (every 15 minutes); figures appear here after it" owner={ownerFor('tracking')} />
+          <DataGapInline
+            detail={
+              noCredit && tried
+                ? `DataForSEO refused the read on ${dubaiDateLabel(tried.fetchedAt.slice(0, 10))}: the account has no credit left (402 Payment Required). Top up the DataForSEO balance; the sync retries every 6 hours and fills this in`
+                : tried
+                  ? `DataForSEO returned no figures on ${dubaiDateLabel(tried.fetchedAt.slice(0, 10))} (${tried.errors[0] ?? 'no data'}); the sync retries every 6 hours`
+                  : 'First DataForSEO read runs on the next sync (every 15 minutes); figures appear here after it'
+            }
+            owner={ownerFor('tracking')}
+          />
           <Facts c={c} />
         </div>
       </Card>
