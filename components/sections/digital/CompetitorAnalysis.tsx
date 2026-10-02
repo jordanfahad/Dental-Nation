@@ -265,7 +265,7 @@ function CompetitorBlock({ c, s, own, mine }: { c: CompetitorDef; s: CompetitorS
       authority: { theirs: s.backlinks?.referringDomains ?? 0, ours: own?.backlinks?.referringDomains ?? 0, fmtT: int(s.backlinks?.referringDomains), fmtO: int(own?.backlinks?.referringDomains) },
       social: { theirs: sum(c.social.map((x) => x.followers)), ours: sum(Object.values(mine.followers)), fmtT: int(sum(c.social.map((x) => x.followers))), fmtO: int(sum(Object.values(mine.followers))) },
       reviews: { theirs: 1080, ours: mine.reviews, fmtT: '1,080 on Trustpilot (4.3)', fmtO: `${int(mine.reviews)} on Google${mine.rating ? ` (${mine.rating.toFixed(1)})` : ''}` },
-      footprint: { theirs: 60, ours: DENTISTS.length, fmtT: '7 clinics in Turkey, Riyadh, London office; 60 dentists', fmtO: `3 clinics in Dubai; ${DENTISTS.length} dentists` },
+      footprint: { theirs: 60, ours: DENTISTS.length, fmtT: '7 clinics (6 in Turkey, 1 in Riyadh), London office; 60 dentists', fmtO: `3 clinics in Dubai; ${DENTISTS.length} dentists` },
       languages: { theirs: 11, ours: 1, fmtT: '5 languages, 11 countries', fmtO: '2 languages, 1 city' },
     }[g.key];
     const ratio = v.ours > 0 ? v.theirs / v.ours : null;
@@ -624,6 +624,50 @@ function CompetitorBlock({ c, s, own, mine }: { c: CompetitorDef; s: CompetitorS
           </div>
         </Card>
       </div>
+
+      <Card>
+        <SectionHeader tag="C7b" eyebrow="Spend" title={`Digital marketing spend a month by channel: ${c.name} (estimate) vs Dental Nation (last 30 days)`} />
+        <div className="overflow-x-auto px-5 pb-5 pt-4">
+          <table className="w-full min-w-[640px] text-[12.5px]">
+            <thead>
+              <tr className="border-b border-line text-left text-[10px] uppercase tracking-wide text-ink-faint">
+                <th className="py-2 pr-3">Channel</th>
+                <th className="py-2 pr-3 text-right">{c.name} (AED, est.)</th>
+                <th className="py-2 pr-3">Basis</th>
+                <th className="py-2 pr-3 text-right">Dental Nation (AED)</th>
+                <th className="py-2 pl-3 text-right">Gap</th>
+              </tr>
+            </thead>
+            <tbody>
+              {c.spend.map((l) => {
+                const theirs: [number, number] = l.key === 'google' && !paidOff ? [t.adSpendAed, t.adSpendAed] : l.key === 'google' ? [t.adSpendAed * 0.5, t.adSpendAed] : l.theirs;
+                const ours = l.ours === 'meta' ? mine.metaSpend30 : l.ours === 'google' ? mine.googleSpend30 : null;
+                return (
+                  <tr key={l.key} className="border-b border-line/60 align-top">
+                    <td className="py-2 pr-3 text-ink">{l.label}</td>
+                    <td className="py-2 pr-3 text-right tabular-nums text-ink">{int(theirs[0])}–{int(theirs[1])}</td>
+                    <td className="py-2 pr-3 text-[11px] text-ink-faint">{l.basis}</td>
+                    <td className="py-2 pr-3 text-right tabular-nums text-ink">{ours == null ? <span className="text-[11px] font-normal text-ink-faint">{l.ours}</span> : int(ours)}</td>
+                    <td className="py-2 pl-3 text-right tabular-nums font-semibold text-watch">{ours ? `${Math.round(mid(theirs) / ours)}×` : '—'}</td>
+                  </tr>
+                );
+              })}
+              <tr className="font-semibold">
+                <td className="py-2 pr-3 text-ink">All channels</td>
+                <td className="py-2 pr-3 text-right tabular-nums">{int(sum(c.spend.map((l) => l.theirs[0])))}–{int(sum(c.spend.map((l) => l.theirs[1])))}</td>
+                <td className="py-2 pr-3 text-[11px] font-normal text-ink-faint">media plus people; people costs are not visible from outside</td>
+                <td className="py-2 pr-3 text-right tabular-nums">{int(mine.metaSpend30 + mine.googleSpend30)} media</td>
+                <td className="py-2 pl-3 text-right tabular-nums text-watch">{Math.round(sum(c.spend.map((l) => mid(l.theirs))) / Math.max(1, mine.metaSpend30 + mine.googleSpend30))}×</td>
+              </tr>
+            </tbody>
+          </table>
+          <p className="mt-2 text-[11px] text-ink-faint">
+            Dental Nation media spend is read from the Meta and Google Ads accounts for the last 30 days. Our content, video and social work is done
+            in-house and by CRM-DN and is not costed per channel here; when Finance gives those figures, the table shows them. {c.name} figures are estimates built from
+            the lead model and typical team sizes for a dental tourism brand of this size.
+          </p>
+        </div>
+      </Card>
 
       <Card>
         <SectionHeader tag="C8" eyebrow="Mapped to Dental Nation" title={`Channel mix: ${c.name} (estimate) vs Dental Nation (actual, ${dubaiDateLabel(mine.from)} to ${dubaiDateLabel(mine.to)})`} />

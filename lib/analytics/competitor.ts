@@ -22,7 +22,7 @@ import { COMPETITORS, OWN, type CompetitorDef, type Market } from '@/config/comp
 
 const LABS = 'https://api.dataforseo.com/v3/dataforseo_labs/google';
 /** Bump when the snapshot gains fields: older snapshots are then refreshed on the next sync. */
-const SNAPSHOT_VERSION = 3;
+const SNAPSHOT_VERSION = 4;
 const WEEK_MS = 7 * 86400_000;
 /** A failed read (no credit, outage) is retried after this long instead of waiting a week. */
 const RETRY_MS = 6 * 3600_000;
@@ -122,14 +122,17 @@ const get = (o: unknown, path: string): unknown => path.split('.').reduce<unknow
 
 async function buildSnapshot(auth: string, c: CompetitorDef): Promise<CompetitorSnapshot> {
   const errors: string[] = [];
-  const like = `%${c.brand}%`;
+  const names = [c.brand, ...(c.brandAliases ?? [])];
+  // "like a or like b": DataForSEO's filter syntax interleaves conditions with 'or'.
+  const brandFilter = names.flatMap((n, i) => (i ? ['or', ['keyword_data.keyword', 'like', `%${n}%`]] : [['keyword_data.keyword', 'like', `%${n}%`]]));
+  const notBrandFilter = names.flatMap((n, i) => (i ? ['and', ['keyword_data.keyword', 'not_like', `%${n}%`]] : [['keyword_data.keyword', 'not_like', `%${n}%`]]));
   const trend = new Map<string, number>();
 
   const markets = await Promise.all(c.markets.map(async (m): Promise<MarketRow> => {
     const [ov, brand, kw] = await Promise.all([
       labs(auth, 'domain_rank_overview', m, { target: c.domain }),
-      labs(auth, 'ranked_keywords', m, { target: c.domain, limit: 100, filters: [['keyword_data.keyword', 'like', like]], order_by: ['ranked_serp_element.serp_item.etv,desc'] }),
-      labs(auth, 'keyword_overview', m, { keywords: [c.brandKeyword] }),
+      labs(auth, 'ranked_keywords', m, { target: c.domain, limit: 100, filters: brandFilter, order_by: ['ranked_serp_element.serp_item.etv,desc'] }),
+      labs(auth, 'keyword_overview', m, { keywords: [c.brandKeyword, ...(c.brandAliases ?? [])] }),
     ]);
     const row: MarketRow = { market: m.name, organicVisits: null, organicKeywords: null, top3: null, paidVisits: null, paidKeywords: null, paidCostUsd: null, brandSearches: null, brandVisits: null };
     const errs = [ov.error && `overview ${ov.error}`, brand.error && `brand keywords ${brand.error}`, kw.error && `brand searches ${kw.error}`].filter(Boolean) as string[];
@@ -158,11 +161,14 @@ async function buildSnapshot(auth: string, c: CompetitorDef): Promise<Competitor
       row.brandVisits = Math.round(items.reduce<number>((n, i) => n + (num(get(i, 'ranked_serp_element.serp_item.etv')) ?? 0), 0));
     }
     if (!kw.error) {
-      const item = ((get(kw.result, 'items') as unknown[] | null) ?? [])[0];
-      row.brandSearches = num(get(item, 'keyword_info.search_volume')) ?? 0;
-      for (const ms of (get(item, 'keyword_info.monthly_searches') as unknown[] | null) ?? []) {
-        const y = num(get(ms, 'year')), mo = num(get(ms, 'month')), v = num(get(ms, 'search_volume'));
-        if (y && mo) { const k = `${y}-${String(mo).padStart(2, '0')}-01`; trend.set(k, (trend.get(k) ?? 0) + (v ?? 0)); }
+      // All spellings of the brand added together (Latin and Arabic, for example).
+      row.brandSearches = 0;
+      for (const item of (get(kw.result, 'items') as unknown[] | null) ?? []) {
+        row.brandSearches += num(get(item, 'keyword_info.search_volume')) ?? 0;
+        for (const ms of (get(item, 'keyword_info.monthly_searches') as unknown[] | null) ?? []) {
+          const y = num(get(ms, 'year')), mo = num(get(ms, 'month')), v = num(get(ms, 'search_volume'));
+          if (y && mo) { const k = `${y}-${String(mo).padStart(2, '0')}-01`; trend.set(k, (trend.get(k) ?? 0) + (v ?? 0)); }
+        }
       }
     }
     return row;
@@ -173,7 +179,7 @@ async function buildSnapshot(auth: string, c: CompetitorDef): Promise<Competitor
   const lead = [...markets].sort((a, b) => (b.organicVisits ?? 0) - (a.organicVisits ?? 0))[0];
   const leadMarket = c.markets.find((m) => m.name === lead?.market);
   if (leadMarket && (lead.organicVisits ?? 0) > 0) {
-    const r = await labs(auth, 'ranked_keywords', leadMarket, { target: c.domain, limit: 15, filters: [['keyword_data.keyword', 'not_like', `%${c.brand}%`]], order_by: ['ranked_serp_element.serp_item.etv,desc'] });
+    const r = await labs(auth, 'ranked_keywords', leadMarket, { target: c.domain, limit: 15, filters: notBrandFilter, order_by: ['ranked_serp_element.serp_item.etv,desc'] });
     if (r.error) errors.push(`top keywords: ${r.error}`);
     else topKeywords = {
       market: leadMarket.name,

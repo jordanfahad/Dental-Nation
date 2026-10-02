@@ -78,6 +78,17 @@ export interface GoogleAdsBenchmark {
 
 export const GBP_AED = 4.7;
 
+/** One line of monthly digital marketing spend, for the us-vs-them table. */
+export interface SpendLine {
+  key: 'meta' | 'google' | 'content' | 'video' | 'platforms' | 'other';
+  label: string;
+  /** Competitor estimate in AED (low, high) and its basis. */
+  theirs: [number, number];
+  basis: string;
+  /** How Dental Nation's figure is sourced: 'meta' and 'google' are measured from the ad accounts; otherwise a note. */
+  ours: 'meta' | 'google' | string;
+}
+
 /**
  * The fact-finding frame for Mr Akbar: where Dental Nation stands against the
  * competitor on each measure, what is missing on our side, and the effort to
@@ -113,6 +124,8 @@ export interface CompetitorDef {
   brand: string;
   /** The main branded search term (for the monthly search trend). */
   brandKeyword: string;
+  /** Other spellings people search the brand by (Arabic, local scripts); counted with the main term. */
+  brandAliases?: string[];
   markets: Market[];
   /** Public claims, with where they come from. Patient numbers drive the implied-leads cross-check. */
   facts: { label: string; value: string; source: string }[];
@@ -131,6 +144,7 @@ export interface CompetitorDef {
   traffic: TrafficModel;
   googleAds: GoogleAdsBenchmark;
   organicLeads: OrganicLeadModel;
+  spend: SpendLine[];
 }
 
 const UAE: Market = { code: 2784, name: 'UAE', lang: 'en', peers: true };
@@ -157,15 +171,25 @@ const DENTAL_TOURISM_TRAFFIC: TrafficModel = {
   ],
 };
 
+const DENTAL_TOURISM_SPEND: SpendLine[] = [
+  { key: 'meta', label: 'Meta ads (Facebook, Instagram)', theirs: [45_000, 115_000], basis: '430 to 1,190 leads a month at GBP 8 to 35 a lead', ours: 'meta' },
+  { key: 'google', label: 'Google Ads', theirs: [35_000, 70_000], basis: 'GBP 1,500 to 3,000 a month per market in six markets', ours: 'google' },
+  { key: 'content', label: 'Content and SEO (people)', theirs: [40_000, 60_000], basis: 'Treatment, price and blog pages in five languages: an SEO lead plus writers and translators', ours: 'in-house and CRM-DN, not costed separately' },
+  { key: 'video', label: 'Video and social production', theirs: [30_000, 50_000], basis: 'Daily video across four language accounts and YouTube: videographer, editor, community manager', ours: 'in-house (Mohan), not costed separately' },
+  { key: 'platforms', label: 'Medical tourism platforms (commission)', theirs: [20_000, 40_000], basis: '10 to 20% commission on 50 to 220 platform leads a month that convert', ours: 'ArabyAds affiliate, commission only' },
+  { key: 'other', label: 'Influencers, PR, events', theirs: [10_000, 30_000], basis: 'Patient-influencer trips and press; not visible from outside', ours: 'none running' },
+];
+
 const ORGANIC_LEADS: OrganicLeadModel = { brandRate: [0.03, 0.05], commercialShare: [0.25, 0.4], homeBlogCommercialShare: 0.1, enquiryRate: [0.01, 0.03] };
 
 const DENTAL_TOURISM_GOOGLE_ADS: GoogleAdsBenchmark = {
-  markets: ['UK', 'France', 'USA', 'Germany', 'Turkey'],
-  marketsRunning: 5,
+  // Where they sell and where they have clinics: the four source markets, Turkey, and Saudi Arabia (Riyadh clinic).
+  markets: ['UK', 'France', 'USA', 'Germany', 'Turkey', 'Saudi Arabia'],
+  marketsRunning: 6,
   spendPerMarketGbp: [1500, 3000],
   cpcGbp: [1.5, 4],
   leadsPerMarket: [20, 40],
-  source: 'Avangard dental tourism advertising benchmarks, 2026: GBP 1,500–3,000 a month per market at GBP 1.50–4.00 a click gives 20–40 enquiries; applied to the five main markets (UK, France, USA, Germany, Turkey)',
+  source: 'Avangard dental tourism advertising benchmarks, 2026: GBP 1,500–3,000 a month per market at GBP 1.50–4.00 a click gives 20–40 enquiries; applied to the six markets where they sell or have a clinic (UK, France, USA, Germany, Turkey, Saudi Arabia)',
 };
 
 const DENTAL_TOURISM_CHANNELS: ChannelModel[] = [
@@ -192,6 +216,7 @@ export const OWN: CompetitorDef = {
   traffic: DENTAL_TOURISM_TRAFFIC,
   googleAds: { ...DENTAL_TOURISM_GOOGLE_ADS, markets: ['UAE'], marketsRunning: 1 },
   organicLeads: ORGANIC_LEADS,
+  spend: DENTAL_TOURISM_SPEND,
 };
 
 export const COMPETITORS: CompetitorDef[] = [
@@ -200,6 +225,7 @@ export const COMPETITORS: CompetitorDef[] = [
     name: 'Dentakay',
     brand: 'dentakay',
     brandKeyword: 'dentakay',
+    brandAliases: ['دينتاكاي'],
     // Dental tourism into Turkey: Europe and North America, plus the Gulf (Riyadh branch) and Turkey itself.
     markets: [
       { code: 2826, name: 'UK', lang: 'en', peers: true },
@@ -216,7 +242,7 @@ export const COMPETITORS: CompetitorDef[] = [
     ],
     facts: [
       { label: 'Founded', value: '2009, Istanbul (Dr Gülay Akay)', source: 'clinic listings (Bookimed, Flymedi), read 2 Oct 2026' },
-      { label: 'Clinics', value: '7 in Turkey (Istanbul, Ankara, Antalya), Riyadh (KSA), consultation office in London', source: 'clinic listings, read 2 Oct 2026' },
+      { label: 'Clinics', value: '6 in Turkey (Istanbul: Özel Dentakay, Nish, Şişli, Bağcılar; Ankara: Çayyolu; Antalya), 1 in Riyadh, plus a London office', source: 'dentakay.com/locations, read 2 Oct 2026' },
       { label: 'Patients a year (their claim)', value: '15,000 a year; “22,000+ patients worldwide”', source: 'clinic listings, read 2 Oct 2026' },
       { label: 'Dentists', value: '60, across 5 departments', source: 'clinic listings, read 2 Oct 2026' },
       { label: 'Trustpilot', value: '4.3 out of 5 from 1,080 reviews', source: 'trustpilot.com/review/dentakay.com, read 2 Oct 2026' },
@@ -239,6 +265,7 @@ export const COMPETITORS: CompetitorDef[] = [
     traffic: DENTAL_TOURISM_TRAFFIC,
     googleAds: DENTAL_TOURISM_GOOGLE_ADS,
     organicLeads: ORGANIC_LEADS,
+    spend: DENTAL_TOURISM_SPEND,
   },
 ];
 
