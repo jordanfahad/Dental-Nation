@@ -22,7 +22,7 @@ import { COMPETITORS, OWN, type CompetitorDef, type Market } from '@/config/comp
 
 const LABS = 'https://api.dataforseo.com/v3/dataforseo_labs/google';
 /** Bump when the snapshot gains fields: older snapshots are then refreshed on the next sync. */
-const SNAPSHOT_VERSION = 6;
+const SNAPSHOT_VERSION = 7;
 const WEEK_MS = 7 * 86400_000;
 /** A failed read (no credit, outage) is retried after this long instead of waiting a week. */
 const RETRY_MS = 6 * 3600_000;
@@ -96,7 +96,7 @@ export function brandVariants(domain: string): string[] {
   // Keep the prefix (plain "michaels" is a craft store, "dr michaels" is the clinic); also try the name without a trailing "clinic".
   const noClinic = sp.replace(/ (dental )?clinics?$/, '');
   // A one-word leftover ("noa") is too generic to count as the brand.
-  const keepNoClinic = noClinic !== sp && (noClinic.includes(' ') || noClinic.length >= 6);
+  const keepNoClinic = noClinic !== sp && noClinic.includes(' ');
   return [...new Set([label.replace(/-/g, ' '), sp, ...(keepNoClinic ? [noClinic] : [])])].filter(Boolean);
 }
 const brandOfDomain = (d: string) => brandVariants(d)[1] ?? brandVariants(d)[0];
