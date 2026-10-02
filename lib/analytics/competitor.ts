@@ -22,7 +22,7 @@ import { COMPETITORS, OWN, type CompetitorDef, type Market } from '@/config/comp
 
 const LABS = 'https://api.dataforseo.com/v3/dataforseo_labs/google';
 /** Bump when the snapshot gains fields: older snapshots are then refreshed on the next sync. */
-const SNAPSHOT_VERSION = 5;
+const SNAPSHOT_VERSION = 6;
 const WEEK_MS = 7 * 86400_000;
 /** A failed read (no credit, outage) is retried after this long instead of waiting a week. */
 const RETRY_MS = 6 * 3600_000;
@@ -93,7 +93,9 @@ export function brandVariants(domain: string): string[] {
   for (const w of NAME_WORDS) sp = sp.replace(new RegExp(w, 'g'), ` ${w} `);
   for (const w of PREFIX_WORDS) if (sp.startsWith(w) && sp.length > w.length + 2 && !sp.startsWith(`${w} `)) sp = `${w} ${sp.slice(w.length)}`;
   sp = sp.replace(/\s+/g, ' ').trim();
-  return [...new Set([label.replace(/-/g, ' '), sp, sp.replace(/^(dr|the|your) /, '')])].filter(Boolean);
+  // Keep the prefix (plain "michaels" is a craft store, "dr michaels" is the clinic); also try the name without a trailing "clinic".
+  const noClinic = sp.replace(/ (dental )?clinics?$/, '');
+  return [...new Set([label.replace(/-/g, ' '), sp, noClinic])].filter(Boolean);
 }
 const brandOfDomain = (d: string) => brandVariants(d)[1] ?? brandVariants(d)[0];
 
