@@ -3,7 +3,8 @@ import { DataGapInline } from '@/components/ui/DataGap';
 import { KpiBand, type KpiItem } from '@/components/charts/KpiBand';
 import { TrendChart } from '@/components/charts/Charts';
 import { ownerFor } from '@/config/data-gap-owners';
-import { COMPETITORS, GBP_AED, OWN, type CompetitorDef } from '@/config/competitors';
+import { COMPETITORS, GAP_DIMENSIONS, GBP_AED, OWN, type CompetitorDef } from '@/config/competitors';
+import { DENTISTS } from '@/lib/smileclub/scripts';
 import { getCompetitorSnapshots, hasData, type CompetitorSnapshot } from '@/lib/analytics/competitor';
 import { getChannelPerformance } from '@/lib/growth/channelPerformance';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
@@ -16,12 +17,22 @@ interface OwnSide {
   enquiries: Record<string, number>;
   total: number;
   followers: Record<string, number>;
+  /** Last 30 days: ad spend (AED) and Meta leads counted as people. */
+  metaSpend30: number;
+  googleSpend30: number;
+  metaGross30: number;
+  metaNet30: number;
+  googleConv30: number;
+  /** Enquiries logged in the In-House Lead Tracker in the last 30 days. */
+  tracker30: number;
+  reviews: number;
+  rating: number | null;
 }
 
 async function ownSide(): Promise<OwnSide> {
   const to = new Date().toISOString().slice(0, 10);
   const from = new Date(Date.now() - 90 * 86400_000).toISOString().slice(0, 10);
-  const out: OwnSide = { from, to, enquiries: {}, total: 0, followers: {} };
+  const out: OwnSide = { from, to, enquiries: {}, total: 0, followers: {}, metaSpend30: 0, googleSpend30: 0, metaGross30: 0, metaNet30: 0, googleConv30: 0, tracker30: 0, reviews: 0, rating: null };
   try {
     const perf = await getChannelPerformance({ from, to });
     for (const ch of perf.channels) { out.enquiries[ch.key] = ch.enquiries; out.total += ch.enquiries; }
@@ -30,6 +41,28 @@ async function ownSide(): Promise<OwnSide> {
   if (db) {
     const { data } = await db.from('social_insights').select('channel, value, day').eq('metric', 'followers').order('day', { ascending: false }).limit(20);
     for (const r of (data ?? []) as { channel: string; value: number | string }[]) if (!(r.channel in out.followers)) out.followers[r.channel] = Number(r.value) || 0;
+    const d30 = new Date(Date.now() - 30 * 86400_000).toISOString().slice(0, 10);
+    const act = (actions: unknown, t: string) => (Array.isArray(actions) ? (actions as { action_type: string; value: string }[]).filter((x) => x.action_type === t).reduce((n, x) => n + (Number(x.value) || 0), 0) : 0);
+    const [meta, gads, rev, trk] = await Promise.all([
+      db.from('meta_insights_raw').select('spend, data').gte('date', d30),
+      db.from('google_ads_insights_raw').select('spend, conversions').gte('date', d30),
+      db.from('gmb_reviews').select('rating'),
+      db.from('raw_lead_tracker').select('data'),
+    ]);
+    for (const r of (meta.data ?? []) as { spend: number | null; data: { actions?: unknown } | null }[]) {
+      out.metaSpend30 += Number(r.spend ?? 0);
+      const a = r.data?.actions;
+      out.metaGross30 += Math.max(act(a, 'lead'), act(a, 'onsite_conversion.messaging_conversation_started_7d'));
+      out.metaNet30 += act(a, 'onsite_conversion.messaging_user_depth_2_message_send');
+    }
+    for (const r of (gads.data ?? []) as { spend: number | null; conversions: number | null }[]) { out.googleSpend30 += Number(r.spend ?? 0); out.googleConv30 += Number(r.conversions ?? 0); }
+    const ratings = ((rev.data ?? []) as { rating: number | null }[]).map((r) => Number(r.rating)).filter((n) => Number.isFinite(n) && n > 0);
+    out.reviews = (rev.data ?? []).length;
+    out.rating = ratings.length ? ratings.reduce((a, b) => a + b, 0) / ratings.length : null;
+    for (const r of (trk.data ?? []) as { data: Record<string, unknown> }[]) {
+      const m = String(r.data?.['Date'] ?? '').trim().match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
+      if (m && `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}` >= d30) out.tracker30 += 1;
+    }
   }
   return out;
 }
@@ -198,8 +231,87 @@ function CompetitorBlock({ c, s, own, mine }: { c: CompetitorDef; s: CompetitorS
     return { market: p.market, n: all.length, brandRank: byBrand.findIndex((x) => x.me) + 1, visitRank: byVisits.findIndex((x) => x.me) + 1, rows: byBrand };
   });
 
+  // The fact-finding frame: where we stand on each measure, what is missing, what it takes.
+  const ownMetaSpend = mine.metaSpend30 + mine.googleSpend30;
+  const ownNetLeads = mine.metaNet30 + Math.round(mine.googleConv30);
+  const theirPaid = 20_000 * GBP_AED * 0.5 + t.adSpendAed; // Meta midpoint of GBP 10k–25k plus the Google figure
+  const gapRows = GAP_DIMENSIONS.map((g) => {
+    const v = {
+      leads: { theirs: netLeads, ours: ownNetLeads, fmtT: `${int(netLeads)} (est.)`, fmtO: `${int(ownNetLeads)} (Meta net + Google, last 30 days; ${int(mine.tracker30)} enquiries logged)` },
+      paid: { theirs: theirPaid, ours: ownMetaSpend, fmtT: `AED ${int(theirPaid)} (est.)`, fmtO: `AED ${int(ownMetaSpend)} (last 30 days)` },
+      brand: { theirs: t.brandSearches, ours: o?.brandSearches ?? 0, fmtT: int(t.brandSearches), fmtO: int(o?.brandSearches) },
+      organic: { theirs: t.organic, ours: o?.organic ?? 0, fmtT: int(t.organic), fmtO: int(o?.organic) },
+      keywords: { theirs: t.keywords, ours: o?.keywords ?? 0, fmtT: int(t.keywords), fmtO: int(o?.keywords) },
+      authority: { theirs: s.backlinks?.referringDomains ?? 0, ours: own?.backlinks?.referringDomains ?? 0, fmtT: int(s.backlinks?.referringDomains), fmtO: int(own?.backlinks?.referringDomains) },
+      social: { theirs: sum(c.social.map((x) => x.followers)), ours: sum(Object.values(mine.followers)), fmtT: int(sum(c.social.map((x) => x.followers))), fmtO: int(sum(Object.values(mine.followers))) },
+      reviews: { theirs: 1080, ours: mine.reviews, fmtT: '1,080 on Trustpilot (4.3)', fmtO: `${int(mine.reviews)} on Google${mine.rating ? ` (${mine.rating.toFixed(1)})` : ''}` },
+      footprint: { theirs: 60, ours: DENTISTS.length, fmtT: '7 clinics in Turkey, Riyadh, London office; 60 dentists', fmtO: `3 clinics in Dubai; ${DENTISTS.length} dentists` },
+      languages: { theirs: 11, ours: 1, fmtT: '5 languages, 11 countries', fmtO: '2 languages, 1 city' },
+    }[g.key];
+    const ratio = v.ours > 0 ? v.theirs / v.ours : null;
+    return { g, ...v, ratio };
+  });
+
   return (
     <>
+      <Card highlight>
+        <SectionHeader
+          tag="C0"
+          eyebrow="Fact finding"
+          title={`Where Dental Nation stands against ${c.name}, what is missing, and what it takes`}
+          right={<span className="text-[11px] text-ink-faint">our figures: live from the dashboard</span>}
+        />
+        <div className="overflow-x-auto px-5 pb-5 pt-4">
+          <table className="w-full min-w-[900px] text-[12.5px]">
+            <thead>
+              <tr className="border-b border-line text-left text-[10px] uppercase tracking-wide text-ink-faint">
+                <th className="py-2 pr-3">Measure</th>
+                <th className="py-2 pr-3 text-right">{c.name}</th>
+                <th className="py-2 pr-3 text-right">Dental Nation</th>
+                <th className="py-2 pr-3 text-right">Gap</th>
+                <th className="py-2 pr-3">What is missing on our side</th>
+                <th className="py-2 pr-3">What it takes</th>
+                <th className="py-2 pl-3">Effort</th>
+              </tr>
+            </thead>
+            <tbody>
+              {gapRows.map((r) => (
+                <tr key={r.g.key} className="border-b border-line/60 align-top">
+                  <td className="py-2 pr-3 font-medium text-ink">{r.g.label}</td>
+                  <td className="py-2 pr-3 text-right tabular-nums text-ink-soft">{r.fmtT}</td>
+                  <td className="py-2 pr-3 text-right tabular-nums text-ink">{r.fmtO}</td>
+                  <td className="py-2 pr-3 text-right tabular-nums font-semibold text-watch">{r.ratio == null ? '—' : r.ratio < 1 ? 'we lead' : `${r.ratio >= 10 ? Math.round(r.ratio) : r.ratio.toFixed(1)}×`}</td>
+                  <td className="py-2 pr-3 text-[11.5px] text-ink-soft">{r.g.missing}</td>
+                  <td className="py-2 pr-3 text-[11.5px] text-ink-soft">{r.g.effort}</td>
+                  <td className="py-2 pl-3"><span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${r.g.level === 'High' ? 'bg-watch/10 text-watch' : r.g.level === 'Medium' ? 'bg-accent/10 text-accent' : 'bg-good/10 text-good'}`}>{r.g.level}</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <Takeaway>
+            In one line: {c.name} is a 15-year brand spending roughly {int(theirPaid / Math.max(ownMetaSpend, 1))} times our media budget, with a content and video engine in five
+            languages. The gap is not one thing: it is budget (paid media), production (content and video) and operations (lead handling and
+            capacity), built over years. The roadmap below sequences it; the first three months cost little and fix the leaks before the budget goes up.
+          </Takeaway>
+          <div className="mt-3 grid gap-3 md:grid-cols-3">
+            {[
+              ['Months 0 to 3: fix the leaks', 'Reply to every lead within minutes; reviews after every visit; the doctor video programme at three videos a week; Arabic Instagram account; Meta budget to AED 25k a month. Roughly AED 40k a month in all.'],
+              ['Months 3 to 12: build the engines', 'Content engine (SEO lead plus two writers), YouTube channel, PR and partner links, treatment coordinators at each clinic, Meta to AED 60k and Google to AED 20k a month. Roughly AED 120k a month by month 12.'],
+              ['Months 12 to 36: scale', 'Paid media at AED 100k or more a month as cost per lead holds; 10,000 organic visits; 25,000 to 100,000 followers; 1,000 reviews; brand searches at 5,000 a month. Capacity (DN Elite DIFC) decides how far this goes.'],
+            ].map(([h, body]) => (
+              <div key={h} className="rounded-card border border-line bg-panel/30 p-3">
+                <p className="text-[12px] font-semibold text-ink">{h}</p>
+                <p className="mt-1 text-[11.5px] leading-snug text-ink-soft">{body}</p>
+              </div>
+            ))}
+          </div>
+          <p className="mt-2 text-[11px] text-ink-faint">
+            Dentakay figures are the estimates on this page; ours are live from the dashboard (DataForSEO for search, Meta and Google Ads for spend
+            and leads, Google Business Profile for reviews). Budgets and timelines are planning estimates to be costed per line before commitment.
+          </p>
+        </div>
+      </Card>
+
       <Card highlight>
         <SectionHeader
           tag="C1"

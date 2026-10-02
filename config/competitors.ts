@@ -59,6 +59,33 @@ export interface GoogleAdsBenchmark {
 
 export const GBP_AED = 4.7;
 
+/**
+ * The fact-finding frame for Mr Akbar: where Dental Nation stands against the
+ * competitor on each measure, what is missing on our side, and the effort to
+ * close the gap. Values are computed on the page; the words live here.
+ */
+export interface GapDimension {
+  key: 'brand' | 'organic' | 'keywords' | 'authority' | 'social' | 'reviews' | 'paid' | 'leads' | 'footprint' | 'languages';
+  label: string;
+  missing: string;
+  effort: string;
+  /** Low, Medium, High: money and time together. */
+  level: 'Low' | 'Medium' | 'High';
+}
+
+export const GAP_DIMENSIONS: GapDimension[] = [
+  { key: 'leads', label: 'Net leads a month', missing: 'Volume: our paid budget and reach are a fraction of theirs, and a share of our leads go quiet because the first reply is slow.', effort: 'Scale paid media (below), a reply-within-minutes routine at the front desk, and one treatment coordinator per clinic to work the lead list.', level: 'High' },
+  { key: 'paid', label: 'Paid media a month (est.)', missing: 'Budget and a creative pipeline. Dentakay runs language-specific Meta and Google campaigns with dedicated landing pages.', effort: 'Step the budget up as cost per lead holds: AED 25k by month 3, AED 60k by month 6, AED 100k by month 12. One performance marketer, weekly creative refresh from the doctor video programme.', level: 'High' },
+  { key: 'brand', label: 'Brand searches a month', missing: 'Years of ads, reviews and word of mouth under one consistent name. Ours started a year ago and is rising fast.', effort: 'Keep the curve: consistent naming on every profile and ad, reviews after every visit, doctor videos, the Smile Club announcements. 24 to 36 months to 5,000 a month.', level: 'Medium' },
+  { key: 'organic', label: 'Organic Google visits a month', missing: 'A content engine. Dentakay publishes treatment, price and blog pages in five languages; we have 284 ranked keywords in one market.', effort: 'One SEO lead and two writers (or an agency) producing 30 to 40 English and Arabic pages a month: treatment, price, doctor and area pages. AED 25k to 40k a month; 12 to 24 months to 10,000 visits.', level: 'High' },
+  { key: 'keywords', label: 'Keywords ranked on Google', missing: 'Pages. Rankings follow the content engine above.', effort: 'Comes with the content engine; track monthly on the Digital & SEO tab.', level: 'Medium' },
+  { key: 'authority', label: 'Websites linking to us', missing: 'Press, directories and partner links. Ours are mostly directories.', effort: 'PR and partnerships: 8 to 10 new referring domains a month (health press, UAE directories, insurer and employer pages, Smile Club corporate partners). 12 months to 350.', level: 'Medium' },
+  { key: 'social', label: 'Social followers', missing: 'A daily video presence, a YouTube channel and separate English and Arabic accounts. We post occasionally to one account.', effort: 'Three to five videos a week from the doctor programme (Mohan plus one editor), one community manager, Arabic account, YouTube channel, AED 5k to 10k a month in follower campaigns. 12 months to 25k, 36 months to 100k.', level: 'High' },
+  { key: 'reviews', label: 'Public reviews', missing: 'Volume. Our rating is higher; their count is 11 times ours.', effort: 'Ask after every completed visit (WhatsApp link, front desk script): 50 to 100 reviews a month. 12 months to 1,000.', level: 'Low' },
+  { key: 'footprint', label: 'Clinics and dentists', missing: 'Capacity to absorb a Dentakay-sized lead flow: they have seven clinics and 60 dentists.', effort: 'Not a marketing task: chairs and dentist hours decide how many leads we can convert. DN Elite DIFC (2027) is the next step.', level: 'High' },
+  { key: 'languages', label: 'Languages and markets', missing: 'They sell in five languages across eleven countries; we sell in two languages in one city.', effort: 'Arabic first (content, ads, social, front desk), then Russian or Hindi by demand. Medical tourism into Dubai is a separate decision.', level: 'Medium' },
+];
+
 export interface CompetitorDef {
   domain: string;
   name: string;
