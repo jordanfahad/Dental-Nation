@@ -20,6 +20,7 @@ import { runSlotsMonitor } from '@/lib/ops/slotsMonitor';
 import { sendNewLeadAlerts } from '@/lib/ops/alerts';
 import { getSiteSpeedReport } from '@/lib/analytics/site-speed';
 import { getTechBenchmark } from '@/lib/analytics/benchmark';
+import { refreshCompetitorSnapshots } from '@/lib/analytics/competitor';
 import { getSiteSizeReport } from '@/lib/analytics/site-size';
 import { sendWatchedTabAlerts } from '@/lib/ops/tabAlerts';
 import { syncOpsForms } from './adapters/ops-forms-adapter';
@@ -564,6 +565,15 @@ export async function runSync(trigger: SyncTrigger): Promise<SyncSummary> {
     await getSiteSizeReport();
   } catch {
     /* the card shows its own gap note */
+  }
+
+  // ----- Competitor analysis snapshots: DataForSEO, refreshed weekly per
+  // domain (Digital & SEO › Competitor analysis reads the latest). Best-effort.
+  try {
+    const c = await refreshCompetitorSnapshots();
+    if (c.refreshed.length) sheetsOk.push(`Competitor analysis refreshed: ${c.refreshed.join(', ')}`);
+  } catch (err) {
+    dataGaps.push({ area: 'tracking', detail: `Competitor analysis refresh failed: ${(err as Error).message}`, owner: ownerFor('tracking') });
   }
 
   // ----- Silver upserts -----

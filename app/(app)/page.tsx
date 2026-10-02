@@ -25,7 +25,7 @@ import { ClarityReport } from '@/components/sections/clarity/ClarityReport';
 import { StatusReport } from '@/components/sections/status/StatusReport';
 import { ClinicalOps } from '@/components/sections/ops/ClinicalOps';
 import { BoardReport } from '@/components/sections/report/BoardReport';
-import { DigitalSeo } from '@/components/sections/digital/DigitalSeo';
+import { DigitalReport } from '@/components/sections/digital/DigitalReport';
 import { GroupRevenue } from '@/components/sections/clinics/GroupRevenue';
 import { UserManagement } from '@/components/sections/users/UserManagement';
 import { OpsReport } from '@/components/sections/opsreport/OpsReport';
@@ -73,6 +73,7 @@ export default async function DashboardPage({
     rcad?: string;
     rcmp?: string;
     otab?: string;
+    dtab?: string;
     clinic?: string;
   }>;
 }) {
@@ -128,7 +129,7 @@ export default async function DashboardPage({
           navigation so the skeleton shows immediately instead of the shell
           hanging on the tab's data. */}
       <Suspense
-        key={`${tab}|${sp.tab ?? ''}|${sp.from ?? ''}|${sp.to ?? ''}|${sp.preset ?? ''}|${sp.compare ?? ''}|${sp.mtab ?? ''}|${sp.mscope ?? ''}|${sp.mgrp ?? ''}|${sp.mchan ?? ''}|${sp.mcamp ?? ''}|${sp.gcamp ?? ''}|${sp.btab ?? ''}|${sp.ptab ?? ''}|${sp.gtab ?? ''}|${sp.gchan ?? ''}|${sp.gclinic ?? ''}|${sp.mpipe ?? ''}|${sp.rdate ?? ''}|${sp.rcad ?? ''}|${sp.rcmp ?? ''}|${sp.otab ?? ''}|${clinic}`}
+        key={`${tab}|${sp.tab ?? ''}|${sp.from ?? ''}|${sp.to ?? ''}|${sp.preset ?? ''}|${sp.compare ?? ''}|${sp.mtab ?? ''}|${sp.mscope ?? ''}|${sp.mgrp ?? ''}|${sp.mchan ?? ''}|${sp.mcamp ?? ''}|${sp.gcamp ?? ''}|${sp.btab ?? ''}|${sp.ptab ?? ''}|${sp.gtab ?? ''}|${sp.gchan ?? ''}|${sp.gclinic ?? ''}|${sp.mpipe ?? ''}|${sp.rdate ?? ''}|${sp.rcad ?? ''}|${sp.rcmp ?? ''}|${sp.otab ?? ''}|${sp.dtab ?? ''}|${clinic}`}
         fallback={<TabSkeleton />}
       >
         {tab === 'executive' ? <ExecutiveDashboard query={query} gclinic={sp.gclinic} /> : null}
@@ -142,7 +143,7 @@ export default async function DashboardPage({
         {tab === 'marketing' ? <MarketingReport sub={sp.mtab} range={range} mscope={sp.mscope} mgrp={sp.mgrp} mchan={sp.mchan} mcamp={sp.mcamp} gcamp={sp.gcamp} /> : null}
         {tab === 'social' ? <SocialReport range={range} /> : null}
         {tab === 'analytics' ? <GoogleAnalyticsReport range={range} /> : null}
-        {tab === 'digital' ? <DigitalSeo range={range} /> : null}
+        {tab === 'digital' ? <DigitalReport range={range} sub={sp.dtab} /> : null}
         {tab === 'clarity' ? <ClarityReport /> : null}
         {tab === 'drop' ? <DataDrop /> : null}
         {/* Grantable per-user window onto the Smile Club plan (primary home:

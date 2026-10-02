@@ -1,0 +1,15 @@
+import { DigitalSeo } from './DigitalSeo';
+import { CompetitorAnalysis } from './CompetitorAnalysis';
+import { DigitalSubNav } from './DigitalSubNav';
+import { resolveDigitalSub } from './subtabs';
+
+/** Digital & SEO tab: the organic report, and Competitor analysis (added 2 Oct 2026). */
+export async function DigitalReport({ range, sub }: { range?: { from?: string; to?: string }; sub?: string }) {
+  const active = resolveDigitalSub(sub);
+  return (
+    <div className="space-y-4">
+      <DigitalSubNav active={active} />
+      {active === 'competitors' ? <CompetitorAnalysis /> : <DigitalSeo range={range} />}
+    </div>
+  );
+}
