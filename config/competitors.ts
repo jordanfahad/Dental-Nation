@@ -33,6 +33,30 @@ export interface ChannelModel {
   own: string[];
 }
 
+/**
+ * How a site's visits split by source for a dental tourism brand. Organic
+ * search is usually 14–20% of all visits for such a brand (the rest is paid
+ * social, organic social, direct and referrals), so measured organic visits
+ * scale up to an estimate of total traffic; the other rows are typical
+ * shares of that total. Ranges from healthcare and dental tourism traffic
+ * benchmarks (2026); the page labels every modelled figure as an estimate.
+ */
+export interface TrafficModel {
+  organicShare: [number, number];
+  sources: { key: string; label: string; share: [number, number] }[];
+}
+
+/** What Google Ads looks like for a brand of this size when the campaigns are on (agency benchmarks per market, 2026). */
+export interface GoogleAdsBenchmark {
+  marketsRunning: number;
+  spendPerMarketGbp: [number, number];
+  cpcGbp: [number, number];
+  leadsPerMarket: [number, number];
+  source: string;
+}
+
+export const GBP_AED = 4.7;
+
 export interface CompetitorDef {
   domain: string;
   name: string;
@@ -53,6 +77,8 @@ export interface CompetitorDef {
   social: SocialProfile[];
   /** The lead-channel model this brand is judged against. */
   channels: ChannelModel[];
+  traffic: TrafficModel;
+  googleAds: GoogleAdsBenchmark;
 }
 
 const UAE: Market = { code: 2784, name: 'UAE', lang: 'en', peers: true };
@@ -67,6 +93,26 @@ const UAE: Market = { code: 2784, name: 'UAE', lang: 'en', peers: true };
  * network, listings on Bookimed/WhatClinic/Flymedi) and the measured Google
  * figures on this page. Ranges, not points: nobody outside the business knows.
  */
+const DENTAL_TOURISM_TRAFFIC: TrafficModel = {
+  organicShare: [0.14, 0.2],
+  sources: [
+    { key: 'organic-search', label: 'Organic search (Google)', share: [0.14, 0.2] },
+    { key: 'paid-social', label: 'Paid social (Meta ads)', share: [0.3, 0.4] },
+    { key: 'organic-social', label: 'Organic social and YouTube', share: [0.12, 0.18] },
+    { key: 'direct', label: 'Direct and returning', share: [0.12, 0.18] },
+    { key: 'paid-search', label: 'Paid search (Google Ads)', share: [0.05, 0.1] },
+    { key: 'referral', label: 'Referrals and platforms', share: [0.05, 0.1] },
+  ],
+};
+
+const DENTAL_TOURISM_GOOGLE_ADS: GoogleAdsBenchmark = {
+  marketsRunning: 5,
+  spendPerMarketGbp: [1500, 3000],
+  cpcGbp: [1.5, 4],
+  leadsPerMarket: [20, 40],
+  source: 'Avangard dental tourism advertising benchmarks, 2026: GBP 1,500–3,000 a month per market at GBP 1.50–4.00 a click gives 20–40 enquiries; applied to the five main markets (UK, France, USA, Germany, Turkey)',
+};
+
 const DENTAL_TOURISM_CHANNELS: ChannelModel[] = [
   { key: 'meta-paid', label: 'Meta ads (Facebook, Instagram)', share: [0.4, 0.55], basis: 'Cheapest lead source for dental tourism (GBP 8–35 a lead); dedicated FB/IG landing pages; the Ad Library shows what is live', own: ['paid-social'] },
   { key: 'google-organic', label: 'Google search (organic)', share: [0.15, 0.25], basis: 'Measured: Google visits × 1–3% enquiry rate (the table above)', own: ['website', 'gmb', 'ai-chat'] },
@@ -87,6 +133,8 @@ export const OWN: CompetitorDef = {
   leadToPatient: [0.1, 0.2],
   social: [],
   channels: DENTAL_TOURISM_CHANNELS,
+  traffic: DENTAL_TOURISM_TRAFFIC,
+  googleAds: { ...DENTAL_TOURISM_GOOGLE_ADS, marketsRunning: 1 },
 };
 
 export const COMPETITORS: CompetitorDef[] = [
@@ -130,6 +178,8 @@ export const COMPETITORS: CompetitorDef[] = [
       { platform: 'Facebook', handle: 'Dentakay Dental Clinic (62k) + Dentakay Clinique Dentaire (43k)', followers: 105000, source: 'facebook.com pages, read 2 Oct 2026' },
     ],
     channels: DENTAL_TOURISM_CHANNELS,
+    traffic: DENTAL_TOURISM_TRAFFIC,
+    googleAds: DENTAL_TOURISM_GOOGLE_ADS,
   },
 ];
 
