@@ -22,7 +22,7 @@ import { COMPETITORS, OWN, type CompetitorDef, type Market } from '@/config/comp
 
 const LABS = 'https://api.dataforseo.com/v3/dataforseo_labs/google';
 /** Bump when the snapshot gains fields: older snapshots are then refreshed on the next sync. */
-const SNAPSHOT_VERSION = 4;
+const SNAPSHOT_VERSION = 5;
 const WEEK_MS = 7 * 86400_000;
 /** A failed read (no credit, outage) is retried after this long instead of waiting a week. */
 const RETRY_MS = 6 * 3600_000;
@@ -79,8 +79,23 @@ export interface CompetitorSnapshot {
 
 /** Sites that compete for the same searches without being clinics: encyclopaedias, publishers, platforms, retailers. */
 const NOT_A_CLINIC = /wikipedia|wikihow|healthline|doctissimo|gutefrage|justanswer|noon\.com|crest\.com|pierrefabre|sunstar|muenchener-verein|dentolo|zahn\.de|dentnet|smile2impress|webmd|nhs\.uk|mayoclinic|clevelandclinic|medicalnewstoday|verywell|youtube|facebook|instagram|tiktok|reddit|quora|pinterest|amazon|colgate|oral-?b|sensodyne|listerine|bupa|dentaly|bookimed|whatclinic|flymedi|trustpilot|medigo|qunomedical|clinicsoncall|theratravel|britannica|ada\.org|mouthhealthy|humana|aetna|cigna|deltadental|yelp|tripadvisor|google|apple|news|magazine|\.gov|\.edu|doctolib|zocdoc|practo|smile\.direct|invisalign|aligner|sci|journal|ncbi|pubmed/i;
-/** Peer brand keyword from its domain: the first label, with hyphens as spaces ("vera-smile.com" → "vera smile"). */
-const brandOfDomain = (d: string) => d.replace(/^www\./, '').split('.')[0].replace(/-/g, ' ');
+/**
+ * The spellings people search a clinic by, from its domain. "royalclinicdubai.com"
+ * is searched as "royal clinic dubai", not as one word, so the label is split on
+ * the words clinic names are built from and every variant is tried; the best
+ * volume wins. Prefix words (dr, the, my) split only at the start.
+ */
+const NAME_WORDS = ['dental', 'hospital', 'medical', 'clinics', 'clinic', 'centre', 'center', 'smile', 'dubai', 'abudhabi', 'care', 'studio', 'tooth', 'teeth', 'club', 'ortho', 'implant', 'family', 'perfect', 'whites', 'royal', 'best', 'ave'];
+const PREFIX_WORDS = ['dr', 'the', 'your'];
+export function brandVariants(domain: string): string[] {
+  const label = domain.replace(/^www\./, '').split('.')[0].toLowerCase();
+  let sp = label.replace(/-/g, ' ');
+  for (const w of NAME_WORDS) sp = sp.replace(new RegExp(w, 'g'), ` ${w} `);
+  for (const w of PREFIX_WORDS) if (sp.startsWith(w) && sp.length > w.length + 2 && !sp.startsWith(`${w} `)) sp = `${w} ${sp.slice(w.length)}`;
+  sp = sp.replace(/\s+/g, ' ').trim();
+  return [...new Set([label.replace(/-/g, ' '), sp, sp.replace(/^(dr|the|your) /, '')])].filter(Boolean);
+}
+const brandOfDomain = (d: string) => brandVariants(d)[1] ?? brandVariants(d)[0];
 
 async function readCreds(): Promise<string | null> {
   const db = getSupabaseAdmin();
@@ -206,12 +221,16 @@ async function buildSnapshot(auth: string, c: CompetitorDef): Promise<Competitor
       // A clinic, even a chain, does not get 300k+ Google visits a month: above that it is a publisher, retailer or insurer.
       .filter((x) => x.domain && x.domain !== c.domain && !NOT_A_CLINIC.test(x.domain) && (x.etv ?? 0) < 300_000)
       .slice(0, 8);
-    const rows = await Promise.all(items.map(async (x): Promise<PeerRow> => {
-      const bk = brandOfDomain(x.domain);
-      const kw = await labs(auth, 'keyword_overview', m, { keywords: [bk] });
-      const item = ((get(kw.result, 'items') as unknown[] | null) ?? [])[0];
-      return { domain: x.domain, organicVisits: x.etv !== null ? Math.round(x.etv) : null, sharedKeywords: x.shared, brandKeyword: bk, brandSearches: kw.error ? null : num(get(item, 'keyword_info.search_volume')) ?? 0 };
-    }));
+    // One keyword_overview call per market for every spelling of every peer; the best volume per peer wins.
+    const variants = new Map(items.map((x) => [x.domain, brandVariants(x.domain)]));
+    const kw = await labs(auth, 'keyword_overview', m, { keywords: [...new Set([...variants.values()].flat())].slice(0, 200) });
+    const vol = new Map<string, number>();
+    for (const item of (get(kw.result, 'items') as unknown[] | null) ?? []) vol.set(String(get(item, 'keyword') ?? '').toLowerCase(), num(get(item, 'keyword_info.search_volume')) ?? 0);
+    const rows = items.map((x): PeerRow => {
+      const best = [...(variants.get(x.domain) ?? [])].sort((a, b) => (vol.get(b) ?? 0) - (vol.get(a) ?? 0))[0] ?? brandOfDomain(x.domain);
+      return { domain: x.domain, organicVisits: x.etv !== null ? Math.round(x.etv) : null, sharedKeywords: x.shared, brandKeyword: best, brandSearches: kw.error ? null : vol.get(best) ?? 0 };
+    });
+    if (kw.error) errors.push(`${m.name} peer brands: ${kw.error}`);
     return { market: m.name, rows };
   }));
 

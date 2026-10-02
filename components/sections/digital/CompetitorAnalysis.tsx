@@ -529,7 +529,7 @@ function CompetitorBlock({ c, s, own, mine }: { c: CompetitorDef; s: CompetitorS
                         {st.rows.map((r) => (
                           <tr key={r.domain} className={`border-b border-line/60 ${r.me ? 'bg-accent/5 font-semibold' : ''}`}>
                             <td className="py-1.5 pr-2 text-ink">{r.domain}</td>
-                            <td className="py-1.5 pr-2 text-right tabular-nums">{int(r.brand)}</td>
+                            <td className="py-1.5 pr-2 text-right tabular-nums">{r.brand ? int(r.brand) : <span className="text-ink-faint">&lt;10</span>}</td>
                             <td className="py-1.5 pl-2 text-right tabular-nums text-ink-soft">{int(r.visits)}</td>
                           </tr>
                         ))}
@@ -539,8 +539,8 @@ function CompetitorBlock({ c, s, own, mine }: { c: CompetitorDef; s: CompetitorS
                 ))}
               </div>
               <p className="mt-2 text-[11px] text-ink-faint">
-                A peer's brand searches are measured on its domain name (for example “verasmile” for verasmile.com), so a brand searched
-                under a different spelling can read low. Platforms, publishers and retailers are left out.
+                A peer's brand searches are the best of the spellings its domain suggests (“royal clinic dubai” for royalclinicdubai.com).
+                Google reports nothing for fewer than ten searches a month, shown as &lt;10. Platforms, publishers and retailers are left out.
               </p>
             </>
           ) : (
