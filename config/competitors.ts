@@ -48,6 +48,8 @@ export interface TrafficModel {
 
 /** What Google Ads looks like for a brand of this size when the campaigns are on (agency benchmarks per market, 2026). */
 export interface GoogleAdsBenchmark {
+  /** Markets the campaigns run in; the estimate is split across them by organic traffic. */
+  markets: string[];
   marketsRunning: number;
   spendPerMarketGbp: [number, number];
   cpcGbp: [number, number];
@@ -73,6 +75,8 @@ export interface CompetitorDef {
   revenueCheck?: { patientsPerYear: number; note: string };
   /** Lead to treated-patient conversion assumed for the cross-check (low, high). */
   leadToPatient: [number, number];
+  /** Share of gross enquiries that are real (net) leads: the rest is price shopping, spam and unreachable numbers (low, high). */
+  netOfGross: [number, number];
   /** Public social accounts and follower counts, as read on the date in `source`. */
   social: SocialProfile[];
   /** The lead-channel model this brand is judged against. */
@@ -106,6 +110,7 @@ const DENTAL_TOURISM_TRAFFIC: TrafficModel = {
 };
 
 const DENTAL_TOURISM_GOOGLE_ADS: GoogleAdsBenchmark = {
+  markets: ['UK', 'France', 'USA', 'Germany', 'Turkey'],
   marketsRunning: 5,
   spendPerMarketGbp: [1500, 3000],
   cpcGbp: [1.5, 4],
@@ -131,10 +136,11 @@ export const OWN: CompetitorDef = {
   facts: [],
   claimedPatientsPerYear: null,
   leadToPatient: [0.1, 0.2],
+  netOfGross: [0.4, 0.6],
   social: [],
   channels: DENTAL_TOURISM_CHANNELS,
   traffic: DENTAL_TOURISM_TRAFFIC,
-  googleAds: { ...DENTAL_TOURISM_GOOGLE_ADS, marketsRunning: 1 },
+  googleAds: { ...DENTAL_TOURISM_GOOGLE_ADS, markets: ['UAE'], marketsRunning: 1 },
 };
 
 export const COMPETITORS: CompetitorDef[] = [
@@ -172,6 +178,7 @@ export const COMPETITORS: CompetitorDef[] = [
     revenueCheck: { patientsPerYear: 2600, note: 'ZoomInfo puts revenue at about USD 7.8 million a year; at a typical USD 3,000 implant or veneer package that is about 2,600 patients a year' },
     // Dental tourism: most enquiries never travel. 10–20% of leads becoming patients is the planning range.
     leadToPatient: [0.1, 0.2],
+    netOfGross: [0.4, 0.6],
     social: [
       { platform: 'Instagram', handle: '@dentakay (+ @dentakay.fr 44k, @dentakay_ar 9.9k, @dentakaymexico 5.6k)', followers: 191500, source: 'instagram.com profiles, read 2 Oct 2026' },
       { platform: 'YouTube', handle: '@Dentakay', followers: 185000, source: 'youtube.com/@Dentakay, read 2 Oct 2026' },

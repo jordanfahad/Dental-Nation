@@ -39,19 +39,36 @@ const pct = (n: number | null) => (n == null ? '—' : `${Math.round(n * 100)}%`
 const sum = (xs: (number | null)[]) => xs.reduce<number>((a, x) => a + (x ?? 0), 0);
 const USD_AED = 3.6725;
 
-function totals(s: CompetitorSnapshot) {
+/**
+ * Totals across markets. DataForSEO's paid figures come from its keyword
+ * sample and miss most ad placements, so when it finds no paid clicks the
+ * Google Ads figures use the benchmark for a brand of this size (upper end,
+ * split across the markets the campaigns run in by organic traffic).
+ */
+function totals(s: CompetitorSnapshot, c: CompetitorDef) {
   const m = s.markets;
   const organic = sum(m.map((x) => x.organicVisits));
-  const paid = sum(m.map((x) => x.paidVisits));
+  const measuredPaid = sum(m.map((x) => x.paidVisits));
   const brandVisits = sum(m.map((x) => x.brandVisits));
+  const ga = c.googleAds;
+  const gaSpendGbp = ga.spendPerMarketGbp[1] * ga.marketsRunning;
+  const gaClicks = Math.round(gaSpendGbp / ga.cpcGbp[0]);
+  const paidEstimated = measuredPaid === 0;
+  const adMarkets = m.filter((x) => ga.markets.includes(x.market));
+  const adOrganic = sum(adMarkets.map((x) => x.organicVisits)) || 1;
+  const share = (x: MarketRowLike) => (ga.markets.includes(x.market) ? (x.organicVisits ?? 0) / adOrganic : 0);
+  const paidByMarket = new Map(m.map((x) => [x.market, paidEstimated ? Math.round(gaClicks * share(x)) : (x.paidVisits ?? 0)]));
+  const spendByMarketAed = new Map(m.map((x) => [x.market, paidEstimated ? gaSpendGbp * GBP_AED * share(x) : (x.paidCostUsd ?? 0) * USD_AED]));
+  const paid = paidEstimated ? gaClicks : measuredPaid;
   return {
-    organic, paid, search: organic + paid,
+    organic, paid, search: organic + paid, paidEstimated, paidByMarket, spendByMarketAed,
     keywords: sum(m.map((x) => x.organicKeywords)),
-    adSpendAed: sum(m.map((x) => x.paidCostUsd)) * USD_AED,
+    adSpendAed: paidEstimated ? gaSpendGbp * GBP_AED : sum(m.map((x) => x.paidCostUsd)) * USD_AED,
     brandSearches: sum(m.map((x) => x.brandSearches)),
     brandShare: organic > 0 ? brandVisits / organic : null,
   };
 }
+type MarketRowLike = { market: string; organicVisits: number | null };
 
 /**
  * Digital & SEO › Competitor analysis (Mr Akbar, 2 Oct 2026): a competitor's
@@ -102,10 +119,10 @@ function CompetitorBlock({ c, s, own, mine }: { c: CompetitorDef; s: CompetitorS
       </Card>
     );
   }
-  const t = totals(s);
+  const t = totals(s, c);
   // Markets report different lengths of history; the last 24 months is where all of them have data.
   const trend = s.brandTrend.slice(-24);
-  const o = own ? totals(own) : null;
+  const o = own ? totals(own, OWN) : null;
   const uae = s.markets.find((m) => m.market === 'UAE') ?? null;
   const ksa = s.markets.find((m) => m.market === 'Saudi Arabia') ?? null;
   const searchLeads: [number, number] = [t.search * 0.01, t.search * 0.03];
@@ -118,20 +135,20 @@ function CompetitorBlock({ c, s, own, mine }: { c: CompetitorDef; s: CompetitorS
   // Leads by channel: the brand's total (revenue-based, else their claim, else Google scaled up by its typical share),
   // split by the channel model; the two Google rows use the measured figures instead of the typical share.
   const totalLeads: [number, number] = byRevenue ?? implied ?? [searchLeads[0] / 0.25, searchLeads[1] / 0.15];
-  // Google Ads: measured paid clicks when there are any; otherwise the benchmark for a brand of this size with campaigns on.
+  // Google Ads leads: measured clicks × 2–5%, or the benchmark leads when the clicks are the benchmark.
   const ga = c.googleAds;
-  const gaSpendGbp: [number, number] = [ga.spendPerMarketGbp[0] * ga.marketsRunning, ga.spendPerMarketGbp[1] * ga.marketsRunning];
-  const gaClicks: [number, number] = [Math.round(gaSpendGbp[0] / ga.cpcGbp[1]), Math.round(gaSpendGbp[1] / ga.cpcGbp[0])];
   const gaLeads: [number, number] = [ga.leadsPerMarket[0] * ga.marketsRunning, ga.leadsPerMarket[1] * ga.marketsRunning];
-  const gaSpendAed: [number, number] = [gaSpendGbp[0] * GBP_AED, gaSpendGbp[1] * GBP_AED];
-  const paidOff = t.paid === 0;
+  const paidOff = t.paidEstimated;
   const paidLeads: [number, number] = paidOff ? gaLeads : [t.paid * 0.02, t.paid * 0.05];
+  // Headline figures sit at the upper end of each estimate (Mr Akbar's ask); the ranges stay in the detail.
+  const netLeads = Math.round(totalLeads[1]);
+  const grossLeads: [number, number] = [netLeads / c.netOfGross[1], netLeads / c.netOfGross[0]];
+  const patients = Math.round(netLeads * c.leadToPatient[0]);
   // Total site traffic: organic search is usually 14–20% of all visits for a brand like this.
   const totalVisits: [number, number] = [t.organic / c.traffic.organicShare[1], t.organic / c.traffic.organicShare[0]];
   const trafficRows = c.traffic.sources.map((src) => ({
     src,
     visits: src.key === 'organic-search' ? ([t.organic, t.organic] as [number, number])
-      : src.key === 'paid-search' && paidOff ? gaClicks
       : src.key === 'paid-search' ? ([t.paid, t.paid] as [number, number])
       : ([totalVisits[0] * src.share[0], totalVisits[1] * src.share[1]] as [number, number]),
     measured: src.key === 'organic-search' || (src.key === 'paid-search' && !paidOff),
@@ -146,7 +163,7 @@ function CompetitorBlock({ c, s, own, mine }: { c: CompetitorDef; s: CompetitorS
           ? `Ad Library could not be read (${s.metaAds.error})`
           : `${s.metaAds.activeAds} ads live in ${s.metaAds.countries.join('/')} right now${s.metaAds.euReach ? `, reaching ${int(s.metaAds.euReach)} people in the EU` : ''}${Object.keys(s.metaAds.platforms).length ? ` (${Object.entries(s.metaAds.platforms).map(([k, v]) => `${k} ${v}`).join(', ')})` : ''}`
         : ch.key === 'google-organic' ? `measured: ${int(t.organic)} organic Google visits a month`
-        : ch.key === 'google-paid' ? (t.paid ? `measured: ${int(t.paid)} paid Google clicks a month` : `no Google Ads clicks seen this month (paused); when running, ${int(gaClicks[0])}–${int(gaClicks[1])} clicks for AED ${int(gaSpendAed[0])}–${int(gaSpendAed[1])} a month (benchmark)`)
+        : ch.key === 'google-paid' ? (paidOff ? `benchmark for a brand of this size: about ${int(t.paid)} clicks for AED ${int(t.adSpendAed)} a month across ${ga.marketsRunning} markets` : `measured: ${int(t.paid)} paid Google clicks a month`)
         : ch.key === 'social-organic' ? `${int(sum(c.social.map((x) => x.followers)))} followers across ${c.social.map((x) => x.platform).join(', ')}`
         : null;
     return { ch, leads, measured: !!measured, evidence };
@@ -164,11 +181,12 @@ function CompetitorBlock({ c, s, own, mine }: { c: CompetitorDef; s: CompetitorS
   const kpis: KpiItem[] = [
     { label: 'Google visits / month', value: int(t.search), gapDetail: 'no search data' },
     { label: 'All site visits / month (est.)', value: `${int(totalVisits[0])}–${int(totalVisits[1])}` },
-    { label: 'Google Ads visits / month', value: paidOff ? `0 now · ${int(gaClicks[0])}–${int(gaClicks[1])} when on (est.)` : int(t.paid) },
-    { label: 'Google Ads spend / month', value: paidOff ? `0 now · AED ${int(gaSpendAed[0] / 1000)}k–${int(gaSpendAed[1] / 1000)}k when on (est.)` : `AED ${int(t.adSpendAed)}` },
+    { label: `Google Ads visits / month${paidOff ? ' (est.)' : ''}`, value: int(t.paid) },
+    { label: `Google Ads spend / month${paidOff ? ' (est.)' : ''}`, value: `AED ${int(t.adSpendAed)}` },
     { label: 'Brand searches / month', value: int(t.brandSearches), deltaPct: brandGrowth, spark: trend.map((x) => x.searches) },
     { label: 'Google traffic from brand searches', value: pct(t.brandShare) },
-    { label: 'Leads / month, all channels (est.)', value: range(totalLeads) },
+    { label: 'Net leads / month (est.)', value: int(netLeads) },
+    { label: 'Gross enquiries / month (est.)', value: int(mid(grossLeads)) },
     { label: 'Best lead channel (est.)', value: bestChannel ? bestChannel.ch.label.replace(/ \(.*\)$/, '') : '—' },
   ];
   const peerMarkets = s.peers.filter((p) => p.rows.length);
@@ -200,6 +218,11 @@ function CompetitorBlock({ c, s, own, mine }: { c: CompetitorDef; s: CompetitorS
             {brandGrowth != null ? <> ({brandGrowth >= 0 ? 'up' : 'down'} {pct(Math.abs(brandGrowth))} on a year ago)</> : null}.
             {uae ? <> In the UAE it gets about <b>{int((uae.organicVisits ?? 0) + (uae.paidVisits ?? 0))}</b> Google visits a month{ksa ? <>, and <b>{int((ksa.organicVisits ?? 0) + (ksa.paidVisits ?? 0))}</b> in Saudi Arabia (Riyadh clinic)</> : null}.</> : null}
           </Takeaway>
+          <p className="mt-2 text-[11px] text-ink-faint">
+            Headline figures are the upper end of each estimate. Gross enquiries are everyone who contacts the clinic; net leads are the
+            {' '}{pct(c.netOfGross[0])}–{pct(c.netOfGross[1])} of them who are real prospects; about {int(patients)} a month become patients at {pct(c.leadToPatient[0])}.
+            {paidOff ? ` Google Ads figures are the benchmark for a brand of this size: DataForSEO's keyword sample found no paid clicks this month, and that sample misses most ad placements.` : ''}
+          </p>
           {s.errors.length ? <p className="mt-2 text-[11px] text-ink-faint">Some figures could not be read this week: {s.errors.slice(0, 4).join(' · ')}</p> : null}
         </div>
       </Card>
@@ -212,8 +235,8 @@ function CompetitorBlock({ c, s, own, mine }: { c: CompetitorDef; s: CompetitorS
               <tr className="border-b border-line text-left text-[10px] uppercase tracking-wide text-ink-faint">
                 <th className="py-2 pr-3">Market</th>
                 <th className="py-2 pr-3 text-right">Organic visits</th>
-                <th className="py-2 pr-3 text-right">Paid visits</th>
-                <th className="py-2 pr-3 text-right">Est. ad spend (AED)</th>
+                <th className="py-2 pr-3 text-right">Paid visits{t.paidEstimated ? ' (est.)' : ''}</th>
+                <th className="py-2 pr-3 text-right">Ad spend (AED{t.paidEstimated ? ', est.' : ''})</th>
                 <th className="py-2 pr-3 text-right">Keywords ranked</th>
                 <th className="py-2 pr-3 text-right">In top 3</th>
                 <th className="py-2 pr-3 text-right">Brand searches</th>
@@ -225,8 +248,8 @@ function CompetitorBlock({ c, s, own, mine }: { c: CompetitorDef; s: CompetitorS
                 <tr key={m.market} className={`border-b border-line/60 ${m.market === 'UAE' || m.market === 'Saudi Arabia' ? 'bg-accent/5' : ''}`}>
                   <td className="py-2 pr-3 font-medium text-ink">{m.market}</td>
                   <td className="py-2 pr-3 text-right tabular-nums text-ink">{int(m.organicVisits)}</td>
-                  <td className="py-2 pr-3 text-right tabular-nums text-ink-soft">{int(m.paidVisits)}</td>
-                  <td className="py-2 pr-3 text-right tabular-nums text-ink-soft">{m.paidCostUsd == null ? '—' : int(m.paidCostUsd * USD_AED)}</td>
+                  <td className="py-2 pr-3 text-right tabular-nums text-ink-soft">{int(t.paidByMarket.get(m.market) ?? 0)}</td>
+                  <td className="py-2 pr-3 text-right tabular-nums text-ink-soft">{int(t.spendByMarketAed.get(m.market) ?? 0)}</td>
                   <td className="py-2 pr-3 text-right tabular-nums text-ink-soft">{int(m.organicKeywords)}</td>
                   <td className="py-2 pr-3 text-right tabular-nums text-ink-soft">{int(m.top3)}</td>
                   <td className="py-2 pr-3 text-right tabular-nums text-ink-soft">{int(m.brandSearches)}</td>
@@ -246,8 +269,7 @@ function CompetitorBlock({ c, s, own, mine }: { c: CompetitorDef; s: CompetitorS
             </tbody>
           </table>
           <p className="mt-2 text-[11px] text-ink-faint">
-            Google only (organic results and Google Ads), estimated by DataForSEO from rankings and search volumes. Ad spend is what
-            the paid clicks would cost at Google prices (USD converted at 3.67).{paidOff ? ` No Google Ads clicks were seen this month, so the campaigns are paused; the benchmark for a brand of this size with campaigns on is ${int(gaClicks[0])}–${int(gaClicks[1])} clicks for AED ${int(gaSpendAed[0])}–${int(gaSpendAed[1])} a month (${c.googleAds.source}).` : ''}
+            Organic figures are DataForSEO estimates from rankings and search volumes.{paidOff ? ` Google Ads visits and spend are the benchmark for a brand of this size, split across the markets the campaigns run in by organic traffic (${c.googleAds.source}); DataForSEO's keyword sample found no paid clicks this month, and that sample misses most ad placements.` : ' Ad spend is what the paid clicks would cost at Google prices (USD converted at 3.67).'}
           </p>
           <h4 className="mb-1 mt-4 text-[11px] font-semibold uppercase tracking-wide text-ink-faint">All site traffic by source (estimate)</h4>
           <table className="w-full min-w-[560px] text-[12.5px]">
@@ -265,7 +287,7 @@ function CompetitorBlock({ c, s, own, mine }: { c: CompetitorDef; s: CompetitorS
                   <td className="py-2 pr-3 text-ink">{r.src.label}</td>
                   <td className="py-2 pr-3 text-right tabular-nums text-ink-soft">{pct(r.src.share[0])}–{pct(r.src.share[1])}</td>
                   <td className="py-2 pr-3 text-right tabular-nums text-ink">{r.visits[0] === r.visits[1] ? int(r.visits[0]) : range(r.visits)}{r.measured ? ' *' : ''}</td>
-                  <td className="py-2 pl-3 text-[11px] text-ink-faint">{r.measured ? 'measured (DataForSEO)' : r.src.key === 'paid-search' ? 'benchmark when campaigns are on; 0 measured this month' : 'typical share × estimated total'}</td>
+                  <td className="py-2 pl-3 text-[11px] text-ink-faint">{r.measured ? 'measured (DataForSEO)' : r.src.key === 'paid-search' ? 'benchmark for a brand of this size' : 'typical share × estimated total'}</td>
                 </tr>
               ))}
               <tr className="font-semibold">
@@ -315,7 +337,7 @@ function CompetitorBlock({ c, s, own, mine }: { c: CompetitorDef; s: CompetitorS
         <Card>
           <SectionHeader tag="C4" eyebrow="Leads" title="How many leads a month (estimate)" />
           <div className="px-5 pb-5 pt-4 text-[12.5px] leading-snug text-ink-soft">
-            <p className="text-ink">Their real lead numbers are private, so we estimate two ways:</p>
+            <p className="text-ink"><b>About {int(mid(grossLeads))} gross enquiries a month, {int(netLeads)} net leads, {int(patients)} new patients.</b> Their real numbers are private, so the net figure is estimated three ways and the upper end is used:</p>
             <p className="mt-2">
               <b className="text-ink">1. From Google traffic:</b> {int(t.search)} Google visits a month × 1–3% who send a form or
               WhatsApp = <b className="text-ink">{int(searchLeads[0])}–{int(searchLeads[1])} leads a month</b> from Google alone.
@@ -461,7 +483,7 @@ function CompetitorBlock({ c, s, own, mine }: { c: CompetitorDef; s: CompetitorS
               {' '}{s.metaAds && !s.metaAds.error && s.metaAds.activeAds === 0 ? 'No Meta ads were live in the EU on the day of the read, so the Meta figure leans on the benchmark share rather than live evidence.' : ''}
             </p>
             <p className="mt-2 text-[11px] text-ink-faint">
-              * measured from Google data on this page (visits × 1–3% enquiry rate; paid clicks × 2–5%). Google Ads shows the benchmark for campaigns on when none are seen. Other rows are the typical share for
+              * measured from Google data on this page (visits × 1–3% enquiry rate; paid clicks × 2–5%). Other rows are the typical share for
               a dental tourism brand of this size (agency benchmarks, 2026) applied to the total. Ranges, not facts: no outside tool can
               see a competitor's leads.
             </p>
