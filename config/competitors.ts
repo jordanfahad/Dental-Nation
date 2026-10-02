@@ -68,6 +68,8 @@ export const COMPETITORS: CompetitorDef[] = [
       { label: 'Patients a year (their claim)', value: '15,000 a year; “22,000+ patients worldwide”', source: 'clinic listings, read 2 Oct 2026' },
       { label: 'Dentists', value: '60, across 5 departments', source: 'clinic listings, read 2 Oct 2026' },
       { label: 'Trustpilot', value: '4.3 out of 5 from 1,080 reviews', source: 'trustpilot.com/review/dentakay.com, read 2 Oct 2026' },
+      { label: 'Revenue (outside estimate)', value: 'about USD 7.8 million a year. This does not fit 15,000 patients a year (it would mean about USD 520 per patient, low for implant and veneer packages), so one of the two claims is overstated', source: 'ZoomInfo company profile, read 2 Oct 2026' },
+      { label: 'Google Ads', value: 'Runs Google Ads through a hired specialist (agency case study)', source: 'Uplers case study, read 2 Oct 2026' },
       { label: 'Main offer', value: 'Implants, veneers, Hollywood smile, orthodontics; package trips with hotel and transfers', source: 'dentakay.com and its Facebook landing pages' },
       { label: 'Lead capture', value: 'Free online consultation forms, WhatsApp, dedicated Facebook/Instagram landing pages (landing.dentakay.com, smile.dentakay.com)', source: 'public landing pages' },
     ],
