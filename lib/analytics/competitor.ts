@@ -95,7 +95,9 @@ export function brandVariants(domain: string): string[] {
   sp = sp.replace(/\s+/g, ' ').trim();
   // Keep the prefix (plain "michaels" is a craft store, "dr michaels" is the clinic); also try the name without a trailing "clinic".
   const noClinic = sp.replace(/ (dental )?clinics?$/, '');
-  return [...new Set([label.replace(/-/g, ' '), sp, noClinic])].filter(Boolean);
+  // A one-word leftover ("noa") is too generic to count as the brand.
+  const keepNoClinic = noClinic !== sp && (noClinic.includes(' ') || noClinic.length >= 6);
+  return [...new Set([label.replace(/-/g, ' '), sp, ...(keepNoClinic ? [noClinic] : [])])].filter(Boolean);
 }
 const brandOfDomain = (d: string) => brandVariants(d)[1] ?? brandVariants(d)[0];
 
