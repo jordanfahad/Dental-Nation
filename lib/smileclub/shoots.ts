@@ -57,6 +57,7 @@ export const SLOT_STATUS: Record<NonNullable<ShootSlot['status']>, string> = {
 
 /** Changes to the plan, newest first. */
 export const SHOOT_CHANGES: string[] = [
+  'Fri 2 Oct (Fahad): the shoots restart. New dates are set from the doctors’ roster for 4 to 17 Oct, inside each dentist’s hours, one clinic run per day where possible: Mon 5 Oct Tosun (Dr. Maysoun, Dr. Sevinc, Dr. Maysoon, Dr. Tosun’s second video and announcement), Tue 6 Oct Tosun, AMC and Al Wasl (Dr. Bulent, Dr. Leila, second videos for Dr. Safwan and Dr. Ali), Wed 7 Oct Al Wasl and Tosun (Dr. Qasem, Dr. Dilsad), Sat 10 Oct Al Wasl (Dr. Ghada), Sun 11 Oct AMC and Al Wasl (Dr. Suzanna, Dr. Maher, Dr. Hasna, Dr. Yasmin’s second video), Tue 13 Oct Tosun (Dr. Sathyapriya). MJ confirms each slot with the dentist. Dr. Chahira is not on the roster for these two weeks, so her date comes from MJ.',
   'Mon 28 Sep (meeting: Ms Shadi, Dr Luvi, Gautam, Fahad): shoots are ON HOLD. The team was not happy with the first videos (Dr. Safwan and Dr. Ali), so we get the format right first: Dr Luvi and Gautam share sample videos (Tue 29 Sep, 12:00); Fahad and Mohan make one or two template videos (Tue 29 Sep); Ms Shadi, Dr Luvi and Gautam approve them (Wed 30 Sep, 12:00); the new shoot schedule is agreed with MJ by Wed 30 Sep. Still to film: Dr. Chahira, Dr. Hasna, Dr. Suzanna, Dr. Maher, Dr. Leila, Dr. Qasem, Dr. Ghada, Dr. Dilsad, Dr. Bulent, Dr. Maysoon, Dr. Maysoun, Dr. Sevinc and Dr. Sathyapriya, plus second videos for Dr. Yasmin, Dr. Safwan, Dr. Ali and Dr. Tosun.',
   'Mon 28 Sep (Fahad): filmed so far, all Smile Club videos: Dr. Yasmin Youssef (Tue 22 Sep), Dr. M Safwan Sultan and Dr. Ali Ghasemi (Sat 26 Sep), Dr. Yahya Tosun (Mon 28 Sep). No shoot on Sun 27 Sep. Dr. Chahira Berlarbi (Sat 26) and the other Mon 28 doctors were not available (Dr. Tosun Dental Clinic transition and doctors’ schedules). Every missed doctor is pencilled on their next clinic day for MJ to confirm; second videos for Dr. Safwan, Dr. Ali and Dr. Tosun are pencilled too.',
   'Fri 25 Sep (Dr. Yahya Tosun): asks to film after returning from Türkiye so he can practise both languages. MJ is checking new dates; Mon 28 Sep stays pencilled until a new date is confirmed. He also asked for a partnership announcement video (Dr. Tosun Dental Clinic is now part of Dental Nation), added as his third video, to go out before the clinic’s Smile Club campaign.',
@@ -100,21 +101,70 @@ export const FILMED: { id: string; when: string; what: string }[] = [
  * Times are proposals: Dr Luvi blocks each slot in the dentist's diary.
  */
 /**
- * Shoot days. Since the 28 Sep meeting only the days already filmed are listed:
- * the remaining shoots are on hold until the template videos are approved, and
- * the new schedule is agreed with MJ by Wed 30 Sep (see SHOOT_CHANGES). With no
- * upcoming day here, no 17:00 shoot email goes out.
+ * Shoot days. Restarted on 2 Oct from the doctors' roster for 4 to 17 Oct
+ * (see SHOOT_CHANGES): every slot sits inside the dentist's hours that day,
+ * one clinic run per day where possible, with the backup day in the note.
+ * Status 'proposed' until MJ confirms the slot with the dentist. The 17:00
+ * shoot email goes to MJ the evening before each day.
  */
 export const SHOOT_PLAN: ShootDay[] = [
   { key: 'sat26', iso: '2026-09-26', label: 'Sat 26 Sep', stops: [
     { branch: 'alwasl', slots: [
-      { id: 'safwan-sultan', time: '11:00–12:00', status: 'filmed', note: 'Smile Club video filmed; not approved as it is (28 Sep). Next shoot on hold until the template is approved' },
-      { id: 'ali-ghasemi', time: '13:00–14:00', status: 'filmed', note: 'Smile Club video filmed; not approved as it is (28 Sep). Next shoot on hold until the template is approved' },
+      { id: 'safwan-sultan', time: '11:00–12:00', status: 'filmed', note: 'Smile Club video filmed; second video on Tue 6 Oct' },
+      { id: 'ali-ghasemi', time: '13:00–14:00', status: 'filmed', note: 'Smile Club video filmed; second video on Tue 6 Oct' },
     ] },
   ] },
   { key: 'mon28', iso: '2026-09-28', label: 'Mon 28 Sep', stops: [
     { branch: 'tosun', slots: [
-      { id: 'yahya-tosun', time: '10:00', status: 'filmed', task: 'm-shoot-tosun', note: 'Smile Club video filmed; The DN Scan ad and the partnership announcement on hold until the template is approved' },
+      { id: 'yahya-tosun', time: '10:00', status: 'filmed', task: 'm-shoot-tosun', note: 'Smile Club video filmed; The DN Scan ad and the announcement on Mon 5 Oct' },
+    ] },
+  ] },
+  { key: 'mon05', iso: '2026-10-05', label: 'Mon 5 Oct', stops: [
+    { branch: 'tosun', slots: [
+      { id: 'maysoun-ahmad', time: '08:30', status: 'proposed', note: 'In clinic 08:00–18:00. Backup: Mon 12 Oct 08:00–18:00' },
+      { id: 'sevinc-behruzoglu', time: '09:15', status: 'proposed', note: 'In clinic 08:00–18:00. Backup: Wed 7 Oct 08:00–18:00' },
+      { id: 'maysoon-abdelmajeed', time: '10:00', status: 'proposed', note: 'In clinic 08:00–12:00. Backup: Tue 6 Oct 10:00–19:00' },
+      { id: 'yahya-tosun', time: '12:00', only: 'lane', status: 'proposed', task: 'm-shoot-tosun', note: 'In clinic 11:30–16:00. Video 2 (The DN Scan ad), and Video 3 (announcement) once Gautam confirms the facts. Backup: Tue 13 Oct 09:00–19:00' },
+    ] },
+  ] },
+  { key: 'tue06', iso: '2026-10-06', label: 'Tue 6 Oct', stops: [
+    { branch: 'tosun', slots: [
+      { id: 'bulent-ozdogan', time: '09:00', status: 'proposed', note: 'In clinic 09:00–19:00. Backup: Thu 8 Oct 09:00–19:00' },
+    ] },
+    { branch: 'amc', slots: [
+      { id: 'leila-mostawe', time: '11:00', status: 'proposed', note: 'In clinic 10:00–16:00. Videos 1 and 2, plus the AMC announcement once approved. Backup: Thu 8 Oct 10:00–16:00' },
+    ] },
+    { branch: 'alwasl', slots: [
+      { id: 'safwan-sultan', time: '13:30', only: 'lane', status: 'proposed', note: 'In clinic 09:00–17:00. Second video only (The DN First Look). Backup: Wed 7 Oct 12:00–20:00' },
+      { id: 'ali-ghasemi', time: '14:30', only: 'lane', status: 'proposed', note: 'In clinic 12:00–20:00. Second video only (The DN Glow Up). Backup: Wed 7 Oct 09:00–17:00' },
+    ] },
+  ] },
+  { key: 'wed07', iso: '2026-10-07', label: 'Wed 7 Oct', stops: [
+    { branch: 'alwasl', slots: [
+      { id: 'mohammad-qasem', time: '11:00', status: 'proposed', note: 'In clinic 11:00–13:00. Backup: Wed 14 Oct 11:00–13:00' },
+    ] },
+    { branch: 'tosun', slots: [
+      { id: 'dilsad-ozdogan', time: '13:30', status: 'proposed', task: 'm-shoot-dilsad', note: 'In clinic 12:30–18:00. Backup: Sat 10 Oct 09:30–14:30' },
+    ] },
+  ] },
+  { key: 'sat10', iso: '2026-10-10', label: 'Sat 10 Oct', stops: [
+    { branch: 'alwasl', slots: [
+      { id: 'ghada-hussain', time: '11:00', status: 'proposed', note: 'In clinic 11:00–12:30. Written parental consent for any child on camera. Backup: Sat 17 Oct 11:00–12:30' },
+    ] },
+  ] },
+  { key: 'sun11', iso: '2026-10-11', label: 'Sun 11 Oct', stops: [
+    { branch: 'amc', slots: [
+      { id: 'suzanna-almaali', time: '10:30', status: 'proposed', note: 'In clinic 10:00–20:00. Speaks her own Arabic dialect on camera. Videos 1 and 2, plus the AMC announcement once approved' },
+      { id: 'maher-selman', time: '12:00', status: 'proposed', note: 'In clinic 10:00–20:00. Videos 1 and 2, plus the AMC announcement (published first) once approved. Backup: Wed 14 Oct 15:00–18:00' },
+    ] },
+    { branch: 'alwasl', slots: [
+      { id: 'hasna-alsaeed', time: '15:00', status: 'proposed', note: 'In clinic 15:00–17:00. Backup: Sat 17 Oct 15:00–17:00' },
+      { id: 'yasmin-youssef', time: '16:00', only: 'lane', status: 'proposed', note: 'In clinic 15:00–17:00. Second video only (The DN Scan ad, second opening). Backup: Sat 17 Oct 15:00–17:00' },
+    ] },
+  ] },
+  { key: 'tue13', iso: '2026-10-13', label: 'Tue 13 Oct', stops: [
+    { branch: 'tosun', slots: [
+      { id: 'sathyapriya-surendar', time: '11:00', status: 'proposed', note: 'In clinic 11:00–12:00, English only (25 minutes). Backup: Wed 14 Oct 09:00–17:00' },
     ] },
   ] },
 ];

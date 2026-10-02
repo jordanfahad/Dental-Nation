@@ -708,7 +708,7 @@ const TASKS_RAW: TeamTask[] = [
       { s: 'Final exported', how: 'Full version + 15 s and 6 s cuts, filed for use.' },
     ],
     done: 'Approved final video with short cuts, all comments resolved.', with: 'Fahad · Dr Luvi', to: 'scripts', toLabel: 'Dentist scripts', weight: 2, subs: 0, subsNote: 'Supports the dentists’ 24 and the website 12' },
-  { key: 'm-shoot-tosun', needs: ['g-announce', 'f-reschedule'], who: 'mohan', wk: 2, dueIso: '2026-10-03', due: 'On hold: new date agreed with MJ by Wed 30 Sep. Smile Club video filmed Mon 28 Sep', task: 'Shoot 1 — Dr. Yahya Tosun (Dr. Tosun Dental Clinic)', scripts: ['yahya-tosun'],
+  { key: 'm-shoot-tosun', needs: ['g-announce'], who: 'mohan', wk: 2, dueIso: '2026-10-05', due: 'Mon 5 Oct, 12:00 (from the doctors’ roster; MJ to confirm). Smile Club video filmed Mon 28 Sep', task: 'Shoot 1 — Dr. Yahya Tosun (Dr. Tosun Dental Clinic)', scripts: ['yahya-tosun'],
     objective: 'One appointment, three videos with Dr. Yahya Tosun: the partnership announcement (Dr. Tosun Dental Clinic is now part of Dental Nation), his Smile Club video and The DN Scan (braces & aligner planning) video — each filmed in Turkish and English — with first cuts shared for review.',
     why: 'Patients do not know yet that the clinic is part of Dental Nation, so the announcement goes out first and makes the Smile Club videos make sense. Dr. Tosun asked for time to practise so both languages sound natural — use a prompter.',
     steps: [
@@ -718,7 +718,7 @@ const TASKS_RAW: TeamTask[] = [
       { s: 'First cuts shared', how: 'All six posted to this task for comments; the announcement cut first.' },
     ],
     done: 'Six first cuts (three videos × Turkish and English) shared here for review; the announcement is approved to publish first.', with: 'Dr. Yahya Tosun', to: 'scripts', toLabel: 'Dentist scripts', weight: 2, subs: 0, subsNote: 'Supports the dentists’ 24' },
-  { key: 'm-shoot-dilsad', needs: ['f-reschedule'], who: 'mohan', wk: 2, dueIso: '2026-10-03', due: 'On hold: new date agreed with MJ by Wed 30 Sep (missed Mon 28 Sep, not available)', task: 'Shoot 2 — Dr. Dilsad Ozdogan (Dr. Tosun Dental Clinic)', scripts: ['dilsad-ozdogan'],
+  { key: 'm-shoot-dilsad', who: 'mohan', wk: 2, dueIso: '2026-10-07', due: 'Wed 7 Oct, 13:30 (from the doctors’ roster; MJ to confirm)', task: 'Shoot 2 — Dr. Dilsad Ozdogan (Dr. Tosun Dental Clinic)', scripts: ['dilsad-ozdogan'],
     objective: 'One appointment, two videos: Dr. Dilsad Ozdogan’s Smile Club video and The DN Glow Up (whitening) video — each filmed in Turkish and English — with first cuts shared for review.',
     why: 'A general dentist speaks to the largest group of patients, so the Smile Club video will be used the most. Glow Up has no video yet and its Facebook/Instagram campaign is waiting for one.',
     steps: [
