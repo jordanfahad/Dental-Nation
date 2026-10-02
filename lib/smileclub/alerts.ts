@@ -483,11 +483,12 @@ export function buildShootEmail(ctx: Ctx): { subject: string; html: string } | n
     if (!r.final) { notFinal++; for (const x of missing) pendingOn[x.id].push(d.name); }
     rows.push([
       `<b style="color:#B45F53">${esc(sl.time)}</b>${sl.status ? `<br><span style="font-size:11px;color:${(sl.status === 'confirmed' || sl.status === 'filmed') ? '#2C5E3F' : '#7a6420'}">${esc(SLOT_STATUS[sl.status])}</span>` : ''}`,
-      `<b>${esc(d.name)}</b><br><span style="color:#767769">${esc(d.title)}${sl.note ? ` · ${esc(sl.note)}` : ''}</span>`,
+      `<b>${esc(d.name)}</b><br><span style="color:#767769">${esc(d.title)}${sl.note ? ` · ${esc(sl.note.replace(/In clinic [^.]+\.\s*/, '').replace(/\s*Backup: [^.]+\.?$/, ''))}` : ''}</span>`,
       esc(BRANCH_LABEL[st.branch]),
-      esc(hoursOn(d.id, day.iso) ?? '—'),
+      // The roster hours for that day live in the slot note; the weekly table is the fallback.
+      esc(sl.note?.match(/In clinic ([^.]+)/)?.[1] ?? hoursOn(d.id, day.iso) ?? '—'),
       `${esc(sl.only ? `Video 2 only: ${video2(d.id)?.name ?? LANES[laneFor(d)].name}` : `Smile Club + ${video2(d.id)?.name ?? LANES[laneFor(d)].name}`)}<br><span style="color:#767769">${esc(langsFor(d).map((l) => LANG_LABEL[l].split(' · ').pop()!).join(' + '))} · ≈${load.minutes} min</span>`,
-      r.final ? '<b style="color:#2C5E3F">Approved ✓</b>' : `<b style="color:#a04a38">Waiting on ${esc(missing.map((x) => x.name).join(', '))}</b><br><span style="color:#767769;font-size:11px">backup: ${esc(nextClinicDays(d.id, day.iso).join(' or ') || 'to agree')}</span>`,
+      r.final ? '<b style="color:#2C5E3F">Approved ✓</b>' : `<b style="color:#a04a38">Waiting on ${esc(missing.map((x) => x.name).join(', '))}</b><br><span style="color:#767769;font-size:11px">backup: ${esc(sl.note?.match(/Backup: ([^.]+)/)?.[1] ?? (nextClinicDays(d.id, day.iso).join(' or ') || 'to agree'))}</span>`,
     ]);
   }
   const n = rows.length;
