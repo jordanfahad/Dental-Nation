@@ -3,9 +3,36 @@ import { DataGapInline } from '@/components/ui/DataGap';
 import { KpiBand, type KpiItem } from '@/components/charts/KpiBand';
 import { TrendChart } from '@/components/charts/Charts';
 import { ownerFor } from '@/config/data-gap-owners';
-import { COMPETITORS, OWN, type CompetitorDef } from '@/config/competitors';
+import { COMPETITORS, OWN, type ChannelModel, type CompetitorDef } from '@/config/competitors';
 import { getCompetitorSnapshots, hasData, type CompetitorSnapshot } from '@/lib/analytics/competitor';
+import { getChannelPerformance } from '@/lib/growth/channelPerformance';
+import { getSupabaseAdmin } from '@/lib/supabase/server';
 import { dubaiDateLabel } from '@/lib/dates';
+
+/** Dental Nation's own side of the comparison: enquiries by channel (last 90 days) and social followers. */
+interface OwnSide {
+  from: string;
+  to: string;
+  enquiries: Record<string, number>;
+  total: number;
+  followers: Record<string, number>;
+}
+
+async function ownSide(): Promise<OwnSide> {
+  const to = new Date().toISOString().slice(0, 10);
+  const from = new Date(Date.now() - 90 * 86400_000).toISOString().slice(0, 10);
+  const out: OwnSide = { from, to, enquiries: {}, total: 0, followers: {} };
+  try {
+    const perf = await getChannelPerformance({ from, to });
+    for (const ch of perf.channels) { out.enquiries[ch.key] = ch.enquiries; out.total += ch.enquiries; }
+  } catch { /* the mapping card says so */ }
+  const db = getSupabaseAdmin();
+  if (db) {
+    const { data } = await db.from('social_insights').select('channel, value, day').eq('metric', 'followers').order('day', { ascending: false }).limit(20);
+    for (const r of (data ?? []) as { channel: string; value: number | string }[]) if (!(r.channel in out.followers)) out.followers[r.channel] = Number(r.value) || 0;
+  }
+  return out;
+}
 
 const int = (n: number | null | undefined) => (n == null ? '—' : Math.round(n).toLocaleString('en-US'));
 const pct = (n: number | null) => (n == null ? '—' : `${Math.round(n * 100)}%`);
@@ -34,19 +61,25 @@ function totals(s: CompetitorSnapshot) {
  * claims and their sources sit in config/competitors.ts.
  */
 export async function CompetitorAnalysis() {
-  const snaps = await getCompetitorSnapshots().catch(() => new Map<string, CompetitorSnapshot>());
+  const [snaps, mine] = await Promise.all([
+    getCompetitorSnapshots().catch(() => new Map<string, CompetitorSnapshot>()),
+    ownSide(),
+  ]);
   const ownSnap = snaps.get(OWN.domain) ?? null;
   const own = hasData(ownSnap) ? ownSnap : null;
   return (
     <div className="space-y-4">
       {COMPETITORS.map((c) => (
-        <CompetitorBlock key={c.domain} c={c} s={snaps.get(c.domain) ?? null} own={own} />
+        <CompetitorBlock key={c.domain} c={c} s={snaps.get(c.domain) ?? null} own={own} mine={mine} />
       ))}
     </div>
   );
 }
 
-function CompetitorBlock({ c, s, own }: { c: CompetitorDef; s: CompetitorSnapshot | null; own: CompetitorSnapshot | null }) {
+const mid = (r: [number, number]) => (r[0] + r[1]) / 2;
+const range = (r: [number, number]) => `${int(r[0])}–${int(r[1])}`;
+
+function CompetitorBlock({ c, s, own, mine }: { c: CompetitorDef; s: CompetitorSnapshot | null; own: CompetitorSnapshot | null; mine: OwnSide }) {
   if (!hasData(s)) {
     const tried = s as CompetitorSnapshot | null;
     const noCredit = tried?.errors.some((e) => /402/.test(e));
@@ -82,6 +115,29 @@ function CompetitorBlock({ c, s, own }: { c: CompetitorDef; s: CompetitorSnapsho
   const byRevenue = c.revenueCheck
     ? ([c.revenueCheck.patientsPerYear / 12 / c.leadToPatient[1], c.revenueCheck.patientsPerYear / 12 / c.leadToPatient[0]] as [number, number])
     : null;
+  // Leads by channel: the brand's total (revenue-based, else their claim, else Google scaled up by its typical share),
+  // split by the channel model; the two Google rows use the measured figures instead of the typical share.
+  const totalLeads: [number, number] = byRevenue ?? implied ?? [searchLeads[0] / 0.25, searchLeads[1] / 0.15];
+  const paidLeads: [number, number] = [t.paid * 0.02, t.paid * 0.05];
+  const channelRows = c.channels.map((ch) => {
+    const modelled: [number, number] = [totalLeads[0] * ch.share[0], totalLeads[1] * ch.share[1]];
+    const measured: [number, number] | null = ch.key === 'google-organic' ? searchLeads : ch.key === 'google-paid' ? paidLeads : null;
+    const leads = measured ?? modelled;
+    const evidence =
+      ch.key === 'meta-paid' && s.metaAds
+        ? s.metaAds.error
+          ? `Ad Library could not be read (${s.metaAds.error})`
+          : `${s.metaAds.activeAds} ads live in ${s.metaAds.countries.join('/')} right now${s.metaAds.euReach ? `, reaching ${int(s.metaAds.euReach)} people in the EU` : ''}${Object.keys(s.metaAds.platforms).length ? ` (${Object.entries(s.metaAds.platforms).map(([k, v]) => `${k} ${v}`).join(', ')})` : ''}`
+        : ch.key === 'google-organic' ? `measured: ${int(t.organic)} organic Google visits a month`
+        : ch.key === 'google-paid' ? (t.paid ? `measured: ${int(t.paid)} paid Google clicks a month` : 'measured: no Google Ads clicks seen this month')
+        : ch.key === 'social-organic' ? `${int(sum(c.social.map((x) => x.followers)))} followers across ${c.social.map((x) => x.platform).join(', ')}`
+        : null;
+    return { ch, leads, measured: !!measured, evidence };
+  });
+  const bestChannel = [...channelRows].sort((a, b) => mid(b.leads) - mid(a.leads))[0];
+  const modelTotal = channelRows.reduce((n, r) => n + mid(r.leads), 0);
+  const ownBuckets = c.channels.map((ch) => ({ ch, enquiries: ch.own.reduce((n, k) => n + (mine.enquiries[k] ?? 0), 0) }));
+  const ownBest = [...ownBuckets].sort((a, b) => b.enquiries - a.enquiries)[0];
   const sortedMarkets = [...s.markets].sort((a, b) => (b.organicVisits ?? 0) + (b.paidVisits ?? 0) - (a.organicVisits ?? 0) - (a.paidVisits ?? 0));
   const top = sortedMarkets[0];
   const trendLast = trend.at(-1)?.searches ?? null;
@@ -94,8 +150,17 @@ function CompetitorBlock({ c, s, own }: { c: CompetitorDef; s: CompetitorSnapsho
     { label: 'Est. Google Ads spend / month', value: t.adSpendAed ? `AED ${int(t.adSpendAed)}` : 'none seen' },
     { label: 'Brand searches / month', value: int(t.brandSearches), deltaPct: brandGrowth, spark: trend.map((x) => x.searches) },
     { label: 'Google traffic from brand searches', value: pct(t.brandShare) },
-    { label: 'Leads / month from Google (est.)', value: `${int(searchLeads[0])}–${int(searchLeads[1])}` },
+    { label: 'Leads / month, all channels (est.)', value: range(totalLeads) },
+    { label: 'Best lead channel (est.)', value: bestChannel ? bestChannel.ch.label.replace(/ \(.*\)$/, '') : '—' },
   ];
+  const peerMarkets = s.peers.filter((p) => p.rows.length);
+  const standing = peerMarkets.map((p) => {
+    const me = s.markets.find((m) => m.market === p.market);
+    const all = [...p.rows.map((r) => ({ domain: r.domain, brand: r.brandSearches ?? 0, visits: r.organicVisits ?? 0, me: false })), { domain: c.domain, brand: me?.brandSearches ?? 0, visits: me?.organicVisits ?? 0, me: true }];
+    const byBrand = [...all].sort((a, b) => b.brand - a.brand);
+    const byVisits = [...all].sort((a, b) => b.visits - a.visits);
+    return { market: p.market, n: all.length, brandRank: byBrand.findIndex((x) => x.me) + 1, visitRank: byVisits.findIndex((x) => x.me) + 1, rows: byBrand };
+  });
 
   return (
     <>
@@ -237,9 +302,188 @@ function CompetitorBlock({ c, s, own }: { c: CompetitorDef; s: CompetitorSnapsho
         </Card>
       </div>
 
+      <Card>
+        <SectionHeader tag="C5" eyebrow="Brand affinity" title="Where the brand stands among similar clinics" />
+        <div className="px-5 pb-5 pt-4">
+          {standing.length ? (
+            <>
+              <p className="text-[12.5px] leading-snug text-ink-soft">
+                Peers are the clinics that rank for the same searches as {c.name} in each market (DataForSEO). Brand searches are how many
+                people look for each clinic by name every month: the clearest outside measure of brand affinity.
+                {' '}{standing.map((st, i) => <span key={st.market}>{i ? ' · ' : ''}<b className="text-ink">{st.market}</b>: #{st.brandRank} of {st.n} by brand searches, #{st.visitRank} by Google traffic</span>)}.
+              </p>
+              <div className="mt-3 grid gap-4 md:grid-cols-2">
+                {standing.map((st) => (
+                  <div key={st.market} className="overflow-x-auto">
+                    <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-ink-faint">{st.market}</p>
+                    <table className="w-full text-[12px]">
+                      <thead>
+                        <tr className="border-b border-line text-left text-[10px] uppercase tracking-wide text-ink-faint">
+                          <th className="py-1.5 pr-2">Clinic</th>
+                          <th className="py-1.5 pr-2 text-right">Brand searches / mo</th>
+                          <th className="py-1.5 pl-2 text-right">Google visits / mo</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {st.rows.map((r) => (
+                          <tr key={r.domain} className={`border-b border-line/60 ${r.me ? 'bg-accent/5 font-semibold' : ''}`}>
+                            <td className="py-1.5 pr-2 text-ink">{r.domain}</td>
+                            <td className="py-1.5 pr-2 text-right tabular-nums">{int(r.brand)}</td>
+                            <td className="py-1.5 pl-2 text-right tabular-nums text-ink-soft">{int(r.visits)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-2 text-[11px] text-ink-faint">
+                A peer's brand searches are measured on its domain name (for example “verasmile” for verasmile.com), so a brand searched
+                under a different spelling can read low. Platforms, publishers and retailers are left out.
+              </p>
+            </>
+          ) : (
+            <DataGapInline detail="Peer set not read yet: it fills on the next weekly refresh" owner={ownerFor('tracking')} />
+          )}
+        </div>
+      </Card>
+
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
-          <SectionHeader tag="C5" eyebrow="Search" title={`What they win on Google${s.topKeywords ? ` (${s.topKeywords.market})` : ''}`} />
+          <SectionHeader tag="C6" eyebrow="Social profile" title="Audience on social media" />
+          <div className="px-5 pb-5 pt-4">
+            <table className="w-full text-[12.5px]">
+              <thead>
+                <tr className="border-b border-line text-left text-[10px] uppercase tracking-wide text-ink-faint">
+                  <th className="py-2 pr-3">Platform</th>
+                  <th className="py-2 pr-3 text-right">{c.name}</th>
+                  <th className="py-2 pl-3 text-right">Dental Nation</th>
+                </tr>
+              </thead>
+              <tbody>
+                {c.social.map((x) => (
+                  <tr key={x.platform} className="border-b border-line/60">
+                    <td className="py-2 pr-3 text-ink">{x.platform} <span className="text-[11px] text-ink-faint">{x.handle}</span></td>
+                    <td className="py-2 pr-3 text-right tabular-nums text-ink">{int(x.followers)}</td>
+                    <td className="py-2 pl-3 text-right tabular-nums text-ink-soft">{x.platform.toLowerCase() in mine.followers ? int(mine.followers[x.platform.toLowerCase()]) : '—'}</td>
+                  </tr>
+                ))}
+                <tr className="font-semibold">
+                  <td className="py-2 pr-3 text-ink">All platforms</td>
+                  <td className="py-2 pr-3 text-right tabular-nums">{int(sum(c.social.map((x) => x.followers)))}</td>
+                  <td className="py-2 pl-3 text-right tabular-nums">{int(sum(Object.values(mine.followers)))}</td>
+                </tr>
+              </tbody>
+            </table>
+            <p className="mt-2 text-[11px] text-ink-faint">
+              {c.name} runs separate accounts per language (English, French, Arabic, Spanish); the Instagram figure adds them up. Dental Nation
+              figures are the live counts the dashboard syncs from Meta. Sources: {c.social[0]?.source ?? ''}.
+            </p>
+          </div>
+        </Card>
+
+        <Card>
+          <SectionHeader tag="C7" eyebrow="Leads by channel" title="Where their leads come from (estimate)" />
+          <div className="overflow-x-auto px-5 pb-5 pt-4">
+            <table className="w-full min-w-[420px] text-[12.5px]">
+              <thead>
+                <tr className="border-b border-line text-left text-[10px] uppercase tracking-wide text-ink-faint">
+                  <th className="py-2 pr-3">Channel</th>
+                  <th className="py-2 pr-3 text-right">Typical share</th>
+                  <th className="py-2 pr-3 text-right">Leads / mo</th>
+                  <th className="py-2 pl-3">Evidence</th>
+                </tr>
+              </thead>
+              <tbody>
+                {channelRows.map((r) => (
+                  <tr key={r.ch.key} className={`border-b border-line/60 align-top ${r === bestChannel ? 'bg-accent/5 font-semibold' : ''}`}>
+                    <td className="py-2 pr-3 text-ink">{r.ch.label}</td>
+                    <td className="py-2 pr-3 text-right tabular-nums text-ink-soft">{pct(r.ch.share[0])}–{pct(r.ch.share[1])}</td>
+                    <td className="py-2 pr-3 text-right tabular-nums text-ink">{range(r.leads)}{r.measured ? ' *' : ''}</td>
+                    <td className="py-2 pl-3 text-[11px] font-normal text-ink-faint">{r.evidence ?? r.ch.basis}</td>
+                  </tr>
+                ))}
+                <tr className="font-semibold">
+                  <td className="py-2 pr-3 text-ink">All channels</td>
+                  <td className="py-2 pr-3 text-right">100%</td>
+                  <td className="py-2 pr-3 text-right tabular-nums">{range(totalLeads)}</td>
+                  <td className="py-2 pl-3 text-[11px] font-normal text-ink-faint">model midpoint {int(modelTotal)}</td>
+                </tr>
+              </tbody>
+            </table>
+            <p className="mt-2 text-[12.5px] leading-snug text-ink-soft">
+              <b className="text-ink">Best channel: {bestChannel?.ch.label ?? '—'}</b>, about {bestChannel ? range(bestChannel.leads) : '—'} leads a month.
+              {' '}{s.metaAds && !s.metaAds.error && s.metaAds.activeAds === 0 ? 'No Meta ads were live in the EU on the day of the read, so the Meta figure leans on the benchmark share rather than live evidence.' : ''}
+            </p>
+            <p className="mt-2 text-[11px] text-ink-faint">
+              * measured from Google data on this page (visits × 1–3% enquiry rate; paid clicks × 2–5%). Other rows are the typical share for
+              a dental tourism brand of this size (agency benchmarks, 2026) applied to the total. Ranges, not facts: no outside tool can
+              see a competitor's leads.
+            </p>
+          </div>
+        </Card>
+      </div>
+
+      <Card>
+        <SectionHeader tag="C8" eyebrow="Mapped to Dental Nation" title={`Channel mix: ${c.name} (estimate) vs Dental Nation (actual, ${dubaiDateLabel(mine.from)} to ${dubaiDateLabel(mine.to)})`} />
+        <div className="overflow-x-auto px-5 pb-5 pt-4">
+          {mine.total ? (
+            <>
+              <table className="w-full min-w-[560px] text-[12.5px]">
+                <thead>
+                  <tr className="border-b border-line text-left text-[10px] uppercase tracking-wide text-ink-faint">
+                    <th className="py-2 pr-3">Channel</th>
+                    <th className="py-2 pr-3 text-right">{c.name} share (est.)</th>
+                    <th className="py-2 pr-3 text-right">Dental Nation enquiries</th>
+                    <th className="py-2 pr-3 text-right">Dental Nation share</th>
+                    <th className="py-2 pl-3">Gap</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ownBuckets.map((b) => {
+                    const theirs = modelTotal ? mid(channelRows.find((r) => r.ch.key === b.ch.key)!.leads) / modelTotal : 0;
+                    const ours = b.enquiries / mine.total;
+                    const diff = ours - theirs;
+                    return (
+                      <tr key={b.ch.key} className={`border-b border-line/60 ${b === ownBest ? 'bg-good/5 font-semibold' : ''}`}>
+                        <td className="py-2 pr-3 text-ink">{b.ch.label}</td>
+                        <td className="py-2 pr-3 text-right tabular-nums text-ink-soft">{pct(theirs)}</td>
+                        <td className="py-2 pr-3 text-right tabular-nums text-ink">{int(b.enquiries)}</td>
+                        <td className="py-2 pr-3 text-right tabular-nums text-ink">{pct(ours)}</td>
+                        <td className={`py-2 pl-3 text-[11px] font-normal ${Math.abs(diff) < 0.05 ? 'text-ink-faint' : diff > 0 ? 'text-good' : 'text-watch'}`}>
+                          {Math.abs(diff) < 0.05 ? 'in line' : diff > 0 ? `we lean on this ${pct(diff)} more` : `we are ${pct(-diff)} lighter here`}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  <tr className="font-semibold">
+                    <td className="py-2 pr-3 text-ink">All channels</td>
+                    <td className="py-2 pr-3 text-right">100%</td>
+                    <td className="py-2 pr-3 text-right tabular-nums">{int(mine.total)}</td>
+                    <td className="py-2 pr-3 text-right">100%</td>
+                    <td className="py-2 pl-3" />
+                  </tr>
+                </tbody>
+              </table>
+              <Takeaway>
+                Our best channel is <b>{ownBest?.ch.label ?? '—'}</b> ({ownBest ? pct(ownBest.enquiries / mine.total) : '—'} of enquiries); theirs is{' '}
+                <b>{bestChannel?.ch.label ?? '—'}</b>. The rows marked lighter are where a brand like {c.name} gets leads that we do not yet:
+                those are the channels to build, in the order of their share.
+              </Takeaway>
+              <p className="mt-2 text-[11px] text-ink-faint">
+                Dental Nation enquiries are the Growth Platform's attributed enquiries for the last 90 days, grouped into the same channels.
+                Shares compare mix, not volume: {c.name} sells trips from Europe, we sell visits in Dubai.
+              </p>
+            </>
+          ) : (
+            <DataGapInline detail="Dental Nation's channel enquiries for the last 90 days could not be read" owner={ownerFor('tracking')} />
+          )}
+        </div>
+      </Card>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <SectionHeader tag="C9" eyebrow="Search" title={`What they win on Google${s.topKeywords ? ` (${s.topKeywords.market})` : ''}`} />
           <div className="overflow-x-auto px-5 pb-5 pt-4">
             {s.topKeywords?.rows.length ? (
               <table className="w-full text-[12.5px]">
@@ -269,7 +513,7 @@ function CompetitorBlock({ c, s, own }: { c: CompetitorDef; s: CompetitorSnapsho
         </Card>
 
         <Card>
-          <SectionHeader tag="C6" eyebrow="Profile" title={`About ${c.name} (their public claims)`} />
+          <SectionHeader tag="C10" eyebrow="Profile" title={`About ${c.name} (their public claims)`} />
           <div className="px-5 pb-5 pt-4">
             <Facts c={c} />
           </div>

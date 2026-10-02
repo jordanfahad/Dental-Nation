@@ -21,6 +21,8 @@ import { COMPETITORS, OWN, type CompetitorDef, type Market } from '@/config/comp
  */
 
 const LABS = 'https://api.dataforseo.com/v3/dataforseo_labs/google';
+/** Bump when the snapshot gains fields: older snapshots are then refreshed on the next sync. */
+const SNAPSHOT_VERSION = 2;
 const WEEK_MS = 7 * 86400_000;
 /** A failed read (no credit, outage) is retried after this long instead of waiting a week. */
 const RETRY_MS = 6 * 3600_000;
@@ -46,7 +48,21 @@ export interface MarketRow {
 
 export interface KeywordRow { keyword: string; volume: number | null; position: number | null; visits: number | null }
 
+export interface PeerRow { domain: string; organicVisits: number | null; sharedKeywords: number | null; brandKeyword: string; brandSearches: number | null }
+export interface MetaAdsSummary {
+  /** Ads live in the EU countries checked (Meta discloses every EU ad). */
+  activeAds: number;
+  pages: string[];
+  platforms: Record<string, number>;
+  /** Sum of each ad's EU reach, as Meta reports it. */
+  euReach: number;
+  countries: string[];
+  oldestStart: string | null;
+  error?: string;
+}
+
 export interface CompetitorSnapshot {
+  version?: number;
   domain: string;
   fetchedAt: string;
   markets: MarketRow[];
@@ -55,8 +71,16 @@ export interface CompetitorSnapshot {
   /** Top non-brand keywords in the competitor's largest market. */
   topKeywords: { market: string; rows: KeywordRow[] } | null;
   backlinks: { rank: number | null; referringDomains: number | null; backlinks: number | null } | null;
+  /** Domains competing for the same searches, per peer market, with their brand searches. */
+  peers: { market: string; rows: PeerRow[] }[];
+  metaAds: MetaAdsSummary | null;
   errors: string[];
 }
+
+/** Sites that compete for the same searches without being clinics: encyclopaedias, publishers, platforms, retailers. */
+const NOT_A_CLINIC = /wikipedia|healthline|webmd|nhs\.uk|mayoclinic|clevelandclinic|medicalnewstoday|verywell|youtube|facebook|instagram|tiktok|reddit|quora|pinterest|amazon|colgate|oral-?b|sensodyne|listerine|bupa|dentaly|bookimed|whatclinic|flymedi|trustpilot|medigo|qunomedical|clinicsoncall|theratravel|britannica|ada\.org|mouthhealthy|humana|aetna|cigna|deltadental|yelp|tripadvisor|google|apple|news|magazine|\.gov|\.edu|doctolib|zocdoc|practo|smile\.direct|invisalign|aligner|sci|journal|ncbi|pubmed/i;
+/** Peer brand keyword from its domain: the first label, with hyphens as spaces ("vera-smile.com" → "vera smile"). */
+const brandOfDomain = (d: string) => d.replace(/^www\./, '').split('.')[0].replace(/-/g, ' ');
 
 async function readCreds(): Promise<string | null> {
   const db = getSupabaseAdmin();
@@ -166,15 +190,84 @@ async function buildSnapshot(auth: string, c: CompetitorDef): Promise<Competitor
   if (bl.error) errors.push(`backlinks: ${bl.error}`);
   const backlinks = bl.result ? { rank: num(bl.result.rank), referringDomains: num(bl.result.referring_main_domains) ?? num(bl.result.referring_domains), backlinks: num(bl.result.backlinks) } : null;
 
+  // Where the brand stands: the clinics competing for the same searches in each
+  // peer market, with their Google traffic and how many people search their name.
+  const peers = await Promise.all(c.markets.filter((m) => m.peers).map(async (m) => {
+    const r = await labs(auth, 'competitors_domain', m, { target: c.domain, limit: 40, exclude_top_domains: true, order_by: ['intersections,desc'] });
+    if (r.error) { errors.push(`${m.name} peers: ${r.error}`); return { market: m.name, rows: [] as PeerRow[] }; }
+    const items = ((get(r.result, 'items') as unknown[] | null) ?? [])
+      .map((i) => ({ domain: String(get(i, 'domain') ?? ''), shared: num(get(i, 'intersections')), etv: num(get(i, 'full_domain_metrics.organic.etv')) ?? num(get(i, 'metrics.organic.etv')) }))
+      .filter((x) => x.domain && x.domain !== c.domain && !NOT_A_CLINIC.test(x.domain))
+      .slice(0, 8);
+    const rows = await Promise.all(items.map(async (x): Promise<PeerRow> => {
+      const bk = brandOfDomain(x.domain);
+      const kw = await labs(auth, 'keyword_overview', m, { keywords: [bk] });
+      const item = ((get(kw.result, 'items') as unknown[] | null) ?? [])[0];
+      return { domain: x.domain, organicVisits: x.etv !== null ? Math.round(x.etv) : null, sharedKeywords: x.shared, brandKeyword: bk, brandSearches: kw.error ? null : num(get(item, 'keyword_info.search_volume')) ?? 0 };
+    }));
+    return { market: m.name, rows };
+  }));
+
   return {
+    version: SNAPSHOT_VERSION,
     domain: c.domain,
     fetchedAt: new Date().toISOString(),
     markets,
     brandTrend: [...trend.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([date, searches]) => ({ date, searches })),
     topKeywords,
     backlinks,
+    peers,
+    metaAds: await metaAdLibrary(c),
     errors,
   };
+}
+
+/**
+ * Meta Ad Library: in the EU, Meta discloses every ad a page runs, with its
+ * reach. Reads the live ads whose page name carries the brand, in the
+ * brand's EU markets. Needs the Meta token the ads sync already uses; any
+ * refusal is reported on the page rather than hidden. Best-effort.
+ */
+async function metaAdLibrary(c: CompetitorDef): Promise<MetaAdsSummary | null> {
+  const countries = c.markets.map((m) => m.adLibrary).filter((x): x is string => !!x);
+  if (!countries.length) return null;
+  const token = (process.env.META_ACCESS_TOKEN ?? '').trim();
+  const version = (process.env.META_API_VERSION ?? '').trim() || 'v21.0';
+  const empty: MetaAdsSummary = { activeAds: 0, pages: [], platforms: {}, euReach: 0, countries, oldestStart: null };
+  if (!token) return { ...empty, error: 'Meta token not configured' };
+  try {
+    const u = new URL(`https://graph.facebook.com/${version}/ads_archive`);
+    u.searchParams.set('search_terms', c.brand);
+    u.searchParams.set('ad_type', 'ALL');
+    u.searchParams.set('ad_active_status', 'ACTIVE');
+    u.searchParams.set('ad_reached_countries', JSON.stringify(countries));
+    u.searchParams.set('fields', 'id,page_name,ad_delivery_start_time,publisher_platforms,eu_total_reach');
+    u.searchParams.set('limit', '250');
+    u.searchParams.set('access_token', token);
+    const out = { ...empty, platforms: {} as Record<string, number> };
+    const pages = new Set<string>();
+    let url: string | null = u.toString();
+    for (let guard = 0; url && guard < 8; guard++) {
+      const res: Response = await fetch(url, { cache: 'no-store' });
+      const json = (await res.json().catch(() => null)) as { data?: Record<string, unknown>[]; paging?: { next?: string }; error?: { message?: string } } | null;
+      if (!res.ok || !json || json.error) return { ...empty, error: json?.error?.message ?? `HTTP ${res.status}` };
+      for (const ad of json.data ?? []) {
+        const page = String(ad.page_name ?? '');
+        if (!page.toLowerCase().includes(c.brand)) continue;
+        out.activeAds += 1;
+        pages.add(page);
+        out.euReach += num(ad.eu_total_reach) ?? 0;
+        for (const p of (ad.publisher_platforms as string[] | undefined) ?? []) out.platforms[p] = (out.platforms[p] ?? 0) + 1;
+        const start = typeof ad.ad_delivery_start_time === 'string' ? ad.ad_delivery_start_time : null;
+        if (start && (!out.oldestStart || start < out.oldestStart)) out.oldestStart = start;
+      }
+      url = json.paging?.next ?? null;
+    }
+    out.pages = [...pages];
+    return out;
+  } catch (err) {
+    return { ...empty, error: (err as Error).message };
+  }
 }
 
 /** Called by the sync cron: refresh any tracked domain whose snapshot is missing or a week old. */
@@ -187,8 +280,9 @@ export async function refreshCompetitorSnapshots(force = false): Promise<{ refre
   const lastTry = new Map<string, number>();
   for (const r of (data ?? []) as { domain: string; fetched_at: string; data: CompetitorSnapshot }[]) {
     const at = Date.parse(r.fetched_at);
-    if (!lastTry.has(r.domain)) lastTry.set(r.domain, at);
-    if (!lastGood.has(r.domain) && hasData(r.data)) lastGood.set(r.domain, at);
+    // Only failed reads gate the retry; a good snapshot of an older version is refreshed straight away.
+    if (!hasData(r.data) && !lastTry.has(r.domain)) lastTry.set(r.domain, at);
+    if (!lastGood.has(r.domain) && hasData(r.data) && (r.data.version ?? 1) >= SNAPSHOT_VERSION) lastGood.set(r.domain, at);
   }
   const now = Date.now();
   const due = all.filter((c) => force || (
@@ -213,7 +307,7 @@ export async function getCompetitorSnapshots(): Promise<Map<string, CompetitorSn
   const { data } = await db.from('competitor_snapshots').select('domain, data, fetched_at').order('fetched_at', { ascending: false }).limit(50);
   const rows = (data ?? []) as { domain: string; data: CompetitorSnapshot }[];
   // Latest snapshot with real figures; otherwise the latest attempt (so the page can say why it is empty).
-  for (const r of rows) if (!out.has(r.domain) && hasData(r.data)) out.set(r.domain, r.data);
+  for (const r of rows) if (!out.has(r.domain) && hasData(r.data)) out.set(r.domain, { ...r.data, peers: r.data.peers ?? [], metaAds: r.data.metaAds ?? null });
   for (const r of rows) if (!out.has(r.domain)) out.set(r.domain, r.data);
   return out;
 }

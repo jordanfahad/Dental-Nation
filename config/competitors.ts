@@ -11,6 +11,26 @@ export interface Market {
   name: string;
   /** Search language for DataForSEO Labs (falls back to 'en'). */
   lang: string;
+  /** Pull the peer set (domains competing for the same searches) in this market. */
+  peers?: boolean;
+  /** Two-letter country code for the Meta Ad Library (EU countries only: that is where Meta discloses every ad). */
+  adLibrary?: string;
+}
+
+export interface SocialProfile { platform: string; handle: string; followers: number; source: string }
+
+/**
+ * One lead channel in the estimate model. `share` is the typical share of a
+ * brand's monthly leads for a dental tourism business with this profile
+ * (low, high), and `basis` says where the range comes from. `own` lists the
+ * Dental Nation channel keys (config/growth-channels.ts) that map onto it.
+ */
+export interface ChannelModel {
+  key: string;
+  label: string;
+  share: [number, number];
+  basis: string;
+  own: string[];
 }
 
 export interface CompetitorDef {
@@ -29,9 +49,32 @@ export interface CompetitorDef {
   revenueCheck?: { patientsPerYear: number; note: string };
   /** Lead to treated-patient conversion assumed for the cross-check (low, high). */
   leadToPatient: [number, number];
+  /** Public social accounts and follower counts, as read on the date in `source`. */
+  social: SocialProfile[];
+  /** The lead-channel model this brand is judged against. */
+  channels: ChannelModel[];
 }
 
-const UAE: Market = { code: 2784, name: 'UAE', lang: 'en' };
+const UAE: Market = { code: 2784, name: 'UAE', lang: 'en', peers: true };
+
+/**
+ * Where a dental tourism clinic's leads come from, as a share of all leads.
+ * Basis: agency benchmarks for Turkish dental tourism marketing (Avangard,
+ * Glawi, Marketing A Clinic, 2026: Meta lead campaigns at GBP 8–35 a lead vs
+ * Google search at GBP 45–120, so budgets and volume sit on Meta; Google Ads
+ * at GBP 1,500–3,000 a month yields 20–40 enquiries), the brand's own
+ * footprint (dedicated Facebook/Instagram landing pages, 100k+ followers per
+ * network, listings on Bookimed/WhatClinic/Flymedi) and the measured Google
+ * figures on this page. Ranges, not points: nobody outside the business knows.
+ */
+const DENTAL_TOURISM_CHANNELS: ChannelModel[] = [
+  { key: 'meta-paid', label: 'Meta ads (Facebook, Instagram)', share: [0.4, 0.55], basis: 'Cheapest lead source for dental tourism (GBP 8–35 a lead); dedicated FB/IG landing pages; the Ad Library shows what is live', own: ['paid-social'] },
+  { key: 'google-organic', label: 'Google search (organic)', share: [0.15, 0.25], basis: 'Measured: Google visits × 1–3% enquiry rate (the table above)', own: ['website', 'gmb', 'ai-chat'] },
+  { key: 'google-paid', label: 'Google Ads', share: [0.05, 0.15], basis: 'GBP 45–120 a lead; a GBP 1,500–3,000 monthly budget gives 20–40 enquiries. DataForSEO sees no paid clicks this month, so the low end applies now', own: ['paid-search'] },
+  { key: 'social-organic', label: 'Social and YouTube (organic)', share: [0.08, 0.15], basis: 'Followers × 0.05–0.2% enquiring a month: 190k Instagram, 105k Facebook, 185k YouTube', own: ['social-organic', 'influencer'] },
+  { key: 'aggregators', label: 'Medical tourism platforms (Bookimed, WhatClinic, Flymedi)', share: [0.05, 0.1], basis: 'Listed on every major platform; platforms charge 10–20% commission, so clinics cap this', own: ['affiliate', 'partnership'] },
+  { key: 'referral-direct', label: 'Word of mouth, returning patients, direct', share: [0.05, 0.12], basis: '15,000+ treated patients and 1,000+ reviews; dental tourism repeat rates are low (one trip)', own: ['patient-referral', 'doctor-referral', 'direct-walkin', 'retention', 'whatsapp', 'ai-concierge'] },
+];
 
 export const OWN: CompetitorDef = {
   domain: 'dentalnation.com',
@@ -42,6 +85,8 @@ export const OWN: CompetitorDef = {
   facts: [],
   claimedPatientsPerYear: null,
   leadToPatient: [0.1, 0.2],
+  social: [],
+  channels: DENTAL_TOURISM_CHANNELS,
 };
 
 export const COMPETITORS: CompetitorDef[] = [
@@ -52,12 +97,12 @@ export const COMPETITORS: CompetitorDef[] = [
     brandKeyword: 'dentakay',
     // Dental tourism into Turkey: Europe and North America, plus the Gulf (Riyadh branch) and Turkey itself.
     markets: [
-      { code: 2826, name: 'UK', lang: 'en' },
-      { code: 2840, name: 'USA', lang: 'en' },
-      { code: 2276, name: 'Germany', lang: 'de' },
-      { code: 2372, name: 'Ireland', lang: 'en' },
-      { code: 2250, name: 'France', lang: 'fr' },
-      { code: 2528, name: 'Netherlands', lang: 'nl' },
+      { code: 2826, name: 'UK', lang: 'en', peers: true },
+      { code: 2840, name: 'USA', lang: 'en', peers: true },
+      { code: 2276, name: 'Germany', lang: 'de', peers: true, adLibrary: 'DE' },
+      { code: 2372, name: 'Ireland', lang: 'en', adLibrary: 'IE' },
+      { code: 2250, name: 'France', lang: 'fr', peers: true, adLibrary: 'FR' },
+      { code: 2528, name: 'Netherlands', lang: 'nl', adLibrary: 'NL' },
       { code: 2036, name: 'Australia', lang: 'en' },
       { code: 2124, name: 'Canada', lang: 'en' },
       UAE,
@@ -79,6 +124,12 @@ export const COMPETITORS: CompetitorDef[] = [
     revenueCheck: { patientsPerYear: 2600, note: 'ZoomInfo puts revenue at about USD 7.8 million a year; at a typical USD 3,000 implant or veneer package that is about 2,600 patients a year' },
     // Dental tourism: most enquiries never travel. 10–20% of leads becoming patients is the planning range.
     leadToPatient: [0.1, 0.2],
+    social: [
+      { platform: 'Instagram', handle: '@dentakay (+ @dentakay.fr 44k, @dentakay_ar 9.9k, @dentakaymexico 5.6k)', followers: 191500, source: 'instagram.com profiles, read 2 Oct 2026' },
+      { platform: 'YouTube', handle: '@Dentakay', followers: 185000, source: 'youtube.com/@Dentakay, read 2 Oct 2026' },
+      { platform: 'Facebook', handle: 'Dentakay Dental Clinic (62k) + Dentakay Clinique Dentaire (43k)', followers: 105000, source: 'facebook.com pages, read 2 Oct 2026' },
+    ],
+    channels: DENTAL_TOURISM_CHANNELS,
   },
 ];
 
