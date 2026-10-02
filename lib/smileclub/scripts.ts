@@ -490,7 +490,7 @@ export interface DentistScripts {
   clubVideo: string;
   /** Video 2 — the dentist's lane campaign, filmed in the same session. */
   laneVideo: string;
-  /** Video 3 — partnership announcement (Dr. Tosun Dental Clinic joining Dental Nation). */
+  /** Video 3 — announcement that the clinic is now part of Dental Nation (Dr. Tosun Dental Clinic; Al Maher Medical Centre). */
   announceVideo?: string;
 }
 
@@ -528,6 +528,47 @@ export const ANNOUNCE: { dentists: string[]; confirm: string[]; video: Partial<R
   },
 };
 
+/**
+ * Al Maher Medical Centre announcement (2 Oct, requested by Fahad): the same
+ * message as the Dr. Tosun announcement, for the AMC dental clinic now being
+ * part of Dental Nation. Dr. Maher leads; Dr. Suzanna and Dr. Leila film their
+ * own version (each says their own name). Arabic and English, like their other
+ * videos. Needs approval from Ms Shadi, Dr Luvi and Gautam before filming.
+ */
+export const ANNOUNCE_AMC: { dentists: string[]; confirm: string[]; video: Partial<Record<Lang, (name: string) => string[]>> } = {
+  dentists: ['maher-selman', 'suzanna-almaali', 'leila-mostawe'],
+  confirm: [
+    'The team, clinic, prices, patient records and accepted insurance at Al Maher Medical Centre really stay the same (the script promises “nothing you value changes”).',
+    'The exact wording: “the dental clinic at Al Maher Medical Centre is now part of Dental Nation”.',
+    'The announcement date, to be agreed by Gautam and Dr. Maher; Dr. Maher’s version is published first.',
+  ],
+  video: {
+    en: (name) => [
+      `[On camera, in the clinic] Hi, I’m ${name}, with some good news for our patients.`,
+      'The dental clinic at Al Maher Medical Centre is now part of Dental Nation.',
+      'Nothing you value changes: the same team, the same clinic, the same care you trust.',
+      'What you gain is more: Dental Nation’s specialists across Dubai, help when you have an urgent dental problem, and Smile Club membership to keep your check-ups on track.',
+      'It’s an upgrade for our patients, and we’re proud of it.',
+      '[End card] Al Maher Medical Centre, now part of Dental Nation.',
+    ],
+    ar: (name) => [
+      `[أمام الكاميرا، في العيادة] مرحباً، أنا ${name}، ولديّ خبر سعيد لمرضانا.`,
+      'عيادة الأسنان في مركز الماهر الطبي أصبحت الآن جزءاً من دنتال نيشن.',
+      'لا شيء مما تقدّرونه يتغيّر: الفريق نفسه، والعيادة نفسها، والرعاية نفسها التي تثقون بها.',
+      'وما تكسبونه أكثر: أطباء دنتال نيشن المتخصصون في أنحاء دبي، والمساعدة عند وجود مشكلة طارئة في الأسنان، وعضوية Smile Club التي تحافظ على انتظام فحوصاتكم.',
+      'إنها خطوة أفضل لمرضانا، ونحن فخورون بها.',
+      '[بطاقة الختام] مركز الماهر الطبي، الآن جزء من دنتال نيشن.',
+    ],
+  },
+};
+
+/** What a dentist confirms before filming their announcement, or null when they have none. */
+export function announceFor(d: Dentist): { confirm: string[] } | null {
+  if (ANNOUNCE.dentists.includes(d.id)) return ANNOUNCE;
+  if (ANNOUNCE_AMC.dentists.includes(d.id)) return ANNOUNCE_AMC;
+  return null;
+}
+
 export function scriptsFor(d: Dentist, lang: Lang): DentistScripts {
   const c = COPY[lang];
   const edu = noPrices(d);
@@ -553,6 +594,7 @@ export function scriptsFor(d: Dentist, lang: Lang): DentistScripts {
     clubVideo: spoken(own?.clubVideo ?? clubStory ?? [c.vIntro(name, title, where), a.why, `${c.vWhy} ${offer}`, ...(edu ? [c.vTip] : []), c.vKeep, c.vEnd].join('\n')),
     laneVideo: spoken(own?.laneVideo ?? laneStory ?? laneLines(name, title, where).join('\n')),
     ...(ANNOUNCE.dentists.includes(d.id) && ANNOUNCE.video[lang] ? { announceVideo: spoken(ANNOUNCE.video[lang]!.join('\n')) } : {}),
+    ...(ANNOUNCE_AMC.dentists.includes(d.id) && ANNOUNCE_AMC.video[lang] ? { announceVideo: spoken(ANNOUNCE_AMC.video[lang]!(name).join('\n')) } : {}),
   };
 }
 

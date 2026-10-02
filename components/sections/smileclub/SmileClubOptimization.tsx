@@ -21,7 +21,7 @@ import { REVIEWERS, REVIEWER_BY_USER, reviewFor, reviewSummary, type ReviewEntry
 import { PLAYBOOKS, type Channel } from '@/lib/smileclub/playbook';
 import { CAL_RULE, COMPANY_TYPES, STAGES, TYPE_LABEL, type CalEvent, type Company, type CompanyType, type CorpState, type EventKind, type Stage } from '@/lib/smileclub/corporate';
 import { SEGMENTS, type SegmentId } from '@/lib/smileclub/segments';
-import { ANNOUNCE, BANNED_TR_AR, BANNED_WORDS, BRANCH_LABEL, BRANCH_LANGS, DENTISTS, LANES, LANG_LABEL, NO_PRICE_WHY, PATIENT_SEGS, SCRIPT_STATUS, SHOOT, SPOKEN_AR_WHY, laneFor, langsFor, noPrices, scriptsFor, type Branch, type Dentist, type DentistScripts, type Lang } from '@/lib/smileclub/scripts';
+import { announceFor, BANNED_TR_AR, BANNED_WORDS, BRANCH_LABEL, BRANCH_LANGS, DENTISTS, LANES, LANG_LABEL, NO_PRICE_WHY, PATIENT_SEGS, SCRIPT_STATUS, SHOOT, SPOKEN_AR_WHY, laneFor, langsFor, noPrices, scriptsFor, type Branch, type Dentist, type DentistScripts, type Lang } from '@/lib/smileclub/scripts';
 import { BUDGET_BY_SEG, CEILING, HELD, PROCUREMENT_STEPS, RESERVE, SEGMENT_BUDGETS, SPEND_NOW, TOTAL, fmtAed, segmentTotal } from '@/lib/smileclub/budget';
 import {
   CRM_TEST_SPEC,
@@ -3705,13 +3705,13 @@ function ReviewOverview() {
   );
 }
 
-/** Video 3 for Dr. Yahya Tosun: the partnership announcement, filmed first and published first. */
+/** Video 3: the announcement that the clinic is now part of Dental Nation (Dr. Tosun; the AMC dentists), published first. */
 function AnnounceBlock({ d, n = '' }: { d: Dentist; n?: string }) {
   return (
     <div className="space-y-1">
       <BiScript d={d} label={`${n}Video 3 — Partnership announcement (publish first)`} tone={GOLD} pick={(s) => s.announceVideo ?? ''} />
       <p className="text-[10px] leading-snug" style={{ color: '#6d5a1d' }}>
-        <b>Before filming, Gautam confirms:</b> {ANNOUNCE.confirm.join(' ')} <TaskLink k="g-announce">Announcement task</TaskLink>
+        <b>Before filming, Gautam confirms:</b> {(announceFor(d)?.confirm ?? []).join(' ')} <TaskLink k="g-announce">Announcement task</TaskLink>
       </p>
     </div>
   );

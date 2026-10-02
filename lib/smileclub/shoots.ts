@@ -5,7 +5,7 @@
  * which dentist, which clinic and what time. Each appointment films two videos
  * (Smile Club + the dentist's campaign) in the dentist's languages.
  */
-import { ANNOUNCE, BRANCH_LABEL, DENTISTS, langsFor, type Branch, type Dentist } from '@/lib/smileclub/scripts';
+import { announceFor, BRANCH_LABEL, DENTISTS, langsFor, type Branch, type Dentist } from '@/lib/smileclub/scripts';
 
 export type Day = 'Sun' | 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat';
 export const DAYS: Day[] = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -124,7 +124,7 @@ const fmt = (iso: string) => { const d = new Date(`${iso}T12:00:00Z`); return `$
 
 /** Takes and minutes for one appointment. */
 export function shootLoad(d: Dentist, only?: 'lane') {
-  const videos = only ? 1 : 2 + (ANNOUNCE.dentists.includes(d.id) ? 1 : 0);
+  const videos = only ? 1 : 2 + (announceFor(d) ? 1 : 0);
   const takes = langsFor(d).length * videos;
   return { takes, minutes: takes * 10 + 5 };
 }
