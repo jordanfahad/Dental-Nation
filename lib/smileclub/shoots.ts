@@ -57,6 +57,7 @@ export const SLOT_STATUS: Record<NonNullable<ShootSlot['status']>, string> = {
 
 /** Changes to the plan, newest first. */
 export const SHOOT_CHANGES: string[] = [
+  'Fri 2 Oct (Fahad): video delivery is fixed per shoot day: first cut of every video to Fahad three days after the shoot, batch review by Ms Shadi, Dr Luvi and Gautam, final files (full length plus 15 s and 6 s cuts, each language) six days after the shoot. The four Smile Club videos filmed in September are re-edited on the approved template and delivered by Tue 7 Oct. All videos from the 5 to 13 Oct shoots are final by Mon 19 Oct.',
   'Fri 2 Oct (Fahad): the shoots restart. New dates are set from the doctors’ roster for 4 to 17 Oct, inside each dentist’s hours, one clinic run per day where possible: Mon 5 Oct Tosun (Dr. Maysoun, Dr. Sevinc, Dr. Maysoon, Dr. Tosun’s second video and announcement), Tue 6 Oct Tosun, AMC and Al Wasl (Dr. Bulent, Dr. Leila, second videos for Dr. Safwan and Dr. Ali), Wed 7 Oct Al Wasl and Tosun (Dr. Qasem, Dr. Dilsad), Sat 10 Oct Al Wasl (Dr. Ghada), Sun 11 Oct AMC and Al Wasl (Dr. Suzanna, Dr. Maher, Dr. Hasna, Dr. Yasmin’s second video), Tue 13 Oct Tosun (Dr. Sathyapriya). MJ confirms each slot with the dentist. Dr. Chahira is not on the roster for these two weeks, so her date comes from MJ.',
   'Mon 28 Sep (meeting: Ms Shadi, Dr Luvi, Gautam, Fahad): shoots are ON HOLD. The team was not happy with the first videos (Dr. Safwan and Dr. Ali), so we get the format right first: Dr Luvi and Gautam share sample videos (Tue 29 Sep, 12:00); Fahad and Mohan make one or two template videos (Tue 29 Sep); Ms Shadi, Dr Luvi and Gautam approve them (Wed 30 Sep, 12:00); the new shoot schedule is agreed with MJ by Wed 30 Sep. Still to film: Dr. Chahira, Dr. Hasna, Dr. Suzanna, Dr. Maher, Dr. Leila, Dr. Qasem, Dr. Ghada, Dr. Dilsad, Dr. Bulent, Dr. Maysoon, Dr. Maysoun, Dr. Sevinc and Dr. Sathyapriya, plus second videos for Dr. Yasmin, Dr. Safwan, Dr. Ali and Dr. Tosun.',
   'Mon 28 Sep (Fahad): filmed so far, all Smile Club videos: Dr. Yasmin Youssef (Tue 22 Sep), Dr. M Safwan Sultan and Dr. Ali Ghasemi (Sat 26 Sep), Dr. Yahya Tosun (Mon 28 Sep). No shoot on Sun 27 Sep. Dr. Chahira Berlarbi (Sat 26) and the other Mon 28 doctors were not available (Dr. Tosun Dental Clinic transition and doctors’ schedules). Every missed doctor is pencilled on their next clinic day for MJ to confirm; second videos for Dr. Safwan, Dr. Ali and Dr. Tosun are pencilled too.',
@@ -168,6 +169,22 @@ export const SHOOT_PLAN: ShootDay[] = [
     ] },
   ] },
 ];
+
+/**
+ * Video delivery after each shoot day (set 2 Oct): Mohan sends the first cut
+ * of every video from the day to Fahad three days after the shoot; Ms Shadi,
+ * Dr Luvi and Gautam review the day's videos as a batch; the final files (full
+ * length plus the 15 s and 6 s cuts, each language) are delivered six days
+ * after the shoot. The four Smile Club videos filmed before the 28 Sep meeting
+ * are re-edited on the approved template and delivered by REEDIT_FINAL.
+ */
+export const DELIVERY = { firstCutDays: 3, finalDays: 6 };
+export const REEDIT_FINAL = '2026-10-07';
+const shift = (iso: string, n: number) => { const d = new Date(`${iso}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+export function deliveryFor(iso: string): { firstCut: string; final: string; firstCutLabel: string; finalLabel: string } {
+  const firstCut = shift(iso, DELIVERY.firstCutDays), final = shift(iso, DELIVERY.finalDays);
+  return { firstCut, final, firstCutLabel: fmt(firstCut), finalLabel: fmt(final) };
+}
 
 const DAY_OF = (iso: string): Day => DAYS[new Date(`${iso}T12:00:00Z`).getUTCDay()];
 const fmt = (iso: string) => { const d = new Date(`${iso}T12:00:00Z`); return `${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getUTCDay()]} ${d.getUTCDate()} ${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][d.getUTCMonth()]}`; };

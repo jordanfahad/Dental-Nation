@@ -3,7 +3,7 @@ import { OPS_ALERT_FROM } from '@/config/ops';
 import { emailConfigured, sendEmail } from '@/lib/notify/email';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
 import { BRANCH_LABEL, DENTISTS, LANES, LANG_LABEL, laneFor, langsFor } from '@/lib/smileclub/scripts';
-import { SHOOT_PLAN, SLOT_STATUS, WARDROBE, dentistById, hoursOn, nextClinicDays, shootLoad } from '@/lib/smileclub/shoots';
+import { SHOOT_PLAN, SLOT_STATUS, WARDROBE, deliveryFor, dentistById, hoursOn, nextClinicDays, shootLoad } from '@/lib/smileclub/shoots';
 import { REVIEWERS, reviewFor, type ReviewEntry, type ReviewerId } from '@/lib/smileclub/review';
 import { loadCorp, loadReviews } from '@/lib/smileclub/tracker';
 import { video2 } from '@/lib/smileclub/creative';
@@ -502,6 +502,7 @@ export function buildShootEmail(ctx: Ctx): { subject: string; html: string } | n
 ${table(['Time', 'Dentist', 'Clinic', 'In clinic', 'What is filmed', 'Scripts'], rows)}
 ${approvals}
 ${tomorrow < WARDROBE.arrives ? `<p style="background:#FDF9EC;padding:8px;border-radius:6px"><b>Wardrobe:</b> ${esc(WARDROBE.note)}</p>` : '<p><b>Wardrobe:</b> well-fitting DN scrubs or the DN-branded lab coat.</p>'}
+<p><b>Delivery (Mohan):</b> first cut of every video from this day to Fahad by <b>${esc(deliveryFor(day.iso).firstCutLabel)}</b>; Ms Shadi, Dr Luvi and Gautam review the day’s videos as a batch; final files (full length plus 15 s and 6 s cuts, each language) by <b>${esc(deliveryFor(day.iso).finalLabel)}</b>.</p>
 ${hs.length ? `${h3('Also since this morning')}${happenList(hs, 10)}` : ''}
 <p style="color:#767769">Copied: Dr Luvi, Mr Akbar, Ms Shadi, Gautam, Fahad${emailOf('mohan') ? ', Mohan' : ''} — for them this is today’s evening email.</p>`;
   return { subject, html: shell(`Tomorrow’s shoot — ${day.label}`, body) };
