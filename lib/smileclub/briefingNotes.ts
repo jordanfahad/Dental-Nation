@@ -1,6 +1,7 @@
 import 'server-only';
 import { createDecipheriv } from 'node:crypto';
 import type { Attachment } from '@/lib/notify/email';
+import type { ContentosLeads } from '@/lib/ops/contentosLeads';
 import { BRANCH_LABEL, langsFor } from '@/lib/smileclub/scripts';
 import { FILMED, REEDIT_FINAL, SHOOT_PLAN, deliveryFor, dentistById, shootLoad } from '@/lib/smileclub/shoots';
 
@@ -21,7 +22,8 @@ export interface BriefingNote {
   title: string;
   /** Words added to the email subject. */
   subjectBit: string;
-  html: (today: string) => string;
+  /** `co` is ContentOS Lead Analysis read at send time (null if it could not be read). */
+  html: (today: string, co: ContentosLeads | null) => string;
   files?: BriefingFile[];
   /** 'am' (default): the 09:00 briefing. 'shoot': that evening's 17:00 shoot email to MJ with the team copied. */
   slot?: 'am' | 'shoot';
@@ -102,6 +104,31 @@ function devicesHtml() {
 <p><b>So:</b> Meta reaches iPhone users on WhatsApp; Google reaches mostly Android users on the website. Booked patients from Google’s Android leads need checking, as one-tap phone and WhatsApp clicks from Display ads are often accidental.</p>`;
 }
 
+/**
+ * Lead follow-up (5 Oct, from Fahad): where leads are lost and what is being
+ * done. Framed as a hand-over gap between the WhatsApp assistant and the team,
+ * with the evidence; the reply time is read live from ContentOS, never assumed.
+ */
+function followUpHtml(co: ContentosLeads | null) {
+  const pct = (a: number, b: number) => (b ? Math.round((a / b) * 100) : 0);
+  const fmtWait = (h: number) => (h < 1 ? `${Math.round(h * 60)} minutes` : `${h.toFixed(1).replace(/\.0$/, '')} hours`);
+  const measured = co && co.replyHours !== null
+    ? `ContentOS measures the first message from a person at <b>${fmtWait(co.replyHours)} on average</b> after the lead writes in${co.asOf ? ` (${esc(co.asOf)})` : ''}.`
+    : 'The exact time to the first message from a person is being confirmed with Zavis; ContentOS could not be read for this email.';
+  const quiet = co && co.leads >= 10 ? ` In ContentOS today, ${co.quiet} of ${co.leads} Meta leads (${pct(co.quiet, co.leads)}%) went quiet after first contact.` : '';
+  return `<p>The ads bring the right people; the leads that do not book are mostly lost in the gap between the WhatsApp assistant’s instant first reply and the first message from one of us. That is a hand-over gap in the process, not a question of effort: nothing currently tells the team a lead is waiting.</p>
+<ul style="margin:4px 0 10px;padding-left:18px">
+<li style="margin-bottom:4px"><b>Where leads stop:</b> in the Zavis report, 83% of leads went quiet after the clinic’s first reply or call, while only 3% stopped over budget and 4% were waiting for a price.${quiet}</li>
+<li style="margin-bottom:4px"><b>Reply time:</b> ${measured} Published studies of online leads (Harvard Business Review, 2011) found leads contacted within an hour were about seven times more likely to turn into a real conversation than those contacted later.</li>
+</ul>
+<p><b>What happens next:</b></p>
+<ol style="margin:4px 0 10px;padding-left:18px">
+<li style="margin-bottom:4px"><b>An email alert when a lead is waiting</b> (Dr Luvi’s request). Fahad is checking with Zavis whether the CRM can send one. Until it is live, the team checks the Zavis CRM through the day, at least every 30 minutes in clinic hours and first thing each morning for overnight chats.</li>
+<li style="margin-bottom:4px"><b>Free consultations:</b> Dr Luvi to confirm how many free consultations have been offered to these leads, and how many were booked.</li>
+<li style="margin-bottom:4px"><b>Calls:</b> Fahad and Zavis will listen to a sample of call recordings to see whether the pitch needs changing. Fahad has asked Zavis (Syed) for call and sales pitch examples from similar aesthetic clinics to compare against.</li>
+</ol>`;
+}
+
 export const BRIEFING_NOTES: BriefingNote[] = [
   {
     day: '2026-10-05',
@@ -120,11 +147,26 @@ export const BRIEFING_NOTES: BriefingNote[] = [
     html: () => `<p style="color:#767769">Checked in Google Analytics for 16 Sep to 4 Oct.</p>${devicesHtml()}`,
   },
   {
+    day: '2026-10-05',
+    slot: 'shoot',
+    to: [],
+    title: 'Lead follow-up: where leads are lost and what we are doing',
+    subjectBit: '',
+    html: (_t, co) => followUpHtml(co),
+  },
+  {
     day: '2026-10-06',
     to: ['akbar', 'luvi', 'gautam', 'shadi', 'fahad'],
     title: 'Which phones our leads come from (Google Analytics, 16 Sep to 4 Oct)',
     subjectBit: 'leads by phone: Meta iPhone, Google Android',
     html: () => devicesHtml(),
+  },
+  {
+    day: '2026-10-06',
+    to: ['akbar', 'luvi', 'gautam', 'shadi', 'fahad'],
+    title: 'Lead follow-up: where leads are lost and what we are doing',
+    subjectBit: 'lead follow-up',
+    html: (_t, co) => followUpHtml(co),
   },
 ];
 

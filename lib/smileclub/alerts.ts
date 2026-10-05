@@ -423,7 +423,7 @@ export function buildBriefing(ctx: Ctx, who: Who): { subject: string; html: stri
 
   // Dated one-off notes go first (briefingNotes.ts); their files are attached by the sender.
   for (const n of notesFor(ctx.today, who)) {
-    parts.push(h3(esc(n.title)) + n.html(ctx.today));
+    parts.push(h3(esc(n.title)) + n.html(ctx.today, ctx.contentos));
     bits.push(n.subjectBit);
   }
 
@@ -510,7 +510,7 @@ ${table(['Time', 'Dentist', 'Clinic', 'In clinic', 'What is filmed', 'Scripts'],
 ${approvals}
 ${tomorrow < WARDROBE.arrives ? `<p style="background:#FDF9EC;padding:8px;border-radius:6px"><b>Wardrobe:</b> ${esc(WARDROBE.note)}</p>` : '<p><b>Wardrobe:</b> well-fitting DN scrubs or the DN-branded lab coat.</p>'}
 <p><b>Delivery (Mohan):</b> first cut of every video from this day to Fahad by <b>${esc(deliveryFor(day.iso).firstCutLabel)}</b>; Ms Shadi, Dr Luvi and Gautam review the day’s videos as a batch; final files (full length plus 15 s and 6 s cuts, each language) by <b>${esc(deliveryFor(day.iso).finalLabel)}</b>.</p>
-${shootNotesFor(ctx.today).map((n) => h3(esc(n.title)) + n.html(ctx.today)).join('')}
+${shootNotesFor(ctx.today).map((n) => h3(esc(n.title)) + n.html(ctx.today, ctx.contentos)).join('')}
 ${hs.length ? `${h3('Also since this morning')}${happenList(hs, 10)}` : ''}
 <p style="color:#767769">Copied: Dr Luvi, Mr Akbar, Ms Shadi, Gautam, Fahad${emailOf('mohan') ? ', Mohan' : ''} — for them this is today’s evening email.</p>`;
   return { subject, html: shell(`Tomorrow’s shoot — ${day.label}`, body) };
@@ -570,7 +570,8 @@ async function runEvening(sb: Sb, today: string, out: string[]) {
   const needShoot = !log.kinds.has('shoot-tomorrow');
   const due = EVENING.filter((w) => !log.kinds.has(`pm:${w}`));
   if (!needShoot && !due.length) return;
-  const ctx = await loadCtx(sb, today, eveningSince(today), false);
+  // A dated note in the shoot email may need ContentOS (read live), so load the lead data then.
+  const ctx = await loadCtx(sb, today, eveningSince(today), needShoot && shootNotesFor(today).length > 0);
   if (needShoot) {
     const m = buildShootEmail(ctx);
     if (m) {

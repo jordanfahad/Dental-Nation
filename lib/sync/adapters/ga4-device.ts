@@ -10,6 +10,9 @@ import type { AdminClient } from '@/lib/supabase/server';
  * leads use?", e.g. whether website traffic follows the iPhone-only Meta
  * targeting, and which devices sit behind a "(not set)" source.
  *
+ * Also lead clicks (WhatsApp, phone, generate_lead) by phone brand and model
+ * (lane_e.ga4_lead_devices).
+ *
  * Aggregate only (lane_e.ga4_device_daily). Each run refreshes the trailing
  * window; the first run backfills 90 days.
  */
@@ -23,6 +26,7 @@ const isoDay = (d: string) => `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)
 const BACKFILL_DAYS = 90;
 const REFRESH_DAYS = 10;
 const LEAD_EVENT = process.env.GA4_LEAD_EVENT || 'generate_lead';
+const LEAD_CLICK_EVENTS = ['whatsapp_click', 'phone_click', 'whatsapp_widget_open', LEAD_EVENT];
 
 export async function syncGa4Device(supabase: AdminClient): Promise<{ ok: boolean; rows: number; error?: string }> {
   try {
@@ -75,6 +79,27 @@ export async function syncGa4Device(supabase: AdminClient): Promise<{ ok: boolea
       if (!v[0]) continue;
       rowFor(v).leads += num(r.metricValues?.[0]?.value);
     }
+    // Lead clicks by phone brand and model: which phones tap WhatsApp or call from the site.
+    const { count: clickCount } = await supabase.from('ga4_lead_devices').select('day', { count: 'exact', head: true });
+    const clicks = await analytics.properties.runReport({
+      property,
+      requestBody: {
+        dateRanges: [{ startDate: `${(clickCount ?? 0) === 0 ? BACKFILL_DAYS : REFRESH_DAYS}daysAgo`, endDate: 'today' }],
+        dimensions: [{ name: 'date' }, { name: 'eventName' }, { name: 'operatingSystem' }, { name: 'deviceCategory' }, { name: 'mobileDeviceBranding' }, { name: 'mobileDeviceModel' }, { name: 'sessionDefaultChannelGroup' }],
+        metrics: [{ name: 'eventCount' }],
+        dimensionFilter: { filter: { fieldName: 'eventName', inListFilter: { values: LEAD_CLICK_EVENTS } } },
+        limit: '100000',
+      },
+    });
+    const clickRows = (clicks.data.rows ?? []).map((r) => {
+      const v = (r.dimensionValues ?? []).map((x) => x.value || '(not set)');
+      return { day: isoDay(v[0]), event_name: v[1], os: v[2], device: v[3], brand: v[4], model: v[5], channel: v[6], events: num(r.metricValues?.[0]?.value), fetched_at: now };
+    });
+    for (let i = 0; i < clickRows.length; i += 500) {
+      const { error } = await supabase.from('ga4_lead_devices').upsert(clickRows.slice(i, i + 500), { onConflict: 'day,event_name,os,device,brand,model,channel' });
+      if (error) throw new Error(error.message);
+    }
+
     const out = [...rows.values()];
     for (let i = 0; i < out.length; i += 500) {
       const { error } = await supabase.from('ga4_device_daily').upsert(out.slice(i, i + 500), { onConflict: 'day,os,device,channel,source_medium' });
