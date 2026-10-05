@@ -5,6 +5,13 @@ import 'server-only';
  * with no key configured it is a no-op that reports `skipped`, so callers never
  * throw and nothing is sent until email is deliberately enabled in Vercel.
  */
+/** A file sent with the email (base64 content). */
+export interface Attachment {
+  name: string;
+  contentType: string;
+  base64: string;
+}
+
 export interface SendResult {
   ok: boolean;
   skipped?: boolean;
@@ -16,6 +23,7 @@ export async function sendEmail(opts: {
   subject: string;
   html: string;
   from: string;
+  attachments?: Attachment[];
 }): Promise<SendResult> {
   const key = process.env.RESEND_API_KEY;
   if (!key) return { ok: false, skipped: true, error: 'RESEND_API_KEY not set' };
@@ -24,7 +32,10 @@ export async function sendEmail(opts: {
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: opts.from, to: opts.to, subject: opts.subject, html: opts.html }),
+      body: JSON.stringify({
+        from: opts.from, to: opts.to, subject: opts.subject, html: opts.html,
+        ...(opts.attachments?.length ? { attachments: opts.attachments.map((a) => ({ filename: a.name, content: a.base64 })) } : {}),
+      }),
       cache: 'no-store',
     });
     if (!res.ok) return { ok: false, error: `${res.status} ${(await res.text()).slice(0, 300)}` };

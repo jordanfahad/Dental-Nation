@@ -1,5 +1,5 @@
 import 'server-only';
-import { sendEmail as sendViaResend, type SendResult } from './resend';
+import { sendEmail as sendViaResend, type Attachment, type SendResult } from './resend';
 import { sendEmailSmtp, smtpConfigured } from './smtp';
 import { sendEmailGraph, graphConfigured } from './graph';
 
@@ -14,7 +14,7 @@ import { sendEmailGraph, graphConfigured } from './graph';
  * is deliberately enabled in Vercel.
  */
 
-export type { SendResult };
+export type { Attachment, SendResult };
 
 /** True when SOME email transport is configured. */
 export function emailConfigured(): boolean {
@@ -29,7 +29,7 @@ export function emailTransport(): 'graph' | 'smtp' | 'resend' | 'none' {
   return 'none';
 }
 
-export async function sendEmail(opts: { to: string[]; subject: string; html: string; from: string }): Promise<SendResult> {
+export async function sendEmail(opts: { to: string[]; subject: string; html: string; from: string; attachments?: Attachment[] }): Promise<SendResult> {
   if (graphConfigured()) return sendEmailGraph(opts);
   if (smtpConfigured()) return sendEmailSmtp(opts);
   return sendViaResend(opts);

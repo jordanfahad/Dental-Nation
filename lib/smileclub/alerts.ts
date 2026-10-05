@@ -1,6 +1,6 @@
 import 'server-only';
 import { OPS_ALERT_FROM } from '@/config/ops';
-import { emailConfigured, sendEmail } from '@/lib/notify/email';
+import { emailConfigured, sendEmail, type Attachment } from '@/lib/notify/email';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
 import { BRANCH_LABEL, DENTISTS, LANES, LANG_LABEL, laneFor, langsFor } from '@/lib/smileclub/scripts';
 import { SHOOT_PLAN, SLOT_STATUS, WARDROBE, deliveryFor, dentistById, hoursOn, nextClinicDays, shootLoad } from '@/lib/smileclub/shoots';
@@ -10,6 +10,7 @@ import { video2 } from '@/lib/smileclub/creative';
 import type { CorpState } from '@/lib/smileclub/corporate';
 import { buildMetaLeadsDigest, metaSectionHtml, type MetaLeadsDigest } from '@/lib/ops/metaLeadsDigest';
 import { CONTENTOS_LEADS, contentosFlags, contentosStatsHtml, fetchContentos, type ContentosLeads } from '@/lib/ops/contentosLeads';
+import { loadBriefingFile, notesFor } from '@/lib/smileclub/briefingNotes';
 import { OWNER_LABEL, TEAM_TASKS, TOTAL_WEIGHT, TRACKER_SOURCE, type Person, type TeamTask } from '@/lib/smileclub/team';
 
 /**
@@ -131,7 +132,7 @@ async function dayLog(sb: Sb, today: string): Promise<DayLog> {
   return log;
 }
 
-async function send(to: Who[], cc: Who[], subject: string, html: string, cap?: { log: DayLog; slot: Slot }) {
+async function send(to: Who[], cc: Who[], subject: string, html: string, cap?: { log: DayLog; slot: Slot }, attachments?: Attachment[]) {
   const held: string[] = [];
   const allowed = (a: string) => {
     if (!cap) return true;
@@ -147,7 +148,7 @@ async function send(to: Who[], cc: Who[], subject: string, html: string, cap?: {
   if (!emailConfigured()) return { ok: false, recipients: all, note: 'email transport not configured' };
   if (!all.length) return { ok: false, recipients: all, note: held.length ? 'not sent — already had today’s email for this slot (two-a-day cap)' : 'no recipients on record' };
   // The shared sender takes one list; everyone is addressed directly (the "cc" people are named in the body).
-  const r = await sendEmail({ to: all, subject, html, from: OPS_ALERT_FROM });
+  const r = await sendEmail({ to: all, subject, html, from: OPS_ALERT_FROM, attachments });
   if (r.ok && cap) for (const a of all) mark(cap.log, cap.slot, a);
   const note = [r.ok ? 'sent' : r.error ?? 'failed', missing.length ? `no address for ${missing.join(', ')}` : '', held.length ? `${held.length} held back by the two-a-day cap` : ''].filter(Boolean).join('; ');
   return { ok: r.ok, recipients: all, note };
@@ -420,6 +421,12 @@ export function buildBriefing(ctx: Ctx, who: Who): { subject: string; html: stri
   const parts: string[] = [];
   const bits: string[] = [];
 
+  // Dated one-off notes go first (briefingNotes.ts); their files are attached by the sender.
+  for (const n of notesFor(ctx.today, who)) {
+    parts.push(h3(esc(n.title)) + n.html(ctx.today));
+    bits.push(n.subjectBit);
+  }
+
   if ((ctx.meta || ctx.contentos) && META_READERS.includes(who)) {
     const m = ctx.meta;
     const c = ctx.contentos;
@@ -517,6 +524,15 @@ export function buildEvening(ctx: Ctx, who: Who): { subject: string; html: strin
   return { subject: `Evening update ${fmtDay(ctx.today)} — ${plural(hs.length, 'new item')} for you`, html: shell(`${NAME[who]} — evening update`, body) };
 }
 
+/** Decrypted files for today's notes to this person (key in lane_e.app_secrets `briefing_file_key`). */
+async function noteFiles(sb: Sb, today: string, who: Who): Promise<Attachment[]> {
+  const files = notesFor(today, who).flatMap((n) => n.files ?? []);
+  if (!files.length) return [];
+  const { data } = await sb.from('app_secrets').select('value').eq('key', 'briefing_file_key');
+  const key = ((data?.[0] as { value?: string } | undefined)?.value ?? '').trim() || null;
+  return Promise.all(files.map((f) => loadBriefingFile(f, key)));
+}
+
 /* ── the cron entry point ── */
 
 const morningSince = (today: string) => `${addDays(today, -1)}T09:00:00+04:00`;
@@ -531,7 +547,15 @@ async function runMorning(sb: Sb, today: string, out: string[]) {
     try {
       const m = buildBriefing(ctx, who);
       if (!m) continue; // nothing for them yet — looked at again on the next run until 10:59
-      const r = await send([who], [], m.subject, m.html, { log, slot: 'am' });
+      let files: Attachment[] = [];
+      try {
+        files = await noteFiles(sb, today, who);
+      } catch (e) {
+        // Retry on the next 15-minute run; from 10:30 send without the file rather than not at all.
+        if (dubaiHour() < 10 || new Date().getUTCMinutes() < 30) { out.push(`am:${who}: waiting for the attachment — ${(e as Error).message}`); continue; }
+        m.html = m.html.replace('</h2>', '</h2><p style="color:#a04a38"><b>The attachment could not be added this morning; Fahad will send it separately.</b></p>');
+      }
+      const r = await send([who], [], m.subject, m.html, { log, slot: 'am' }, files);
       await logSent(sb, `am:${who}`, today, r);
       out.push(`am:${who}: ${r.note}`);
     } catch (e) {
@@ -598,6 +622,7 @@ export async function previewAlert(kind: string): Promise<string> {
   await loadStoredEmails(sb);
   const today = dubai();
   let m: { subject: string; html: string } | null = null;
+  let files: Attachment[] = [];
   if (kind === 'shoot') {
     m = buildShootEmail(await loadCtx(sb, today, eveningSince(today), false));
     if (!m) {
@@ -606,12 +631,13 @@ export async function previewAlert(kind: string): Promise<string> {
     }
   } else if (kind.startsWith('am:') && (MORNING as string[]).includes(kind.slice(3))) {
     m = buildBriefing(await loadCtx(sb, today, morningSince(today), true), kind.slice(3) as Who);
+    files = await noteFiles(sb, today, kind.slice(3) as Who).catch(() => []);
   } else if (kind.startsWith('pm:') && (EVENING as string[]).includes(kind.slice(3))) {
     m = buildEvening(await loadCtx(sb, today, eveningSince(today), false), kind.slice(3) as Who);
   } else {
     return 'Unknown email.';
   }
   if (!m) return 'Nothing to send right now — this email would be skipped.';
-  const r = await send(['fahad'], [], `[Preview] ${m.subject}`, m.html);
+  const r = await send(['fahad'], [], `[Preview] ${m.subject}`, m.html, undefined, files);
   return r.ok ? 'Preview emailed to Fahad.' : `Not sent: ${r.note}.`;
 }

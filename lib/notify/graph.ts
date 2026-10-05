@@ -1,5 +1,5 @@
 import 'server-only';
-import type { SendResult } from './resend';
+import type { Attachment, SendResult } from './resend';
 
 /**
  * Microsoft Graph email sender (OAuth client-credentials — "modern auth").
@@ -60,7 +60,7 @@ async function getToken(): Promise<string> {
   return cachedToken.value;
 }
 
-function postSendMail(token: string, opts: { to: string[]; subject: string; html: string; from: string }): Promise<Response> {
+function postSendMail(token: string, opts: { to: string[]; subject: string; html: string; from: string; attachments?: Attachment[] }): Promise<Response> {
   const sender = senderMailbox();
   const from = parseFrom(opts.from || '');
   const keepDisplayName = from.name && from.address.toLowerCase() === sender.toLowerCase();
@@ -72,6 +72,8 @@ function postSendMail(token: string, opts: { to: string[]; subject: string; html
         subject: opts.subject,
         body: { contentType: 'HTML', content: opts.html },
         toRecipients: opts.to.map((address) => ({ emailAddress: { address } })),
+        // Inline file attachments (Graph accepts up to 3 MB this way).
+        ...(opts.attachments?.length ? { attachments: opts.attachments.map((a) => ({ '@odata.type': '#microsoft.graph.fileAttachment', name: a.name, contentType: a.contentType, contentBytes: a.base64 })) } : {}),
         ...(keepDisplayName ? { from: { emailAddress: { address: sender, name: from.name } } } : {}),
       },
       saveToSentItems: true,
@@ -80,7 +82,7 @@ function postSendMail(token: string, opts: { to: string[]; subject: string; html
   });
 }
 
-export async function sendEmailGraph(opts: { to: string[]; subject: string; html: string; from: string }): Promise<SendResult> {
+export async function sendEmailGraph(opts: { to: string[]; subject: string; html: string; from: string; attachments?: Attachment[] }): Promise<SendResult> {
   if (!graphConfigured()) return { ok: false, skipped: true, error: 'Graph not configured' };
   if (opts.to.length === 0) return { ok: false, error: 'no recipients' };
   try {

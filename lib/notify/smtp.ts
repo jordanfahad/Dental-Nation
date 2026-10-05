@@ -1,6 +1,6 @@
 import 'server-only';
 import nodemailer, { type Transporter } from 'nodemailer';
-import type { SendResult } from './resend';
+import type { Attachment, SendResult } from './resend';
 
 /**
  * SMTP email sender (nodemailer) — for sending through the clinic's own mailbox
@@ -33,7 +33,7 @@ function transporter(): Transporter {
   return cached;
 }
 
-export async function sendEmailSmtp(opts: { to: string[]; subject: string; html: string; from: string }): Promise<SendResult> {
+export async function sendEmailSmtp(opts: { to: string[]; subject: string; html: string; from: string; attachments?: Attachment[] }): Promise<SendResult> {
   if (!smtpConfigured()) return { ok: false, skipped: true, error: 'SMTP not configured' };
   if (opts.to.length === 0) return { ok: false, error: 'no recipients' };
   try {
@@ -42,6 +42,7 @@ export async function sendEmailSmtp(opts: { to: string[]; subject: string; html:
       to: opts.to,
       subject: opts.subject,
       html: opts.html,
+      attachments: opts.attachments?.map((a) => ({ filename: a.name, contentType: a.contentType, content: Buffer.from(a.base64, 'base64') })),
     });
     return { ok: true };
   } catch (err) {
