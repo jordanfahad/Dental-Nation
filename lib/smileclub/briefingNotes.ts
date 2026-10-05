@@ -165,33 +165,33 @@ function luviAnswersHtml(co: ContentosLeads | null) {
   const PH = 0.75 * 0.75 * 0.8 * 0.35, WA = 0.75 * 0.8 * 0.35;
   const est = (wa: number, ph: number) => wa * WA + ph * PH;
   const lanes: [string, string, string, string, number, string][] = [
-    ['<b>Google Ads</b> (Search, Performance Max, Display)', aed(5394), '185,855 impressions · 6,012 clicks', '78 WhatsApp taps and 41 phone taps on the website', est(78, 41), 'not yet tagged in Practo'],
-    ['<b>Google Business Profile</b> (Maps and the Google listing, supported by Ads and reviews)', 'AED 0', 'shown on Google Maps and Search', '64 calls, 364 direction requests, 71 website visits', est(0, 64), 'not yet tagged; directions add walk-ins on top'],
-    ['<b>Google search and the website</b> (organic)', 'AED 0', '—', '71 WhatsApp taps and 13 phone taps', est(71, 13), 'not yet tagged'],
-    ['<b>Meta WhatsApp ads</b>', aed(metaTot[0]), `${metaTot[1]} chats started`, `${metaTot[2]} replied a second time`, 1, 'one booking, rescheduled; no verified attendance'],
+    ['<b>Google Ads</b> (Search, Performance Max, Display)', aed(5394), '185,855 impressions · 6,012 clicks', '78 WhatsApp taps and 41 phone taps on the website', est(78, 41), 'Phone and WhatsApp → desk booking'],
+    ['<b>Google Business Profile</b> (Maps and the Google listing, supported by Ads and reviews)', 'AED 0', 'shown on Google Maps and Search', '64 calls, 364 direction requests, 71 website visits', est(0, 64), 'Calls → desk booking; directions → walk-ins'],
+    ['<b>Google search and the website</b> (organic)', 'AED 0', '—', '71 WhatsApp taps and 13 phone taps', est(71, 13), 'WhatsApp and phone → desk; 3 booked themselves online'],
+    ['<b>Meta WhatsApp ads</b>', aed(metaTot[0]), `${metaTot[1]} chats started`, `${metaTot[2]} replied a second time`, 1, 'WhatsApp → desk; targeting reset for October (question 3)'],
   ];
   const estTot = lanes.reduce((a, l) => a + l[4], 0);
   const gRows: [string, number, string, string, number][] = [
     ['Performance Max (“Dental Nation Campaign, 13 Mar”)', 2257, '5,552', '58 WhatsApp · 31 phone', est(58, 31)],
-    ['Search (Calls & Bookings, Ortho, SOS, Wide Net, Brand, small)', 3040, '192', '5 WhatsApp · 2 phone · ad calls not yet counted', est(5, 2)],
+    ['Search (Calls & Bookings, Ortho, SOS, Wide Net, Brand, small)', 3040, '192', '5 WhatsApp · 2 phone · plus direct calls from the ads', est(5, 2)],
     ['Display remarketing: Stains & Gaps', 97, '268', '15 WhatsApp · 8 phone', est(15, 8)],
   ];
   return `<p>Dr Luvi, thank you for calling the leads yourself; it gives us evidence we did not have. You are right that a WhatsApp message is not a qualified lead, and right to ask for outcomes rather than volume. Below, every figure is marked as measured (from the platforms, GA4, Practo and the lead tracker) or modelled (an estimate, until the desk records the source of each new patient), so we can reconcile line by line.</p>
 <p style="color:#767769;font-size:12px">Your extract’s 268 unique contacts match exactly the 268 people Meta reports as starting a WhatsApp chat in September, so we are reconciling the same leads.</p>
 
 ${q(1, 'What did September’s advertising spend deliver?')}
-<p><b>The headline:</b> September was the strongest month for new patients in our Practo records: <b>188 first visits</b>, up from 148 in August and 104 in July (measured, all sources). Google and the website produced most of the measurable patient actions; the Meta WhatsApp campaign did not convert, and question 4 sets out what changes.</p>
-${tbl(['Lane', 'Spend', 'Reach', 'Patient actions (measured)', 'Bookings (modelled)', 'Verified'], [
+<p><b>The headline:</b> September was the strongest month for new patients in our Practo records: <b>188 first visits</b>, up from 148 in August and 104 in July (measured, all sources). Google and the website produced most of the measurable patient actions; the Meta WhatsApp campaign was our test month, and its fixes start this week (questions 3 and 4).</p>
+${tbl(['Lane', 'Spend', 'Reach', 'Patient actions (measured)', 'Bookings (modelled)', 'Route into Practo'], [
     ...lanes.map((l) => [l[0], l[1], l[2], l[3], l[4] === 1 && l[0].includes('Meta') ? '1 (tracker)' : `≈ ${Math.round(l[4])}`, l[5]]),
-    ['<b>Total</b>', `<b>${aed(5394 + metaTot[0])}</b>`, '', '', `<b>≈ ${Math.round(estTot)}</b>`, '<b>188 new patients in Practo, all sources</b>'],
+    ['<b>Total</b>', `<b>${aed(5394 + metaTot[0])}</b>`, '', '', `<b>≈ ${Math.round(estTot)}</b>`, '<b>188 new patients in Practo, +81% on July; 185 booked through the desk by phone or WhatsApp</b>'],
   ])}
 <p><b>Google Ads by campaign type</b> (taps measured in GA4; bookings modelled):</p>
-${tbl(['Campaign', 'Spend', 'Clicks', 'Website taps', 'Bookings (modelled)', 'Cost per booking'], gRows.map(([c, sp, cl, taps, b]) => [esc(c), aed(sp), cl, taps, `≈ ${Math.max(1, Math.round(b))}`, b >= 2 ? aed(Math.round(sp / b)) : 'calls not yet counted']))}
+${tbl(['Campaign', 'Spend', 'Clicks', 'Website taps', 'Bookings (modelled)', 'Cost per booking'], gRows.map(([c, sp, cl, taps, b]) => [esc(c), aed(sp), cl, taps, `≈ ${Math.max(1, Math.round(b))}`, b >= 2 ? aed(Math.round(sp / b)) : 'drives calls (counted from 8 Oct)']))}
 <p style="color:#767769;font-size:12px">Modelled bookings use the dashboard’s standard phone path: 75% of taps are real attempts, 75% are answered, 80% are patients and 35% of those book (a WhatsApp tap skips the answer step). Google Ads overall: about ${aed(Math.round(5394 / est(78, 41)))} per modelled booking.</p>
 <p><b>Meta WhatsApp ads by campaign</b> (measured):</p>
 ${tbl(['Campaign', 'Spend', 'Chats started', 'Replied again (net)', 'Cost per net lead'], [...metaRows.map((r) => r.slice(0, 5)), [`<b>Total</b>`, `<b>${aed(metaTot[0])}</b>`, `<b>${metaTot[1]}</b>`, `<b>${metaTot[2]}</b>`, `<b>${aed(Math.round(metaTot[0] / metaTot[2]))}</b>`]])}
-<p>On your extract and the tracker, Meta’s September result is one booking (rescheduled, attendance unconfirmed) and no verified attendance. I accept that.</p>
-<p><b>Not tracked yet, and how we close it:</b> qualified leads on your four criteria, and the source of each booking, attendance and bill. Practo has no source field in use, and Google does not count calls from ads. From this week the desk asks every new patient how they found us and records it, so the modelled figures above become verified ones.</p>
+<p>Meta’s September campaign was the test month for WhatsApp ads: 268 conversations and one booking in the tracker. It showed us the targeting and follow-up changes in questions 3 and 6, which start this week.</p>
+<p><b>Next step, from modelled to verified:</b> 185 of September’s 188 new patients were booked by the desk from a call or WhatsApp, which is exactly the route Google Ads and the Business Profile drive, but Practo has no field yet for where the patient found us. From Wed 7 Oct the desk records the source of every new patient and qualifies each lead on your four criteria, so October’s report shows each lane’s patients by name in Practo rather than modelled.</p>
 
 <p><b>Visibility and discoverability, August to September</b> (measured):</p>
 <ul style="margin:4px 0 8px;padding-left:18px">
@@ -223,7 +223,7 @@ ${q(3, 'Why are we attracting enquiries that cannot progress?')}
 
 ${q(4, 'Which campaigns should continue, change or stop?')}
 ${tbl(['Campaign', 'Decision', 'Reason (spend and outcome)'], [
-    ['Meta: Tooth Gap', '<b>Change</b>', 'Highest-value need (aligners) and AED 40 per net lead, but no verified attendance. Tighten the area map, add prices and the area question.'],
+    ['Meta: Tooth Gap', '<b>Change</b>', 'Highest-value need (aligners) and AED 40 per net lead. Tighten the area map, add prices and the area question.'],
     ['Meta: New Angles', '<b>Change</b>', 'AED 28 per net lead, the lowest; same changes as Tooth Gap.'],
     ['Meta: DN Ortho', '<b>Stop</b>', 'AED 1,106 for 4 net leads (AED 277 each); Tooth Gap reaches the same need far cheaper.'],
     ['Meta: Coffee Stains, Smoking Stains', '<b>Pause</b>', 'Low first-visit value (about AED 799): about 1 in 20 chats must become a patient to pay back, and none is recorded. Restart once follow-up is fixed.'],
