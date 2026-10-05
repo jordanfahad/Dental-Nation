@@ -129,6 +129,101 @@ function followUpHtml(co: ContentosLeads | null) {
 </ol>`;
 }
 
+/**
+ * Fahad's answers to Dr Luvi's two emails (4 and 5 Oct) on September's Meta
+ * WhatsApp leads, in the 5 Oct 17:00 leadership email. Figures: Meta and
+ * Google ad accounts (lane_e, 1–30 Sep), the Zavis lead profile report, GA4,
+ * and Dr Luvi's own extract. Counts only: no lead names or numbers in email.
+ */
+function luviAnswersHtml(co: ContentosLeads | null) {
+  const td = 'style="text-align:right"';
+  const meta: [string, number, number, number][] = [
+    ['Tooth Gap', 2024, 117, 50],
+    ['New Angles', 1244, 87, 45],
+    ['DN Ortho', 1106, 10, 4],
+    ['Coffee Stains', 743, 22, 10],
+    ['Smoking Stains', 657, 25, 13],
+    ['Dr Hasna post (boosted)', 180, 7, 3],
+  ];
+  const g: [string, number, string, string][] = [
+    ['Performance Max (“Dental Nation Campaign, 13 Mar”)', 2257, '5,552 clicks', '8'],
+    ['Search: Calls & Bookings', 986, '81 clicks', '0 (calls not tracked)'],
+    ['Search: Ortho, braces & aligners', 834, '24 clicks', '0'],
+    ['Search: SOS Emergency', 833, '26 clicks', '0'],
+    ['Search: Wide Net', 299, '40 clicks', '2'],
+    ['Display remarketing: Stains & Gaps', 97, '268 clicks', '18 (taps)'],
+    ['Other small campaigns', 88, '21 clicks', '0'],
+  ];
+  const aed = (n: number) => `AED ${n.toLocaleString('en-US')}`;
+  const metaRows = meta.map(([c, sp, ch, net]) => [esc(c), aed(sp), String(ch), String(net), aed(Math.round(sp / net)), '—', '—']);
+  const metaTot = meta.reduce((a, r) => [a[0] + r[1], a[1] + r[2], a[2] + r[3]], [0, 0, 0]);
+  const reply = co && co.replyHours !== null ? `${co.replyHours < 1 ? `${Math.round(co.replyHours * 60)} minutes` : `${co.replyHours} hours`} on average (ContentOS${co.asOf ? `, ${esc(co.asOf)}` : ''})` : 'not yet measured per lead; being pulled from Zavis for the 11:30 meeting';
+  const tbl = (head: string[], rows: string[][]) => `<table style="border-collapse:collapse;width:100%;font-size:12.5px;margin:6px 0 10px"><tr>${head.map((h, i) => `<th style="text-align:${i ? 'right' : 'left'};background:#F1F1EA;color:#767769;font-size:10.5px;text-transform:uppercase;padding:5px">${h}</th>`).join('')}</tr>${rows.map((r, ri) => `<tr${ri === rows.length - 1 && r[0].startsWith('<b>') ? ' style="background:#FAFAF5"' : ''}>${r.map((c, i) => `<td ${i ? td : ''} style="border-top:1px solid #E6E6DA;padding:5px;vertical-align:top;${i ? 'text-align:right' : ''}">${c}</td>`).join('')}</tr>`).join('')}</table>`;
+  const q = (n: number, t: string) => `<h4 style="font-size:13.5px;margin:16px 0 4px;color:#244260">${n}. ${t}</h4>`;
+  return `<p>Dr Luvi, thank you for calling the leads yourself; it gives us evidence we did not have. You are right that a WhatsApp message is not a qualified lead, and right to ask for outcomes rather than volume. My answers below are figures from the ad accounts and the Zavis report; where something is not tracked, I say so.</p>
+<p style="color:#767769;font-size:12px">Your extract’s 268 unique contacts match exactly the 268 people Meta reports as starting a WhatsApp chat in September, so we are reconciling the same leads.</p>
+
+${q(1, 'What did September’s advertising spend deliver?')}
+<p><b>Meta (WhatsApp ads), 1 to 30 Sep: AED ${metaTot[0].toLocaleString('en-US')}.</b></p>
+${tbl(['Campaign', 'Spend', 'Chats started', 'Replied again (net)', 'Cost per net lead', 'Booked', 'Attended'], [...metaRows, [`<b>Total</b>`, `<b>${aed(metaTot[0])}</b>`, `<b>${metaTot[1]}</b>`, `<b>${metaTot[2]}</b>`, `<b>${aed(Math.round(metaTot[0] / metaTot[2]))}</b>`, '<b>1*</b>', '<b>0 verified</b>']])}
+<p><b>Google Ads, 1 to 30 Sep: AED 5,394.</b> These leads go to the website or phone, not into your WhatsApp extract.</p>
+${tbl(['Campaign', 'Spend', 'Clicks', 'Recorded conversions'], g.map(([c, sp, cl, cv]) => [esc(c), aed(sp), cl, cv]))}
+<p><b>Not tracked today:</b> qualified leads on your four criteria, bookings, attendance and revenue per campaign. No outcome is recorded against each lead in the CRM, Google does not count phone calls, and Practo bills carry no ad source. So cost per qualified lead and per attended patient cannot be verified for September. On your extract it is AED ${metaTot[0].toLocaleString('en-US')} of Meta spend for one booking (*rescheduled, attendance unconfirmed) and no verified attendance. I accept that as the September result for Meta.</p>
+
+${q(2, 'How was lead quality assessed during the month?')}
+<p><b>Criteria used:</b> Zavis labels every chat automatically on five fixed questions: intent, readiness, stage, main blocker and next step. “High intent” (102 of 270 chats, 16 Sep to 3 Oct) means interest shown in the chat. It does not check need, access to the branch, understanding of fees or willingness to book. Those are your four criteria, and from tomorrow they are the only definition of “qualified” we report.</p>
+<p><b>Concerns and changes:</b></p>
+<ul style="margin:4px 0 8px;padding-left:18px">
+<li><b>From 23 Sep:</b> all ad sets limited to iPhone 16 and 17, alongside the existing settings (the premium area map, English and Arabic speakers, existing patients excluded, ads paused 23:00 to 04:00). Result: 82 of 83 chats in the 7 days to 2 Oct came from iPhones, at about AED 26 a chat.</li>
+<li><b>3 Oct:</b> removed Al Quoz and Nad Al Sheba (mostly non-residential); reverted a one-day test that allowed any iPhone.</li>
+<li><b>Observed:</b> your 23 calls on 4 Oct show these filters are not enough. Device and area alone still reach people who work in the targeted districts but cannot or will not visit.</li>
+</ul>
+
+${q(3, 'Why are we attracting enquiries that cannot progress?')}
+<ul style="margin:4px 0 8px;padding-left:18px">
+<li><b>Geography:</b> Meta counts anyone who lives in <i>or is regularly in</i> a mapped area, and no longer offers residents only. Our map includes Business Bay, Downtown, the DIFC edge, Dubai Marina and Meydan: districts with large construction sites and daily workforces. That is the most likely route for the contacts you spoke to, and we will remove those areas.</li>
+<li><b>Language:</b> Meta’s language setting reads the phone’s language, and English is the default on most phones, so it does not screen for the language a lead speaks. 21 contacts (7.8%) had a documented barrier.</li>
+<li><b>International numbers (45):</b> the records do not show whether they live in Dubai; nobody is asked. From tomorrow the assistant’s first question is which area they live in.</li>
+<li><b>Treatment intent:</b> 57% asked about gaps or protruding teeth (aligners or braces): a real, high-value need.</li>
+<li><b>Pricing:</b> 3.4% stated a budget objection in your extract, and more leads were waiting for a price from the clinic than stopped over cost, so cost is discovered late. Ads will show “from” prices so people with a different budget self-select out.</li>
+<li><b>Free consultation requests:</b> please confirm how many free consultations have been offered to these leads; we will check every ad and assistant message for any mention of a free consultation.</li>
+</ul>
+<p style="color:#767769;font-size:12px">Targeting is by area, device and message only; never by nationality or occupation.</p>
+
+${q(4, 'Which campaigns should continue, change or stop?')}
+${tbl(['Campaign', 'Decision', 'Reason (spend and outcome)'], [
+    ['Meta: Tooth Gap', '<b>Change</b>', 'Highest-value need (aligners) and AED 40 per net lead, but no verified attendance. Tighten the area map, add prices and the area question.'],
+    ['Meta: New Angles', '<b>Change</b>', 'AED 28 per net lead, the lowest; same changes as Tooth Gap.'],
+    ['Meta: DN Ortho', '<b>Stop</b>', 'AED 1,106 for 4 net leads (AED 277 each); Tooth Gap reaches the same need far cheaper.'],
+    ['Meta: Coffee Stains, Smoking Stains', '<b>Pause</b>', 'Low first-visit value (about AED 799): about 1 in 20 chats must become a patient to pay back, and none is recorded. Restart once follow-up is fixed.'],
+    ['Google: Performance Max', '<b>Stop as is</b>', 'AED 2,257, 42% of Google spend: 5,552 clicks at AED 0.41, mostly from Android phones, and 8 recorded conversions. Rebuild as search-only.'],
+    ['Google: Search (Calls & Bookings, Ortho, SOS)', '<b>Continue, fix tracking</b>', 'People searching for a dentist are the right audience, but calls are not counted, so the outcome is unknown. Call tracking first; judge after two weeks.'],
+    ['Google: Display remarketing', '<b>Continue</b>', 'AED 97; shown only to people who already visited the site.'],
+  ])}
+
+${q(5, 'Where is operations specifically losing qualified patients?')}
+<p>I would rather show you the records than make a general statement. Per-lead response times are not in a report yet, so this is what we have now and what we will bring:</p>
+<ul style="margin:4px 0 8px;padding-left:18px">
+<li><b>What the data shows:</b> in the Zavis report, 83% of leads went quiet after the clinic’s first reply or call, while 3% stopped over budget and 4% were waiting for a price. The assistant replies instantly; the first message from a person comes ${reply}. Nothing currently alerts the desk that a lead is waiting, so this is a process gap, not a question of effort.</li>
+<li><b>The specific records:</b> for the 157 contacts in your extract marked unanswered or awaiting response, Fahad and Zavis will list each one with the time of the first human reply, the last action and who was waiting on whom. That separates leads we did not reach from leads who did not reply. We will bring it to the 11:30 meeting on Wed 7 Oct. Lead names and numbers stay in the CRM, not in email.</li>
+<li><b>Calls:</b> Fahad and Zavis will review a sample of call recordings to see whether the pitch needs changing, and Fahad has asked Zavis (Syed) for call and sales pitch examples from similar aesthetic clinics.</li>
+</ul>
+
+${q(6, 'What will change in October?')}
+${tbl(['Action', 'Owner', 'By', 'Target'], [
+    ['Remove business and construction districts from the Meta map; add “from” prices to the ads; first assistant question asks the area', 'Fahad with Zavis', 'Tue 6 Oct', '80% of new chats from the target areas'],
+    ['Stop DN Ortho; pause the stains campaigns; stop Performance Max as is', 'Fahad', 'Tue 6 Oct', 'Spend only on campaigns that can be measured'],
+    ['Qualified = your four criteria, recorded per lead in the CRM; daily report of enquiries → qualified → booked → attended → treatment accepted', 'Fahad and Zavis (set-up), front desk (record)', 'Wed 7 Oct', 'Outcome logged for every lead within 48 hours'],
+    ['Email alert when a lead is waiting; until then the desk checks the CRM every 30 minutes in clinic hours and first thing each morning', 'Fahad with Zavis; Dr Luvi’s team', 'Alert to confirm by Thu 8 Oct; checks from now', 'First reply from a person within 15 minutes for 90% of leads in clinic hours'],
+    ['Google call tracking, so calls count as results', 'Fahad', 'Thu 8 Oct', 'Every call from an ad counted'],
+    ['Free consultations offered to these leads: count', 'Dr Luvi', 'Tue 6 Oct', 'Number confirmed'],
+    ['Call recordings reviewed; pitch examples from similar clinics', 'Fahad with Zavis (Syed)', 'Fri 9 Oct', 'Changes to the call script agreed'],
+  ])}
+<p><b>Review:</b> daily at the 11:30 meeting from tomorrow. The first results of the changes (one week of data) on <b>Mon 12 Oct</b>; the decision on budget and campaigns on <b>Mon 19 Oct</b>, judged on qualified leads, attendance and cost per attended patient.</p>
+<p>Marketing will own acquisition quality, targeting and spend; I welcome operations verifying lead handling and clinic outcomes, so we both work from the same numbers.</p>
+<p>Fahad</p>`;
+}
+
 export const BRIEFING_NOTES: BriefingNote[] = [
   {
     day: '2026-10-05',
@@ -142,17 +237,17 @@ export const BRIEFING_NOTES: BriefingNote[] = [
     day: '2026-10-05',
     slot: 'shoot',
     to: [],
-    title: 'Leads note: which phones our leads come from',
-    subjectBit: '',
-    html: () => `<p style="color:#767769">Checked in Google Analytics for 16 Sep to 4 Oct.</p>${devicesHtml()}`,
+    title: 'Answers to Dr Luvi’s questions on September’s leads',
+    subjectBit: 'Answers to Dr Luvi’s questions on September leads',
+    html: (_t, co) => luviAnswersHtml(co),
   },
   {
     day: '2026-10-05',
     slot: 'shoot',
     to: [],
-    title: 'Lead follow-up: where leads are lost and what we are doing',
+    title: 'Leads note: which phones our leads come from',
     subjectBit: '',
-    html: (_t, co) => followUpHtml(co),
+    html: () => `<p style="color:#767769">Checked in Google Analytics for 16 Sep to 4 Oct.</p>${devicesHtml()}`,
   },
   {
     day: '2026-10-06',

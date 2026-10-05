@@ -114,7 +114,7 @@ type Sb = NonNullable<ReturnType<typeof getSupabaseAdmin>>;
 
 type Slot = 'am' | 'pm';
 interface DayLog { kinds: Set<string>; slot: Record<Slot, Set<string>>; count: Map<string, number> }
-const slotOf = (kind: string): Slot | null => (kind.startsWith('am:') ? 'am' : kind.startsWith('pm:') || kind === 'shoot-tomorrow' ? 'pm' : null);
+const slotOf = (kind: string): Slot | null => (kind.startsWith('am:') ? 'am' : kind.startsWith('pm:') || kind.startsWith('shoot-tomorrow') ? 'pm' : null);
 function mark(log: DayLog, s: Slot, addr: string) {
   const a = addr.toLowerCase();
   log.slot[s].add(a);
@@ -475,7 +475,14 @@ export function buildBriefing(ctx: Ctx, who: Who): { subject: string; html: stri
 
 /* ── 17:00 — the evening before a shoot: tomorrow's schedule (MJ, team copied) ── */
 
-export function buildShootEmail(ctx: Ctx): { subject: string; html: string } | null {
+/** Who gets the shoot email's dated notes (briefingNotes.ts, slot 'shoot'); MJ and Mohan get the schedule alone. */
+const SHOOT_LEADS: Who[] = ['luvi', 'akbar', 'shadi', 'gautam', 'fahad'];
+
+/**
+ * `version`: 'all' — one email to MJ with everyone copied (no dated notes that day);
+ * 'team' — MJ and Mohan, schedule only; 'leads' — the dated notes first, then the schedule.
+ */
+export function buildShootEmail(ctx: Ctx, version: 'all' | 'team' | 'leads' = 'all'): { subject: string; html: string } | null {
   const tomorrow = addDays(ctx.today, 1);
   const day = SHOOT_PLAN.find((d) => d.iso === tomorrow);
   if (!day) return null;
@@ -504,15 +511,25 @@ export function buildShootEmail(ctx: Ctx): { subject: string; html: string } | n
     ? `<p style="background:#FBEFEC;padding:8px;border-radius:6px"><b>Approvals still needed tonight:</b> ${esc(REVIEWERS.filter((x) => pendingOn[x.id].length).map((x) => `${x.name} — ${pendingOn[x.id].join(', ')}`).join(' · '))}. Please approve on the dashboard this evening (Smile Club → Dentist scripts → Approve (final)); a dentist not approved by their slot is filmed on the backup day.</p>`
     : '<p style="color:#2C5E3F"><b>All scripts for tomorrow are approved.</b></p>';
   const hs = happenings(ctx).filter((h) => h.shared);
-  const subject = `Tomorrow’s Smile Club shoot — ${day.label} · ${where} · ${plural(n, 'dentist')}${notFinal ? ` · ${notFinal} not yet approved` : ''}`;
-  const body = `<p>Hi MJ,</p><p>Here is tomorrow’s Smile Club filming schedule. As shoot coordinator, please confirm each slot with the dentist, make sure it is blocked in their diary, and tell the branch desk Mohan is coming. Mohan arrives 15 minutes before the first slot.</p>
+  const notes = version === 'leads' ? shootNotesFor(ctx.today) : [];
+  const subject = notes.length
+    ? `${notes.map((x) => x.subjectBit).filter(Boolean).join(' · ')} · tomorrow’s shoot, ${day.label}`
+    : `Tomorrow’s Smile Club shoot — ${day.label} · ${where} · ${plural(n, 'dentist')}${notFinal ? ` · ${notFinal} not yet approved` : ''}`;
+  const intro = version === 'leads'
+    ? `<p>Dr Luvi, Mr Akbar, Ms Shadi, Gautam,</p><p>This evening’s email has Fahad’s notes first, then tomorrow’s Smile Club shoot schedule (MJ and Mohan have the schedule in their own email).</p>${notes.map((x) => h3(esc(x.title)) + x.html(ctx.today, ctx.contentos)).join('')}${h3(`Tomorrow’s shoot — ${esc(day.label)}`)}`
+    : `<p>Hi MJ,</p><p>Here is tomorrow’s Smile Club filming schedule. As shoot coordinator, please confirm each slot with the dentist, make sure it is blocked in their diary, and tell the branch desk Mohan is coming. Mohan arrives 15 minutes before the first slot.</p>`;
+  const copied = version === 'all'
+    ? `Copied: Dr Luvi, Mr Akbar, Ms Shadi, Gautam, Fahad${emailOf('mohan') ? ', Mohan' : ''} — for them this is today’s evening email.`
+    : version === 'team'
+      ? 'Dr Luvi, Mr Akbar, Ms Shadi, Gautam and Fahad have this schedule in their own evening email.'
+      : 'For you this is today’s evening email.';
+  const body = `${intro}
 ${table(['Time', 'Dentist', 'Clinic', 'In clinic', 'What is filmed', 'Scripts'], rows)}
 ${approvals}
 ${tomorrow < WARDROBE.arrives ? `<p style="background:#FDF9EC;padding:8px;border-radius:6px"><b>Wardrobe:</b> ${esc(WARDROBE.note)}</p>` : '<p><b>Wardrobe:</b> well-fitting DN scrubs or the DN-branded lab coat.</p>'}
 <p><b>Delivery (Mohan):</b> first cut of every video from this day to Fahad by <b>${esc(deliveryFor(day.iso).firstCutLabel)}</b>; Ms Shadi, Dr Luvi and Gautam review the day’s videos as a batch; final files (full length plus 15 s and 6 s cuts, each language) by <b>${esc(deliveryFor(day.iso).finalLabel)}</b>.</p>
-${shootNotesFor(ctx.today).map((n) => h3(esc(n.title)) + n.html(ctx.today, ctx.contentos)).join('')}
 ${hs.length ? `${h3('Also since this morning')}${happenList(hs, 10)}` : ''}
-<p style="color:#767769">Copied: Dr Luvi, Mr Akbar, Ms Shadi, Gautam, Fahad${emailOf('mohan') ? ', Mohan' : ''} — for them this is today’s evening email.</p>`;
+<p style="color:#767769">${copied}</p>`;
   return { subject, html: shell(`Tomorrow’s shoot — ${day.label}`, body) };
 }
 
@@ -567,19 +584,30 @@ async function runMorning(sb: Sb, today: string, out: string[]) {
 
 async function runEvening(sb: Sb, today: string, out: string[]) {
   const log = await dayLog(sb, today);
+  const split = shootNotesFor(today).length > 0;
   const needShoot = !log.kinds.has('shoot-tomorrow');
+  const needLeads = split && !log.kinds.has('shoot-tomorrow:leads');
   const due = EVENING.filter((w) => !log.kinds.has(`pm:${w}`));
-  if (!needShoot && !due.length) return;
+  if (!needShoot && !needLeads && !due.length) return;
   // A dated note in the shoot email may need ContentOS (read live), so load the lead data then.
-  const ctx = await loadCtx(sb, today, eveningSince(today), needShoot && shootNotesFor(today).length > 0);
+  const ctx = await loadCtx(sb, today, eveningSince(today), needLeads);
   if (needShoot) {
-    const m = buildShootEmail(ctx);
+    const m = buildShootEmail(ctx, split ? 'team' : 'all');
     if (m) {
-      const r = await send(['mj'], SHOOT_CC, m.subject, m.html, { log, slot: 'pm' });
+      const r = await send(['mj'], split ? ['mohan'] : SHOOT_CC, m.subject, m.html, { log, slot: 'pm' });
       await logSent(sb, 'shoot-tomorrow', today, r);
       out.push(`shoot-tomorrow: ${r.note}`);
     } else {
       await logSent(sb, 'shoot-tomorrow', today, { ok: true, recipients: [], note: 'no shoot tomorrow — nothing sent' });
+    }
+  }
+  if (needLeads) {
+    // On a day with dated notes, the leadership get the notes and the schedule in one email.
+    const m = buildShootEmail(ctx, 'leads');
+    if (m) {
+      const r = await send(SHOOT_LEADS, [], m.subject, m.html, { log, slot: 'pm' });
+      await logSent(sb, 'shoot-tomorrow:leads', today, r);
+      out.push(`shoot-tomorrow:leads: ${r.note}`);
     }
   }
   for (const who of due) {
@@ -626,7 +654,7 @@ export async function previewAlert(kind: string): Promise<string> {
   let m: { subject: string; html: string } | null = null;
   let files: Attachment[] = [];
   if (kind === 'shoot') {
-    m = buildShootEmail(await loadCtx(sb, today, eveningSince(today), false));
+    m = buildShootEmail(await loadCtx(sb, today, eveningSince(today), true), shootNotesFor(today).length ? 'leads' : 'all');
     if (!m) {
       const nextDay = SHOOT_PLAN.find((d) => d.iso > today);
       if (nextDay) { const eve = addDays(nextDay.iso, -1); m = buildShootEmail(await loadCtx(sb, eve, eveningSince(today), false)); }
