@@ -4,6 +4,7 @@ import { getSheetsClient, isGoogleConfigured } from './google-auth';
 import { SheetsAdapter } from './adapters/sheets-adapter';
 import { fetchGa4Summary } from './adapters/ga4-adapter';
 import { syncGa4Daily } from './adapters/ga4-daily';
+import { syncGa4Device } from './adapters/ga4-device';
 import { syncPracto, syncPractoAppointments } from './adapters/practo-adapter';
 import { isPractoConfigured } from '@/config/practo';
 import { syncMeta, syncMetaAds } from './adapters/meta-adapter';
@@ -252,6 +253,15 @@ export async function runSync(trigger: SyncTrigger): Promise<SyncSummary> {
           detail: `GA4 daily sync failed: ${(e as Error).message}`,
           owner: 'Data/Analytics',
         });
+      }
+
+      // By device and OS (which phones visitors and leads use). Best-effort.
+      try {
+        const dev = await syncGa4Device(supabase);
+        if (dev.ok) sheetsOk.push(`GA4 by device — ${dev.rows} rows`);
+        else dataGaps.push({ area: 'tracking', detail: `GA4 device sync failed: ${dev.error ?? 'unknown'}`, owner: 'Data/Analytics' });
+      } catch (e) {
+        dataGaps.push({ area: 'tracking', detail: `GA4 device sync failed: ${(e as Error).message}`, owner: 'Data/Analytics' });
       }
     } catch (err) {
       sheetsFailed.push('Google Analytics (GA4)');
