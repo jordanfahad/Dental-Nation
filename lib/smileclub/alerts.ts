@@ -10,7 +10,7 @@ import { video2 } from '@/lib/smileclub/creative';
 import type { CorpState } from '@/lib/smileclub/corporate';
 import { buildMetaLeadsDigest, metaSectionHtml, type MetaLeadsDigest } from '@/lib/ops/metaLeadsDigest';
 import { CONTENTOS_LEADS, contentosFlags, contentosStatsHtml, fetchContentos, type ContentosLeads } from '@/lib/ops/contentosLeads';
-import { loadBriefingFile, notesFor } from '@/lib/smileclub/briefingNotes';
+import { loadBriefingFile, notesFor, shootNotesFor } from '@/lib/smileclub/briefingNotes';
 import { OWNER_LABEL, TEAM_TASKS, TOTAL_WEIGHT, TRACKER_SOURCE, type Person, type TeamTask } from '@/lib/smileclub/team';
 
 /**
@@ -510,6 +510,7 @@ ${table(['Time', 'Dentist', 'Clinic', 'In clinic', 'What is filmed', 'Scripts'],
 ${approvals}
 ${tomorrow < WARDROBE.arrives ? `<p style="background:#FDF9EC;padding:8px;border-radius:6px"><b>Wardrobe:</b> ${esc(WARDROBE.note)}</p>` : '<p><b>Wardrobe:</b> well-fitting DN scrubs or the DN-branded lab coat.</p>'}
 <p><b>Delivery (Mohan):</b> first cut of every video from this day to Fahad by <b>${esc(deliveryFor(day.iso).firstCutLabel)}</b>; Ms Shadi, Dr Luvi and Gautam review the day’s videos as a batch; final files (full length plus 15 s and 6 s cuts, each language) by <b>${esc(deliveryFor(day.iso).finalLabel)}</b>.</p>
+${shootNotesFor(ctx.today).map((n) => h3(esc(n.title)) + n.html(ctx.today)).join('')}
 ${hs.length ? `${h3('Also since this morning')}${happenList(hs, 10)}` : ''}
 <p style="color:#767769">Copied: Dr Luvi, Mr Akbar, Ms Shadi, Gautam, Fahad${emailOf('mohan') ? ', Mohan' : ''} — for them this is today’s evening email.</p>`;
   return { subject, html: shell(`Tomorrow’s shoot — ${day.label}`, body) };

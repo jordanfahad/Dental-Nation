@@ -23,6 +23,8 @@ export interface BriefingNote {
   subjectBit: string;
   html: (today: string) => string;
   files?: BriefingFile[];
+  /** 'am' (default): the 09:00 briefing. 'shoot': that evening's 17:00 shoot email to MJ with the team copied. */
+  slot?: 'am' | 'shoot';
 }
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
@@ -87,6 +89,19 @@ function launchHtml(today: string) {
 <p style="color:#767769;font-size:12px">Every launch is measured on the dashboard by net leads, bookings and Smile Club sign-ups per channel, not by chats or clicks.</p>`;
 }
 
+/**
+ * Which phones the leads come from (GA4 by device, lane_e.ga4_device_daily,
+ * read 5 Oct for 16 Sep to 4 Oct; Meta figures from the Zavis report).
+ */
+function devicesHtml() {
+  return `<ul style="margin:4px 0 10px;padding-left:18px">
+<li style="margin-bottom:4px"><b>Meta ad leads are iPhone users, as targeted.</b> In Meta’s own delivery report, 82 of 83 chats in the last 7 days came from iPhones, and all the spend went to iPhones. These ads open WhatsApp directly, so the leads never visit the website; Google Analytics cannot see them, and Meta’s report is the evidence.</li>
+<li style="margin-bottom:4px"><b>Website leads are mostly Android, from Google Ads.</b> Of 182 lead actions on the website (booking starts, phone and WhatsApp taps), 127 came from Android phones (70%), 34 from iPhones (19%) and 21 from computers. 107 of the Android leads came from Google’s Performance Max and Display ads; iPhone website leads come mainly from Google search (19 of 34).</li>
+<li style="margin-bottom:4px"><b>“(not set)” is not Apple.</b> Of the 997 website sessions with no source, 957 (96%) were Windows computers, 13 were iPhones and none became a lead. With the 10,019 “direct” Windows sessions that also produced no leads, about 6 in 10 website sessions in this period are very likely automated traffic, not people.</li>
+</ul>
+<p><b>So:</b> Meta reaches iPhone users on WhatsApp; Google reaches mostly Android users on the website. Booked patients from Google’s Android leads need checking, as one-tap phone and WhatsApp clicks from Display ads are often accidental.</p>`;
+}
+
 export const BRIEFING_NOTES: BriefingNote[] = [
   {
     day: '2026-10-05',
@@ -96,9 +111,26 @@ export const BRIEFING_NOTES: BriefingNote[] = [
     html: (today) => `${h4('1. Meta lead profile report (attached)')}${metaReportHtml()}${h4('2. Mohan’s shoots this week and the videos he will deliver')}${shootsHtml(today)}${h4('3. How the WhatsApp, Meta and Google campaigns start')}${launchHtml(today)}`,
     files: [{ name: 'Dental Nation - Meta Lead Profile Report - Oct 2026.pdf', path: 'assets/briefing/meta-lead-profile-oct-2026.pdf.enc' }],
   },
+  {
+    day: '2026-10-05',
+    slot: 'shoot',
+    to: [],
+    title: 'Leads note: which phones our leads come from',
+    subjectBit: '',
+    html: () => `<p style="color:#767769">Checked in Google Analytics for 16 Sep to 4 Oct.</p>${devicesHtml()}`,
+  },
+  {
+    day: '2026-10-06',
+    to: ['akbar', 'luvi', 'gautam', 'shadi', 'fahad'],
+    title: 'Which phones our leads come from (Google Analytics, 16 Sep to 4 Oct)',
+    subjectBit: 'leads by phone: Meta iPhone, Google Android',
+    html: () => devicesHtml(),
+  },
 ];
 
-export const notesFor = (today: string, who: string) => BRIEFING_NOTES.filter((n) => n.day === today && n.to.includes(who));
+export const notesFor = (today: string, who: string) => BRIEFING_NOTES.filter((n) => n.day === today && (n.slot ?? 'am') === 'am' && n.to.includes(who));
+/** Notes for the 17:00 shoot email sent on `today` (everyone on it sees them). */
+export const shootNotesFor = (today: string) => BRIEFING_NOTES.filter((n) => n.day === today && n.slot === 'shoot');
 
 const RAW = 'https://raw.githubusercontent.com/jordanfahad/Dental-Nation/main/';
 const cache = new Map<string, Attachment>();
