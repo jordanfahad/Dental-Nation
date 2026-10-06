@@ -110,6 +110,9 @@ P&L pathway block complete on all 24 capabilities, pending finance ticks.
 
 ## Open via the bus
 
+- DN-007 (6 Oct): "Demand to desk" one-pager for Mr Akbar (market demand →
+  Meta idea → desk → clinic, leak per treatment theme). Spec: TASKS/DN-007.md.
+
 - DN-006 (6 Oct): tests and hardening for the Sheets sync fix (tab discovery,
   quoted ranges, repeated headers, Excel fallback). Spec: TASKS/DN-006.md.
 

@@ -45,6 +45,8 @@ export interface SourceMapping {
    * newly added branch tabs keep syncing without a code change.
    */
   discoverTabs?: boolean;
+  /** Not synced (kept for reference). */
+  disabled?: boolean;
   headerRow: number;
   target: CanonicalTarget;
   /** Bronze mirror table name (see supabase migration). */
@@ -310,8 +312,9 @@ export const sheetMapping: Record<string, SourceMapping> = {
     rawTable: 'raw_captions',
     priority: 'low',
     columns: {}, // PHASE0
-    notes: 'Caption/copy library; supporting content for §E.',
+    notes: 'Caption/copy library; supporting content for §E. Not synced since 6 Oct 2026: nothing reads raw_captions.',
+    disabled: true,
   },
 };
 
-export const allSources = Object.values(sheetMapping);
+export const allSources = Object.values(sheetMapping).filter((s) => !s.disabled);
