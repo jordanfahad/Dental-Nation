@@ -25,6 +25,22 @@ function privateKey(): string {
   return raw.replace(/\\n/g, '\n');
 }
 
+/**
+ * Drive read-only client: downloads Excel (.xlsx) files shared with the service
+ * account, which the Sheets API refuses ("must not be an Office file").
+ */
+export function getDriveClient() {
+  if (!isGoogleConfigured()) {
+    throw new Error('Google service account not configured. Set GOOGLE_SERVICE_ACCOUNT_EMAIL and GOOGLE_PRIVATE_KEY.');
+  }
+  const auth = new google.auth.JWT({
+    email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+    key: privateKey(),
+    scopes: ['https://www.googleapis.com/auth/drive.readonly'],
+  });
+  return google.drive({ version: 'v3', auth });
+}
+
 export function getSheetsClient(): sheets_v4.Sheets {
   if (!isGoogleConfigured()) {
     throw new Error(

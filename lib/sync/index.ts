@@ -181,7 +181,7 @@ export async function runSync(trigger: SyncTrigger): Promise<SyncSummary> {
   for (const source of allSources) {
     try {
       const adapter = new SheetsAdapter(sheets, source);
-      const { rows, warnings } = await adapter.fetch();
+      const { rows, warnings } = await adapter.fetchAny();
       rowsIngested += rows.length;
       for (const w of warnings) {
         dataGaps.push({ area: 'tracking', detail: `${source.label}: ${w}`, owner: 'Data/Analytics' });

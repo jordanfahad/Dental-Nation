@@ -1,6 +1,8 @@
 import type { sheets_v4 } from 'googleapis';
 import type { SourceMapping } from '@/config/sheet-mapping';
 import type { FetchResult, RawRow, SourceAdapter } from './types';
+import * as XLSX from 'xlsx';
+import { getDriveClient } from '../google-auth';
 
 /**
  * Google Sheets adapter. Reads one source (a tab of a spreadsheet) and returns
@@ -67,28 +69,85 @@ export class SheetsAdapter implements SourceAdapter {
       if (cells.every((c) => String(c ?? '').trim() === '')) continue; // skip blank rows
       const data: Record<string, string> = {};
       headers.forEach((h, c) => {
-        if (h) data[h] = String(cells[c] ?? '').trim();
+        // Repeated headers (the tracker has three "Contact Number" columns): keep the first non-empty value.
+        if (h && !data[h]) data[h] = String(cells[c] ?? '').trim();
       });
       rows.push({ rowIndex: i + 1, data, tabTitle }); // 1-based sheet row
     }
     return rows;
   }
 
+  /** A1 range for a whole tab; quoted so titles with spaces, quotes or emoji parse. */
+  private static rangeOf(title: string): string {
+    return `'${title.replace(/'/g, "''")}'`;
+  }
+
   private async readTab(title: string): Promise<unknown[][]> {
     const res = await this.sheets.spreadsheets.values.get({
       spreadsheetId: this.source.spreadsheetId,
-      range: title,
+      range: SheetsAdapter.rangeOf(title),
       valueRenderOption: 'UNFORMATTED_VALUE',
       dateTimeRenderOption: 'FORMATTED_STRING',
     });
     return (res.data.values ?? []) as unknown[][];
   }
 
+  /** All tab titles in the spreadsheet. */
+  private async tabTitles(): Promise<string[]> {
+    const meta = await this.sheets.spreadsheets.get({
+      spreadsheetId: this.source.spreadsheetId,
+      fields: 'sheets(properties(title))',
+    });
+    return (meta.data.sheets ?? []).map((t) => t.properties?.title ?? '').filter(Boolean);
+  }
+
+  /**
+   * Excel files in Drive: the Sheets API refuses them, so download the file and
+   * read the requested tab (or the first) with the xlsx library.
+   */
+  private async readExcel(tab?: string): Promise<{ title: string; values: unknown[][] }> {
+    const drive = getDriveClient();
+    const res = await drive.files.get({ fileId: this.source.spreadsheetId, alt: 'media', supportsAllDrives: true }, { responseType: 'arraybuffer' });
+    const wb = XLSX.read(Buffer.from(res.data as ArrayBuffer), { type: 'buffer', cellDates: false });
+    const title = tab && wb.SheetNames.includes(tab) ? tab : wb.SheetNames[0];
+    const values = XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets[title], { header: 1, raw: false, defval: '' });
+    return { title, values };
+  }
+
+  private static isOfficeFile(err: unknown): boolean {
+    return /must not be an Office file/i.test((err as Error)?.message ?? '');
+  }
+
   /** Multi-tab read: each tab is read, header-detected, parsed, then concat. */
   private async fetchTabs(tabs: string[]): Promise<FetchResult> {
     const warnings: string[] = [];
     const rows: RawRow[] = [];
-    for (const title of tabs) {
+    let list = tabs;
+    let others: string[] = [];
+    if (this.source.discoverTabs) {
+      try {
+        const all = await this.tabTitles();
+        const missing = tabs.filter((t) => !all.includes(t));
+        if (missing.length) warnings.push(`tabs not found (renamed?): ${missing.join(', ')}`);
+        list = tabs.filter((t) => all.includes(t));
+        others = all.filter((t) => !tabs.includes(t));
+      } catch (err) {
+        warnings.push(`could not list tabs: ${(err as Error).message}`);
+      }
+    }
+    // Other tabs are kept only when their header row matches this source (e.g. a new branch tab).
+    for (const title of others) {
+      try {
+        const values = await this.readTab(title);
+        const detected = SheetsAdapter.detectHeaderIdx(values);
+        if (detected == null) continue;
+        warnings.push(`tab "${title}" picked up automatically`);
+        rows.push(...this.rowsFromValues(values, detected, title));
+      } catch {
+        /* unreadable extra tab: ignore */
+      }
+    }
+    for (const title of list) {
       let values: unknown[][];
       try {
         values = await this.readTab(title);
@@ -128,5 +187,18 @@ export class SheetsAdapter implements SourceAdapter {
     const headerIdx = Math.max(0, this.source.headerRow - 1);
     const rows = this.rowsFromValues(values, headerIdx, title);
     return { key: this.key, rows, warnings };
+  }
+
+  /** fetch() with the Excel fallback: Office files are downloaded from Drive and read directly. */
+  async fetchAny(): Promise<FetchResult> {
+    try {
+      return await this.fetch();
+    } catch (err) {
+      if (!SheetsAdapter.isOfficeFile(err)) throw err;
+      const { title, values } = await this.readExcel(this.source.tab);
+      if (values.length === 0) return { key: this.key, rows: [], warnings: ['Excel file is empty'] };
+      const headerIdx = Math.max(0, this.source.headerRow - 1);
+      return { key: this.key, rows: this.rowsFromValues(values, headerIdx, title), warnings: ['read as an Excel file from Drive'] };
+    }
   }
 }

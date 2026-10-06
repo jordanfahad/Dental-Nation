@@ -39,6 +39,12 @@ export interface SourceMapping {
    * `tab`/`gid`/`headerRow`. Empty tabs are fine (skipped).
    */
   tabs?: string[];
+  /**
+   * Multi-tab sources only: also read any OTHER tab whose header row matches the
+   * source (lead tracker: "Contact Number" + "Inquiry Platform"), so renamed or
+   * newly added branch tabs keep syncing without a code change.
+   */
+  discoverTabs?: boolean;
   headerRow: number;
   target: CanonicalTarget;
   /** Bronze mirror table name (see supabase migration). */
@@ -84,14 +90,17 @@ export const sheetMapping: Record<string, SourceMapping> = {
     key: 'leadTracker',
     label: 'Inhouse Lead Tracker',
     spreadsheetId: '1FKg7-uh2kGU5ULK9WL71FCkLLljQ6dZkIDdJreIgiKA',
+    // Tab names as of 6 Oct 2026 (the team renamed them); discoverTabs picks up
+    // any future renames or new branch tabs automatically.
     tabs: [
-      'DN Al Wasl',
-      'DN - DR. TOSUN Branch ❤',
-      'DN - Al Maher Branch',
-      'Lane "E" DN Al Wasl',
-      'Lane "E" DR. TOSUN Branch ❤',
-      'Lane "E" Al Maher Branch',
+      'DN Campaign Leads  ❤',
+      'TDC Campaign Leads  ❤',
+      'AMC Campaign Leads  ❤',
+      'DN - AL WASL Br ⭐',
+      'DN - TDC Br ⭐',
+      'DN - AL MAHER Br ⭐',
     ],
+    discoverTabs: true,
     headerRow: 1,
     target: 'leads',
     rawTable: 'raw_lead_tracker',
