@@ -45,7 +45,8 @@ function readField(
 /** Headers that exist across the fetched rows (sample the first row). */
 function headerSet(rows: RawRow[]): Set<string> {
   const s = new Set<string>();
-  for (const r of rows.slice(0, 5)) Object.keys(r.data).forEach((h) => s.add(h));
+  // Every row, not the first few: multi-tab sources differ by tab (e.g. "Conversion - Dr Luvi" vs "Conversion").
+  for (const r of rows) Object.keys(r.data).forEach((h) => s.add(h));
   return s;
 }
 
@@ -185,7 +186,11 @@ export function normalizeLeads(
     // Lead-tracker-specific overrides.
     obj.inquiry_date = asLeadDate(obj.inquiry_date);
     obj.channel_source = normalizeLeadChannel(String(obj.channel_source ?? ''));
-    const conversionRaw = conversionHeader ? (raw.data[conversionHeader] ?? '') : '';
+    // Tabs name the column differently ("Conversion", "Conversion - Dr Luvi"): fall back to any "Conversion…" header.
+    const convKey = conversionHeader && raw.data[conversionHeader] !== undefined
+      ? conversionHeader
+      : Object.keys(raw.data).find((k) => /^conversion\b/i.test(k));
+    const conversionRaw = convKey ? (raw.data[convKey] ?? '') : '';
     const booked = conversionIsBooked(conversionRaw);
     obj.booking_status = booked ? 'booked' : null;
     obj.is_qualified = booked ? true : null;
