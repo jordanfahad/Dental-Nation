@@ -239,7 +239,8 @@ export const sheetMapping: Record<string, SourceMapping> = {
     rawTable: 'raw_performance',
     priority: 'low',
     columns: {},
-    notes: 'Mirrored to bronze only; the funnel/spend engine is RAW_Performance (rawSocial).',
+    notes: 'Mirrored to bronze only; the funnel/spend engine is RAW_Performance (rawSocial). Obsolete per Fahad (6 Oct 2026): the platforms are connected directly, so not synced.',
+    disabled: true,
   },
 
   // 8 — Checklist. Mirrored to bronze only — §B channel_status derived from
