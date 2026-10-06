@@ -4,6 +4,10 @@ import type { FetchResult, RawRow, SourceAdapter } from './types';
 import * as XLSX from 'xlsx';
 import { getDriveClient } from '../google-auth';
 
+// Excel fallback downloads are buffered before parsing; cap the compressed file.
+const MAX_EXCEL_BYTES = 10 * 1024 * 1024;
+const EXCEL_SIZE_ERROR = 'Excel file exceeds the 10 MiB download limit';
+
 /**
  * Google Sheets adapter. Reads one source (a tab of a spreadsheet) and returns
  * rows keyed by header. Resolves the tab name from a gid when only a gid is
@@ -17,6 +21,7 @@ export class SheetsAdapter implements SourceAdapter {
   constructor(
     private sheets: sheets_v4.Sheets,
     private source: SourceMapping,
+    private driveClient: typeof getDriveClient = getDriveClient,
   ) {
     this.key = source.key;
     this.label = source.label;
@@ -106,9 +111,34 @@ export class SheetsAdapter implements SourceAdapter {
    * read the requested tab (or the first) with the xlsx library.
    */
   private async readExcel(tab?: string): Promise<{ title: string; values: unknown[][] }> {
-    const drive = getDriveClient();
-    const res = await drive.files.get({ fileId: this.source.spreadsheetId, alt: 'media', supportsAllDrives: true }, { responseType: 'arraybuffer' });
-    const wb = XLSX.read(Buffer.from(res.data as ArrayBuffer), { type: 'buffer', cellDates: false });
+    const drive = this.driveClient();
+    const file = { fileId: this.source.spreadsheetId, supportsAllDrives: true };
+    const meta = await drive.files.get({ ...file, fields: 'mimeType,size' });
+    if (meta.data.mimeType === 'application/vnd.google-apps.shortcut') {
+      throw new Error('Excel fallback cannot download a Drive shortcut; configure the target spreadsheet file ID');
+    }
+    if (meta.data.mimeType === 'application/vnd.google-apps.spreadsheet') {
+      throw new Error('Excel fallback cannot download a native Google Sheet; read it with the Sheets API');
+    }
+    if (Number(meta.data.size) > MAX_EXCEL_BYTES) throw new Error(EXCEL_SIZE_ERROR);
+
+    let buffer: Buffer;
+    try {
+      const res = await drive.files.get(
+        { ...file, alt: 'media' },
+        { responseType: 'arraybuffer', maxContentLength: MAX_EXCEL_BYTES },
+      );
+      buffer = Buffer.from(res.data as ArrayBuffer);
+    } catch (err) {
+      // Gaxios wraps node-fetch's size-limit failure in its `error` property.
+      const failure = err as { type?: string; error?: { type?: string } } | null;
+      if (failure?.type === 'max-size' || failure?.error?.type === 'max-size') {
+        throw new Error(EXCEL_SIZE_ERROR, { cause: err });
+      }
+      throw err;
+    }
+    if (buffer.byteLength > MAX_EXCEL_BYTES) throw new Error(EXCEL_SIZE_ERROR);
+    const wb = XLSX.read(buffer, { type: 'buffer', cellDates: false });
     const title = tab && wb.SheetNames.includes(tab) ? tab : wb.SheetNames[0];
     const values = XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets[title], { header: 1, raw: false, defval: '' });
     return { title, values };
