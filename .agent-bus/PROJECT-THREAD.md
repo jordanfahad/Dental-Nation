@@ -110,11 +110,11 @@ P&L pathway block complete on all 24 capabilities, pending finance ticks.
 
 ## Open via the bus
 
-- DN-007 (6 Oct): "Demand to desk" one-pager for Mr Akbar (market demand →
-  Meta idea → desk → clinic, leak per treatment theme). Spec: TASKS/DN-007.md.
+- DN-006 and DN-007 closed 6 Oct: QA'd by Claude (tsc clean, 88/88 tests),
+  merged and deployed. Marketing > Demand to desk is live; the UAE keyword
+  cache (competitor_snapshots domain market:uae-dental) refreshes weekly.
 
-- DN-006 (6 Oct): tests and hardening for the Sheets sync fix (tab discovery,
-  quoted ranges, repeated headers, Excel fallback). Spec: TASKS/DN-006.md.
+
 
 - None. DN-005 closed 25 Sep: Turkish/Arabic reviewed and merged; English
   source softened (no whitening safety/result promise, no "see you today",
