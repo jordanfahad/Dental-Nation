@@ -178,6 +178,7 @@ export async function runSync(trigger: SyncTrigger): Promise<SyncSummary> {
   const leads: NormalizedLead[] = [];
   const bookings: NormalizedBooking[] = [];
 
+  let trackerReadClean = false;
   for (const source of allSources) {
     try {
       const adapter = new SheetsAdapter(sheets, source);
@@ -186,6 +187,7 @@ export async function runSync(trigger: SyncTrigger): Promise<SyncSummary> {
       for (const w of warnings) {
         dataGaps.push({ area: 'tracking', detail: `${source.label}: ${w}`, owner: 'Data/Analytics' });
       }
+      if (source.key === 'leadTracker') trackerReadClean = !warnings.some((w) => /unreadable|not found|could not list/i.test(w));
       await mirrorBronze(supabase, source.rawTable, rows);
 
       if (source.target === 'performance') {
@@ -594,6 +596,23 @@ export async function runSync(trigger: SyncTrigger): Promise<SyncSummary> {
   }
   if (leads.length > 0) {
     await safeUpsert(supabase, 'leads', leads, dataGaps, 'Inhouse Lead Tracker → leads');
+    // Lead ids include the tab name, so a renamed tab (6 Oct) left the old rows behind and
+    // double-counted September. After a full, successful tracker read, drop rows that the
+    // sheet no longer has. Guarded so a partial or failed read never deletes anything.
+    if (sheetsOk.includes('Inhouse Lead Tracker') && leads.length >= 100) {
+      try {
+        const keep = new Set(leads.map((l) => l.id));
+        const { data: existing } = await supabase.from('leads').select('id').eq('source_sheet', 'Inhouse Lead Tracker').limit(20000);
+        const stale = (existing ?? []).map((r) => r.id as string).filter((id) => !keep.has(id));
+        // Only after a clean read of every tab, so a missing tab can never wipe its leads.
+        if (stale.length && trackerReadClean) {
+          for (let i = 0; i < stale.length; i += 200) await supabase.from('leads').delete().in('id', stale.slice(i, i + 200));
+          sheetsOk.push(`Lead tracker — ${stale.length} rows no longer in the sheet removed`);
+        }
+      } catch (e) {
+        dataGaps.push({ area: 'tracking', detail: `Lead tracker cleanup skipped: ${(e as Error).message}`, owner: 'Data/Analytics' });
+      }
+    }
   }
   // Bookings: store ONLY non-test rows (seed/zavis/test/sagar excluded).
   const realBookings = bookings

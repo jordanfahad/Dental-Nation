@@ -175,7 +175,10 @@ export function normalizeLeads(
     if (joined.includes('no inquir')) continue;
     const dateHeader = source.columns['inquiry_date'];
     const platformHeader = source.columns['channel_source'];
-    const looksLikeLead = !!(dateHeader && asLeadDate(raw.data[dateHeader]) && platformHeader && (raw.data[platformHeader] ?? '').trim());
+    // Placeholder values ("N/A", "-", "CLINIC CLOSED") are not a platform: day rows with no enquiry.
+    const platformVal = platformHeader ? (raw.data[platformHeader] ?? '').trim() : '';
+    const realPlatform = !!platformVal && !/^(n\/?a|-+|none|clinic closed)$/i.test(platformVal);
+    const looksLikeLead = !!(dateHeader && asLeadDate(raw.data[dateHeader]) && realPlatform);
     if (!patientName && !contact && !looksLikeLead) continue;
 
     const obj: Partial<NormalizedLead> = {};
