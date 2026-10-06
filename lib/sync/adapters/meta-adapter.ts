@@ -245,7 +245,7 @@ async function syncMetaCreatives(supabase: AdminClient, cfg: MetaConfig): Promis
   for (const account of cfg.accountIds) {
     const query = new URLSearchParams({
       fields: 'id,name,campaign{name},creative{id,thumbnail_url,image_url,video_id,body,title,call_to_action_type,object_story_spec}',
-      effective_status: JSON.stringify(['ACTIVE']), limit: '100',
+      effective_status: JSON.stringify(['ACTIVE', 'PAUSED', 'CAMPAIGN_PAUSED', 'ADSET_PAUSED']), limit: '100',
     });
     let url: string | null = `https://graph.facebook.com/${cfg.version}/act_${account}/ads?${query}`;
     for (let page = 0; url; page++) {

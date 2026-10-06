@@ -1,5 +1,3 @@
-import { modelPhoneBookings, phonePathSentence } from '../growth/phonePath';
-import type { GrowthReport } from '../growth/channelPerformance';
 import 'server-only';
 import { createDecipheriv } from 'node:crypto';
 import type { Attachment } from '@/lib/notify/email';
@@ -25,7 +23,7 @@ export interface BriefingNote {
   /** Words added to the email subject. */
   subjectBit: string;
   /** `co` is ContentOS Lead Analysis read at send time (null if it could not be read). */
-  html: (today: string, co: ContentosLeads | null, septemberGrowth?: GrowthReport | null) => string;
+  html: (today: string, co: ContentosLeads | null) => string;
   files?: BriefingFile[];
   /** 'am' (default): the 09:00 briefing. 'shoot': that evening's 17:00 shoot email to MJ with the team copied. */
   slot?: 'am' | 'shoot';
@@ -176,13 +174,7 @@ function followUpHtml(co: ContentosLeads | null) {
  * Google ad accounts (lane_e, 1–30 Sep), the Zavis lead profile report, GA4,
  * and Dr Luvi's own extract. Counts only: no lead names or numbers in email.
  */
-export function luviAnswersHtml(co: ContentosLeads | null, septemberGrowth: GrowthReport | null = null) {
-  const pp = septemberGrowth?.phonePath;
-  const paid = pp ? modelPhoneBookings(pp, pp.untracedPool) : null;
-  const paidSpend = septemberGrowth?.channels.find((c) => c.key === 'paid-search')?.spend;
-  const paidActions = pp ? pp.websiteInputsAvailable
-    ? `${pp.callTaps} ad call taps, ${pp.websiteWhatsappTaps} website WhatsApp taps and ${pp.websitePhoneTaps} website phone taps`
-    : `${pp.callTaps} ad call taps; website source inputs unavailable` : 'Synced source inputs unavailable';
+function luviAnswersHtml(co: ContentosLeads | null) {
   const meta: [string, number, number, number][] = [
     ['Tooth Gap', 2024, 117, 50],
     ['New Angles', 1244, 87, 45],
@@ -210,29 +202,38 @@ export function luviAnswersHtml(co: ContentosLeads | null, septemberGrowth: Grow
   const q = (n: number, t: string) => `<h4 style="font-size:13.5px;margin:16px 0 4px;color:#244260">${n}. ${t}</h4>`;
   // Modelled bookings use the dashboard's phone-path benchmark (config/growth-channels.ts PHONE_PATH_BENCHMARKS):
   // phone tap × 0.75 real × 0.75 answered × 0.8 patient × 0.35 book; a WhatsApp tap skips the answer step.
-  const est = (wa: number, ph: number) => modelPhoneBookings({ callTaps: 0, websiteWhatsappTaps: wa, websitePhoneTaps: ph }).estBookings;
+  const PH = 0.75 * 0.75 * 0.8 * 0.35, WA = 0.75 * 0.8 * 0.35;
+  const est = (wa: number, ph: number) => wa * WA + ph * PH;
   // The dashboard's patient trace per channel (Group › Growth, September) — the patient-level evidence.
   const trace = (ch?: string) => `${DASH}?tab=group&gtab=growth${ch ? `&gchan=${ch}` : ''}&from=2026-09-01&to=2026-09-30`;
   const link = (href: string, t: string) => `<a href="${href}" style="color:#5793A3;font-weight:bold">${t}</a>`;
-  const lanes: [string, string, string, string, number | null, string, string][] = [
-    ['<b>Google Ads</b> (Search, Performance Max, Display)', paidSpend == null ? 'Unavailable' : aed(paidSpend), 'See the synced Google Ads report', paidActions, paid?.estBookingsReconciled ?? null, 'paid-search', 'Phone and WhatsApp → desk'],
+  const lanes: [string, string, string, string, number, string, string][] = [
+    ['<b>Google Ads</b> (Search, Performance Max, Display)', aed(5394), '185,855 impressions · 6,012 clicks', '78 WhatsApp taps and 41 phone taps on the website', est(78, 41), 'paid-search', 'Phone and WhatsApp → desk'],
     ['<b>Google Business Profile</b> (Maps and the Google listing, supported by Ads and reviews)', 'AED 0', 'shown on Google Maps and Search', '64 calls, 364 direction requests, 71 website visits', est(0, 64), 'gmb', 'Calls → desk; directions → walk-ins'],
     ['<b>Google search and the website</b> (organic)', 'AED 0', '5,720 visitors, 46% on Apple devices', '71 WhatsApp taps and 13 phone taps', est(71, 13), 'website', 'WhatsApp and phone → desk; 3 online self-bookings'],
     ['<b>Meta WhatsApp ads</b> (99% iPhone)', aed(metaTot[0]), `${metaTot[1]} chats started`, `<b>102 showed high interest</b>, 23 ready to book (Zavis); ${metaTot[2]} replied a second time`, 1, 'paid-social', 'WhatsApp → desk'],
   ];
-  const estTot = lanes.some((l) => l[4] == null) ? null : lanes.reduce((a, l) => a + l[4]!, 0);
-  const paidSummary = paid ? esc(phonePathSentence(paid)) : 'Modelled Google Ads bookings are unavailable until the September sources are synced.';
+  const estTot = lanes.reduce((a, l) => a + l[4], 0);
+  const gRows: [string, number, string, string, number][] = [
+    ['Performance Max (“Dental Nation Campaign, 13 Mar”)', 2257, '5,552', '58 WhatsApp · 31 phone', est(58, 31)],
+    ['Search (Calls & Bookings, Ortho, SOS, Wide Net, Brand, small)', 3040, '192', '5 WhatsApp · 2 phone · plus direct calls from the ads', est(5, 2)],
+    ['Display remarketing: Stains & Gaps', 97, '268', '15 WhatsApp · 8 phone', est(15, 8)],
+  ];
+  const gBook = roundTo(gRows.map((r) => r[4]), Math.round(est(78, 41)));
   return `<p>Dr Luvi, thank you for calling the leads yourself; it gives us evidence we did not have. You are right that a WhatsApp message is not a qualified lead, and right to ask for outcomes rather than volume. Below, every figure is marked as measured (from the platforms, GA4, Practo and the lead tracker) or modelled (an estimate, until the desk records the source of each new patient), so we can reconcile line by line.</p>
 <p style="color:#767769;font-size:12px">Your extract’s 268 unique contacts match exactly the 268 people Meta reports as starting a WhatsApp chat in September, so we are reconciling the same leads.</p>
 
 ${q(1, 'What did September’s advertising spend deliver?')}
 <p><b>The headline:</b> September was the strongest month for new patients in our Practo records: <b>188 first visits</b>, up from 148 in August and 104 in July (measured, all sources). Google and the website produced most of the measurable patient actions; the Meta WhatsApp campaign was our test month, and its fixes start this week (questions 3 and 4).</p>
 ${tbl(['Lane', 'Spend', 'Reach', 'Patient actions (measured)', 'Bookings', 'Patient evidence'], [
-    ...lanes.map((l) => [l[0], l[1], l[2], l[3], link(trace(l[5]), l[4] == null ? 'Unavailable' : l[5] === 'paid-social' ? '1 booked' : `≈ ${Math.round(l[4])}`), `${esc(l[6])}<br>${link(trace(l[5]), 'Patients on the dashboard →')}${l[5] === 'paid-social' ? `<br>${link(CONTENTOS_LEADS_URL, 'Lead list in ContentOS →')}` : ''}`]),
-    ['<b>Total</b>', `<b>${paidSpend == null ? 'Unavailable' : aed(paidSpend + metaTot[0])}</b>`, '', '', `<b>${link(trace(), estTot == null ? 'Unavailable' : `≈ ${Math.round(estTot)}`)}</b>`, `<b>188 new patients in Practo, +81% on July</b><br>${link(trace(), 'All September patients by channel →')}`],
+    ...lanes.map((l) => [l[0], l[1], l[2], l[3], link(trace(l[5]), l[5] === 'paid-social' ? '1 booked' : `≈ ${Math.round(l[4])}`), `${esc(l[6])}<br>${link(trace(l[5]), 'Patients on the dashboard →')}${l[5] === 'paid-social' ? `<br>${link(CONTENTOS_LEADS_URL, 'Lead list in ContentOS →')}` : ''}`]),
+    ['<b>Total</b>', `<b>${aed(5394 + metaTot[0])}</b>`, '', '', `<b>${link(trace(), `≈ ${Math.round(estTot)}`)}</b>`, `<b>188 new patients in Practo, +81% on July</b><br>${link(trace(), 'All September patients by channel →')}`],
   ])}
-<p><b>Google Ads:</b> ${paidSummary}</p>
-<p>Measured inputs: ${esc(paidActions)}. Phone taps use 75% valid × 75% answered × 80% patient × 35% booked; WhatsApp skips the answer step. Each input is rounded once and the total is capped to the same eligible patient pool as the dashboard.</p>
+${tbl(['Campaign', 'Spend', 'Clicks', 'Website taps', 'Bookings (modelled)', 'Cost per booking'], [
+    ...gRows.map(([c, sp, cl, taps], i) => [esc(c), aed(sp), cl, taps, `≈ ${gBook[i]}`, gBook[i] >= 2 ? aed(Math.round(sp / gBook[i])) : 'drives calls (counted from 8 Oct)']),
+    ['<b>Google Ads total</b>', `<b>${aed(5394)}</b>`, '<b>6,012</b>', '<b>78 WhatsApp · 41 phone</b>', `<b>≈ ${gBook.reduce((a, b) => a + b, 0)}</b>`, `<b>${aed(Math.round(5394 / gBook.reduce((a, b) => a + b, 0)))}</b>`],
+  ], '<p><b>Google Ads by campaign type</b> (taps measured in GA4; bookings modelled):</p>')}
+<p style="color:#767769;font-size:12px">Modelled bookings use the dashboard’s standard phone path: 75% of taps are real attempts, 75% are answered, 80% are patients and 35% of those book (a WhatsApp tap skips the answer step). Google Ads overall: about ${aed(Math.round(5394 / gBook.reduce((x, y) => x + y, 0)))} per modelled booking.</p>
 ${tbl(['Campaign', 'Spend', 'Chats started', 'Replied again (net)', 'Cost per net lead'], [...metaRows.map((r) => r.slice(0, 5)), [`<b>Total</b>`, `<b>${aed(metaTot[0])}</b>`, `<b>${metaTot[1]}</b>`, `<b>${metaTot[2]}</b>`, `<b>${aed(Math.round(metaTot[0] / metaTot[2]))}</b>`]], '<p><b>Meta WhatsApp ads by campaign</b> (measured):</p>')}
 <p>Meta’s September campaign was the test month for WhatsApp ads: 268 conversations and one booking in the tracker. It showed us the targeting and follow-up changes in questions 3 and 6, which start this week.</p>
 <p><b>Next step, from modelled to verified:</b> 185 of September’s 188 new patients were booked by the desk from a call or WhatsApp, which is exactly the route Google Ads and the Business Profile drive, but Practo has no field yet for where the patient found us. From Wed 7 Oct the desk records the source of every new patient and qualifies each lead on your four criteria, so October’s report shows each lane’s patients by name in Practo rather than modelled.</p>
@@ -332,7 +333,7 @@ export const BRIEFING_NOTES: BriefingNote[] = [
     to: [],
     title: 'Answers to Dr Luvi’s questions on September’s leads',
     subjectBit: 'Answers to Dr Luvi’s questions on September leads',
-    html: (_t, co, growth) => luviAnswersHtml(co, growth),
+    html: (_t, co) => luviAnswersHtml(co),
   },
   {
     day: '2026-10-05',
@@ -348,7 +349,7 @@ export const BRIEFING_NOTES: BriefingNote[] = [
     gate: 'luvi-answers',
     title: 'Answers to Dr Luvi’s questions on September’s leads',
     subjectBit: 'Answers to Dr Luvi’s questions on September leads',
-    html: (_t, co, growth) => luviAnswersHtml(co, growth),
+    html: (_t, co) => luviAnswersHtml(co),
   },
   {
     day: '2026-10-06',
@@ -357,7 +358,7 @@ export const BRIEFING_NOTES: BriefingNote[] = [
     gate: 'luvi-answers',
     title: 'Answers to Dr Luvi’s questions on September’s leads',
     subjectBit: 'Answers to Dr Luvi’s questions on September leads',
-    html: (_t, co, growth) => luviAnswersHtml(co, growth),
+    html: (_t, co) => luviAnswersHtml(co),
   },
   {
     day: '2026-10-06',

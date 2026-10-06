@@ -1,6 +1,5 @@
-import { getChannelPerformance, type GrowthReport } from '../growth/channelPerformance';
-import { selectAll } from '../supabase/selectAll';
 import 'server-only';
+import { selectAll } from '@/lib/supabase/selectAll';
 import { OPS_ALERT_FROM } from '@/config/ops';
 import { emailConfigured, sendEmail, type Attachment } from '@/lib/notify/email';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
@@ -179,7 +178,6 @@ type Prog = Awaited<ReturnType<typeof loadProgress>>;
 interface TaskEv { task: TeamTask; actor: string; status: string; note: string | null; at: string; from: number | null; to: number | null }
 
 interface Ctx {
-  septemberGrowth?: GrowthReport | null;
   /** The Dubai day the email is for. */
   today: string;
   /** Start of the "what happened" window. */
@@ -222,9 +220,7 @@ async function loadCtx(sb: Sb, today: string, since: string, withMeta: boolean):
     task: byId[e.task_id as string], actor: (e.actor as string) ?? '', status: (e.status as string) ?? '', note: (e.note as string | null) ?? null,
     at: e.at as string, from: (e.from_stage as number | null) ?? null, to: (e.to_stage as number | null) ?? null,
   }));
-  const septemberGrowth = withMeta && (today === '2026-10-05' || today === '2026-10-06')
-    ? await getChannelPerformance({ from: '2026-09-01', to: '2026-09-30' }, 'dn-alwasl').catch(() => null) : null;
-  return { today, since, p, reviews, events, meta, contentos, corp, released, gReviews, septemberGrowth };
+  return { today, since, p, reviews, events, meta, contentos, corp, released, gReviews };
 }
 
 const isDone = (t: TeamTask, p: Prog) => (p[t.key]?.stage ?? 0) >= t.steps.length || p[t.key]?.status === 'done';
@@ -445,7 +441,7 @@ export function buildBriefing(ctx: Ctx, who: Who): { subject: string; html: stri
 
   // Dated one-off notes go first (briefingNotes.ts); their files are attached by the sender.
   for (const n of notesFor(ctx.today, who, ctx.released)) {
-    parts.push(h3(esc(n.title)) + n.html(ctx.today, ctx.contentos, ctx.septemberGrowth));
+    parts.push(h3(esc(n.title)) + n.html(ctx.today, ctx.contentos));
     bits.push(n.subjectBit);
   }
 
@@ -553,7 +549,7 @@ export function buildShootEmail(ctx: Ctx, version: 'all' | 'team' | 'leads' = 'a
     ? `${notes.map((x) => x.subjectBit).filter(Boolean).join(' · ')} · tomorrow’s shoot, ${day.label}`
     : `Tomorrow’s Smile Club shoot — ${day.label} · ${where} · ${plural(n, 'dentist')}${notFinal ? ` · ${notFinal} not yet approved` : ''}`;
   const intro = version === 'leads'
-    ? `<p>Dr Luvi, Mr Akbar, Ms Shadi, Gautam,</p><p>This evening’s email has Fahad’s notes first, then tomorrow’s Smile Club shoot schedule (MJ and Mohan have the schedule in their own email).</p>${notes.map((x) => h3(esc(x.title)) + x.html(ctx.today, ctx.contentos, ctx.septemberGrowth)).join('')}${h3(`Tomorrow’s shoot — ${esc(day.label)}`)}`
+    ? `<p>Dr Luvi, Mr Akbar, Ms Shadi, Gautam,</p><p>This evening’s email has Fahad’s notes first, then tomorrow’s Smile Club shoot schedule (MJ and Mohan have the schedule in their own email).</p>${notes.map((x) => h3(esc(x.title)) + x.html(ctx.today, ctx.contentos)).join('')}${h3(`Tomorrow’s shoot — ${esc(day.label)}`)}`
     : `<p>Hi MJ,</p><p>Here is tomorrow’s Smile Club filming schedule. As shoot coordinator, please confirm each slot with the dentist, make sure it is blocked in their diary, and tell the branch desk Mohan is coming. Mohan arrives 15 minutes before the first slot.</p>`;
   const copied = version === 'all'
     ? `Copied: Dr Luvi, Mr Akbar, Ms Shadi, Gautam, Fahad${emailOf('mohan') ? ', Mohan' : ''} — for them this is today’s evening email.`
