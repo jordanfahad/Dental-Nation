@@ -1,4 +1,5 @@
 import 'server-only';
+import { syncGa4LeadSources } from './ga4-lead-sources';
 import { getAnalyticsClient } from '../google-auth';
 import { GA4_PROPERTY_ID } from '@/config/ga4';
 import type { AdminClient } from '@/lib/supabase/server';
@@ -105,7 +106,8 @@ export async function syncGa4Device(supabase: AdminClient): Promise<{ ok: boolea
       const { error } = await supabase.from('ga4_device_daily').upsert(out.slice(i, i + 500), { onConflict: 'day,os,device,channel,source_medium' });
       if (error) throw new Error(error.message);
     }
-    return { ok: true, rows: out.length };
+    const sourceRows = await syncGa4LeadSources(supabase);
+    return { ok: true, rows: out.length + sourceRows };
   } catch (err) {
     return { ok: false, rows: 0, error: (err as Error).message };
   }

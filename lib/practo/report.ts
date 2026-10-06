@@ -1,3 +1,4 @@
+import { selectAll } from '../supabase/selectAll';
 import 'server-only';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
 import { isPractoConfigured } from '@/config/practo';
@@ -89,10 +90,12 @@ export async function getPractoSummary(range?: {
   const supabase = getSupabaseAdmin();
   if (!supabase) return empty(configured);
   try {
-    let q = supabase.from('practo_bills_raw').select('bill_date, amount, data');
-    if (range?.from) q = q.gte('bill_date', range.from);
-    if (range?.to) q = q.lte('bill_date', range.to);
-    const { data, error } = await q;
+    const { data, error } = await selectAll(() => {
+      let q = supabase.from('practo_bills_raw').select('bill_date, amount, data');
+      if (range?.from) q = q.gte('bill_date', range.from);
+      if (range?.to) q = q.lte('bill_date', range.to);
+      return q;
+    }, 'bill_key');
     if (error) return empty(configured);
     const allRows = (data as { bill_date: string | null; amount: number | null; data: Record<string, unknown> }[]) ?? [];
     if (allRows.length === 0) return empty(configured);

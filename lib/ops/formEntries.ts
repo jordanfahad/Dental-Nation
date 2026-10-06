@@ -1,3 +1,4 @@
+import { selectAll } from '../supabase/selectAll';
 import 'server-only';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
 import { ARABY_LANES } from '@/lib/arabyads/report';
@@ -84,7 +85,7 @@ export async function getFormEntries(range: { from?: string; to?: string } = {})
         .select('entry_id, tab_title, submitted_at, name, phone, phone9, email, treatment, source, lane_key')
         .order('submitted_at', { ascending: false, nullsFirst: false })
         .limit(5000),
-      db.from('raw_zavis').select('data'),
+      selectAll(() => db.from('raw_zavis').select('data'), "id"),
     ]);
     rows = (entries.data as Row[] | null) ?? [];
     for (const r of (widget.data as { data: Record<string, unknown> }[] | null) ?? []) {

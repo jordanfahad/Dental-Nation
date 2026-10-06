@@ -1,4 +1,5 @@
 import 'server-only';
+import { metaCreative } from './ad-creatives';
 import type { AdminClient } from '@/lib/supabase/server';
 import { getMetaConfig, META_LEAD_ACTION_TYPES, type MetaConfig } from '@/config/meta';
 
@@ -230,10 +231,40 @@ export async function syncMetaAds(supabase: AdminClient, opts: MetaSyncOpts = {}
       const { error } = await supabase.from('meta_ad_insights_raw').upsert(deduped.slice(i, i + 500), { onConflict: 'key' });
       if (error) throw new Error(`ad-level upsert failed: ${error.message}`);
     }
-    return { ok: true, fetched: all.length, stored: deduped.length, accounts: cfg.accountIds.length };
+    let note: string;
+    try { note = `creatives: ${await syncMetaCreatives(supabase, cfg)}`; }
+    catch { note = 'Creative sync unavailable; ad metrics were stored'; }
+    return { ok: true, fetched: all.length, stored: deduped.length, accounts: cfg.accountIds.length, note };
   } catch (err) {
     return { ok: false, fetched: 0, stored: 0, accounts: 0, error: (err as Error).message };
   }
+}
+
+async function syncMetaCreatives(supabase: AdminClient, cfg: MetaConfig): Promise<number> {
+  const all = new Map<string, ReturnType<typeof metaCreative>>();
+  for (const account of cfg.accountIds) {
+    const query = new URLSearchParams({
+      fields: 'id,name,campaign{name},creative{id,thumbnail_url,image_url,video_id,body,title,call_to_action_type,object_story_spec}',
+      effective_status: JSON.stringify(['ACTIVE']), limit: '100',
+    });
+    let url: string | null = `https://graph.facebook.com/${cfg.version}/act_${account}/ads?${query}`;
+    for (let page = 0; url; page++) {
+      if (page >= 200) throw new Error('Meta creative pagination limit');
+      const target = new URL(url);
+      if (target.protocol !== 'https:' || target.hostname !== 'graph.facebook.com') throw new Error('Unexpected Meta paging host');
+      const response: Response = await fetch(target, { headers: { Authorization: `Bearer ${cfg.token}` }, cache: 'no-store' });
+      const result = await response.json() as { data?: unknown[]; paging?: { next?: string }; error?: unknown };
+      if (!response.ok || result.error || !Array.isArray(result.data)) throw new Error('Meta creative read failed');
+      for (const ad of result.data) { const row = metaCreative(ad, new Date().toISOString()); all.set(row.ad_id, row); }
+      url = result.paging?.next ?? null;
+    }
+  }
+  const rows = [...all.values()];
+  for (let i = 0; i < rows.length; i += 500) {
+    const { error } = await supabase.from('ad_creatives').upsert(rows.slice(i, i + 500), { onConflict: 'platform,ad_id' });
+    if (error) throw new Error('Meta creative storage failed');
+  }
+  return rows.length;
 }
 
 /** Shape-discovery probe: fetch a small recent window for the first account and

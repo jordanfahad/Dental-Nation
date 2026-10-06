@@ -591,7 +591,7 @@ export async function runSync(trigger: SyncTrigger): Promise<SyncSummary> {
   // ----- UAE keyword-set demand: weekly cached read for Demand to desk -----
   try {
     const market = await refreshDentalMarketSnapshot();
-    if (market.refreshed) sheetsOk.push('UAE dental keyword cache refreshed');
+    if (market.refreshed) sheetsOk.push(`UAE dental keyword cache refreshed: ${market.requestCount ?? 0} requests, USD ${(market.costUsd ?? 0).toFixed(3)} reported cost`);
   } catch {
     dataGaps.push({ area: 'tracking', detail: 'UAE dental keyword cache refresh unavailable', owner: ownerFor('tracking') });
   }

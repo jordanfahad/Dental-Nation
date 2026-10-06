@@ -1,3 +1,4 @@
+import { selectAll } from '../supabase/selectAll';
 import 'server-only';
 import type { AdminClient } from '@/lib/supabase/server';
 import { sendEmail, emailConfigured } from '@/lib/notify/email';
@@ -72,7 +73,7 @@ export async function sendNewLeadAlerts(supabase: AdminClient): Promise<LeadAler
     }
     const mark = Number(markRaw) || 0;
 
-    const { data } = await supabase.from('raw_zavis').select('data');
+    const { data } = await selectAll(() => supabase.from('raw_zavis').select('data'), "id");
     const rows = (data as { data: Record<string, unknown> }[] | null) ?? [];
     const fresh: { ms: number; f: Record<string, string> }[] = [];
     for (const r of rows) {

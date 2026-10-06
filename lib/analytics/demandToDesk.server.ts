@@ -1,25 +1,12 @@
+import { selectAll, type PageQuery } from '../supabase/selectAll';
 import 'server-only';
 import { getSupabaseAdmin, type AdminClient } from '../supabase/server';
 import { aggregateDemandToDesk, emptyDemandInput, numeric, record, type DemandRange, type DemandReport, type Row } from './demandToDesk';
 import { DENTAL_MARKET_DOMAIN, parseMarketSnapshot } from './demandMarket';
 import { META_LAUNCH_DATE } from '../../config/demand-themes';
 
-interface PageQuery { range(from: number, to: number): PromiseLike<{ data: unknown[] | null; error: unknown }> }
-const PAGE_SIZE = 1000;
-const MAX_ROWS = 100_000;
-
-/** Stable ordering plus pagination avoids Supabase's default 1,000-row truncation. */
-export async function readDemandRows(query: () => PageQuery): Promise<Row[]> {
-  const rows: Row[] = [];
-  for (let from = 0; from <= MAX_ROWS; from += PAGE_SIZE) {
-    const result = await query().range(from, from + PAGE_SIZE - 1);
-    if (result.error) throw new Error('Source read failed');
-    if (!Array.isArray(result.data)) throw new Error('Source response unavailable');
-    if (rows.length + result.data.length > MAX_ROWS) throw new Error('Source exceeds 100,000-row report limit');
-    rows.push(...result.data as Row[]);
-    if (result.data.length < PAGE_SIZE) return rows;
-  }
-  return rows;
+export async function readDemandRows(query: () => PageQuery<Row>, keys: string | readonly string[] = 'id'): Promise<Row[]> {
+  return (await selectAll(query, keys)).data;
 }
 
 export async function getDemandToDesk(range: DemandRange, db: AdminClient | null = getSupabaseAdmin()): Promise<DemandReport> {
@@ -32,16 +19,18 @@ export async function getDemandToDesk(range: DemandRange, db: AdminClient | null
   const from = range.from < META_LAUNCH_DATE ? range.from : META_LAUNCH_DATE;
   const afterEnd = new Date(Date.parse(`${range.to}T00:00:00Z`) + 86400_000).toISOString().slice(0, 10);
   const specs = [
-    ['ads', 'Meta ad insights', () => db.from('meta_ad_insights_raw').select('key,account_id,ad_id,ad_name,adset_name,campaign_id,campaign_name,date,spend,impressions,data,fetched_at').gte('date', from).lte('date', range.to).order('key')],
-    ['tracker', 'Lead tracker', () => db.from('raw_lead_tracker').select('id,data').order('id')],
-    ['canonical', 'Canonical lead counts', () => db.from('leads').select('id,inquiry_date,channel_source').gte('inquiry_date', from).lte('inquiry_date', range.to).order('id')],
-    ['appointments', 'Clinic appointments', () => db.from('practo_appointments_raw').select('appt_key,appt_date,status,mr_no,department,data').gte('appt_date', from).lte('appt_date', range.to).ilike('mr_no', 'DN%').order('appt_key')],
-    ['calls', 'Call log', () => db.from('lead_call_log').select('id,lead_ref,created_at').gte('created_at', `${from}T00:00:00+04:00`).lt('created_at', `${afterEnd}T00:00:00+04:00`).order('id')],
-    ['gmb', 'Google Business Profile keywords', () => db.from('gmb_search_keywords').select('month,keyword,location_path,impressions,is_threshold').gte('month', range.from.slice(0, 7)).lte('month', range.to.slice(0, 7)).order('month').order('keyword').order('location_path')],
+    ['ads', 'Meta ad insights', () => db.from('meta_ad_insights_raw').select('key,account_id,ad_id,ad_name,adset_name,campaign_id,campaign_name,date,spend,impressions,data,fetched_at').gte('date', from).lte('date', range.to).order('key'), "key"],
+    ['tracker', 'Lead tracker', () => db.from('raw_lead_tracker').select('id,data').order('id'), "id"],
+    ['canonical', 'Canonical lead counts', () => db.from('leads').select('id,inquiry_date,channel_source').gte('inquiry_date', from).lte('inquiry_date', range.to).order('id'), "id"],
+    ['appointments', 'Clinic appointments', () => db.from('practo_appointments_raw').select('appt_key,appt_date,status,mr_no,department,data').gte('appt_date', from).lte('appt_date', range.to).ilike('mr_no', 'DN%').order('appt_key'), "appt_key"],
+    ['calls', 'Call log', () => db.from('lead_call_log').select('id,lead_ref,created_at').gte('created_at', `${from}T00:00:00+04:00`).lt('created_at', `${afterEnd}T00:00:00+04:00`).order('id'), "id"],
+    ['gmb', 'Google Business Profile keywords', () => db.from('gmb_search_keywords').select('month,keyword,location_path,impressions,is_threshold').gte('month', range.from.slice(0, 7)).lte('month', range.to.slice(0, 7)).order('month').order('keyword').order('location_path'), ["month","keyword","location_path"]],
+    ['creatives', 'Ad creatives', () => db.from('ad_creatives').select('platform,ad_id,ad_name,campaign_name,thumbnail_url,body,title,cta,fetched_at'), ['platform', 'ad_id']],
+    ['creativeMetrics', 'Google creative costs', () => db.from('ad_creative_daily').select('platform,ad_id,day,spend').gte('day', range.from).lte('day', range.to), ['platform', 'ad_id', 'day']],
   ] as const;
-  await Promise.all(specs.map(async ([key, label, query]) => {
-    try { input[key] = await readDemandRows(query); }
-    catch (err) { input.gaps!.push(`${label}: ${err instanceof Error && err.message.includes('100,000') ? 'over the 100,000-row limit; totals withheld' : 'unavailable; totals withheld'}.`); }
+  await Promise.all(specs.map(async ([key, label, query, keys]) => {
+    try { input[key] = await readDemandRows(query, keys); }
+    catch (err) { input.gaps!.push(`${label}: ${err instanceof Error && err.message.includes('50,000') ? 'over the 50,000-row limit; totals withheld' : 'unavailable; totals withheld'}.`); }
   }));
   await Promise.all([DENTAL_MARKET_DOMAIN, 'dentalnation.com'].map(async (domain) => {
     try {

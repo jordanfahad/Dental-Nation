@@ -1,3 +1,5 @@
+import { getChannelPerformance, type GrowthReport } from '../growth/channelPerformance';
+import { selectAll } from '../supabase/selectAll';
 import 'server-only';
 import { OPS_ALERT_FROM } from '@/config/ops';
 import { emailConfigured, sendEmail, type Attachment } from '@/lib/notify/email';
@@ -124,7 +126,7 @@ function mark(log: DayLog, s: Slot, addr: string) {
   log.count.set(a, (log.count.get(a) ?? 0) + 1);
 }
 async function dayLog(sb: Sb, today: string): Promise<DayLog> {
-  const { data } = await sb.from('sc_alert_log').select('kind,ok,recipients').eq('day', today);
+  const { data } = await selectAll(() => sb.from('sc_alert_log').select('kind,ok,recipients').eq('day', today), "id");
   const log: DayLog = { kinds: new Set(), slot: { am: new Set(), pm: new Set() }, count: new Map() };
   for (const r of data ?? []) {
     const kind = r.kind as string;
@@ -164,7 +166,7 @@ async function logSent(sb: Sb, kind: string, day: string, r: { ok: boolean; reci
 /* ── what every email is built from ── */
 
 async function loadProgress(sb: Sb) {
-  const { data } = await sb.from('tasks').select('id,external_id,status,raw').eq('source', TRACKER_SOURCE);
+  const { data } = await selectAll(() => sb.from('tasks').select('id,external_id,status,raw').eq('source', TRACKER_SOURCE), "id");
   const progress: Record<string, { stage: number; status: string; id: string }> = {};
   for (const r of data ?? []) {
     const key = (r.external_id as string).replace(/^sc-team:/, '');
@@ -177,6 +179,7 @@ type Prog = Awaited<ReturnType<typeof loadProgress>>;
 interface TaskEv { task: TeamTask; actor: string; status: string; note: string | null; at: string; from: number | null; to: number | null }
 
 interface Ctx {
+  septemberGrowth?: GrowthReport | null;
   /** The Dubai day the email is for. */
   today: string;
   /** Start of the "what happened" window. */
@@ -200,7 +203,7 @@ async function loadCtx(sb: Sb, today: string, since: string, withMeta: boolean):
   for (const t of TEAM_TASKS) if (p[t.key]) byId[p[t.key].id] = t;
   const [reviews, ev, meta, contentos, corp, released, gr] = await Promise.all([
     loadReviews(sb),
-    sb.from('task_events').select('task_id,actor,status,note,at,from_stage,to_stage').gte('at', since).order('at'),
+    selectAll(() => sb.from('task_events').select('task_id,actor,status,note,at,from_stage,to_stage').gte('at', since).order('at'), "id"),
     withMeta ? buildMetaLeadsDigest(sb, today).catch(() => null) : Promise.resolve(null),
     withMeta ? fetchContentos() : Promise.resolve(null),
     loadCorp(sb).catch(() => null),
@@ -219,7 +222,9 @@ async function loadCtx(sb: Sb, today: string, since: string, withMeta: boolean):
     task: byId[e.task_id as string], actor: (e.actor as string) ?? '', status: (e.status as string) ?? '', note: (e.note as string | null) ?? null,
     at: e.at as string, from: (e.from_stage as number | null) ?? null, to: (e.to_stage as number | null) ?? null,
   }));
-  return { today, since, p, reviews, events, meta, contentos, corp, released, gReviews };
+  const septemberGrowth = withMeta && (today === '2026-10-05' || today === '2026-10-06')
+    ? await getChannelPerformance({ from: '2026-09-01', to: '2026-09-30' }, 'dn-alwasl').catch(() => null) : null;
+  return { today, since, p, reviews, events, meta, contentos, corp, released, gReviews, septemberGrowth };
 }
 
 const isDone = (t: TeamTask, p: Prog) => (p[t.key]?.stage ?? 0) >= t.steps.length || p[t.key]?.status === 'done';
@@ -440,7 +445,7 @@ export function buildBriefing(ctx: Ctx, who: Who): { subject: string; html: stri
 
   // Dated one-off notes go first (briefingNotes.ts); their files are attached by the sender.
   for (const n of notesFor(ctx.today, who, ctx.released)) {
-    parts.push(h3(esc(n.title)) + n.html(ctx.today, ctx.contentos));
+    parts.push(h3(esc(n.title)) + n.html(ctx.today, ctx.contentos, ctx.septemberGrowth));
     bits.push(n.subjectBit);
   }
 
@@ -548,7 +553,7 @@ export function buildShootEmail(ctx: Ctx, version: 'all' | 'team' | 'leads' = 'a
     ? `${notes.map((x) => x.subjectBit).filter(Boolean).join(' · ')} · tomorrow’s shoot, ${day.label}`
     : `Tomorrow’s Smile Club shoot — ${day.label} · ${where} · ${plural(n, 'dentist')}${notFinal ? ` · ${notFinal} not yet approved` : ''}`;
   const intro = version === 'leads'
-    ? `<p>Dr Luvi, Mr Akbar, Ms Shadi, Gautam,</p><p>This evening’s email has Fahad’s notes first, then tomorrow’s Smile Club shoot schedule (MJ and Mohan have the schedule in their own email).</p>${notes.map((x) => h3(esc(x.title)) + x.html(ctx.today, ctx.contentos)).join('')}${h3(`Tomorrow’s shoot — ${esc(day.label)}`)}`
+    ? `<p>Dr Luvi, Mr Akbar, Ms Shadi, Gautam,</p><p>This evening’s email has Fahad’s notes first, then tomorrow’s Smile Club shoot schedule (MJ and Mohan have the schedule in their own email).</p>${notes.map((x) => h3(esc(x.title)) + x.html(ctx.today, ctx.contentos, ctx.septemberGrowth)).join('')}${h3(`Tomorrow’s shoot — ${esc(day.label)}`)}`
     : `<p>Hi MJ,</p><p>Here is tomorrow’s Smile Club filming schedule. As shoot coordinator, please confirm each slot with the dentist, make sure it is blocked in their diary, and tell the branch desk Mohan is coming. Mohan arrives 15 minutes before the first slot.</p>`;
   const copied = version === 'all'
     ? `Copied: Dr Luvi, Mr Akbar, Ms Shadi, Gautam, Fahad${emailOf('mohan') ? ', Mohan' : ''} — for them this is today’s evening email.`

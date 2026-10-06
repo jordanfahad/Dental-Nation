@@ -17,7 +17,10 @@ test('Demand to desk renders empty and populated HTML without exposing patient f
   assert.equal(result.status, 0, result.stderr);
   const [empty, populated] = JSON.parse(result.stdout) as string[];
   assert.match(empty, /No synced activity/); assert.match(empty, /no target set/);
-  assert.match(populated, /Demand to desk/); assert.match(populated, /Product focus/);
+  assert.match(populated, /Demand to desk/); assert.match(populated, /What we learned and what we do next/);
+  assert.match(populated, /Three decisions for Mr Akbar/); assert.match(populated, /keywords<\/summary>/);
+  assert.match(populated, /Below Google&#x27;s reporting floor/);
+  assert.doesNotMatch(populated, /Product focus|Modelled screening rule|MVM|MTA|—/);
   assert.match(populated, /name="from"/); assert.match(populated, /value="2026-09-01"/);
   assert.doesNotMatch(populated, /PRIVATE_NAME|PRIVATE_PHONE|PRIVATE_CLINIC|DN-FIXTURE|NaN|Infinity/);
   assert.match(populated, /scope="col"/); assert.match(populated, /aria-labelledby="demand-title"/);

@@ -1,3 +1,4 @@
+import { selectAll } from '../supabase/selectAll';
 import 'server-only';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
 import { currentUser } from '@/lib/auth/role';
@@ -46,10 +47,10 @@ export async function loadTracker(): Promise<TrackerState> {
   const sb = getSupabaseAdmin();
   if (!sb) return empty;
 
-  const { data: rows, error } = await sb
+  const { data: rows, error } = await selectAll(() => sb
     .from('tasks')
     .select('id,external_id,status,raw,updated_at')
-    .eq('source', TRACKER_SOURCE);
+    .eq('source', TRACKER_SOURCE), "id");
   if (error || !rows) return empty;
 
   const byId: Record<string, string> = {};
@@ -98,7 +99,7 @@ export async function loadTracker(): Promise<TrackerState> {
 
 /** Script sign-off trail (reminder bookkeeping rows excluded). */
 export async function loadReviews(sb: NonNullable<ReturnType<typeof getSupabaseAdmin>>): Promise<ReviewEntry[]> {
-  const { data } = await sb.from('sc_script_reviews').select('dentist_id,reviewer,decision,note,hash,actor,at').neq('decision', 'reminder').order('at');
+  const { data } = await selectAll(() => sb.from('sc_script_reviews').select('dentist_id,reviewer,decision,note,hash,actor,at').neq('decision', 'reminder').order('at'), "id");
   return (data ?? []).map((r) => ({
     dentistId: r.dentist_id as string,
     reviewer: r.reviewer as ReviewEntry['reviewer'],
@@ -113,8 +114,8 @@ export async function loadReviews(sb: NonNullable<ReturnType<typeof getSupabaseA
 /** Gautam's pipeline and the follow-ups imported from his calendar. */
 export async function loadCorp(sb: NonNullable<ReturnType<typeof getSupabaseAdmin>>): Promise<CorpState> {
   const [{ data: cs }, { data: ev }] = await Promise.all([
-    sb.from('sc_companies').select('id,name,type,area,staff_band,source,stage,next_step,next_date,members,note,updated_at,updated_by').order('name'),
-    sb.from('sc_calendar_events').select('uid,starts_at,ends_at,title,location,company_id,kind,task_key,uploaded_at,uploaded_by').order('starts_at'),
+    selectAll(() => sb.from('sc_companies').select('id,name,type,area,staff_band,source,stage,next_step,next_date,members,note,updated_at,updated_by').order('name'), "id"),
+    selectAll(() => sb.from('sc_calendar_events').select('uid,starts_at,ends_at,title,location,company_id,kind,task_key,uploaded_at,uploaded_by').order('starts_at'), "id"),
   ]);
   const companies: Company[] = (cs ?? []).map((c) => ({
     id: c.id as string,

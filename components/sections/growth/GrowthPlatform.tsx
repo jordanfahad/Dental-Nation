@@ -1,3 +1,4 @@
+import { phonePathSentence } from '@/lib/growth/phonePath';
 import Link from 'next/link';
 import { PaidSearchRows } from './PaidSearchRows';
 import { PaidSocialRows } from './PaidSocialRows';
@@ -259,71 +260,17 @@ function ConfidenceCard({ report }: { report: GrowthReport }) {
  * honest maximum until a tracking number measures the clinic's own rates.
  */
 function PhonePathCard({ pp }: { pp: NonNullable<GrowthReport['phonePath']> }) {
-  const stat = (label: string, value: string, est = false) => (
-    <div className={`rounded-card border px-4 py-3 ${est ? 'border-dashed border-watch/60 bg-watch/5' : 'border-line bg-card'}`}>
-      <p className="text-[11px] uppercase tracking-wide text-ink-faint">
-        {label}
-        {est ? <span className="ml-1 font-semibold text-watch">MTA-MVM</span> : null}
-      </p>
-      <p className="mt-0.5 text-[20px] font-semibold tabular-nums text-ink">{value}</p>
-    </div>
-  );
-  return (
-    <Card>
-      <SectionHeader
-        tag="G4"
-        eyebrow="Google Ads — phone path · Markov-chain model"
-        title="Call-button taps, and what the model says they're worth"
-      />
-      <div className="px-5 pb-5 pt-3">
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          {stat('Call-button taps', int(pp.callTaps))}
-          {stat('Direction taps', int(pp.directionTaps))}
-          {stat('Patient calls', int(pp.estPatientCalls), true)}
-          {stat('Bookings from calls', int(pp.estBookingsReconciled), true)}
-        </div>
-
-        {/* The discount chain, stated so nobody mistakes the estimate for a count. */}
-        <p className="mt-3 rounded-card border border-dashed border-line px-3 py-2 text-[11.5px] leading-relaxed text-ink-soft">
-          <span className="font-medium text-ink">How the Markov-chain model works</span> — each measured tap walks a chain of transition probabilities: {int(pp.callTaps)} taps
-          → net of dead/accidental taps ≈ {int(pp.estValidTaps)} real attempts
-          → answered ≈ {int(pp.estAnswered)}
-          → net of suppliers/job seekers/sales calls ≈ {int(pp.estPatientCalls)} patient enquiries
-          → booked ≈ {int(pp.estBookings)}.{' '}
-          {pp.estBookings > pp.untracedPool ? (
-            <>Capped at <span className="font-medium text-ink">{int(pp.untracedPool)}</span> — the estimate may only claim
-            Dental Nation Al Wasl patients who arrived with no channel trace (the ads ran only there), and that pool
-            is {int(pp.untracedPool)} in this window.</>
-          ) : (
-            <>These {int(pp.estBookingsReconciled)} are claimed from the {int(pp.untracedPool)} untraced Dental Nation
-            Al Wasl patients (Direct / Walk-in + unattributed; the ads ran only there) — never from patients already
-            credited to another channel, and never from another clinic. The same pool feeds every view, so All-clinics
-            and DN-only always show the same ≈ figures.</>
-          )}
-        </p>
-
-        {pp.byCampaign.length > 0 ? (
-          <div className="mt-4">
-            <p className="mb-1.5 text-[11px] uppercase tracking-wide text-ink-faint">Call taps by campaign (measured)</p>
-            <ul className="space-y-1">
-              {pp.byCampaign.map((c) => (
-                <li key={c.campaign} className="flex items-baseline justify-between gap-3 text-[12.5px]">
-                  <span className="truncate text-ink-soft">{c.campaign}</span>
-                  <span className="font-medium tabular-nums text-ink">{int(c.callTaps)}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
-        <Takeaway>
-          Taps are measured by Google per campaign per day; direction taps likely convert to walk-ins the same way.
-          Dashed figures come from the <span className="font-medium">Markov-chain model</span> (benchmark transition probabilities from healthcare call-tracking studies) — Google cannot count real call
-          conversions in the UAE (no forwarding numbers; both call conversion actions read zero all-time). A
-          dedicated tracking number replaces these estimates with the clinic&apos;s own measured rates.
-        </Takeaway>
+  return <Card><SectionHeader tag="G4" eyebrow="Google Ads" title="Measured taps and modelled bookings" />
+    <div className="px-5 pb-5 pt-3">
+      <p className="text-sm text-ink">{phonePathSentence(pp)}</p>
+      <div className="mt-3 grid grid-cols-3 gap-3 text-sm">
+        <p>{int(pp.callTaps)} ad call-button taps</p>
+        <p>{pp.websiteInputsAvailable ? int(pp.websiteWhatsappTaps) : 'Unavailable'} website WhatsApp taps</p>
+        <p>{pp.websiteInputsAvailable ? int(pp.websitePhoneTaps) : 'Unavailable'} website phone taps</p>
       </div>
-    </Card>
-  );
+      <p className="mt-3 text-xs text-ink-soft">Phone taps use 75% valid × 75% answered × 80% patient × 35% booked. WhatsApp skips the answer step. Each input is rounded once, then capped to the eligible pool. Taps can include repeat people; bookings are estimates.</p>
+      {!pp.websiteInputsAvailable && <p className="mt-2 text-xs text-watch">Website source data is unavailable. This estimate includes ad call taps only.</p>}
+    </div></Card>;
 }
 
 /** Where "trace the leads" lives for each channel outside this view. */
@@ -395,11 +342,15 @@ function TraceTable({ patients }: { patients: Awaited<ReturnType<typeof getChann
 
 async function ChannelTraceView({ channelKey, range, clinic }: { channelKey: string; range?: { from?: string; to?: string }; clinic: GrowthClinicKey }) {
   const def = CHANNEL_BY_KEY.get(channelKey);
-  const trace = await getChannelTrace(channelKey, range ?? {}, clinic === 'amc' ? 'all' : clinic);
+  const [trace, performance] = await Promise.all([
+    getChannelTrace(channelKey, range ?? {}, clinic === 'amc' ? 'all' : clinic),
+    channelKey === 'paid-search' ? getChannelPerformance(range, clinic === 'amc' ? 'all' : clinic) : Promise.resolve(null),
+  ]);
   // Phone-path channels (Google Ads, Business Profile, website) reach the desk by call or WhatsApp with no
   // source on the booking, so their patients sit in the untraced desk pool; show that pool here.
   const pool = PHONE_PATH_CHANNELS.includes(channelKey)
-    ? await getChannelTrace('direct-walkin', range ?? {}, clinic === 'amc' ? 'all' : clinic)
+    ? await getChannelTrace('direct-walkin', range ?? {}, channelKey === 'paid-search' && clinic !== 'dr-tosun' ? 'dn-alwasl' : clinic === 'amc' ? 'all' : clinic,
+      channelKey === 'paid-search' ? { patientKeys: performance?.mvmSelection?.poolKeys ?? [], uniquePatients: true } : {})
     : null;
   const back = `?tab=group&gtab=growth${range?.from ? `&from=${range.from}` : ''}${range?.to ? `&to=${range.to}` : ''}${clinic !== 'all' ? `&gclinic=${clinic}` : ''}`;
   const cross = CROSS_LINKS[channelKey];
@@ -427,7 +378,7 @@ async function ChannelTraceView({ channelKey, range, clinic }: { channelKey: str
       />
       <div className="px-5 pb-5 pt-3">
         <p className="mb-3 text-[12px] text-ink-soft">
-          {pool ? (
+          {channelKey === 'paid-search' ? (performance?.phonePath ? phonePathSentence(performance.phonePath) : 'Modelled Google Ads bookings are unavailable for this window.') : pool ? (
             <>
               {pool.total} patients booked through the desk by phone or WhatsApp in this window
               {trace.total ? `, plus ${trace.total} traced directly to this channel` : ''}. Each row states the rule that placed it.
@@ -449,7 +400,8 @@ async function ChannelTraceView({ channelKey, range, clinic }: { channelKey: str
         ) : null}
         {channelKey === 'paid-search' ? (
           <p className="mb-3 rounded-card border border-dashed border-watch/60 bg-watch/5 px-3 py-2 text-[11.5px] leading-snug text-ink-soft">
-            This list shows only <span className="font-medium">hard-traced</span> patients. The estimated call bookings on
+            {performance?.phonePath && !performance.phonePath.websiteInputsAvailable ? 'Website source data is unavailable; the estimate currently includes ad call taps only. ' : ''}
+            The first list shows <span className="font-medium">hard-traced</span> patients. The modelled bookings on
             the P&L row are claimed from the orphan pool — real patients with no channel trace, listed under{' '}
             <Link href={`?tab=group&gtab=growth&gchan=direct-walkin${range?.from ? `&from=${range.from}` : ''}${range?.to ? `&to=${range.to}` : ''}`} className="font-medium text-accent hover:underline">
               Direct / Walk-in
@@ -467,7 +419,8 @@ async function ChannelTraceView({ channelKey, range, clinic }: { channelKey: str
         {pool ? (
           <div className={trace.patients.length ? 'mt-5' : ''}>
             <p className="mb-1 text-[13px] font-semibold text-ink">
-              Patients booked by phone or WhatsApp at the desk: {pool.total}
+              Untraced desk pool: {performance?.phonePath?.untracedPool ?? pool.total} patients (not channel bookings)
+              {pool.truncated ? ' · showing 300 rows' : ''}
             </p>
             <p className="mb-3 rounded-card border border-dashed border-accent/40 bg-accent/5 px-3 py-2 text-[11.5px] leading-snug text-ink-soft">
               {PHONE_PATH_NOTE[channelKey]} These patients reached the desk by phone or WhatsApp and booked, with no

@@ -1,3 +1,4 @@
+import { selectAll } from '../supabase/selectAll';
 import 'server-only';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
 import { parseArabySource } from '@/lib/arabyads/report';
@@ -54,6 +55,7 @@ export async function getChannelTrace(
   channelKey: string,
   range: { from?: string; to?: string } = {},
   clinic: 'all' | 'dn-alwasl' | 'dr-tosun' = 'all',
+  options: { patientKeys?: readonly string[]; uniquePatients?: boolean } = {},
 ): Promise<ChannelTraceResult> {
   const empty: ChannelTraceResult = { channelKey, total: 0, truncated: false, patients: [] };
   const db = getSupabaseAdmin();
@@ -63,13 +65,13 @@ export async function getChannelTrace(
 
   try {
     const [apptRes, zavisRes, leadRes, crmRes, existRes, practoPtRes, billRes] = await Promise.all([
-      db.from('practo_appointments_raw').select('appt_date, status, mr_no, doctor, patient_name, patient_phone, data'),
-      db.from('raw_zavis').select('data'),
-      db.from('leads').select('inquiry_date, raw_row'),
-      db.from('crm_appointments').select('patient_phone, source, is_test'),
-      db.from('existing_patients').select('phone9'),
-      db.from('practo_patients').select('phone'),
-      db.from('practo_bills_raw').select('bill_date, amount, data'),
+      selectAll(() => db.from('practo_appointments_raw').select('appt_date, status, mr_no, doctor, patient_name, patient_phone, data'), "appt_key"),
+      selectAll(() => db.from('raw_zavis').select('data'), "id"),
+      selectAll(() => db.from('leads').select('inquiry_date, raw_row'), "id"),
+      selectAll(() => db.from('crm_appointments').select('patient_phone, source, is_test'), "appointment_id"),
+      selectAll(() => db.from('existing_patients').select('phone9'), ["source","phone9"]),
+      selectAll(() => db.from('practo_patients').select('phone'), "phone"),
+      selectAll(() => db.from('practo_bills_raw').select('bill_date, amount, data'), "bill_key"),
     ]);
 
     // In-window billed revenue per patient file — so the trace can show what
@@ -181,9 +183,13 @@ export async function getChannelTrace(
         revenue: Math.round(revenueByMr.get(S(a.mr_no)) ?? 0),
       });
     }
-    out.sort((a, b) => String(b.date).localeCompare(String(a.date)));
+    const allowed = options.patientKeys ? new Set(options.patientKeys) : null;
+    const keyOf = (p: TracedPatient) => p.mrNo || `p:${phone9(p.phone)}`;
+    const matching = allowed ? out.filter((p) => allowed.has(keyOf(p))) : out;
+    matching.sort((a, b) => String(b.date).localeCompare(String(a.date)));
+    const rows = options.uniquePatients ? [...new Map(matching.map((p) => [keyOf(p), p])).values()] : matching;
     const MAX = 300;
-    return { channelKey, total: out.length, truncated: out.length > MAX, patients: out.slice(0, MAX) };
+    return { channelKey, total: rows.length, truncated: rows.length > MAX, patients: rows.slice(0, MAX) };
   } catch {
     return empty;
   }

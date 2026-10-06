@@ -1,3 +1,4 @@
+import { selectAll } from '../supabase/selectAll';
 import 'server-only';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
 
@@ -139,12 +140,12 @@ export async function getWidgetHealth(days = 7): Promise<WidgetHealthReport> {
   if (!db) return empty('missing');
 
   const since = new Date(Date.now() - days * 86400_000).toISOString();
-  const res = await db
+  const res = await selectAll(() => db
     .from('widget_health')
     .select('checked_at, ok, slots_found, stage, detail, conclusive, site_ok')
     .gte('checked_at', since)
     .order('checked_at', { ascending: false })
-    .order('id', { ascending: false }); // stable tiebreak; checked_at defaults to now()
+    .order('id', { ascending: false }), "id"); // stable tiebreak; checked_at defaults to now()
   if (res.error) return empty('missing');
 
   type Row = {

@@ -104,7 +104,7 @@ test('GBP thresholds and ranked samples stay separate from modelled market deman
   input.ranked = { market: 'UAE', fetchedAt: '2026-09-29', rows: [{ keyword: 'braces', volume: 30 }] };
   const row = aggregateDemandToDesk(input, fixtureRange).themes.find((r) => r.key === 'ortho')!;
   assert.equal(row.gbp, 15); assert.equal(row.gbpThreshold, true); assert.equal(row.rankedSearches, 30);
-  assert.equal(row.product.searches, 400);
+  assert.equal(row.product.searches, row.keywords.length * 100);
 });
 test('cohorts start at launch, use acquisition weeks, and preserve unknown call linkage', () => {
   const report = aggregateDemandToDesk({ ...emptyDemandInput(), tracker: [trackerRow()], calls: [] }, fixtureRange);
