@@ -110,6 +110,9 @@ P&L pathway block complete on all 24 capabilities, pending finance ticks.
 
 ## Open via the bus
 
+- DN-006 (6 Oct): tests and hardening for the Sheets sync fix (tab discovery,
+  quoted ranges, repeated headers, Excel fallback). Spec: TASKS/DN-006.md.
+
 - None. DN-005 closed 25 Sep: Turkish/Arabic reviewed and merged; English
   source softened (no whitening safety/result promise, no "see you today",
   cleaning "depending on the plan", check-up booked only if the patient wants).
