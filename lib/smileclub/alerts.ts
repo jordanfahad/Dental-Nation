@@ -104,7 +104,8 @@ const shell = (title: string, body: string) => `<div style="font-family:Arial,sa
 <h2 style="margin:4px 0 10px;font-size:18px">${esc(title)}</h2>${body}
 <p style="margin-top:16px"><a href="${LINK}" style="color:#5793A3;font-weight:bold">Open the Smile Club plan → Team task calendar</a></p>
 <p style="color:#767769;font-size:12px">${CAP_NOTE}</p></div>`;
-const table = (head: string[], rows: string[][]) => `<table style="border-collapse:collapse;width:100%;font-size:13px;margin:6px 0 12px"><tr>${head.map((h) => `<th style="text-align:left;background:#F1F1EA;color:#767769;font-size:11px;text-transform:uppercase;padding:6px">${h}</th>`).join('')}</tr>${rows.map((r) => `<tr>${r.map((c) => `<td style="border-top:1px solid #E6E6DA;padding:6px;vertical-align:top">${c}</td>`).join('')}</tr>`).join('')}</table>`;
+// <thead> repeats the header when a long table runs onto a new printed page; rows never split.
+const table = (head: string[], rows: string[][]) => `<table style="border-collapse:collapse;width:100%;font-size:13px;margin:6px 0 12px"><thead style="display:table-header-group"><tr>${head.map((h) => `<th style="text-align:left;background:#F1F1EA;color:#767769;font-size:11px;text-transform:uppercase;padding:6px">${h}</th>`).join('')}</tr></thead><tbody>${rows.map((r) => `<tr style="page-break-inside:avoid;break-inside:avoid">${r.map((c) => `<td style="border-top:1px solid #E6E6DA;padding:6px;vertical-align:top">${c}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
 const h3 = (t: string, color = '#244260') => `<h3 style="font-size:15px;margin:20px 0 6px;color:${color};border-bottom:1px solid #E6E6DA;padding-bottom:4px">${t}</h3>`;
 const h4 = (t: string, color = '#244260') => `<h4 style="font-size:13px;margin:10px 0 4px;color:${color}">${t}</h4>`;
 

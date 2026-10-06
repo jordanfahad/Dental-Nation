@@ -99,13 +99,48 @@ function launchHtml(today: string) {
  * Which phones the leads come from (GA4 by device, lane_e.ga4_device_daily,
  * read 5 Oct for 16 Sep to 4 Oct; Meta figures from the Zavis report).
  */
+/** Keep a block (caption + table) on one page when printed or saved as PDF. */
+const keepTogether = (html: string) => `<div style="page-break-inside:avoid;break-inside:avoid">${html}</div>`;
+
+/** Round parts so they add up to `total` (largest remainder), for modelled figures shown with a total. */
+function roundTo(parts: number[], total: number): number[] {
+  const base = parts.map(Math.floor);
+  let left = total - base.reduce((a, b) => a + b, 0);
+  const order = parts.map((p, i) => [p - Math.floor(p), i] as const).sort((a, b) => b[0] - a[0]);
+  for (const [, i] of order) { if (left <= 0) break; base[i]++; left--; }
+  return base;
+}
+
+/**
+ * WhatsApp and phone taps on the website by phone brand: GA4, 1 Sep to 5 Oct
+ * 2026, the same figures as GA4 › Tech details › Device model with the
+ * whatsapp_click key event (175 taps in total; iPhone 43).
+ */
+function appleTableHtml() {
+  const rows: [string, number, number, string][] = [
+    ['<b>Apple</b> (iPhone: 43 WhatsApp and 15 phone taps; Mac and iPad the rest)', 60, 19, '3 models'],
+    ['Xiaomi', 28, 14, '16 models'],
+    ['Samsung', 25, 6, '21 models'],
+    ['Google', 11, 3, '3 models'],
+    ['All other Android brands (OPPO, Honor, Motorola, Realme, Vivo and others)', 42, 15, '30+ models'],
+    ['Device not reported', 9, 6, ''],
+  ];
+  const head = ['Brand', 'WhatsApp taps', 'Share', 'Phone taps', 'Models'].map((h, i) => `<th style="text-align:${i ? 'right' : 'left'};background:#F1F1EA;color:#767769;font-size:10.5px;text-transform:uppercase;padding:5px">${h}</th>`).join('');
+  const td = (c: string, i: number) => `<td style="border-top:1px solid #E6E6DA;padding:5px;vertical-align:top;text-align:${i ? 'right' : 'left'}">${c}</td>`;
+  const body = [...rows.map(([b, wa, ph, m]) => [b, String(wa), `${Math.round((wa / 175) * 100)}%`, String(ph), m]), ['<b>Total</b>', '<b>175</b>', '<b>100%</b>', '<b>63</b>', '']]
+    .map((r, ri) => `<tr style="page-break-inside:avoid;break-inside:avoid${ri === 0 ? ';background:#EEF5F7' : ''}">${r.map(td).join('')}</tr>`).join('');
+  return keepTogether(`<p style="margin-top:10px"><b>WhatsApp and phone taps on our website by phone brand</b> (Google Analytics, 1 Sep to 5 Oct, Tech details › Device model):</p>
+<table style="border-collapse:collapse;width:100%;font-size:12.5px;margin:6px 0 6px"><thead style="display:table-header-group"><tr>${head}</tr></thead><tbody>${body}</tbody></table>
+<p style="color:#767769;font-size:12px">Apple is the single largest brand, with 34% of WhatsApp taps, more than Xiaomi (16 models) and Samsung (21 models) combined. The iPhone alone, with 43 taps, out-taps every Android brand.</p>`);
+}
+
 function devicesHtml() {
   return `<ul style="margin:4px 0 10px;padding-left:18px">
 <li style="margin-bottom:4px"><b>Meta ad leads are iPhone users, as targeted.</b> Meta’s delivery report: 82 of 83 chats (99%) came from iPhone 16 and 17, and all the spend went to iPhones. These ads open WhatsApp directly, so Meta’s report is the evidence for them rather than Google Analytics.</li>
-<li style="margin-bottom:4px"><b>Apple users lead where people find us themselves.</b> In Google Analytics for September, Apple devices are <b>46% of the people who find us on Google search</b> (2,643 of 5,720), and iPhone is the single largest device. iPhone users also make more WhatsApp and phone taps from Google search than Android users (35 against 30).</li>
+<li style="margin-bottom:4px"><b>Apple leads the website’s WhatsApp and phone taps</b> (table below), and Apple devices are 46% of the people who find us on Google search (2,643 of 5,720).</li>
 <li style="margin-bottom:4px"><b>Google’s Performance Max and Display ads reach mostly Android</b> (3,014 of 3,843 visitors from those ads), so we are moving that budget towards search, where Apple users are the largest group.</li>
 <li style="margin-bottom:4px"><b>“(not set)” is not Apple:</b> 96% of sessions with no source were Windows computers with no leads (automated traffic), and they are excluded from these figures.</li>
-</ul>`;
+</ul>${appleTableHtml()}`;
 }
 
 /**
@@ -140,7 +175,6 @@ function followUpHtml(co: ContentosLeads | null) {
  * and Dr Luvi's own extract. Counts only: no lead names or numbers in email.
  */
 function luviAnswersHtml(co: ContentosLeads | null) {
-  const td = 'style="text-align:right"';
   const meta: [string, number, number, number][] = [
     ['Tooth Gap', 2024, 117, 50],
     ['New Angles', 1244, 87, 45],
@@ -162,7 +196,9 @@ function luviAnswersHtml(co: ContentosLeads | null) {
   const metaRows = meta.map(([c, sp, ch, net]) => [esc(c), aed(sp), String(ch), String(net), aed(Math.round(sp / net)), '—', '—']);
   const metaTot = meta.reduce((a, r) => [a[0] + r[1], a[1] + r[2], a[2] + r[3]], [0, 0, 0]);
   const reply = co && co.replyHours !== null ? `${co.replyHours < 1 ? `${Math.round(co.replyHours * 60)} minutes` : `${co.replyHours} hours`} on average (ContentOS${co.asOf ? `, ${esc(co.asOf)}` : ''})` : 'not yet measured per lead; being pulled from Zavis for the 11:30 meeting';
-  const tbl = (head: string[], rows: string[][]) => `<table style="border-collapse:collapse;width:100%;font-size:12.5px;margin:6px 0 10px"><tr>${head.map((h, i) => `<th style="text-align:${i ? 'right' : 'left'};background:#F1F1EA;color:#767769;font-size:10.5px;text-transform:uppercase;padding:5px">${h}</th>`).join('')}</tr>${rows.map((r, ri) => `<tr${ri === rows.length - 1 && r[0].startsWith('<b>') ? ' style="background:#FAFAF5"' : ''}>${r.map((c, i) => `<td ${i ? td : ''} style="border-top:1px solid #E6E6DA;padding:5px;vertical-align:top;${i ? 'text-align:right' : ''}">${c}</td>`).join('')}</tr>`).join('')}</table>`;
+  // Figures right-aligned, words left-aligned: a column is numeric when every cell is a short figure.
+  const isFig = (c: string) => /^[\s≈~]*(AED\s*)?[\d.,]+%?\s*[*]?$|^—$/.test(c.replace(/<[^>]+>/g, '').trim());
+  const tbl = (head: string[], rows: string[][], caption = '') => { const num = head.map((_, i) => i > 0 && rows.every((r) => isFig(r[i] ?? '') || /^\s*$/.test(r[i] ?? ''))); return keepTogether(`${caption}<table style="border-collapse:collapse;width:100%;font-size:12.5px;margin:6px 0 10px"><thead style="display:table-header-group"><tr>${head.map((h, i) => `<th style="text-align:${num[i] ? 'right' : 'left'};background:#F1F1EA;color:#767769;font-size:10.5px;text-transform:uppercase;padding:5px">${h}</th>`).join('')}</tr></thead><tbody>${rows.map((r, ri) => `<tr style="page-break-inside:avoid;break-inside:avoid${ri === rows.length - 1 && r[0].startsWith('<b>') ? ';background:#FAFAF5' : ''}">${r.map((c, i) => `<td style="border-top:1px solid #E6E6DA;padding:5px;vertical-align:top;text-align:${num[i] ? 'right' : 'left'}">${c}</td>`).join('')}</tr>`).join('')}</tbody></table>`); };
   const q = (n: number, t: string) => `<h4 style="font-size:13.5px;margin:16px 0 4px;color:#244260">${n}. ${t}</h4>`;
   // Modelled bookings use the dashboard's phone-path benchmark (config/growth-channels.ts PHONE_PATH_BENCHMARKS):
   // phone tap × 0.75 real × 0.75 answered × 0.8 patient × 0.35 book; a WhatsApp tap skips the answer step.
@@ -183,6 +219,7 @@ function luviAnswersHtml(co: ContentosLeads | null) {
     ['Search (Calls & Bookings, Ortho, SOS, Wide Net, Brand, small)', 3040, '192', '5 WhatsApp · 2 phone · plus direct calls from the ads', est(5, 2)],
     ['Display remarketing: Stains & Gaps', 97, '268', '15 WhatsApp · 8 phone', est(15, 8)],
   ];
+  const gBook = roundTo(gRows.map((r) => r[4]), Math.round(est(78, 41)));
   return `<p>Dr Luvi, thank you for calling the leads yourself; it gives us evidence we did not have. You are right that a WhatsApp message is not a qualified lead, and right to ask for outcomes rather than volume. Below, every figure is marked as measured (from the platforms, GA4, Practo and the lead tracker) or modelled (an estimate, until the desk records the source of each new patient), so we can reconcile line by line.</p>
 <p style="color:#767769;font-size:12px">Your extract’s 268 unique contacts match exactly the 268 people Meta reports as starting a WhatsApp chat in September, so we are reconciling the same leads.</p>
 
@@ -192,11 +229,12 @@ ${tbl(['Lane', 'Spend', 'Reach', 'Patient actions (measured)', 'Bookings', 'Pati
     ...lanes.map((l) => [l[0], l[1], l[2], l[3], link(trace(l[5]), l[5] === 'paid-social' ? '1 booked' : `≈ ${Math.round(l[4])}`), `${esc(l[6])}<br>${link(trace(l[5]), 'Patients on the dashboard →')}${l[5] === 'paid-social' ? `<br>${link(CONTENTOS_LEADS_URL, 'Lead list in ContentOS →')}` : ''}`]),
     ['<b>Total</b>', `<b>${aed(5394 + metaTot[0])}</b>`, '', '', `<b>${link(trace(), `≈ ${Math.round(estTot)}`)}</b>`, `<b>188 new patients in Practo, +81% on July</b><br>${link(trace(), 'All September patients by channel →')}`],
   ])}
-<p><b>Google Ads by campaign type</b> (taps measured in GA4; bookings modelled):</p>
-${tbl(['Campaign', 'Spend', 'Clicks', 'Website taps', 'Bookings (modelled)', 'Cost per booking'], gRows.map(([c, sp, cl, taps, b]) => [esc(c), aed(sp), cl, taps, `≈ ${Math.max(1, Math.round(b))}`, b >= 2 ? aed(Math.round(sp / b)) : 'drives calls (counted from 8 Oct)']))}
-<p style="color:#767769;font-size:12px">Modelled bookings use the dashboard’s standard phone path: 75% of taps are real attempts, 75% are answered, 80% are patients and 35% of those book (a WhatsApp tap skips the answer step). Google Ads overall: about ${aed(Math.round(5394 / est(78, 41)))} per modelled booking.</p>
-<p><b>Meta WhatsApp ads by campaign</b> (measured):</p>
-${tbl(['Campaign', 'Spend', 'Chats started', 'Replied again (net)', 'Cost per net lead'], [...metaRows.map((r) => r.slice(0, 5)), [`<b>Total</b>`, `<b>${aed(metaTot[0])}</b>`, `<b>${metaTot[1]}</b>`, `<b>${metaTot[2]}</b>`, `<b>${aed(Math.round(metaTot[0] / metaTot[2]))}</b>`]])}
+${tbl(['Campaign', 'Spend', 'Clicks', 'Website taps', 'Bookings (modelled)', 'Cost per booking'], [
+    ...gRows.map(([c, sp, cl, taps], i) => [esc(c), aed(sp), cl, taps, `≈ ${gBook[i]}`, gBook[i] >= 2 ? aed(Math.round(sp / gBook[i])) : 'drives calls (counted from 8 Oct)']),
+    ['<b>Google Ads total</b>', `<b>${aed(5394)}</b>`, '<b>6,012</b>', '<b>78 WhatsApp · 41 phone</b>', `<b>≈ ${gBook.reduce((a, b) => a + b, 0)}</b>`, `<b>${aed(Math.round(5394 / gBook.reduce((a, b) => a + b, 0)))}</b>`],
+  ], '<p><b>Google Ads by campaign type</b> (taps measured in GA4; bookings modelled):</p>')}
+<p style="color:#767769;font-size:12px">Modelled bookings use the dashboard’s standard phone path: 75% of taps are real attempts, 75% are answered, 80% are patients and 35% of those book (a WhatsApp tap skips the answer step). Google Ads overall: about ${aed(Math.round(5394 / gBook.reduce((x, y) => x + y, 0)))} per modelled booking.</p>
+${tbl(['Campaign', 'Spend', 'Chats started', 'Replied again (net)', 'Cost per net lead'], [...metaRows.map((r) => r.slice(0, 5)), [`<b>Total</b>`, `<b>${aed(metaTot[0])}</b>`, `<b>${metaTot[1]}</b>`, `<b>${metaTot[2]}</b>`, `<b>${aed(Math.round(metaTot[0] / metaTot[2]))}</b>`]], '<p><b>Meta WhatsApp ads by campaign</b> (measured):</p>')}
 <p>Meta’s September campaign was the test month for WhatsApp ads: 268 conversations and one booking in the tracker. It showed us the targeting and follow-up changes in questions 3 and 6, which start this week.</p>
 <p><b>Next step, from modelled to verified:</b> 185 of September’s 188 new patients were booked by the desk from a call or WhatsApp, which is exactly the route Google Ads and the Business Profile drive, but Practo has no field yet for where the patient found us. From Wed 7 Oct the desk records the source of every new patient and qualifies each lead on your four criteria, so October’s report shows each lane’s patients by name in Practo rather than modelled.</p>
 
@@ -219,7 +257,7 @@ ${q(2, 'How was lead quality assessed during the month?')}
 
 ${q(3, 'Why are we attracting enquiries that cannot progress?')}
 <ul style="margin:4px 0 8px;padding-left:18px">
-<li><b>Who the leads are (evidence):</b> Meta’s delivery report shows <b>82 of 83 chats (99%) came from iPhone 16 and 17</b>, phones costing AED 3,400 and up, and all of the spend went to iPhones. In Google Analytics for September, <b>Apple devices are 46% of the people who find us on Google search</b> (2,643 of 5,720), and iPhone is the single largest device. iPhone users also make more WhatsApp and phone taps from Google search than Android users (35 against 30). Our audience is premium by device and by area.</li>
+<li><b>Who the leads are (evidence):</b> Meta’s delivery report shows <b>82 of 83 chats (99%) came from iPhone 16 and 17</b>, phones costing AED 3,400 and up, and all of the spend went to iPhones. On the website, <b>Apple is the leading brand</b> for WhatsApp and phone taps (table below), and Apple devices are 46% of the people who find us on Google search (2,643 of 5,720). Our audience is premium by device and by area.</li>
 <li><b>How many enquiries cannot progress:</b> of the 212 September Meta contacts logged in the lead tracker, 144 (68%) are still to be reached or have not replied. Stated barriers are a minority: language 22 (10%), price 11 (5%), not interested 8 (4%). So about 1 in 5 has a barrier; the larger opportunity is reaching the other two thirds quickly.</li>
 <li><b>Geography:</b> Meta counts anyone who lives in <i>or is regularly in</i> a mapped area, and no longer offers residents only. A minority of contacts work in, rather than live near, the mapped business districts, so we are removing Business Bay, Downtown, the DIFC edge, Dubai Marina and Meydan and keeping the residential map around the branches.</li>
 <li><b>Language:</b> Meta’s language setting reads the phone’s language, and English is the default on most phones, so it does not screen for the language a lead speaks. The assistant’s first reply will confirm English or Arabic.</li>
@@ -228,6 +266,7 @@ ${q(3, 'Why are we attracting enquiries that cannot progress?')}
 <li><b>Pricing:</b> 3.4% stated a budget objection in your extract, and more leads were waiting for a price from the clinic than stopped over cost, so cost is discovered late. Ads will show “from” prices so people with a different budget self-select out.</li>
 <li><b>Free consultation requests:</b> please confirm how many free consultations have been offered to these leads; we will check every ad and assistant message for any mention of a free consultation.</li>
 </ul>
+${appleTableHtml()}
 <p style="color:#767769;font-size:12px">Targeting is by area, device and message only; never by nationality or occupation.</p>
 
 ${q(4, 'Which campaigns should continue, change or stop?')}
@@ -236,7 +275,7 @@ ${tbl(['Campaign', 'Decision', 'Reason (spend and outcome)'], [
     ['Meta: New Angles', '<b>Change</b>', 'AED 28 per net lead, the lowest; same changes as Tooth Gap.'],
     ['Meta: DN Ortho', '<b>Stop</b>', 'AED 1,106 for 4 net leads (AED 277 each); Tooth Gap reaches the same need far cheaper.'],
     ['Meta: Coffee Stains, Smoking Stains', '<b>Pause</b>', 'Low first-visit value (about AED 799): about 1 in 20 chats must become a patient to pay back, and none is recorded. Restart once follow-up is fixed.'],
-    ['Google: Performance Max', '<b>Continue, refine</b>', 'Our strongest paid lane: 58 WhatsApp and 31 phone taps on the website for AED 2,257, about 17 modelled bookings (AED 132 each). Most taps come from Android phones, so exclude low-quality app placements and keep it.'],
+    ['Google: Performance Max', '<b>Continue, refine</b>', 'Our strongest paid lane: 58 WhatsApp and 31 phone taps on the website for AED 2,257, about 17 modelled bookings (AED 133 each). Most taps come from Android phones, so exclude low-quality app placements and keep it.'],
     ['Google: Search (Calls & Bookings, Ortho, SOS)', '<b>Continue, fix tracking</b>', 'People searching for a dentist are the right audience and feed the Business Profile calls, but calls from ads are not counted. Call tracking first; judge after two weeks.'],
     ['Google: Display remarketing', '<b>Continue</b>', 'AED 97; shown only to people who already visited the site.'],
   ])}
