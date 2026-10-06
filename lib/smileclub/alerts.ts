@@ -10,7 +10,7 @@ import { video2 } from '@/lib/smileclub/creative';
 import type { CorpState } from '@/lib/smileclub/corporate';
 import { buildMetaLeadsDigest, metaSectionHtml, type MetaLeadsDigest } from '@/lib/ops/metaLeadsDigest';
 import { CONTENTOS_LEADS, contentosFlags, contentosStatsHtml, fetchContentos, type ContentosLeads } from '@/lib/ops/contentosLeads';
-import { loadBriefingFile, loadReleased, notesFor, shootNotesFor, type Released } from '@/lib/smileclub/briefingNotes';
+import { REVIEW_TARGET, loadBriefingFile, loadReleased, notesFor, shootNotesFor, updatesFor, type Released } from '@/lib/smileclub/briefingNotes';
 import { OWNER_LABEL, TEAM_TASKS, TOTAL_WEIGHT, TRACKER_SOURCE, type Person, type TeamTask } from '@/lib/smileclub/team';
 
 /**
@@ -78,6 +78,8 @@ const isReviewer = (w: Who): w is ReviewerId => w === 'shadi' || w === 'luvi' ||
 
 /** Who gets the Meta leads section (Dr Luvi acts; the others are aware). */
 const META_READERS: Who[] = ['luvi', 'akbar', 'shadi', 'fahad'];
+/** Who sees the Google reviews tracker (target 100) and dated updates. */
+const REVIEW_READERS: Who[] = ['akbar', 'luvi', 'gautam', 'shadi', 'fahad'];
 const MORNING: Who[] = ['akbar', 'luvi', 'shadi', 'gautam', 'mohan', 'fahad'];
 const EVENING: Who[] = ['fahad', 'luvi', 'shadi', 'gautam', 'mohan'];
 const SHOOT_CC: Who[] = ['luvi', 'akbar', 'shadi', 'gautam', 'fahad', 'mohan'];
@@ -188,25 +190,36 @@ interface Ctx {
   corp: CorpState | null;
   /** Dated notes Fahad has released (briefingNotes gates). */
   released: Released;
+  /** Google reviews on the Dental Nation profile (live, lane_e.gmb_reviews). */
+  gReviews: { total: number; last7: number; avg: number | null } | null;
 }
 
 async function loadCtx(sb: Sb, today: string, since: string, withMeta: boolean): Promise<Ctx> {
   const p = await loadProgress(sb);
   const byId: Record<string, TeamTask> = {};
   for (const t of TEAM_TASKS) if (p[t.key]) byId[p[t.key].id] = t;
-  const [reviews, ev, meta, contentos, corp, released] = await Promise.all([
+  const [reviews, ev, meta, contentos, corp, released, gr] = await Promise.all([
     loadReviews(sb),
     sb.from('task_events').select('task_id,actor,status,note,at,from_stage,to_stage').gte('at', since).order('at'),
     withMeta ? buildMetaLeadsDigest(sb, today).catch(() => null) : Promise.resolve(null),
     withMeta ? fetchContentos() : Promise.resolve(null),
     loadCorp(sb).catch(() => null),
     loadReleased(sb).catch(() => ({})),
+    sb.from('gmb_reviews').select('rating,create_time,removed_at').limit(5000),
   ]);
+  const live = ((gr.data ?? []) as { rating: number | null; create_time: string; removed_at: string | null }[]).filter((r) => !r.removed_at);
+  const weekAgo = Date.now() - 7 * 86_400_000;
+  const rated = live.filter((r) => r.rating != null);
+  const gReviews = gr.error ? null : {
+    total: live.length,
+    last7: live.filter((r) => Date.parse(r.create_time) >= weekAgo).length,
+    avg: rated.length ? rated.reduce((a, r) => a + (r.rating as number), 0) / rated.length : null,
+  };
   const events = (ev.data ?? []).filter((e) => byId[e.task_id as string]).map((e) => ({
     task: byId[e.task_id as string], actor: (e.actor as string) ?? '', status: (e.status as string) ?? '', note: (e.note as string | null) ?? null,
     at: e.at as string, from: (e.from_stage as number | null) ?? null, to: (e.to_stage as number | null) ?? null,
   }));
-  return { today, since, p, reviews, events, meta, contentos, corp, released };
+  return { today, since, p, reviews, events, meta, contentos, corp, released, gReviews };
 }
 
 const isDone = (t: TeamTask, p: Prog) => (p[t.key]?.stage ?? 0) >= t.steps.length || p[t.key]?.status === 'done';
@@ -445,6 +458,21 @@ export function buildBriefing(ctx: Ctx, who: Who): { subject: string; html: stri
       : '<p style="color:#767769;font-size:12px">ContentOS could not be read this morning — the flags below come from the Meta ad data and the In-House Lead Tracker.</p>';
     parts.push(h3(`Leads, revenue and Meta ads: ${n ? plural(n, 'red flag') : 'no red flags'}`, n ? RED : '#244260') + metaSectionHtml(m, intro, flags, coHtml));
     if (n) bits.push(plural(n, 'lead red flag'));
+  }
+  // Google reviews against the target, and any dated one-line updates.
+  if (REVIEW_READERS.includes(who) && (ctx.gReviews || updatesFor(ctx.today, who).length)) {
+    const g = ctx.gReviews;
+    const lines: string[] = [];
+    if (g) {
+      const left = Math.max(0, REVIEW_TARGET - g.total);
+      const eta = left && g.last7 ? addDays(ctx.today, Math.ceil((left / g.last7) * 7)) : null;
+      lines.push(left
+        ? `<b>Google reviews: ${g.total} of ${REVIEW_TARGET}</b>${g.avg ? ` (${g.avg.toFixed(1)}★)` : ''}. <b style="color:#a04a38">${left} to go</b> to the target. ${g.last7} new in the last 7 days${eta ? `; at this pace we reach ${REVIEW_TARGET} by about ${esc(fmtDay(eta))}` : ''}. Ask every patient after their visit (front desk, WhatsApp link).`
+        : `<b style="color:#2C5E3F">Google reviews: ${g.total}, target of ${REVIEW_TARGET} reached</b>${g.avg ? ` (${g.avg.toFixed(1)}★)` : ''}. ${g.last7} new in the last 7 days.`);
+      bits.push(`reviews ${g.total}/${REVIEW_TARGET}`);
+    }
+    for (const u of updatesFor(ctx.today, who)) lines.push(u.html);
+    parts.push(h3('Reviews and updates') + `<ul style="margin:4px 0 10px;padding-left:18px">${lines.map((l) => `<li style="margin-bottom:4px">${l}</li>`).join('')}</ul>`);
   }
   if (isReviewer(who)) {
     const list = approvalsWaiting(ctx, who);

@@ -304,6 +304,15 @@ ${tbl(['Action', 'Owner', 'By', 'Target'], [
 <p>Fahad</p>`;
 }
 
+/** Google review target (Fahad, 6 Oct): total public reviews on Dental Nation's Google profile. */
+export const REVIEW_TARGET = 100;
+
+/** One-line dated updates, shown under "Reviews and updates" in the 09:00 briefing. */
+export const UPDATES: { day: string; to: string[]; html: string }[] = [
+  { day: '2026-10-06', to: ['akbar', 'luvi', 'gautam', 'shadi', 'fahad'], html: '<b>Dr Tosun’s convention pictures</b> were uploaded yesterday (Mon 5 Oct).' },
+];
+export const updatesFor = (today: string, who: string) => UPDATES.filter((u) => u.day === today && u.to.includes(who));
+
 export const BRIEFING_NOTES: BriefingNote[] = [
   {
     day: '2026-10-05',
