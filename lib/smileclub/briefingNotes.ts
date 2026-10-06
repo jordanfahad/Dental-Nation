@@ -310,6 +310,11 @@ export const REVIEW_TARGET = 100;
 /** One-line dated updates, shown under "Reviews and updates" in the 09:00 briefing. */
 export const UPDATES: { day: string; to: string[]; html: string }[] = [
   { day: '2026-10-06', to: ['akbar', 'luvi', 'gautam', 'shadi', 'fahad'], html: '<b>Dr Tosun’s convention pictures</b> were uploaded yesterday (Mon 5 Oct).' },
+  // For Mr Akbar (Fahad copied), 6 Oct.
+  { day: '2026-10-06', to: ['akbar', 'fahad'], html: '<b>ITP meeting:</b> today’s meeting is postponed because of structural changes at ITP; it will probably happen early next week.' },
+  { day: '2026-10-06', to: ['akbar', 'fahad'], html: '<b>ArabyAds:</b> Fahad is arranging a face-to-face meeting this week on overall performance and restarting the campaign.' },
+  { day: '2026-10-06', to: ['akbar', 'fahad'], html: '<b>Butter Media (Hussein):</b> he shared the direction paper; it had some issues, so Fahad has asked him to correct them before it is presented to you.' },
+  { day: '2026-10-06', to: ['akbar', 'fahad'], html: '<b>Faisal:</b> Fahad will nudge him to share the deck this week.' },
 ];
 export const updatesFor = (today: string, who: string) => UPDATES.filter((u) => u.day === today && u.to.includes(who));
 
