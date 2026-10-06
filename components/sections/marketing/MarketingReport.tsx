@@ -21,6 +21,7 @@ import {
 import { FunnelViz, type FunnelStageViz } from '@/components/charts/FunnelViz';
 import { ownerFor } from '@/config/data-gap-owners';
 import { dubaiDateLabel } from '@/lib/dates';
+import { DemandToDesk } from './DemandToDesk';
 
 const aed = (n: number) => `AED ${Math.round(n).toLocaleString('en-US')}`;
 const int = (n: number) => Math.round(n).toLocaleString('en-US');
@@ -97,6 +98,8 @@ export async function MarketingReport({ sub, range, mscope, mgrp, mchan, mcamp, 
         <GoogleAdsPerformance range={range} gcamp={gcamp} />
       ) : active === 'meta' ? (
         <MetaAdsPerformance range={range} mcamp={mcamp} />
+      ) : active === 'demand' ? (
+        <DemandToDesk range={range} />
       ) : active === 'recon' ? (
         <MarketingOverview />
       ) : range ? (

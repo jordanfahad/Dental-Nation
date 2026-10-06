@@ -160,7 +160,7 @@ export async function syncMeta(supabase: AdminClient, opts: MetaSyncOpts = {}): 
   }
 }
 
-const AD_FIELDS = 'ad_id,ad_name,adset_name,campaign_id,campaign_name,spend,impressions,clicks,actions,date_start,date_stop';
+const AD_FIELDS = 'ad_id,ad_name,adset_id,adset_name,campaign_id,campaign_name,spend,impressions,reach,frequency,clicks,actions,date_start,date_stop';
 
 interface MetaAdRow extends MetaRow {
   ad_id?: string;

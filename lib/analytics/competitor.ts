@@ -1,6 +1,7 @@
 import 'server-only';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
 import { COMPETITORS, OWN, type CompetitorDef, type Market } from '@/config/competitors';
+import { DENTAL_MARKET_DOMAIN, refreshMarketCache } from './demandMarket';
 
 /**
  * Competitor analysis snapshots (Digital & SEO › Competitor analysis).
@@ -28,7 +29,7 @@ const WEEK_MS = 7 * 86400_000;
 const RETRY_MS = 6 * 3600_000;
 
 /** True when the snapshot holds real figures (at least one market answered). */
-export const hasData = (s: CompetitorSnapshot | null | undefined): s is CompetitorSnapshot => !!s && s.markets.some((m) => m.organicVisits !== null);
+export const hasData = (s: CompetitorSnapshot | null | undefined): s is CompetitorSnapshot => !!s && Array.isArray(s.markets) && s.markets.some((m) => m.organicVisits !== null);
 
 export interface MarketRow {
   market: string;
@@ -334,10 +335,33 @@ export async function getCompetitorSnapshots(): Promise<Map<string, CompetitorSn
   const db = getSupabaseAdmin();
   const out = new Map<string, CompetitorSnapshot>();
   if (!db) return out;
-  const { data } = await db.from('competitor_snapshots').select('domain, data, fetched_at').order('fetched_at', { ascending: false }).limit(50);
+  const { data } = await db.from('competitor_snapshots').select('domain, data, fetched_at').in('domain', [OWN, ...COMPETITORS].map((c) => c.domain)).order('fetched_at', { ascending: false }).limit(50);
   const rows = (data ?? []) as { domain: string; data: CompetitorSnapshot }[];
   // Latest snapshot with real figures; otherwise the latest attempt (so the page can say why it is empty).
   for (const r of rows) if (!out.has(r.domain) && hasData(r.data)) out.set(r.domain, { ...r.data, peers: r.data.peers ?? [], metaAds: r.data.metaAds ?? null });
   for (const r of rows) if (!out.has(r.domain)) out.set(r.domain, r.data);
   return out;
+}
+
+/** Sync-only cache fill. The Demand to desk page never calls the paid API. */
+export async function refreshDentalMarketSnapshot(): Promise<{ refreshed: boolean; note?: string }> {
+  const db = getSupabaseAdmin();
+  if (!db) return { refreshed: false, note: 'no database' };
+  let auth: string | null = null;
+  return refreshMarketCache({
+    latest: async () => {
+      const { data, error } = await db.from('competitor_snapshots').select('data').eq('domain', DENTAL_MARKET_DOMAIN).order('fetched_at', { ascending: false }).order('id', { ascending: false }).limit(1).maybeSingle();
+      if (error) throw new Error('UAE demand cache read failed');
+      return data?.data ?? null;
+    },
+    fetchKeywords: async (language, keywords) => {
+      auth ??= await readCreds();
+      if (!auth) return { result: null, error: 'DataForSEO not configured' };
+      return post(auth, `${LABS}/keyword_overview/live`, { location_code: 2784, language_code: language, keywords });
+    },
+    save: async (snapshot) => {
+      const { error } = await db.from('competitor_snapshots').insert({ domain: DENTAL_MARKET_DOMAIN, fetched_at: snapshot.fetchedAt, data: snapshot });
+      if (error) throw new Error('UAE demand cache write failed');
+    },
+  });
 }

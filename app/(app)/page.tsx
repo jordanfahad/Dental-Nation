@@ -1,5 +1,6 @@
 import { Suspense } from 'react';
 import { getRangeReport } from '@/lib/report';
+import { lastFullMonth } from '@/lib/analytics/demandToDesk';
 import { TABS, effectiveVisibleTabs, resolveTabInSet } from '@/components/tabs';
 import { currentUser } from '@/lib/auth/role';
 import { resolveClinic } from '@/config/clinics';
@@ -78,13 +79,14 @@ export default async function DashboardPage({
   }>;
 }) {
   const sp = await searchParams;
+  const defaultDemandRange = sp.tab === 'marketing' && sp.mtab === 'demand' && !sp.from && !sp.to && !sp.preset ? lastFullMonth() : undefined;
   // Lightweight SHELL read: range control + sync footer only. It skips the live
   // GA4 fetch (the shell never shows GA4) so the header, tab bar and footer paint
   // fast on every tab click. The active tab's own (heavier) data streams in below
   // behind a <Suspense> boundary, so navigation is never blocked on it.
   const shell = await getRangeReport({
-    from: sp.from,
-    to: sp.to,
+    from: sp.from ?? defaultDemandRange?.from,
+    to: sp.to ?? defaultDemandRange?.to,
     preset: sp.preset,
     compare: sp.compare,
     skipGa4: true,
