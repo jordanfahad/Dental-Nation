@@ -1,3 +1,4 @@
+import { selectAll } from '../supabase/selectAll';
 import 'server-only';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
 
@@ -170,15 +171,15 @@ export async function getAppointmentAnalytics(range: { from?: string; to?: strin
   let bills: { data: BillData }[] = [];
   try {
     const [pa, za, b] = await Promise.all([
-      db
+      selectAll(() => db
         .from('practo_appointments_raw')
         .select('status, appt_time, duration_minutes, mr_no, patient_phone, patient_name, doctor, department')
         .gte('appt_date', from)
-        .lte('appt_date', to),
-      db
+        .lte('appt_date', to), "appt_key"),
+      selectAll(() => db
         .from('crm_appointments')
-        .select('status, timeslot, duration_minutes, patient_id, professional_name, professional_department, is_test'),
-      db.from('practo_bills_raw').select('data'),
+        .select('status, timeslot, duration_minutes, patient_id, professional_name, professional_department, is_test'), "appointment_id"),
+      selectAll(() => db.from('practo_bills_raw').select('data'), "bill_key"),
     ]);
     practoRows = (pa.data as Record<string, unknown>[] | null) ?? [];
     zavisRows = (za.data as Record<string, unknown>[] | null) ?? [];

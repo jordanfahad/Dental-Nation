@@ -1,3 +1,4 @@
+import { selectAll } from '../supabase/selectAll';
 import 'server-only';
 import { unstable_cache } from 'next/cache';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
@@ -154,10 +155,10 @@ export const getCeoIntel = unstable_cache(
 
     // Demand — the deduplicated all-channel enquiry union.
     try {
-      const { data } = await db
+      const { data } = await selectAll(() => db
         .from('board_deck_daily')
         .select('day, enquiries_total')
-        .gte('day', '2026-01-01');
+        .gte('day', '2026-01-01'), "day");
       const rows = data ?? [];
       const cutoff = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString().slice(0, 10);
       out.enquiries = {
@@ -170,10 +171,10 @@ export const getCeoIntel = unstable_cache(
 
     // Paid media — live ad-account APIs (media only; agency spend is Finance's).
     try {
-      const { data } = await db
+      const { data } = await selectAll(() => db
         .from('board_daily_kpis')
         .select('spend_meta, spend_google')
-        .gte('day', '2026-01-01');
+        .gte('day', '2026-01-01'), "day");
       const rows = data ?? [];
       const meta = rows.reduce((s, r) => s + num(r.spend_meta), 0);
       const google = rows.reduce((s, r) => s + num(r.spend_google), 0);

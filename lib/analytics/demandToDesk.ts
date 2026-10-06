@@ -129,11 +129,12 @@ function dedupe(rows: Row[], field: string): Row[] {
 }
 
 export interface MarketKeyword { keyword: string; language: 'en' | 'ar'; searches: Count; cpcUsd: Count; competition: Count }
-export interface MarketSnapshot { version: 1; fetchedAt: string; location: 2784; keywords: MarketKeyword[]; errors: string[] }
+export interface MarketSnapshot { version: 1 | 2; fetchedAt: string; location: 2784; keywords: MarketKeyword[]; errors: string[]; requestCount?: number; costUsd?: number }
 export interface DemandInput {
   ads: Row[] | null; tracker: Row[] | null; canonical: Row[] | null; appointments: Row[] | null;
   calls: Row[] | null; gmb: Row[] | null; market: MarketSnapshot | null;
   ranked: { market: string; rows: { keyword: string; volume: Count }[]; fetchedAt: string } | null;
+  creatives?: Row[] | null; creativeMetrics?: Row[] | null;
   gaps?: string[];
 }
 export interface Product { searches: Count; cpcUsd: Count; competition: Count; valueAed: Count; costInterested: Count; interestedRate: Count; bookingRate: Count; breakEven: Count; recommendation: 'Focus' | 'Test' | 'Hold'; reason: string }
@@ -176,7 +177,12 @@ function clinicTotals(rows: Row[] | null, theme?: string): ClinicTotals {
   return { booked: files.size, attended: values.filter((r) => r.attended).length, cancelled: values.filter((r) => r.cancelled && !r.attended).length, noShow: values.filter((r) => r.noShow && !r.attended).length };
 }
 
+export interface CreativePreview {
+  platform: string; adId: string; name: string; thumbnailUrl: string | null; body: string; title: string; cta: string;
+  spend: Count; chats: Count; costChat: Count;
+}
 export interface ThemeReport {
+  keywords: MarketKeyword[]; creatives: CreativePreview[];
   key: string; label: string; meta: MetaTotals; desk: DeskTotals; clinic: ClinicTotals;
   gbp: Count; gbpThreshold: boolean; rankedSearches: Count; marketShare: Count; spendShare: Count;
   stages: Stage[]; steps: Step[]; leak: Leak | null; product: Product;
@@ -194,7 +200,13 @@ export interface DemandReport {
 export function aggregateDemandToDesk(input: DemandInput, range: DemandRange): DemandReport {
   const gaps = [...(input.gaps ?? [])];
   const ads = input.ads ? dedupe(input.ads, 'key').filter((r) => isoDate(r.date)) : null;
-  const adThemes = new Map(ads?.map((row) => [row, adTheme(row)]) ?? []);
+  const creatives = input.creatives ?? [];
+  const metaCopy = new Map(creatives.filter((r) => r.platform === 'meta').map((r) => [text(r.ad_id), r]));
+  const classifyAd = (row: Row) => {
+    const copy = metaCopy.get(text(row.ad_id));
+    return copy ? classifyTheme(copy.ad_name, copy.body, copy.title) : adTheme(row);
+  };
+  const adThemes = new Map(ads?.map((row) => [row, classifyAd(row)]) ?? []);
   const themeOfAd = (row: Row) => adThemes.get(row) ?? 'other';
   const facts = input.tracker?.map(trackerFact).filter((r): r is TrackerFact => !!r && r.meta) ?? null;
   if (facts?.some((r) => !r.scoped)) gaps.push('Tracker tab provenance is missing for older rows; those rows are scoped to Meta by channel until the next sync.');
@@ -212,7 +224,7 @@ export function aggregateDemandToDesk(input: DemandInput, range: DemandRange): D
   const keywords = input.market?.keywords ?? [];
   const usableMarket = input.market != null && input.market.errors.length === 0;
   const byTheme = new Map(DEMAND_THEMES.map((theme) => [theme.key, keywords.filter((k) => classifyTheme(k.keyword) === theme.key)]));
-  const totalSearches = usableMarket ? sum(keywords.map((k) => k.searches)) : null;
+  const totalSearches = usableMarket ? sum(keywords.map((k) => k.searches ?? 0)) : null;
   const totalSpend = metaMetrics(windowAds).spend;
   const canonicalCount = input.canonical?.filter((r) => inWindow(isoDate(r.inquiry_date), range) && /meta|facebook|instagram/i.test(text(r.channel_source))).length ?? null;
   const themes: ThemeReport[] = DEMAND_THEMES.map((theme: DemandTheme) => {
@@ -220,9 +232,9 @@ export function aggregateDemandToDesk(input: DemandInput, range: DemandRange): D
     const desk = deskTotals(tracker?.filter((r) => r.theme === theme.key) ?? null);
     const clinic = clinicTotals(appts, theme.key);
     const marketRows = byTheme.get(theme.key)!;
-    const searches = usableMarket && marketRows.length ? sum(marketRows.map((k) => k.searches)) : null;
-    const competition = mean(marketRows.map((k) => k.competition));
-    const cpcUsd = mean(marketRows.map((k) => k.cpcUsd));
+    const searches = usableMarket && marketRows.length ? sum(marketRows.map((k) => k.searches ?? 0)) : null;
+    const competition = mean(marketRows.map((k) => k.competition).filter((n) => n != null));
+    const cpcUsd = mean(marketRows.map((k) => k.cpcUsd).filter((n) => n != null));
     const breakEven = theme.firstTreatmentValueAed != null && theme.contributionMargin != null && desk.converted != null && desk.interested
       ? theme.firstTreatmentValueAed * theme.contributionMargin * desk.converted / desk.interested : null;
     const costInterested = ratio(meta.spend, desk.interested);
@@ -231,7 +243,8 @@ export function aggregateDemandToDesk(input: DemandInput, range: DemandRange): D
       interestedRate: ratio(desk.interested, meta.chats), bookingRate: ratio(desk.booked, desk.interested), breakEven,
       ...recommendProduct({ searches, competition, costInterested, breakEven, value: theme.firstTreatmentValueAed, interested: desk.interested }),
     };
-    const gbp = input.gmb?.filter((r) => text(r.month) >= range.from.slice(0, 7) && text(r.month) <= range.to.slice(0, 7) && classifyTheme(r.keyword) === theme.key) ?? null;
+    const terms = new Set(marketRows.map((k) => normalized(k.keyword)));
+    const gbp = input.gmb?.filter((r) => text(r.month) >= range.from.slice(0, 7) && text(r.month) <= range.to.slice(0, 7) && (terms.has(normalized(r.keyword)) || classifyTheme(r.keyword) === theme.key)) ?? null;
     const ranked = input.ranked?.rows.filter((r) => classifyTheme(r.keyword) === theme.key);
     const stages: Stage[] = [
       { key: 'chats', label: 'Chats', count: meta.chats, population: 'meta-ad-day' },
@@ -242,7 +255,16 @@ export function aggregateDemandToDesk(input: DemandInput, range: DemandRange): D
       { key: 'clinicBooked', label: 'Clinic booked', count: clinic.booked, population: 'clinic-files' },
       { key: 'attended', label: 'Clinic attended', count: clinic.attended, population: 'clinic-files' },
     ];
-    return { key: theme.key, label: theme.label, meta, desk, clinic, product, stages, steps: stageSteps(stages), leak: largestLeak(stages), marketShare: ratio(searches, totalSearches), spendShare: ratio(meta.spend, totalSpend), gbp: gbp ? sum(gbp.map((r) => numeric(r.impressions))) : null, gbpThreshold: gbp?.some((r) => r.is_threshold === true) ?? false, rankedSearches: ranked?.length ? sum(ranked.map((r) => r.volume)) : null };
+    const previews: CreativePreview[] = creatives.filter((c) => classifyTheme(c.ad_name, c.body, c.title) === theme.key).map((c) => {
+      const metrics = c.platform === 'meta'
+        ? metaMetrics(windowAds?.filter((r) => text(r.ad_id) === text(c.ad_id)) ?? null)
+        : null;
+      const daily = input.creativeMetrics?.filter((r) => r.platform === c.platform && r.ad_id === c.ad_id && inWindow(isoDate(r.day), range));
+      const spend = metrics ? metrics.spend : daily ? sum(daily.map((r) => numeric(r.spend))) : null;
+      return { platform: text(c.platform), adId: text(c.ad_id), name: text(c.ad_name), thumbnailUrl: /^https:\/\//i.test(text(c.thumbnail_url)) ? text(c.thumbnail_url) : null,
+        body: text(c.body).slice(0, 120), title: text(c.title), cta: text(c.cta), spend, chats: metrics?.chats ?? null, costChat: metrics?.costChat ?? null };
+    }).sort((a, b) => (b.chats ?? -1) - (a.chats ?? -1) || a.adId.localeCompare(b.adId));
+    return { key: theme.key, label: theme.label, keywords: marketRows, creatives: previews, meta, desk, clinic, product, stages, steps: stageSteps(stages), leak: largestLeak(stages), marketShare: ratio(searches, totalSearches), spendShare: ratio(meta.spend, totalSpend), gbp: gbp ? sum(gbp.map((r) => numeric(r.impressions))) : null, gbpThreshold: gbp?.some((r) => r.is_threshold === true) ?? false, rankedSearches: ranked?.length ? sum(ranked.map((r) => r.volume)) : null };
   });
 
   const weeks: string[] = [];
@@ -312,4 +334,4 @@ export function aggregateDemandToDesk(input: DemandInput, range: DemandRange): D
   return { range, themes, weekly, cohorts, discipline, launches, findings, gaps: [...new Set(gaps)], marketDate: input.market?.fetchedAt ?? null, rankedMarket: input.ranked?.market ?? null, canonicalCount, bookingBenchmark: benchmark ? { lo: benchmark.lo, hi: benchmark.hi, label: benchmark.label } : null };
 }
 
-export const emptyDemandInput = (): DemandInput => ({ ads: null, tracker: null, canonical: null, appointments: null, calls: null, gmb: null, market: null, ranked: null });
+export const emptyDemandInput = (): DemandInput => ({ ads: null, tracker: null, canonical: null, appointments: null, calls: null, gmb: null, market: null, ranked: null, creatives: null, creativeMetrics: null });

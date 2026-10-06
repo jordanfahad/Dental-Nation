@@ -1,3 +1,4 @@
+import { selectAll } from '../supabase/selectAll';
 import 'server-only';
 import { unstable_cache } from 'next/cache';
 import { fetchGa4Attribution, finalizeAttribution, type Ga4Attribution, type Ga4ChannelRaw } from '@/lib/sync/adapters/ga4-adapter';
@@ -78,7 +79,7 @@ export async function getPaidSocialReality(): Promise<PaidSocialReality> {
   const supabase = getSupabaseAdmin();
   if (!supabase) return { available: false, metaSpend: 0, metaLeads: 0, metaClicks: 0 };
   try {
-    const { data } = await supabase.from('meta_insights_raw').select('spend, leads, clicks');
+    const { data } = await selectAll(() => supabase.from('meta_insights_raw').select('spend, leads, clicks'), "key");
     const rows = (data as { spend: number | null; leads: number | null; clicks: number | null }[]) ?? [];
     if (rows.length === 0) return { available: false, metaSpend: 0, metaLeads: 0, metaClicks: 0 };
     return {

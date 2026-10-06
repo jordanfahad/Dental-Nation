@@ -1,4 +1,5 @@
 import 'server-only';
+import { googleCreative } from './ad-creatives';
 import type { AdminClient } from '@/lib/supabase/server';
 import { getGoogleAdsConfig, type GoogleAdsConfig } from '@/config/google-ads';
 
@@ -51,6 +52,7 @@ async function getAccessToken(cfg: GoogleAdsConfig): Promise<string> {
 }
 
 interface GAdsRow {
+  adGroupAd?: { ad?: { id?: string; name?: string; finalUrls?: string[]; responsiveSearchAd?: { headlines?: { text?: string }[]; descriptions?: { text?: string }[] } } };
   campaign?: { id?: string; name?: string };
   segments?: { date?: string; clickType?: string };
   metrics?: { costMicros?: string; impressions?: string; clicks?: string; conversions?: number };
@@ -119,10 +121,10 @@ async function fetchCustomer(
       throw new Error(`Google Ads API: ${obj.error.message ?? text.slice(0, 300)}`);
     }
     if (Array.isArray(obj.results)) out.push(...obj.results);
-    if (!obj.nextPageToken) break;
+    if (!obj.nextPageToken) return out;
     pageToken = obj.nextPageToken;
   }
-  return out;
+  throw new Error('Google Ads pagination limit reached');
 }
 
 export async function syncGoogleAds(supabase: AdminClient, opts: GAdsSyncOpts = {}): Promise<GAdsSyncResult> {
@@ -202,7 +204,30 @@ export async function syncGoogleAds(supabase: AdminClient, opts: GAdsSyncOpts = 
       clickTypeNote = `clickTypes failed: ${(err as Error).message.slice(0, 200)}`;
     }
 
-    return { ok: true, fetched: all.length, stored: deduped.length, customers: cfg.customerIds.length, note: clickTypeNote };
+    let creativeNote: string;
+    try {
+      let stored = 0;
+      const creativeQuery = `SELECT campaign.name, ad_group_ad.ad.id, ad_group_ad.ad.name, ad_group_ad.ad.final_urls, ad_group_ad.ad.responsive_search_ad.headlines, ad_group_ad.ad.responsive_search_ad.descriptions FROM ad_group_ad WHERE ad_group_ad.ad.type = 'RESPONSIVE_SEARCH_AD' AND ad_group_ad.status != 'REMOVED'`;
+      for (const customer of cfg.customerIds) {
+        const now = new Date().toISOString();
+        const ads = await fetchCustomer(cfg, accessToken, customer, from, to, version, cfg.loginCustomerId, creativeQuery);
+        const creatives = [...new Map(ads.map((row) => { const c = googleCreative(row, customer, now); return [c.ad_id, c] as const; })).values()];
+        for (let i = 0; i < creatives.length; i += 500) {
+          const { error } = await supabase.from('ad_creatives').upsert(creatives.slice(i, i + 500), { onConflict: 'platform,ad_id' });
+          if (error) throw new Error('Google creative storage failed');
+        }
+        const dailyQuery = `SELECT ad_group_ad.ad.id, segments.date, metrics.cost_micros FROM ad_group_ad WHERE ad_group_ad.ad.type = 'RESPONSIVE_SEARCH_AD' AND segments.date BETWEEN '${from}' AND '${to}'`;
+        const metrics = await fetchCustomer(cfg, accessToken, customer, from, to, version, cfg.loginCustomerId, dailyQuery);
+        const daily = metrics.map((row) => ({ platform: 'google', ad_id: `${customer}:${row.adGroupAd?.ad?.id}`, day: row.segments?.date, spend: Number(row.metrics?.costMicros ?? 0) / 1e6, fetched_at: now }));
+        for (let i = 0; i < daily.length; i += 500) {
+          const { error } = await supabase.from('ad_creative_daily').upsert(daily.slice(i, i + 500), { onConflict: 'platform,ad_id,day' });
+          if (error) throw new Error('Google creative metrics storage failed');
+        }
+        stored += creatives.length;
+      }
+      creativeNote = `creatives: ${stored}`;
+    } catch { creativeNote = 'Creative sync unavailable; campaign metrics were stored'; }
+    return { ok: true, fetched: all.length, stored: deduped.length, customers: cfg.customerIds.length, note: [clickTypeNote, creativeNote].filter(Boolean).join('; ') };
   } catch (err) {
     return { ok: false, fetched: 0, stored: 0, customers: 0, error: (err as Error).message };
   }

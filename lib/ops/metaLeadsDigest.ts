@@ -1,3 +1,4 @@
+import { selectAll } from '../supabase/selectAll';
 import 'server-only';
 import type { getSupabaseAdmin } from '@/lib/supabase/server';
 
@@ -80,8 +81,8 @@ export async function buildMetaLeadsDigest(sb: Sb, today: string): Promise<MetaL
   const d2 = addDays(today, -2);
   const from = addDays(today, -9);
   const [{ data: ads }, { data: rows }] = await Promise.all([
-    sb.from('meta_ad_insights_raw').select('date,campaign_name,ad_name,spend,leads,data,fetched_at').gte('date', from).lte('date', y),
-    sb.from('raw_lead_tracker').select('data,synced_at'),
+    selectAll(() => sb.from('meta_ad_insights_raw').select('date,campaign_name,ad_name,spend,leads,data,fetched_at').gte('date', from).lte('date', y), "key"),
+    selectAll(() => sb.from('raw_lead_tracker').select('data,synced_at'), "id"),
   ]);
   // `leads` = people who contacted us (gross, counted once each); `net` = people who had a real conversation.
   const meta = (ads ?? []).map((a) => {
@@ -173,8 +174,8 @@ async function buildPlatformsHtml(sb: Sb, y: string, trackerY: Record<string, un
   const add = (r: Row, f: keyof Row, n: number) => { r[f] = (r[f] ?? 0) + n; };
 
   const [{ data: plat }, { data: gads }, web] = await Promise.all([
-    sb.from('meta_platform_insights_raw').select('platform,leads,data').eq('date', y),
-    sb.from('google_ads_insights_raw').select('conversions,spend').eq('date', y),
+    selectAll(() => sb.from('meta_platform_insights_raw').select('platform,leads,data').eq('date', y), "key"),
+    selectAll(() => sb.from('google_ads_insights_raw').select('conversions,spend').eq('date', y), "key"),
     getWidgetEnquiries({ from: y, to: y }).catch(() => null),
   ]);
 
@@ -252,7 +253,7 @@ async function buildRevenueHtml(sb: Sb, y: string): Promise<string> {
   const monthStart = `${y.slice(0, 8)}01`;
   const [perf, { data: bills }] = await Promise.all([
     getChannelPerformance({ from: y, to: y }),
-    sb.from('practo_bills_raw').select('bill_date,amount,fetched_at').gte('bill_date', monthStart).lte('bill_date', y),
+    selectAll(() => sb.from('practo_bills_raw').select('bill_date,amount,fetched_at').gte('bill_date', monthStart).lte('bill_date', y), "bill_key"),
   ]);
   const b = (bills ?? []).map((r) => ({ d: r.bill_date as string, amt: Number(r.amount ?? 0), f: r.fetched_at as string }));
   const dayBills = b.filter((r) => r.d === y);

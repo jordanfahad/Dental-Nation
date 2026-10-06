@@ -1,7 +1,7 @@
 import 'server-only';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
 import { COMPETITORS, OWN, type CompetitorDef, type Market } from '@/config/competitors';
-import { DENTAL_MARKET_DOMAIN, refreshMarketCache } from './demandMarket';
+import { DENTAL_MARKET_DOMAIN, refreshMarketCache, keywordResponse } from './demandMarket';
 
 /**
  * Competitor analysis snapshots (Digital & SEO › Competitor analysis).
@@ -344,20 +344,31 @@ export async function getCompetitorSnapshots(): Promise<Map<string, CompetitorSn
 }
 
 /** Sync-only cache fill. The Demand to desk page never calls the paid API. */
-export async function refreshDentalMarketSnapshot(): Promise<{ refreshed: boolean; note?: string }> {
+export async function refreshDentalMarketSnapshot(): Promise<{ refreshed: boolean; note?: string; requestCount?: number; costUsd?: number }> {
   const db = getSupabaseAdmin();
   if (!db) return { refreshed: false, note: 'no database' };
   let auth: string | null = null;
+  let lastRequestAt = 0;
   return refreshMarketCache({
     latest: async () => {
       const { data, error } = await db.from('competitor_snapshots').select('data').eq('domain', DENTAL_MARKET_DOMAIN).order('fetched_at', { ascending: false }).order('id', { ascending: false }).limit(1).maybeSingle();
       if (error) throw new Error('UAE demand cache read failed');
       return data?.data ?? null;
     },
-    fetchKeywords: async (language, keywords) => {
+    fetchKeywords: async (language, keywords, kind) => {
       auth ??= await readCreds();
       if (!auth) return { result: null, error: 'DataForSEO not configured' };
-      return post(auth, `${LABS}/keyword_overview/live`, { location_code: 2784, language_code: language, keywords });
+      // Google Ads Live allows 12 requests/minute. Calls are sequential and have no retries.
+      const waitMs = Math.max(0, lastRequestAt + 5100 - Date.now());
+      if (waitMs) await new Promise((resolve) => setTimeout(resolve, waitMs));
+      lastRequestAt = Date.now();
+      console.info('UAE keyword request', { kind, language, keywordCount: keywords.length });
+      const endpoint = kind === 'expand' ? 'keywords_for_keywords' : 'search_volume';
+      const response = await fetch(`https://api.dataforseo.com/v3/keywords_data/google_ads/${endpoint}/live`, {
+        method: 'POST', headers: { Authorization: auth, 'Content-Type': 'application/json' },
+        body: JSON.stringify([{ location_code: 2784, language_code: language, keywords, search_partners: false }]), cache: 'no-store',
+      });
+      return keywordResponse(await response.json(), response.ok);
     },
     save: async (snapshot) => {
       const { error } = await db.from('competitor_snapshots').insert({ domain: DENTAL_MARKET_DOMAIN, fetched_at: snapshot.fetchedAt, data: snapshot });

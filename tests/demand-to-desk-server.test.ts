@@ -4,16 +4,23 @@ import type { AdminClient } from '../lib/supabase/server';
 import { getDemandToDesk, readDemandRows } from '../lib/analytics/demandToDesk.server';
 import { hasData } from '../lib/analytics/competitor';
 import { fixtureRange } from './fixtures/demand-to-desk';
+import type { PageQuery } from '../lib/supabase/selectAll';
+import type { Row } from '../lib/analytics/demandToDesk';
+
+const paged = (range: PageQuery<Row>['range']) => {
+  const query = { range, order() { return query; } };
+  return query;
+};
 
 test('report pagination reads beyond 1,000 rows with inclusive page boundaries', async () => {
   const ranges: number[][] = [];
   const rows = Array.from({ length: 1001 }, (_, id) => ({ id }));
-  const actual = await readDemandRows(() => ({ range: async (from, to) => { ranges.push([from, to]); return { data: rows.slice(from, to + 1), error: null }; } }));
+  const actual = await readDemandRows(() => paged(async (from, to) => { ranges.push([from, to]); return { data: rows.slice(from, to + 1), error: null }; }));
   assert.equal(actual.length, 1001); assert.deepEqual(ranges, [[0, 999], [1000, 1999]]);
 });
 test('report pagination withholds partial results after source errors or the row cap', async () => {
-  await assert.rejects(readDemandRows(() => ({ range: async (from) => ({ data: from ? null : Array.from({ length: 1000 }, () => ({})), error: from ? { message: 'fixture error' } : null }) })), /Source read failed/);
-  await assert.rejects(readDemandRows(() => ({ range: async () => ({ data: Array.from({ length: 1000 }, () => ({})), error: null }) })), /100,000-row/);
+  await assert.rejects(readDemandRows(() => paged(async (from) => ({ data: from ? null : Array.from({ length: 1000 }, () => ({})), error: from ? { message: 'fixture error' } : null }))), /Source read failed/);
+  await assert.rejects(readDemandRows(() => paged(async () => ({ data: Array.from({ length: 1000 }, () => ({})), error: null }))), /50,000-row/);
 });
 test('server loader handles absent configuration without a live query', async () => {
   const report = await getDemandToDesk(fixtureRange, null);
@@ -36,7 +43,7 @@ test('server loader uses stored tables only and contains each missing source', a
     return query;
   } } as unknown as AdminClient;
   const report = await getDemandToDesk(fixtureRange, client);
-  assert.deepEqual([...new Set(tables)].sort(), ['competitor_snapshots', 'gmb_search_keywords', 'lead_call_log', 'leads', 'meta_ad_insights_raw', 'practo_appointments_raw', 'raw_lead_tracker'].sort());
+  assert.deepEqual([...new Set(tables)].sort(), ['ad_creatives', 'ad_creative_daily', 'competitor_snapshots', 'gmb_search_keywords', 'lead_call_log', 'leads', 'meta_ad_insights_raw', 'practo_appointments_raw', 'raw_lead_tracker'].sort());
   assert.equal(report.themes[0].desk.logged, null); assert.equal(report.themes[0].meta.chats, 0);
   assert.ok(report.gaps.some((g) => g.includes('Lead tracker: unavailable')));
   assert.ok(report.gaps.some((g) => g.includes('UAE keyword cache is unavailable')));

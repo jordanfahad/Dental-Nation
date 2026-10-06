@@ -1,3 +1,4 @@
+import { selectAll } from '../supabase/selectAll';
 import 'server-only';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
 import { GA4_LANES } from '@/config/ga4';
@@ -98,8 +99,8 @@ export async function getWidgetConversion(range: { from?: string; to?: string } 
   const byPhone = new Map<string, ApptLite[]>();
   try {
     const [enq, appts] = await Promise.all([
-      db.from('raw_zavis').select('data'),
-      db.from('practo_appointments_raw').select('status, appt_date, doctor, patient_phone'),
+      selectAll(() => db.from('raw_zavis').select('data'), "id"),
+      selectAll(() => db.from('practo_appointments_raw').select('status, appt_date, doctor, patient_phone'), "appt_key"),
     ]);
     widgetRows = (enq.data as { data: Record<string, unknown> }[] | null) ?? [];
     for (const a of (appts.data as { status: string | null; appt_date: string | null; doctor: string | null; patient_phone: string | null }[] | null) ?? []) {

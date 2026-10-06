@@ -1,3 +1,4 @@
+import { selectAll } from '../supabase/selectAll';
 import 'server-only';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
 import { GA4_LANES } from '@/config/ga4';
@@ -197,7 +198,7 @@ export async function getUnverifiedLeads(
   if (!db) return empty('missing');
   const { from, to } = range;
 
-  const leadRows = await db.from('raw_dn_leads').select('data');
+  const leadRows = await selectAll(() => db.from('raw_dn_leads').select('data'), "id");
   // Table absent (migration not run yet) → say so rather than showing a fake zero.
   if (leadRows.error) return empty('missing');
   const rawLeads = (leadRows.data as { data: Record<string, unknown> }[] | null) ?? [];
@@ -208,8 +209,8 @@ export async function getUnverifiedLeads(
   const inPracto = new Set<string>();
   if (crossChecks) try {
     const [book, appts] = await Promise.all([
-      db.from('raw_zavis').select('data'),
-      db.from('practo_appointments_raw').select('patient_phone'),
+      selectAll(() => db.from('raw_zavis').select('data'), "id"),
+      selectAll(() => db.from('practo_appointments_raw').select('patient_phone'), "appt_key"),
     ]);
     for (const r of (book.data as { data: Record<string, unknown> }[] | null) ?? []) {
       const p = phone9(pick(r.data ?? {}, 'Phone Number', 'Phone', 'Contact Number'));
@@ -232,11 +233,11 @@ export async function getUnverifiedLeads(
     // which is TRANSACTION time, so two calls logged in one transaction share a
     // timestamp and would otherwise come back in arbitrary order — picking the
     // wrong "latest" outcome. id is monotonic, so it always breaks the tie right.
-    const log = await db
+    const log = await selectAll(() => db
       .from('lead_call_log')
       .select('lead_ref, outcome, note, logged_by, created_at, id')
       .order('created_at', { ascending: false })
-      .order('id', { ascending: false });
+      .order('id', { ascending: false }), "id");
     if (log.error) {
       callLogReady = false;
     } else {

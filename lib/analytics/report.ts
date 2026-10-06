@@ -1,3 +1,4 @@
+import { selectAll } from '../supabase/selectAll';
 import 'server-only';
 import { unstable_cache } from 'next/cache';
 import { fetchGa4Audience, fetchGa4Lanes, type Ga4Audience, type Ga4LaneRow } from '@/lib/sync/adapters/ga4-adapter';
@@ -45,7 +46,7 @@ async function widgetBookedByLane(from: string, to: string): Promise<Map<string,
   const db = getSupabaseAdmin();
   if (!db) return out;
   try {
-    const { data } = await db.from('raw_zavis').select('data');
+    const { data } = await selectAll(() => db.from('raw_zavis').select('data'), "id");
     for (const r of (data as { data: Record<string, unknown> }[] | null) ?? []) {
       const d = r.data ?? {};
       if (!('Full Name' in d)) continue;

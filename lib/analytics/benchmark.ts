@@ -1,3 +1,4 @@
+import { selectAll } from '../supabase/selectAll';
 import 'server-only';
 import { unstable_cache } from 'next/cache';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
@@ -173,9 +174,9 @@ async function getOwnActuals(): Promise<OwnActuals> {
   const fromDay = from.slice(0, 10);
   try {
     const [widget, forms, gmb] = await Promise.all([
-      db.from('raw_zavis').select('data'),
-      db.from('ops_form_entries').select('phone9, entry_id, submitted_at').gte('submitted_at', from),
-      db.from('social_insights').select('value').eq('channel', 'gmb').eq('metric', 'calls').gte('day', fromDay),
+      selectAll(() => db.from('raw_zavis').select('data'), "id"),
+      selectAll(() => db.from('ops_form_entries').select('phone9, entry_id, submitted_at').gte('submitted_at', from), "entry_id"),
+      selectAll(() => db.from('social_insights').select('value').eq('channel', 'gmb').eq('metric', 'calls').gte('day', fromDay), ["clinic","channel","metric","day"]),
     ]);
     let widgetLeads = 0;
     for (const r of (widget.data as { data: Record<string, unknown> }[] | null) ?? []) {

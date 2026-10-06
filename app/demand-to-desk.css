@@ -46,3 +46,10 @@
   .demand-empty { padding: 1.5mm; margin: 1.5mm 0; }
   .demand-launch-summary { gap: 1.5mm; font-size: 5.4pt; }.demand-footnote { padding-top: 1mm; }
 }
+
+.demand-keywords table { min-width: 420px; }
+.demand-decision-box { margin: 12px 0; padding: 12px 18px; background: #edf3f1; border-left: 3px solid #29465b; }
+.demand-decision-box h4 { font-weight: 700; }.demand-decision-box ol { list-style: decimal; padding-left: 18px; }
+.demand-learnings { min-width: 1050px; }.demand-creatives { display: flex; gap: 12px; overflow-x: auto; padding: 8px 0; }
+.demand-creatives figure { min-width: 180px; max-width: 220px; padding: 8px; border: 1px solid #d8dcd9; }.demand-creatives img { width: 180px; height: 120px; object-fit: contain; }
+@media print { .demand-learnings { min-width: 0; }.demand-report tr, .demand-creatives figure { break-inside: avoid; }.demand-keywords { display: none; }.demand-decision-box { margin: 2mm 0; padding: 2mm 4mm; } }

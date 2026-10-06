@@ -1,12 +1,13 @@
+import { selectAll } from '../supabase/selectAll';
 import 'server-only';
 import { cache } from 'react';
-import { getSupabaseAdmin } from '@/lib/supabase/server';
+import { modelPhoneBookings, websitePaidInputs, type PhoneModel } from './phonePath';
+import { getSupabaseAdmin, type AdminClient } from '@/lib/supabase/server';
 import { parseArabySource } from '@/lib/arabyads/report';
 import { clinicOfCenter, clinicOfDoctor } from '@/config/clinics';
 import { META_ADS_PAUSED_SINCE } from '@/config/meta';
 import {
   CHANNELS,
-  PHONE_PATH_BENCHMARKS,
   aiEngineOf,
   metaCampaignTypeOf,
   metaPlatformHintOf,
@@ -132,25 +133,12 @@ export interface GrowthReport {
    * ESTIMATES (labelled as such in the UI; the UAE has no Google forwarding
    * numbers, so taps are the only phone signal the API can ever report).
    */
-  phonePath: {
-    callTaps: number;
+  phonePath: (PhoneModel & {
     directionTaps: number;
     otherClicks: number;
-    /** Estimate chain, each step netting out a benchmark loss. */
-    estValidTaps: number;
-    estAnswered: number;
-    estPatientCalls: number;
-    estBookings: number;
-    /**
-     * The reconciliation the estimate must live inside: patients in-window with
-     * NO channel trace (Direct/Walk-in + unattributed). Estimated ad-call
-     * patients may only claim from this pool — never someone already traced —
-     * so `estBookingsReconciled = min(estBookings, untracedPool)`.
-     */
-    untracedPool: number;
-    estBookingsReconciled: number;
+    websiteInputsAvailable: boolean;
     byCampaign: { campaign: string; callTaps: number }[];
-  } | null;
+  }) | null;
   /**
    * The Organic split (latest GA4 sync, source-level): how many sessions each
    * search engine, AI assistant and Direct brought. Reach-level ONLY — the
@@ -189,6 +177,7 @@ export interface GrowthReport {
    */
   mvmSelection: {
     keys: string[];
+    poolKeys: string[];
     /** Ad call-taps per day in-window (the ranking signal, shown in the UI). */
     tapsByDay: Record<string, number>;
     poolSize: number;
@@ -232,8 +221,9 @@ export type GrowthPerfClinic = 'all' | 'dn-alwasl' | 'dr-tosun';
 export async function getChannelPerformance(
   range: { from?: string; to?: string } = {},
   clinic: GrowthPerfClinic = 'all',
+  db: AdminClient | null = getSupabaseAdmin(),
 ): Promise<GrowthReport> {
-  return computeChannelPerformance(range.from ?? null, range.to ?? null, clinic);
+  return computeChannelPerformance(range.from ?? null, range.to ?? null, clinic, db);
 }
 
 /** Request-deduped core (React cache keys on the primitive args): the board
@@ -243,8 +233,8 @@ const computeChannelPerformance = cache(async (
   from: string | null,
   to: string | null,
   clinic: GrowthPerfClinic,
+  db: AdminClient | null,
 ): Promise<GrowthReport> => {
-  const db = getSupabaseAdmin();
   if (!db) return emptyReport(from, to);
   // Spend, reach, GA4 and the phone path are Dental Nation Al Wasl properties
   // (the ads, the site, the GMB profile). They render on All and DN views;
@@ -254,21 +244,22 @@ const computeChannelPerformance = cache(async (
     clinic === 'all' || (clinicOfDoctor(doctor) === 'dr-tosun' ? clinic === 'dr-tosun' : clinic === 'dn-alwasl');
 
   try {
-    const [apptRes, billRes, zavisRes, leadRes, crmRes, existRes, practoPtRes, metaRes, gadsRes, ga4Res, gmbRes, ctRes, metaPlatRes] =
+    const [apptRes, billRes, zavisRes, leadRes, crmRes, existRes, practoPtRes, metaRes, gadsRes, ga4Res, gmbRes, ctRes, metaPlatRes, sourceRes] =
       await Promise.all([
-        db.from('practo_appointments_raw').select('appt_date, status, mr_no, patient_phone, patient_name, doctor, data'),
-        db.from('practo_bills_raw').select('bill_date, amount, data'),
-        db.from('raw_zavis').select('data'),
-        db.from('leads').select('inquiry_date, raw_row'),
-        db.from('crm_appointments').select('patient_phone, source, is_test, timeslot'),
-        db.from('existing_patients').select('phone9'),
-        db.from('practo_patients').select('phone'),
-        db.from('meta_insights_raw').select('date, spend, impressions, clicks, leads, campaign_name'),
-        db.from('google_ads_insights_raw').select('date, spend, impressions'),
+        selectAll(() => db.from('practo_appointments_raw').select('appt_date, status, mr_no, patient_phone, patient_name, doctor, data'), "appt_key"),
+        selectAll(() => db.from('practo_bills_raw').select('bill_date, amount, data'), "bill_key"),
+        selectAll(() => db.from('raw_zavis').select('data'), "id"),
+        selectAll(() => db.from('leads').select('inquiry_date, raw_row'), "id"),
+        selectAll(() => db.from('crm_appointments').select('patient_phone, source, is_test, timeslot'), "appointment_id"),
+        selectAll(() => db.from('existing_patients').select('phone9'), ["source","phone9"]),
+        selectAll(() => db.from('practo_patients').select('phone'), "phone"),
+        selectAll(() => db.from('meta_insights_raw').select('date, spend, impressions, clicks, leads, campaign_name'), "key"),
+        selectAll(() => db.from('google_ads_insights_raw').select('date, spend, impressions'), "key"),
         db.from('ga4_summary').select('period_start, period_end, sessions, users, channels, sources').order('period_end', { ascending: false }).limit(1),
-        db.from('social_insights').select('channel, metric, day, value').in('channel', ['gmb', 'instagram', 'facebook']),
-        db.from('google_ads_click_types').select('date, click_type, clicks, campaign_name'),
-        db.from('meta_platform_insights_raw').select('date, platform, spend, impressions, leads'),
+        selectAll(() => db.from('social_insights').select('channel, metric, day, value').in('channel', ['gmb', 'instagram', 'facebook']), ["clinic","channel","metric","day"]),
+        selectAll(() => db.from('google_ads_click_types').select('date, click_type, clicks, campaign_name'), "key"),
+        selectAll(() => db.from('meta_platform_insights_raw').select('date, platform, spend, impressions, leads'), "key"),
+        selectAll(() => db.from('ga4_lead_events_source').select('day,event_name,source_medium,campaign,event_count'), ['day', 'event_name', 'source_medium', 'campaign']).catch(() => ({ data: null, error: true })),
       ]);
 
     /* ─── Build the waterfall's evidence lookups (all-time, not range-scoped) ── */
@@ -753,7 +744,10 @@ const computeChannelPerformance = cache(async (
     {
       const ctRows = (ctRes.data as { date: string | null; click_type: string | null; clicks: number | null; campaign_name: string | null }[] | null) ?? [];
       const inWin = dnAssets ? ctRows.filter((r) => inRange(r.date, from, to)) : [];
-      if (inWin.length > 0) {
+      const sourceRows = dnAssets ? (sourceRes.data ?? []).filter((r) => inRange(r.day, from, to)) : [];
+      const website = websitePaidInputs(sourceRows);
+      if (sourceRes.error) notes.push('Website Google CPC tap inputs are unavailable; the phone path currently includes ad call taps only.');
+      if (dnAssets && (inWin.length > 0 || sourceRows.length > 0)) {
         let callTaps = 0, directionTaps = 0, otherClicks = 0;
         const perCampaign = new Map<string, number>();
         for (const r of inWin) {
@@ -766,26 +760,11 @@ const computeChannelPerformance = cache(async (
           } else if (/DIRECTION/i.test(t)) directionTaps += n;
           else otherClicks += n;
         }
-        const B = PHONE_PATH_BENCHMARKS;
-        const estValidTaps = callTaps * B.validTapRate;
-        const estAnswered = estValidTaps * B.answerRate;
-        const estPatientCalls = estAnswered * B.patientRate;
-        const estBookings = Math.round(estPatientCalls * B.bookingRate);
-        // The pool the estimate is allowed to claim from: in-window DENTAL
-        // NATION AL WASL patients with no channel trace (the ads ran only
-        // there — a Dr Tosun walk-in can never be an ad caller). DN-scoped on
-        // EVERY view so All-clinics and DN-only report the same estimate.
-        // Anything above it would double-count patients already credited
-        // elsewhere — the exact inflation this view exists to avoid.
-        const untracedPool = dnDwBooked.size + dnUnattrFiles.size;
+        // Only the same deterministic, untraced DN candidates can be selected.
+        const untracedPool = Math.min(dnDwBooked.size + dnUnattrFiles.size, dnDwInfo.size);
         phonePath = {
-          callTaps, directionTaps, otherClicks,
-          estValidTaps: Math.round(estValidTaps),
-          estAnswered: Math.round(estAnswered),
-          estPatientCalls: Math.round(estPatientCalls),
-          estBookings,
-          untracedPool,
-          estBookingsReconciled: Math.min(estBookings, untracedPool),
+          ...modelPhoneBookings({ callTaps, ...website }, untracedPool),
+          directionTaps, otherClicks, websiteInputsAvailable: !sourceRes.error,
           byCampaign: [...perCampaign.entries()].map(([campaign, taps]) => ({ campaign, callTaps: taps }))
             .sort((a, b) => b.callTaps - a.callTaps).slice(0, 6),
         };
@@ -825,6 +804,7 @@ const computeChannelPerformance = cache(async (
         }
         report_mvmSelection = {
           keys: selected.map((c) => c.key),
+          poolKeys: candidates.map((c) => c.key),
           tapsByDay,
           poolSize: candidates.length,
         };

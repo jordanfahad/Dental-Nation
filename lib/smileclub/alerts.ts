@@ -1,4 +1,5 @@
 import 'server-only';
+import { selectAll } from '@/lib/supabase/selectAll';
 import { OPS_ALERT_FROM } from '@/config/ops';
 import { emailConfigured, sendEmail, type Attachment } from '@/lib/notify/email';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
@@ -124,7 +125,7 @@ function mark(log: DayLog, s: Slot, addr: string) {
   log.count.set(a, (log.count.get(a) ?? 0) + 1);
 }
 async function dayLog(sb: Sb, today: string): Promise<DayLog> {
-  const { data } = await sb.from('sc_alert_log').select('kind,ok,recipients').eq('day', today);
+  const { data } = await selectAll(() => sb.from('sc_alert_log').select('kind,ok,recipients').eq('day', today), "id");
   const log: DayLog = { kinds: new Set(), slot: { am: new Set(), pm: new Set() }, count: new Map() };
   for (const r of data ?? []) {
     const kind = r.kind as string;
@@ -164,7 +165,7 @@ async function logSent(sb: Sb, kind: string, day: string, r: { ok: boolean; reci
 /* ── what every email is built from ── */
 
 async function loadProgress(sb: Sb) {
-  const { data } = await sb.from('tasks').select('id,external_id,status,raw').eq('source', TRACKER_SOURCE);
+  const { data } = await selectAll(() => sb.from('tasks').select('id,external_id,status,raw').eq('source', TRACKER_SOURCE), "id");
   const progress: Record<string, { stage: number; status: string; id: string }> = {};
   for (const r of data ?? []) {
     const key = (r.external_id as string).replace(/^sc-team:/, '');
@@ -200,7 +201,7 @@ async function loadCtx(sb: Sb, today: string, since: string, withMeta: boolean):
   for (const t of TEAM_TASKS) if (p[t.key]) byId[p[t.key].id] = t;
   const [reviews, ev, meta, contentos, corp, released, gr] = await Promise.all([
     loadReviews(sb),
-    sb.from('task_events').select('task_id,actor,status,note,at,from_stage,to_stage').gte('at', since).order('at'),
+    selectAll(() => sb.from('task_events').select('task_id,actor,status,note,at,from_stage,to_stage').gte('at', since).order('at'), "id"),
     withMeta ? buildMetaLeadsDigest(sb, today).catch(() => null) : Promise.resolve(null),
     withMeta ? fetchContentos() : Promise.resolve(null),
     loadCorp(sb).catch(() => null),
