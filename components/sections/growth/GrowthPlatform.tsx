@@ -340,9 +340,67 @@ const CROSS_LINKS: Record<string, { label: string; href: string }> = {
 };
 
 /** Drill-down: the actual patients behind one channel's numbers. */
+const PHONE_PATH_CHANNELS = ['paid-search', 'gmb', 'website'];
+const PHONE_PATH_NOTE: Record<string, string> = {
+  'paid-search': 'Google Ads drives calls and WhatsApp taps (from the ads and the website) that the desk books.',
+  gmb: 'Google Maps and the Google listing drive calls and direction requests that the desk books or receives as walk-ins.',
+  website: 'The website drives WhatsApp and phone taps that the desk books; self-bookings online are listed above.',
+};
+
+function TraceTable({ patients }: { patients: Awaited<ReturnType<typeof getChannelTrace>>['patients'] }) {
+  return (
+    <div className="overflow-x-auto">
+            <table className="w-full min-w-[760px] text-left">
+              <thead>
+                <tr className="text-[10.5px] uppercase tracking-wide text-ink-faint">
+                  <th className="py-2 pl-3 pr-2 font-medium">Date</th>
+                  <th className="px-2 py-2 font-medium">Patient</th>
+                  <th className="px-2 py-2 font-medium">Phone</th>
+                  <th className="px-2 py-2 font-medium">File</th>
+                  <th className="px-2 py-2 font-medium">Status</th>
+                  <th className="px-2 py-2 font-medium">Doctor</th>
+                  <th className="px-2 py-2 font-medium">Why this channel</th>
+                  <th className="py-2 pl-2 pr-3 text-right font-medium">Revenue</th>
+                </tr>
+              </thead>
+              <tbody>
+                {patients.map((p, i) => (
+                  <tr key={`${p.mrNo}|${p.date}|${i}`} className="border-t border-line/70 align-top">
+                    <td className="whitespace-nowrap py-2 pl-3 pr-2 text-[12px] tabular-nums text-ink">{p.date ?? '—'}</td>
+                    <td className="px-2 py-2 text-[12.5px] font-medium text-ink">{p.patientName}</td>
+                    <td className="whitespace-nowrap px-2 py-2 text-[12px] tabular-nums text-ink-soft">{p.phone || '—'}</td>
+                    <td className="whitespace-nowrap px-2 py-2 text-[12px] text-ink-soft">{p.mrNo || '—'}</td>
+                    <td className="px-2 py-2 text-[12px] text-ink-soft">{p.status || '—'}</td>
+                    <td className="px-2 py-2 text-[12px] text-ink-soft">{p.doctor || '—'}</td>
+                    <td className="px-2 py-2">
+                      <span
+                        className={`mr-1.5 inline-block rounded-full px-1.5 py-0.5 text-[9.5px] font-semibold ${
+                          p.evidence === 'tagged' ? 'bg-good/10 text-good' : 'bg-watch/10 text-watch'
+                        }`}
+                      >
+                        {p.ruleId} · {p.evidence}
+                      </span>
+                      <span className="text-[11px] leading-snug text-ink-soft">{p.ruleText}</span>
+                    </td>
+                    <td className="whitespace-nowrap py-2 pl-2 pr-3 text-right text-[12px] font-medium tabular-nums text-ink">
+                      {p.revenue > 0 ? aed(p.revenue) : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+  );
+}
+
 async function ChannelTraceView({ channelKey, range, clinic }: { channelKey: string; range?: { from?: string; to?: string }; clinic: GrowthClinicKey }) {
   const def = CHANNEL_BY_KEY.get(channelKey);
   const trace = await getChannelTrace(channelKey, range ?? {}, clinic === 'amc' ? 'all' : clinic);
+  // Phone-path channels (Google Ads, Business Profile, website) reach the desk by call or WhatsApp with no
+  // source on the booking, so their patients sit in the untraced desk pool; show that pool here.
+  const pool = PHONE_PATH_CHANNELS.includes(channelKey)
+    ? await getChannelTrace('direct-walkin', range ?? {}, clinic === 'amc' ? 'all' : clinic)
+    : null;
   const back = `?tab=group&gtab=growth${range?.from ? `&from=${range.from}` : ''}${range?.to ? `&to=${range.to}` : ''}${clinic !== 'all' ? `&gclinic=${clinic}` : ''}`;
   const cross = CROSS_LINKS[channelKey];
   return (
@@ -369,8 +427,17 @@ async function ChannelTraceView({ channelKey, range, clinic }: { channelKey: str
       />
       <div className="px-5 pb-5 pt-3">
         <p className="mb-3 text-[12px] text-ink-soft">
-          {trace.total} booked appointment{trace.total === 1 ? '' : 's'} attributed to this channel in the selected window
-          {trace.truncated ? ` (showing latest 300)` : ''}. Each row states the exact rule that attributed it.
+          {pool ? (
+            <>
+              {pool.total} patients booked through the desk by phone or WhatsApp in this window
+              {trace.total ? `, plus ${trace.total} traced directly to this channel` : ''}. Each row states the rule that placed it.
+            </>
+          ) : (
+            <>
+              {trace.total} booked appointment{trace.total === 1 ? '' : 's'} attributed to this channel in the selected window
+              {trace.truncated ? ` (showing latest 300)` : ''}. Each row states the exact rule that attributed it.
+            </>
+          )}
         </p>
         {channelKey === 'ai-chat' ? (
           <p className="mb-3 rounded-card border border-dashed border-watch/60 bg-watch/5 px-3 py-2 text-[11.5px] leading-snug text-ink-soft">
@@ -390,53 +457,33 @@ async function ChannelTraceView({ channelKey, range, clinic }: { channelKey: str
             . Their Practo outcomes are real; only which channel each came from is estimated.
           </p>
         ) : null}
-        {trace.patients.length === 0 ? (
+        {trace.patients.length ? (
+          <TraceTable patients={trace.patients} />
+        ) : !pool ? (
           <p className="rounded-card border border-dashed border-line px-4 py-6 text-center text-[12.5px] text-ink-soft">
             No booked appointments attribute to this channel in this window.
           </p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[760px] text-left">
-              <thead>
-                <tr className="text-[10.5px] uppercase tracking-wide text-ink-faint">
-                  <th className="py-2 pl-3 pr-2 font-medium">Date</th>
-                  <th className="px-2 py-2 font-medium">Patient</th>
-                  <th className="px-2 py-2 font-medium">Phone</th>
-                  <th className="px-2 py-2 font-medium">File</th>
-                  <th className="px-2 py-2 font-medium">Status</th>
-                  <th className="px-2 py-2 font-medium">Doctor</th>
-                  <th className="px-2 py-2 font-medium">Why this channel</th>
-                  <th className="py-2 pl-2 pr-3 text-right font-medium">Revenue</th>
-                </tr>
-              </thead>
-              <tbody>
-                {trace.patients.map((p, i) => (
-                  <tr key={`${p.mrNo}|${p.date}|${i}`} className="border-t border-line/70 align-top">
-                    <td className="whitespace-nowrap py-2 pl-3 pr-2 text-[12px] tabular-nums text-ink">{p.date ?? '—'}</td>
-                    <td className="px-2 py-2 text-[12.5px] font-medium text-ink">{p.patientName}</td>
-                    <td className="whitespace-nowrap px-2 py-2 text-[12px] tabular-nums text-ink-soft">{p.phone || '—'}</td>
-                    <td className="whitespace-nowrap px-2 py-2 text-[12px] text-ink-soft">{p.mrNo || '—'}</td>
-                    <td className="px-2 py-2 text-[12px] text-ink-soft">{p.status || '—'}</td>
-                    <td className="px-2 py-2 text-[12px] text-ink-soft">{p.doctor || '—'}</td>
-                    <td className="px-2 py-2">
-                      <span
-                        className={`mr-1.5 inline-block rounded-full px-1.5 py-0.5 text-[9.5px] font-semibold ${
-                          p.evidence === 'tagged' ? 'bg-good/10 text-good' : 'bg-watch/10 text-watch'
-                        }`}
-                      >
-                        {p.ruleId} · {p.evidence}
-                      </span>
-                      <span className="text-[11px] leading-snug text-ink-soft">{p.ruleText}</span>
-                    </td>
-                    <td className="whitespace-nowrap py-2 pl-2 pr-3 text-right text-[12px] font-medium tabular-nums text-ink">
-                      {p.revenue > 0 ? aed(p.revenue) : '—'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        ) : null}
+        {pool ? (
+          <div className={trace.patients.length ? 'mt-5' : ''}>
+            <p className="mb-1 text-[13px] font-semibold text-ink">
+              Patients booked by phone or WhatsApp at the desk: {pool.total}
+            </p>
+            <p className="mb-3 rounded-card border border-dashed border-accent/40 bg-accent/5 px-3 py-2 text-[11.5px] leading-snug text-ink-soft">
+              {PHONE_PATH_NOTE[channelKey]} These patients reached the desk by phone or WhatsApp and booked, with no
+              source recorded in Practo, so this is the pool the channel&apos;s modelled bookings are drawn from. Their
+              Practo outcomes and revenue are real; which channel each came from is estimated until the desk records the
+              source of every new patient (from Wed 7 Oct).
+            </p>
+            {pool.patients.length ? (
+              <TraceTable patients={pool.patients} />
+            ) : (
+              <p className="rounded-card border border-dashed border-line px-4 py-6 text-center text-[12.5px] text-ink-soft">
+                No desk bookings in this window.
+              </p>
+            )}
           </div>
-        )}
+        ) : null}
       </div>
     </Card>
   );
