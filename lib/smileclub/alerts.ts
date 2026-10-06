@@ -10,7 +10,7 @@ import { video2 } from '@/lib/smileclub/creative';
 import type { CorpState } from '@/lib/smileclub/corporate';
 import { buildMetaLeadsDigest, metaSectionHtml, type MetaLeadsDigest } from '@/lib/ops/metaLeadsDigest';
 import { CONTENTOS_LEADS, contentosFlags, contentosStatsHtml, fetchContentos, type ContentosLeads } from '@/lib/ops/contentosLeads';
-import { loadBriefingFile, notesFor, shootNotesFor } from '@/lib/smileclub/briefingNotes';
+import { loadBriefingFile, loadReleased, notesFor, shootNotesFor, type Released } from '@/lib/smileclub/briefingNotes';
 import { OWNER_LABEL, TEAM_TASKS, TOTAL_WEIGHT, TRACKER_SOURCE, type Person, type TeamTask } from '@/lib/smileclub/team';
 
 /**
@@ -185,24 +185,27 @@ interface Ctx {
   /** ContentOS Lead Analysis (lead quality, follow-up, CRM gaps), read at send time. */
   contentos: ContentosLeads | null;
   corp: CorpState | null;
+  /** Dated notes Fahad has released (briefingNotes gates). */
+  released: Released;
 }
 
 async function loadCtx(sb: Sb, today: string, since: string, withMeta: boolean): Promise<Ctx> {
   const p = await loadProgress(sb);
   const byId: Record<string, TeamTask> = {};
   for (const t of TEAM_TASKS) if (p[t.key]) byId[p[t.key].id] = t;
-  const [reviews, ev, meta, contentos, corp] = await Promise.all([
+  const [reviews, ev, meta, contentos, corp, released] = await Promise.all([
     loadReviews(sb),
     sb.from('task_events').select('task_id,actor,status,note,at,from_stage,to_stage').gte('at', since).order('at'),
     withMeta ? buildMetaLeadsDigest(sb, today).catch(() => null) : Promise.resolve(null),
     withMeta ? fetchContentos() : Promise.resolve(null),
     loadCorp(sb).catch(() => null),
+    loadReleased(sb).catch(() => ({})),
   ]);
   const events = (ev.data ?? []).filter((e) => byId[e.task_id as string]).map((e) => ({
     task: byId[e.task_id as string], actor: (e.actor as string) ?? '', status: (e.status as string) ?? '', note: (e.note as string | null) ?? null,
     at: e.at as string, from: (e.from_stage as number | null) ?? null, to: (e.to_stage as number | null) ?? null,
   }));
-  return { today, since, p, reviews, events, meta, contentos, corp };
+  return { today, since, p, reviews, events, meta, contentos, corp, released };
 }
 
 const isDone = (t: TeamTask, p: Prog) => (p[t.key]?.stage ?? 0) >= t.steps.length || p[t.key]?.status === 'done';
@@ -422,7 +425,7 @@ export function buildBriefing(ctx: Ctx, who: Who): { subject: string; html: stri
   const bits: string[] = [];
 
   // Dated one-off notes go first (briefingNotes.ts); their files are attached by the sender.
-  for (const n of notesFor(ctx.today, who)) {
+  for (const n of notesFor(ctx.today, who, ctx.released)) {
     parts.push(h3(esc(n.title)) + n.html(ctx.today, ctx.contentos));
     bits.push(n.subjectBit);
   }
@@ -511,7 +514,7 @@ export function buildShootEmail(ctx: Ctx, version: 'all' | 'team' | 'leads' = 'a
     ? `<p style="background:#FBEFEC;padding:8px;border-radius:6px"><b>Approvals still needed tonight:</b> ${esc(REVIEWERS.filter((x) => pendingOn[x.id].length).map((x) => `${x.name} — ${pendingOn[x.id].join(', ')}`).join(' · '))}. Please approve on the dashboard this evening (Smile Club → Dentist scripts → Approve (final)); a dentist not approved by their slot is filmed on the backup day.</p>`
     : '<p style="color:#2C5E3F"><b>All scripts for tomorrow are approved.</b></p>';
   const hs = happenings(ctx).filter((h) => h.shared);
-  const notes = version === 'leads' ? shootNotesFor(ctx.today) : [];
+  const notes = version === 'leads' ? shootNotesFor(ctx.today, ctx.released) : [];
   const subject = notes.length
     ? `${notes.map((x) => x.subjectBit).filter(Boolean).join(' · ')} · tomorrow’s shoot, ${day.label}`
     : `Tomorrow’s Smile Club shoot — ${day.label} · ${where} · ${plural(n, 'dentist')}${notFinal ? ` · ${notFinal} not yet approved` : ''}`;
@@ -584,7 +587,8 @@ async function runMorning(sb: Sb, today: string, out: string[]) {
 
 async function runEvening(sb: Sb, today: string, out: string[]) {
   const log = await dayLog(sb, today);
-  const split = shootNotesFor(today).length > 0;
+  const rel = await loadReleased(sb).catch(() => ({} as Released));
+  const split = shootNotesFor(today, rel).length > 0;
   const needShoot = !log.kinds.has('shoot-tomorrow');
   const needLeads = split && !log.kinds.has('shoot-tomorrow:leads');
   const due = EVENING.filter((w) => !log.kinds.has(`pm:${w}`));
@@ -654,7 +658,8 @@ export async function previewAlert(kind: string): Promise<string> {
   let m: { subject: string; html: string } | null = null;
   let files: Attachment[] = [];
   if (kind === 'shoot') {
-    m = buildShootEmail(await loadCtx(sb, today, eveningSince(today), true), shootNotesFor(today).length ? 'leads' : 'all');
+    const c = await loadCtx(sb, today, eveningSince(today), true);
+    m = buildShootEmail(c, shootNotesFor(today, c.released).length ? 'leads' : 'all');
     if (!m) {
       const nextDay = SHOOT_PLAN.find((d) => d.iso > today);
       if (nextDay) { const eve = addDays(nextDay.iso, -1); m = buildShootEmail(await loadCtx(sb, eve, eveningSince(today), false)); }

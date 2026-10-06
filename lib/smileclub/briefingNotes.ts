@@ -27,6 +27,10 @@ export interface BriefingNote {
   files?: BriefingFile[];
   /** 'am' (default): the 09:00 briefing. 'shoot': that evening's 17:00 shoot email to MJ with the team copied. */
   slot?: 'am' | 'shoot';
+  /** Held until Fahad releases it: lane_e.app_secrets `note_release_<gate>` = 'am' or 'shoot' (the slot it goes in). */
+  gate?: string;
+  /** Left out once this gate is released (a released note replaces it). */
+  unlessGate?: string;
 }
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
@@ -97,11 +101,11 @@ function launchHtml(today: string) {
  */
 function devicesHtml() {
   return `<ul style="margin:4px 0 10px;padding-left:18px">
-<li style="margin-bottom:4px"><b>Meta ad leads are iPhone users, as targeted.</b> In Meta’s own delivery report, 82 of 83 chats in the last 7 days came from iPhones, and all the spend went to iPhones. These ads open WhatsApp directly, so the leads never visit the website; Google Analytics cannot see them, and Meta’s report is the evidence.</li>
-<li style="margin-bottom:4px"><b>Website leads are mostly Android, from Google Ads.</b> Of 182 lead actions on the website (booking starts, phone and WhatsApp taps), 127 came from Android phones (70%), 34 from iPhones (19%) and 21 from computers. 107 of the Android leads came from Google’s Performance Max and Display ads; iPhone website leads come mainly from Google search (19 of 34).</li>
-<li style="margin-bottom:4px"><b>“(not set)” is not Apple.</b> Of the 997 website sessions with no source, 957 (96%) were Windows computers, 13 were iPhones and none became a lead. With the 10,019 “direct” Windows sessions that also produced no leads, about 6 in 10 website sessions in this period are very likely automated traffic, not people.</li>
-</ul>
-<p><b>So:</b> Meta reaches iPhone users on WhatsApp; Google reaches mostly Android users on the website. Booked patients from Google’s Android leads need checking, as one-tap phone and WhatsApp clicks from Display ads are often accidental.</p>`;
+<li style="margin-bottom:4px"><b>Meta ad leads are iPhone users, as targeted.</b> Meta’s delivery report: 82 of 83 chats (99%) came from iPhone 16 and 17, and all the spend went to iPhones. These ads open WhatsApp directly, so Meta’s report is the evidence for them rather than Google Analytics.</li>
+<li style="margin-bottom:4px"><b>Apple users lead where people find us themselves.</b> In Google Analytics for September, Apple devices are <b>46% of the people who find us on Google search</b> (2,643 of 5,720), and iPhone is the single largest device. iPhone users also make more WhatsApp and phone taps from Google search than Android users (35 against 30).</li>
+<li style="margin-bottom:4px"><b>Google’s Performance Max and Display ads reach mostly Android</b> (3,014 of 3,843 visitors from those ads), so we are moving that budget towards search, where Apple users are the largest group.</li>
+<li style="margin-bottom:4px"><b>“(not set)” is not Apple:</b> 96% of sessions with no source were Windows computers with no leads (automated traffic), and they are excluded from these figures.</li>
+</ul>`;
 }
 
 /**
@@ -164,11 +168,14 @@ function luviAnswersHtml(co: ContentosLeads | null) {
   // phone tap × 0.75 real × 0.75 answered × 0.8 patient × 0.35 book; a WhatsApp tap skips the answer step.
   const PH = 0.75 * 0.75 * 0.8 * 0.35, WA = 0.75 * 0.8 * 0.35;
   const est = (wa: number, ph: number) => wa * WA + ph * PH;
-  const lanes: [string, string, string, string, number, string][] = [
-    ['<b>Google Ads</b> (Search, Performance Max, Display)', aed(5394), '185,855 impressions · 6,012 clicks', '78 WhatsApp taps and 41 phone taps on the website', est(78, 41), 'Phone and WhatsApp → desk booking'],
-    ['<b>Google Business Profile</b> (Maps and the Google listing, supported by Ads and reviews)', 'AED 0', 'shown on Google Maps and Search', '64 calls, 364 direction requests, 71 website visits', est(0, 64), 'Calls → desk booking; directions → walk-ins'],
-    ['<b>Google search and the website</b> (organic)', 'AED 0', '—', '71 WhatsApp taps and 13 phone taps', est(71, 13), 'WhatsApp and phone → desk; 3 booked themselves online'],
-    ['<b>Meta WhatsApp ads</b>', aed(metaTot[0]), `${metaTot[1]} chats started`, `${metaTot[2]} replied a second time`, 1, 'WhatsApp → desk; targeting reset for October (question 3)'],
+  // The dashboard's patient trace per channel (Group › Growth, September) — the patient-level evidence.
+  const trace = (ch?: string) => `${DASH}?tab=group&gtab=growth${ch ? `&gchan=${ch}` : ''}&from=2026-09-01&to=2026-09-30`;
+  const link = (href: string, t: string) => `<a href="${href}" style="color:#5793A3;font-weight:bold">${t}</a>`;
+  const lanes: [string, string, string, string, number, string, string][] = [
+    ['<b>Google Ads</b> (Search, Performance Max, Display)', aed(5394), '185,855 impressions · 6,012 clicks', '78 WhatsApp taps and 41 phone taps on the website', est(78, 41), 'paid-search', 'Phone and WhatsApp → desk'],
+    ['<b>Google Business Profile</b> (Maps and the Google listing, supported by Ads and reviews)', 'AED 0', 'shown on Google Maps and Search', '64 calls, 364 direction requests, 71 website visits', est(0, 64), 'gmb', 'Calls → desk; directions → walk-ins'],
+    ['<b>Google search and the website</b> (organic)', 'AED 0', '5,720 visitors, 46% on Apple devices', '71 WhatsApp taps and 13 phone taps', est(71, 13), 'website', 'WhatsApp and phone → desk; 3 online self-bookings'],
+    ['<b>Meta WhatsApp ads</b> (99% iPhone)', aed(metaTot[0]), `${metaTot[1]} chats started`, `<b>102 showed high interest</b>, 23 ready to book (Zavis); ${metaTot[2]} replied a second time`, 1, 'paid-social', 'WhatsApp → desk'],
   ];
   const estTot = lanes.reduce((a, l) => a + l[4], 0);
   const gRows: [string, number, string, string, number][] = [
@@ -181,9 +188,9 @@ function luviAnswersHtml(co: ContentosLeads | null) {
 
 ${q(1, 'What did September’s advertising spend deliver?')}
 <p><b>The headline:</b> September was the strongest month for new patients in our Practo records: <b>188 first visits</b>, up from 148 in August and 104 in July (measured, all sources). Google and the website produced most of the measurable patient actions; the Meta WhatsApp campaign was our test month, and its fixes start this week (questions 3 and 4).</p>
-${tbl(['Lane', 'Spend', 'Reach', 'Patient actions (measured)', 'Bookings (modelled)', 'Route into Practo'], [
-    ...lanes.map((l) => [l[0], l[1], l[2], l[3], l[4] === 1 && l[0].includes('Meta') ? '1 (tracker)' : `≈ ${Math.round(l[4])}`, l[5]]),
-    ['<b>Total</b>', `<b>${aed(5394 + metaTot[0])}</b>`, '', '', `<b>≈ ${Math.round(estTot)}</b>`, '<b>188 new patients in Practo, +81% on July; 185 booked through the desk by phone or WhatsApp</b>'],
+${tbl(['Lane', 'Spend', 'Reach', 'Patient actions (measured)', 'Bookings', 'Patient evidence'], [
+    ...lanes.map((l) => [l[0], l[1], l[2], l[3], link(trace(l[5]), l[5] === 'paid-social' ? '1 booked' : `≈ ${Math.round(l[4])}`), `${esc(l[6])}<br>${link(trace(l[5]), 'Patients on the dashboard →')}${l[5] === 'paid-social' ? `<br>${link(CONTENTOS_LEADS_URL, 'Lead list in ContentOS →')}` : ''}`]),
+    ['<b>Total</b>', `<b>${aed(5394 + metaTot[0])}</b>`, '', '', `<b>${link(trace(), `≈ ${Math.round(estTot)}`)}</b>`, `<b>188 new patients in Practo, +81% on July</b><br>${link(trace(), 'All September patients by channel →')}`],
   ])}
 <p><b>Google Ads by campaign type</b> (taps measured in GA4; bookings modelled):</p>
 ${tbl(['Campaign', 'Spend', 'Clicks', 'Website taps', 'Bookings (modelled)', 'Cost per booking'], gRows.map(([c, sp, cl, taps, b]) => [esc(c), aed(sp), cl, taps, `≈ ${Math.max(1, Math.round(b))}`, b >= 2 ? aed(Math.round(sp / b)) : 'drives calls (counted from 8 Oct)']))}
@@ -212,8 +219,10 @@ ${q(2, 'How was lead quality assessed during the month?')}
 
 ${q(3, 'Why are we attracting enquiries that cannot progress?')}
 <ul style="margin:4px 0 8px;padding-left:18px">
-<li><b>Geography:</b> Meta counts anyone who lives in <i>or is regularly in</i> a mapped area, and no longer offers residents only. Our map includes Business Bay, Downtown, the DIFC edge, Dubai Marina and Meydan: districts with large construction sites and daily workforces. That is the most likely route for the contacts you spoke to, and we will remove those areas.</li>
-<li><b>Language:</b> Meta’s language setting reads the phone’s language, and English is the default on most phones, so it does not screen for the language a lead speaks. 21 contacts (7.8%) had a documented barrier.</li>
+<li><b>Who the leads are (evidence):</b> Meta’s delivery report shows <b>82 of 83 chats (99%) came from iPhone 16 and 17</b>, phones costing AED 3,400 and up, and all of the spend went to iPhones. In Google Analytics for September, <b>Apple devices are 46% of the people who find us on Google search</b> (2,643 of 5,720), and iPhone is the single largest device. iPhone users also make more WhatsApp and phone taps from Google search than Android users (35 against 30). Our audience is premium by device and by area.</li>
+<li><b>How many enquiries cannot progress:</b> of the 212 September Meta contacts logged in the lead tracker, 144 (68%) are still to be reached or have not replied. Stated barriers are a minority: language 22 (10%), price 11 (5%), not interested 8 (4%). So about 1 in 5 has a barrier; the larger opportunity is reaching the other two thirds quickly.</li>
+<li><b>Geography:</b> Meta counts anyone who lives in <i>or is regularly in</i> a mapped area, and no longer offers residents only. A minority of contacts work in, rather than live near, the mapped business districts, so we are removing Business Bay, Downtown, the DIFC edge, Dubai Marina and Meydan and keeping the residential map around the branches.</li>
+<li><b>Language:</b> Meta’s language setting reads the phone’s language, and English is the default on most phones, so it does not screen for the language a lead speaks. The assistant’s first reply will confirm English or Arabic.</li>
 <li><b>International numbers (45):</b> the records do not show whether they live in Dubai; nobody is asked. From tomorrow the assistant’s first question is which area they live in.</li>
 <li><b>Treatment intent:</b> 57% asked about gaps or protruding teeth (aligners or braces): a real, high-value need.</li>
 <li><b>Pricing:</b> 3.4% stated a budget objection in your extract, and more leads were waiting for a price from the clinic than stopped over cost, so cost is discovered late. Ads will show “from” prices so people with a different budget self-select out.</li>
@@ -284,24 +293,54 @@ export const BRIEFING_NOTES: BriefingNote[] = [
   {
     day: '2026-10-06',
     to: ['akbar', 'luvi', 'gautam', 'shadi', 'fahad'],
-    title: 'Which phones our leads come from (Google Analytics, 16 Sep to 4 Oct)',
-    subjectBit: 'leads by phone: Meta iPhone, Google Android',
+    gate: 'luvi-answers',
+    title: 'Answers to Dr Luvi’s questions on September’s leads',
+    subjectBit: 'Answers to Dr Luvi’s questions on September leads',
+    html: (_t, co) => luviAnswersHtml(co),
+  },
+  {
+    day: '2026-10-06',
+    slot: 'shoot',
+    to: [],
+    gate: 'luvi-answers',
+    title: 'Answers to Dr Luvi’s questions on September’s leads',
+    subjectBit: 'Answers to Dr Luvi’s questions on September leads',
+    html: (_t, co) => luviAnswersHtml(co),
+  },
+  {
+    day: '2026-10-06',
+    to: ['akbar', 'luvi', 'gautam', 'shadi', 'fahad'],
+    unlessGate: 'luvi-answers',
+    title: 'Which phones our leads come from (Meta and Google Analytics, September)',
+    subjectBit: 'Apple users lead our enquiries',
     html: () => devicesHtml(),
   },
   {
     day: '2026-10-06',
     to: ['akbar', 'luvi', 'gautam', 'shadi', 'fahad'],
+    unlessGate: 'luvi-answers',
     title: 'Lead follow-up: where leads are lost and what we are doing',
     subjectBit: 'lead follow-up',
     html: (_t, co) => followUpHtml(co),
   },
 ];
 
-export const notesFor = (today: string, who: string) => BRIEFING_NOTES.filter((n) => n.day === today && (n.slot ?? 'am') === 'am' && n.to.includes(who));
+/** Released gates: gate → the slot it was released for ('am' | 'shoot'). */
+export type Released = Record<string, string>;
+const gateOk = (n: BriefingNote, slot: 'am' | 'shoot', rel: Released) =>
+  (!n.gate || rel[n.gate] === slot) && (!n.unlessGate || !rel[n.unlessGate]);
+export const notesFor = (today: string, who: string, rel: Released = {}) => BRIEFING_NOTES.filter((n) => n.day === today && (n.slot ?? 'am') === 'am' && n.to.includes(who) && gateOk(n, 'am', rel));
 /** Notes for the 17:00 shoot email sent on `today` (everyone on it sees them). */
-export const shootNotesFor = (today: string) => BRIEFING_NOTES.filter((n) => n.day === today && n.slot === 'shoot');
+export const shootNotesFor = (today: string, rel: Released = {}) => BRIEFING_NOTES.filter((n) => n.day === today && n.slot === 'shoot' && gateOk(n, 'shoot', rel));
+/** Gate releases from lane_e.app_secrets (`note_release_<gate>`). */
+export async function loadReleased(sb: { from: (t: string) => any }): Promise<Released> {
+  const { data } = await sb.from('app_secrets').select('key,value').like('key', 'note_release_%');
+  return Object.fromEntries(((data ?? []) as { key: string; value: string }[]).map((r) => [r.key.slice(13), (r.value ?? '').trim()]));
+}
 
 const RAW = 'https://raw.githubusercontent.com/jordanfahad/Dental-Nation/main/';
+const DASH = 'https://reports.dentalnation.com/';
+const CONTENTOS_LEADS_URL = 'https://contentos.dentalnation.com/ads/meta/leads';
 const cache = new Map<string, Attachment>();
 
 /** Fetch and decrypt a note's file. Throws if it cannot be read, so the caller can retry on the next run. */
