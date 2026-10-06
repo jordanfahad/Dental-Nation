@@ -1,0 +1,48 @@
+.demand-report { color: #233b50; background: #fff; border: 1px solid #d8dcd9; padding: 22px; font: 12px/1.45 Arial, sans-serif; }
+.demand-masthead { display: flex; justify-content: space-between; gap: 16px; border-bottom: 2px solid #29465b; padding-bottom: 12px; }
+.demand-report h2 { font: 700 30px/1.1 Georgia, serif; margin: 3px 0 6px; }
+.demand-kicker { text-transform: uppercase; letter-spacing: .16em; font-size: 10px; color: #986354; }
+.demand-stamp { align-self: start; padding: 5px 8px; background: #edf3f1; font-size: 9px; white-space: nowrap; }
+.demand-report h3 { margin: 14px 0 7px; font-size: 13px; font-weight: 700; }
+.demand-report h3 span { display: block; font-size: 10px; font-weight: 400; color: #58666d; }
+.demand-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 14px 0; }
+.demand-controls input, .demand-controls button { border: 1px solid #c5cfcb; border-radius: 4px; padding: 5px 8px; }
+.demand-controls button { background: #29465b; color: white; }
+.demand-controls a { text-decoration: underline; }
+.demand-findings { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin: 12px 0; padding: 10px 10px 10px 28px; background: #f0f4f2; list-style: decimal; }
+.demand-note, .demand-footnote { font-size: 10px; color: #536169; margin-top: 7px; }
+.demand-empty { padding: 12px; background: #faf4e6; margin: 12px 0; }
+.demand-scroll { overflow-x: auto; }
+.demand-report table { border-collapse: collapse; width: 100%; font-size: 10px; line-height: 1.3; }
+.demand-report th, .demand-report td { padding: 6px 5px; text-align: left; vertical-align: top; border-bottom: 1px solid #e2e6e2; }
+.demand-report thead { background: #edf1f0; color: #284557; }
+.demand-report th { font-weight: 600; }
+.demand-report small { display: block; font-size: .88em; font-weight: 400; color: #536169; margin-top: 2px; }
+.demand-funnel { min-width: 980px; }
+.demand-leak { background: #fbebe4; color: #8b432a; }
+.demand-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.demand-signal { display: inline-block; padding: 2px 5px; background: #edf1f0; border-radius: 3px; }
+.demand-focus { background: #dcefe6; }.demand-hold { background: #fae5dc; }
+.demand-cohorts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 9px; background: #f4f6f3; font-size: 10px; }
+.demand-launch-summary { display: grid; grid-template-columns: repeat(9, 1fr); gap: 8px; font-size: 8px; }
+.demand-report details { margin: 18px 0; }.demand-report summary { cursor: pointer; font-weight: 700; margin-bottom: 8px; }
+.demand-footnote { border-top: 1px solid #d8dcd9; padding-top: 8px; }.demand-footnote p { margin: 3px 0; }
+.demand-print-only { display: none; }
+@media (max-width: 850px) { .demand-grid, .demand-findings { grid-template-columns: 1fr; }.demand-report { padding: 12px; }.demand-masthead { flex-wrap: wrap; } }
+@page demanddesk { size: A4 landscape; margin: 8mm; }
+@media print {
+  body:has(.demand-report) { page: demanddesk; }
+  body:has(.demand-report) *:not(:has(.demand-report)):not(.demand-report):not(.demand-report *) { display: none !important; }
+  body:has(.demand-report) main, body:has(.demand-report) main > div { margin: 0 !important; padding: 0 !important; max-width: none !important; }
+  .demand-report { width: 281mm; padding: 0; border: 0; font-size: 6.2pt; line-height: 1.15; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .demand-screen-only { display: none !important; }.demand-print-only { display: block; }
+  .demand-masthead { padding-bottom: 1mm; }.demand-report h2 { font-size: 17pt; margin: 0 0 .5mm; }.demand-kicker { font-size: 6pt; }.demand-stamp { font-size: 5.8pt; padding: 3px; }
+  .demand-report h3 { margin: 1.2mm 0 .6mm; font-size: 7pt; }.demand-report h3 span { display: inline; font-size: 5.5pt; margin-left: 4px; }
+  .demand-findings { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4mm; margin: 2mm 0; padding: 1.5mm 2mm 1.5mm 5mm; }
+  .demand-note, .demand-footnote { font-size: 5.5pt; line-height: 1.15; margin-top: 1mm; }
+  .demand-report table { font-size: 5.6pt; line-height: 1.15; }.demand-report th, .demand-report td { padding: .4mm .7mm; }
+  .demand-funnel { min-width: 0; }.demand-funnel small { display: inline; margin-left: .8mm; }.demand-scroll { overflow: visible; }.demand-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1mm 4mm; }
+  .demand-cohorts { padding: 1mm; gap: 2mm; font-size: 5.8pt; }.demand-report small { margin-top: .4mm; }
+  .demand-empty { padding: 1.5mm; margin: 1.5mm 0; }
+  .demand-launch-summary { gap: 1.5mm; font-size: 5.4pt; }.demand-footnote { padding-top: 1mm; }
+}

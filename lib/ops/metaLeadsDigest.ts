@@ -32,18 +32,8 @@ export { CONTENTOS_LEADS };
  *  - fresh: people messaging Dental Nation for the first time (Meta's "new
  *    messaging contacts").
  */
-type Actions = { action_type: string; value: string }[] | undefined;
-const act = (a: Actions, t: string) => (Array.isArray(a) ? a.filter((x) => x.action_type === t).reduce((n, x) => n + (Number(x.value) || 0), 0) : 0);
-export function metaPeople(actions: Actions): { gross: number; net: number; fresh: number } {
-  const chats = act(actions, 'onsite_conversion.messaging_conversation_started_7d');
-  const gross = Math.max(act(actions, 'lead'), chats, act(actions, 'onsite_conversion.total_messaging_connection'));
-  if (!chats) return { gross, net: gross, fresh: gross };
-  return {
-    gross,
-    net: Math.min(gross, act(actions, 'onsite_conversion.messaging_user_depth_2_message_send')),
-    fresh: Math.min(gross, act(actions, 'onsite_conversion.messaging_first_reply')),
-  };
-}
+import { metaPeople, type MetaActions as Actions } from '@/lib/meta/people';
+export { metaPeople } from '@/lib/meta/people';
 
 /** Tracker rows that are not patients: job seekers, agencies, suppliers, spam. */
 const NOT_PATIENT = /applicant|vacanc|\bjob\b|hiring|career|nursing opportunit|agency|videograph|photograph|social media management|collaborat|blogger|supplier|vendor|partnership|spam|wrong number|blank msg|supermarket|bank statement|not looking for dental/i;

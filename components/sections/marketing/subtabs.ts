@@ -7,6 +7,7 @@ export const MARKETING_SUBTABS = [
   { key: 'overview', label: 'Channel Tree' },
   { key: 'google', label: 'Google Ads Performance' },
   { key: 'meta', label: 'Meta Ads Performance' },
+  { key: 'demand', label: 'Demand to desk' },
   // The former Overview: spend → reported → tracked leakage + three-lens
   // triangulation. Kept whole — the tree links to it, never replaces it.
   { key: 'recon', label: 'Reconciliation' },

@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Suspense } from 'react';
 import type { ShareLink } from '@/lib/board/shareLinks';
 import { getRangeReport } from '@/lib/report';
+import { lastFullMonth } from '@/lib/analytics/demandToDesk';
 import { TabSkeleton } from '@/components/TabSkeleton';
 import { GoogleAnalyticsReport } from '@/components/sections/analytics/GoogleAnalyticsReport';
 import { DigitalSeo } from '@/components/sections/digital/DigitalSeo';
@@ -71,12 +72,13 @@ export async function TokenDashboard({
   roomNav?: React.ReactNode;
 }) {
   const tab: DashTab = (DASH_TABS.find((t) => t.key === sp.tab)?.key as DashTab) ?? 'group';
+  const defaultDemandRange = tab === 'marketing' && sp.mtab === 'demand' && !sp.from && !sp.to && !sp.preset ? lastFullMonth() : undefined;
 
   // Resolve the window exactly as the internal dashboard does, so a date
   // filter carried over from the deck means the same thing here.
   const shell = await getRangeReport({
-    from: sp.from,
-    to: sp.to,
+    from: sp.from ?? defaultDemandRange?.from,
+    to: sp.to ?? defaultDemandRange?.to,
     preset: sp.preset,
     compare: sp.compare,
     skipGa4: true,

@@ -21,7 +21,7 @@ import { runSlotsMonitor } from '@/lib/ops/slotsMonitor';
 import { sendNewLeadAlerts } from '@/lib/ops/alerts';
 import { getSiteSpeedReport } from '@/lib/analytics/site-speed';
 import { getTechBenchmark } from '@/lib/analytics/benchmark';
-import { refreshCompetitorSnapshots } from '@/lib/analytics/competitor';
+import { refreshCompetitorSnapshots, refreshDentalMarketSnapshot } from '@/lib/analytics/competitor';
 import { getSiteSizeReport } from '@/lib/analytics/site-size';
 import { sendWatchedTabAlerts } from '@/lib/ops/tabAlerts';
 import { syncOpsForms } from './adapters/ops-forms-adapter';
@@ -62,11 +62,11 @@ export interface SyncSummary {
 async function mirrorBronze(
   supabase: AdminClient,
   table: string,
-  rows: { rowIndex: number; data: Record<string, string> }[],
+  rows: { rowIndex: number; data: Record<string, string>; tabTitle?: string }[],
 ) {
   await supabase.from(table).delete().gte('id', 0);
   if (rows.length === 0) return;
-  const payload = rows.map((r) => ({ row_index: r.rowIndex, data: r.data }));
+  const payload = rows.map((r) => ({ row_index: r.rowIndex, data: table === 'raw_lead_tracker' && r.tabTitle ? { ...r.data, _source_tab: r.tabTitle } : r.data }));
   for (let i = 0; i < payload.length; i += 500) {
     await supabase.from(table).insert(payload.slice(i, i + 500));
   }
@@ -586,6 +586,14 @@ export async function runSync(trigger: SyncTrigger): Promise<SyncSummary> {
     if (c.refreshed.length) sheetsOk.push(`Competitor analysis refreshed: ${c.refreshed.join(', ')}`);
   } catch (err) {
     dataGaps.push({ area: 'tracking', detail: `Competitor analysis refresh failed: ${(err as Error).message}`, owner: ownerFor('tracking') });
+  }
+
+  // ----- UAE keyword-set demand: weekly cached read for Demand to desk -----
+  try {
+    const market = await refreshDentalMarketSnapshot();
+    if (market.refreshed) sheetsOk.push('UAE dental keyword cache refreshed');
+  } catch {
+    dataGaps.push({ area: 'tracking', detail: 'UAE dental keyword cache refresh unavailable', owner: ownerFor('tracking') });
   }
 
   // ----- Silver upserts -----
