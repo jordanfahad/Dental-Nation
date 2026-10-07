@@ -162,14 +162,15 @@ export function classifyAppointment(a: ApptFacts, L: Lookups): Verdict | null {
 }
 
 /** The ordered rule list for the UI explainer — MUST mirror classifyAppointment. */
-export const WATERFALL_RULES: { id: string; evidence: Evidence; text: string }[] = [
-  { id: 'R1', evidence: 'tagged', text: 'Returning patient (existing file series) → Retention — never counted as a new acquisition.' },
-  { id: 'R2', evidence: 'tagged', text: 'A tag word on the booking or its lead — "smile club", "influencer", "referred by Dr …", "walk in" — routes it to that channel.' },
-  { id: 'R3', evidence: 'tagged', text: 'Phone matches a website-widget booking carrying a campaign tag — ArabyAds lane → Affiliates (ArabyAds); gclid / utm_source=google → Paid Search.' },
-  { id: 'R4', evidence: 'tagged', text: 'Phone matches a website-widget booking with no campaign tag → Organic SEO (search engines).' },
-  { id: 'R5', evidence: 'tagged', text: 'Phone booked through the Zavis AI agent → AI Concierge.' },
-  { id: 'R6', evidence: 'tagged', text: 'Phone appears in the reception lead tracker → that enquiry’s channel (WhatsApp, Instagram, lead form → Paid…).' },
-  { id: 'R7', evidence: 'inferred', text: 'Phone is shared with another patient file (family member) → Patient / Family Referral.' },
-  { id: 'R8', evidence: 'inferred', text: 'Patient booked themselves online (APIPatient) with no other trace → Website.' },
-  { id: 'R10', evidence: 'inferred', text: 'No trace at all → Direct / Walk-in — the agreed default for untagged new patients.' },
+/** `plain` is the wording shown next to each patient in the drill-down tables: no rule codes or jargon. */
+export const WATERFALL_RULES: { id: string; evidence: Evidence; text: string; plain: string }[] = [
+  { id: 'R1', evidence: 'tagged', text: 'Returning patient (existing file series) → Retention — never counted as a new acquisition.', plain: 'Existing patient coming back, so not counted as a new patient.' },
+  { id: 'R2', evidence: 'tagged', text: 'A tag word on the booking or its lead — "smile club", "influencer", "referred by Dr …", "walk in" — routes it to that channel.', plain: 'The booking note says where they came from (for example “smile club” or “referred by Dr …”).' },
+  { id: 'R3', evidence: 'tagged', text: 'Phone matches a website-widget booking carrying a campaign tag — ArabyAds lane → Affiliates (ArabyAds); gclid / utm_source=google → Paid Search.', plain: 'The same phone number booked on our website from a Google ad or an ArabyAds link.' },
+  { id: 'R4', evidence: 'tagged', text: 'Phone matches a website-widget booking with no campaign tag → Organic SEO (search engines).', plain: 'The same phone number booked on our website after finding us on Google search.' },
+  { id: 'R5', evidence: 'tagged', text: 'Phone booked through the Zavis AI agent → AI Concierge.', plain: 'Booked through the Zavis AI assistant.' },
+  { id: 'R6', evidence: 'tagged', text: 'Phone appears in the reception lead tracker → that enquiry’s channel (WhatsApp, Instagram, lead form → Paid…).', plain: 'The same phone number is in the reception lead tracker, which records where they came from.' },
+  { id: 'R7', evidence: 'inferred', text: 'Phone is shared with another patient file (family member) → Patient / Family Referral.', plain: 'Shares a phone number with an existing patient, so most likely a family member.' },
+  { id: 'R8', evidence: 'inferred', text: 'Patient booked themselves online (APIPatient) with no other trace → Website.', plain: 'Booked themselves online, with nothing else recorded.' },
+  { id: 'R10', evidence: 'inferred', text: 'No trace at all → Direct / Walk-in — the agreed default for untagged new patients.', plain: 'Nothing recorded about how they found us: they called, sent a WhatsApp or walked in, and the desk did not note the source. Listed under Direct / Walk-in until the source is recorded.' },
 ];

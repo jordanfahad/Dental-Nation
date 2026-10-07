@@ -151,7 +151,7 @@ export async function getChannelTrace(
     }
 
     const L: Lookups = { widgetByPhone, leadChannelByPhone, aiAgentPhones, existingPhones, filesByPhone, leadTextByPhone };
-    const ruleText = new Map(WATERFALL_RULES.map((r) => [r.id, r.text]));
+    const ruleText = new Map(WATERFALL_RULES.map((r) => [r.id, r.plain]));
 
     /* ── Classify every in-window appointment; keep this channel's ── */
 

@@ -222,8 +222,8 @@ function ConfidenceCard({ report }: { report: GrowthReport }) {
               <span className="h-full bg-na/60" style={{ width: `${seg(defaulted)}%` }} title={`Defaulted: ${defaulted}`} />
             </div>
             <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-ink-soft">
-              <span><span className="mr-1 inline-block h-2 w-2 rounded-full bg-good" />Hard evidence — {int(tagged)} ({pct(total ? tagged / total : null)})</span>
-              <span><span className="mr-1 inline-block h-2 w-2 rounded-full bg-watch/80" />Inferred by logic — {int(inferred)} ({pct(total ? inferred / total : null)})</span>
+              <span><span className="mr-1 inline-block h-2 w-2 rounded-full bg-good" />Recorded — {int(tagged)} ({pct(total ? tagged / total : null)})</span>
+              <span><span className="mr-1 inline-block h-2 w-2 rounded-full bg-watch/80" />Best guess — {int(inferred)} ({pct(total ? inferred / total : null)})</span>
               <span><span className="mr-1 inline-block h-2 w-2 rounded-full bg-na/60" />Default (Direct / Walk-in) — {int(defaulted)} ({pct(total ? defaulted / total : null)})</span>
             </div>
           </>
@@ -237,7 +237,7 @@ function ConfidenceCard({ report }: { report: GrowthReport }) {
               <span>
                 {r.text}{' '}
                 <span className={`text-[10px] font-medium ${r.evidence === 'tagged' ? 'text-good' : 'text-watch'}`}>
-                  {r.evidence === 'tagged' ? 'hard evidence' : 'inferred'}
+                  {r.evidence === 'tagged' ? 'recorded' : 'best guess'}
                 </span>
               </span>
             </li>
@@ -306,7 +306,7 @@ function TraceTable({ patients }: { patients: Awaited<ReturnType<typeof getChann
                   <th className="px-2 py-2 font-medium">File</th>
                   <th className="px-2 py-2 font-medium">Status</th>
                   <th className="px-2 py-2 font-medium">Doctor</th>
-                  <th className="px-2 py-2 font-medium">Why this channel</th>
+                  <th className="px-2 py-2 font-medium">How we know where they came from</th>
                   <th className="py-2 pl-2 pr-3 text-right font-medium">Revenue</th>
                 </tr>
               </thead>
@@ -325,7 +325,7 @@ function TraceTable({ patients }: { patients: Awaited<ReturnType<typeof getChann
                           p.evidence === 'tagged' ? 'bg-good/10 text-good' : 'bg-watch/10 text-watch'
                         }`}
                       >
-                        {p.ruleId} · {p.evidence}
+                        {p.evidence === 'tagged' ? 'Recorded' : 'Best guess'}
                       </span>
                       <span className="text-[11px] leading-snug text-ink-soft">{p.ruleText}</span>
                     </td>
