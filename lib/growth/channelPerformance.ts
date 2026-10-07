@@ -177,8 +177,10 @@ export interface GrowthReport {
    */
   mvmSelection: {
     keys: string[];
+    /** The selected patients with the day they first booked and that day's Google Ads taps. */
+    picks: { key: string; firstDate: string; taps: number }[];
     poolKeys: string[];
-    /** Ad call-taps per day in-window (the ranking signal, shown in the UI). */
+    /** Google Ads taps per day in-window: ad call taps plus website WhatsApp and phone taps from google / cpc (the ranking signal). */
     tapsByDay: Record<string, number>;
     poolSize: number;
   } | null;
@@ -409,7 +411,7 @@ const computeChannelPerformance = cache(async (
     let dnDwShowed = 0;
     // Per-patient candidate info for the DETERMINISTIC MTA-MVM selection:
     // first in-window walk-in date + whether they ever showed. The model
-    // ranks these candidates by ad-call taps on their booking day and picks
+    // ranks these candidates by Google Ads taps (ad calls plus website WhatsApp and phone taps from google / cpc) on their booking day and picks
     // the top N — named, traceable patients instead of a proportional share.
     const dnDwInfo = new Map<string, { firstDate: string; showed: boolean }>();
     const bookedPatientsByChannel = new Map<string, Set<string>>();
@@ -784,11 +786,20 @@ const computeChannelPerformance = cache(async (
         // take the top `est`. Their REAL Practo outcomes become the ≈
         // figures — showed/treated/revenue are actual records of the named
         // selected patients, not proportional shares of an anonymous pool.
+        // Ranking signal: every Google Ads tap that day the model counts, i.e.
+        // call-button taps on the ads plus website WhatsApp and phone taps from
+        // google / cpc sessions (the same three inputs as the estimate).
         const tapsByDay: Record<string, number> = {};
         for (const r of inWin) {
           if (/CALL/i.test(String(r.click_type ?? '')) && r.date) {
             tapsByDay[r.date] = (tapsByDay[r.date] ?? 0) + (r.clicks != null ? Number(r.clicks) || 0 : 0);
           }
+        }
+        for (const r of sourceRows) {
+          if (!/^google\s*\/\s*cpc$/i.test(String(r.source_medium ?? '').trim())) continue;
+          if (r.event_name !== 'whatsapp_click' && r.event_name !== 'phone_click') continue;
+          const n = Number(r.event_count);
+          if (r.day && Number.isFinite(n) && n > 0) tapsByDay[r.day] = (tapsByDay[r.day] ?? 0) + n;
         }
         const candidates = [...dnDwInfo.entries()]
           .map(([key, info]) => ({ key, ...info, taps: tapsByDay[info.firstDate] ?? 0 }))
@@ -804,6 +815,7 @@ const computeChannelPerformance = cache(async (
         }
         report_mvmSelection = {
           keys: selected.map((c) => c.key),
+          picks: selected.map((c) => ({ key: c.key, firstDate: c.firstDate, taps: c.taps })),
           poolKeys: candidates.map((c) => c.key),
           tapsByDay,
           poolSize: candidates.length,

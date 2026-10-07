@@ -294,7 +294,15 @@ const PHONE_PATH_NOTE: Record<string, string> = {
   website: 'The website drives WhatsApp and phone taps that the desk books; self-bookings online are listed above.',
 };
 
-function TraceTable({ patients }: { patients: Awaited<ReturnType<typeof getChannelTrace>>['patients'] }) {
+const fmtDay = (iso: string): string => {
+  const d = new Date(`${iso}T00:00:00Z`);
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
+};
+
+type TracedRow = Awaited<ReturnType<typeof getChannelTrace>>['patients'][number];
+type RowReason = { badge: string; tone: 'good' | 'watch' | 'accent'; text: string };
+
+function TraceTable({ patients, reasonFor }: { patients: TracedRow[]; reasonFor?: (p: TracedRow) => RowReason | null }) {
   return (
     <div className="overflow-x-auto">
             <table className="w-full min-w-[760px] text-left">
@@ -311,7 +319,13 @@ function TraceTable({ patients }: { patients: Awaited<ReturnType<typeof getChann
                 </tr>
               </thead>
               <tbody>
-                {patients.map((p, i) => (
+                {patients.map((p, i) => {
+                  const r: RowReason = reasonFor?.(p) ?? {
+                    badge: p.evidence === 'tagged' ? 'Recorded' : 'Best guess',
+                    tone: p.evidence === 'tagged' ? 'good' : 'watch',
+                    text: p.ruleText,
+                  };
+                  return (
                   <tr key={`${p.mrNo}|${p.date}|${i}`} className="border-t border-line/70 align-top">
                     <td className="whitespace-nowrap py-2 pl-3 pr-2 text-[12px] tabular-nums text-ink">{p.date ?? '—'}</td>
                     <td className="px-2 py-2 text-[12.5px] font-medium text-ink">{p.patientName}</td>
@@ -322,18 +336,19 @@ function TraceTable({ patients }: { patients: Awaited<ReturnType<typeof getChann
                     <td className="px-2 py-2">
                       <span
                         className={`mr-1.5 inline-block rounded-full px-1.5 py-0.5 text-[9.5px] font-semibold ${
-                          p.evidence === 'tagged' ? 'bg-good/10 text-good' : 'bg-watch/10 text-watch'
+                          r.tone === 'good' ? 'bg-good/10 text-good' : r.tone === 'accent' ? 'bg-accent/10 text-accent' : 'bg-watch/10 text-watch'
                         }`}
                       >
-                        {p.evidence === 'tagged' ? 'Recorded' : 'Best guess'}
+                        {r.badge}
                       </span>
-                      <span className="text-[11px] leading-snug text-ink-soft">{p.ruleText}</span>
+                      <span className="text-[11px] leading-snug text-ink-soft">{r.text}</span>
                     </td>
                     <td className="whitespace-nowrap py-2 pl-2 pr-3 text-right text-[12px] font-medium tabular-nums text-ink">
                       {p.revenue > 0 ? aed(p.revenue) : '—'}
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -352,6 +367,23 @@ async function ChannelTraceView({ channelKey, range, clinic }: { channelKey: str
     ? await getChannelTrace('direct-walkin', range ?? {}, channelKey === 'paid-search' && clinic !== 'dr-tosun' ? 'dn-alwasl' : clinic === 'amc' ? 'all' : clinic,
       channelKey === 'paid-search' ? { patientKeys: performance?.mvmSelection?.poolKeys ?? [], uniquePatients: true } : {})
     : null;
+  // Paid search: split the no-source desk patients into the ones the model credits to Google Ads and the rest.
+  const picks = new Map((performance?.mvmSelection?.picks ?? []).map((p) => [p.key, p]));
+  const rowKey = (p: TracedRow) => p.mrNo || `p:${(p.phone || '').replace(/\D/g, '').slice(-9)}`;
+  const credited = channelKey === 'paid-search' && pool ? pool.patients.filter((p) => picks.has(rowKey(p))) : [];
+  const others = channelKey === 'paid-search' && pool ? pool.patients.filter((p) => !picks.has(rowKey(p))) : [];
+  const googleReason = (p: TracedRow): RowReason => {
+    const pick = picks.get(rowKey(p));
+    const day = pick ? fmtDay(pick.firstDate) : 'the booking day';
+    const taps = pick?.taps ?? 0;
+    return {
+      badge: 'Model: Google Ads',
+      tone: 'accent',
+      text: taps > 0
+        ? `No source was recorded at the desk. They first booked on ${day}, when Google Ads drove ${taps} call and WhatsApp tap${taps === 1 ? '' : 's'}, so their behaviour fits a Google Ads enquiry and the Dental Nation phone-path model credits them to Google Ads.`
+        : `No source was recorded at the desk. The Dental Nation phone-path model credits them to Google Ads to complete its estimate; no Google Ads taps were recorded on ${day}, so this is the weakest match.`,
+    };
+  };
   const back = `?tab=group&gtab=growth${range?.from ? `&from=${range.from}` : ''}${range?.to ? `&to=${range.to}` : ''}${clinic !== 'all' ? `&gclinic=${clinic}` : ''}`;
   const cross = CROSS_LINKS[channelKey];
   return (
@@ -401,12 +433,12 @@ async function ChannelTraceView({ channelKey, range, clinic }: { channelKey: str
         {channelKey === 'paid-search' ? (
           <p className="mb-3 rounded-card border border-dashed border-watch/60 bg-watch/5 px-3 py-2 text-[11.5px] leading-snug text-ink-soft">
             {performance?.phonePath && !performance.phonePath.websiteInputsAvailable ? 'Website source data is unavailable; the estimate currently includes ad call taps only. ' : ''}
-            The first list shows <span className="font-medium">hard-traced</span> patients. The modelled bookings on
-            the P&L row are claimed from the orphan pool — real patients with no channel trace, listed under{' '}
-            <Link href={`?tab=group&gtab=growth&gchan=direct-walkin${range?.from ? `&from=${range.from}` : ''}${range?.to ? `&to=${range.to}` : ''}`} className="font-medium text-accent hover:underline">
-              Direct / Walk-in
-            </Link>
-            . Their Practo outcomes are real; only which channel each came from is estimated.
+            Three lists below. <span className="font-medium">Recorded</span>: patients whose Google source is on record (for example a website booking from a Google ad).{' '}
+            <span className="font-medium">Credited to Google Ads by the model</span>: patients who reached the desk by phone or WhatsApp with no
+            source written down, picked by the Dental Nation phone-path model because their behaviour fits a Google Ads enquiry.{' '}
+            <span className="font-medium">Other desk patients</span>: the rest of that group, not counted for Google Ads. Practo outcomes and revenue
+            are real for everyone; only the channel of the model-credited patients is estimated, until the desk records the source of every new
+            patient (from Wed 7 Oct).
           </p>
         ) : null}
         {trace.patients.length ? (
@@ -416,7 +448,34 @@ async function ChannelTraceView({ channelKey, range, clinic }: { channelKey: str
             No booked appointments attribute to this channel in this window.
           </p>
         ) : null}
-        {pool ? (
+        {pool && channelKey === 'paid-search' ? (
+          <div className={trace.patients.length ? 'mt-5' : ''}>
+            <p className="mb-1 text-[13px] font-semibold text-ink">Credited to Google Ads by the model: {credited.length} patients</p>
+            <p className="mb-3 rounded-card border border-dashed border-accent/40 bg-accent/5 px-3 py-2 text-[11.5px] leading-snug text-ink-soft">
+              The model estimates how many bookings Google Ads produced from the call and WhatsApp taps it drove, then names the patients:
+              those with no source recorded who first booked on the days with the most Google Ads taps. Their visits and revenue are real Practo records.
+            </p>
+            {credited.length ? (
+              <TraceTable patients={credited} reasonFor={googleReason} />
+            ) : (
+              <p className="rounded-card border border-dashed border-line px-4 py-6 text-center text-[12.5px] text-ink-soft">
+                The model credits no patients to Google Ads in this window.
+              </p>
+            )}
+            <p className="mb-1 mt-5 text-[13px] font-semibold text-ink">
+              Other desk patients with no source recorded: {others.length} (not counted for Google Ads)
+              {pool.truncated ? ' · showing 300 rows' : ''}
+            </p>
+            {others.length ? (
+              <TraceTable patients={others} />
+            ) : (
+              <p className="rounded-card border border-dashed border-line px-4 py-6 text-center text-[12.5px] text-ink-soft">
+                None in this window.
+              </p>
+            )}
+          </div>
+        ) : null}
+        {pool && channelKey !== 'paid-search' ? (
           <div className={trace.patients.length ? 'mt-5' : ''}>
             <p className="mb-1 text-[13px] font-semibold text-ink">
               Untraced desk pool: {performance?.phonePath?.untracedPool ?? pool.total} patients (not channel bookings)
