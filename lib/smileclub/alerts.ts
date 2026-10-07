@@ -5,6 +5,7 @@ import { emailConfigured, sendEmail, type Attachment } from '@/lib/notify/email'
 import { getSupabaseAdmin } from '@/lib/supabase/server';
 import { BRANCH_LABEL, DENTISTS, LANES, LANG_LABEL, laneFor, langsFor } from '@/lib/smileclub/scripts';
 import { SHOOT_PLAN, SLOT_STATUS, WARDROBE, deliveryFor, dentistById, hoursOn, nextClinicDays, shootLoad } from '@/lib/smileclub/shoots';
+import { YMK, fmtYmkDay, ymkActive, ymkStatus, ymkWindow, type YmkItem } from '@/lib/smileclub/ymk';
 import { REVIEWERS, reviewFor, type ReviewEntry, type ReviewerId } from '@/lib/smileclub/review';
 import { loadCorp, loadReviews } from '@/lib/smileclub/tracker';
 import { video2 } from '@/lib/smileclub/creative';
@@ -81,6 +82,8 @@ const isReviewer = (w: Who): w is ReviewerId => w === 'shadi' || w === 'luvi' ||
 const META_READERS: Who[] = ['luvi', 'akbar', 'shadi', 'fahad'];
 /** Who sees the Google reviews tracker (target 100) and dated updates. */
 const REVIEW_READERS: Who[] = ['akbar', 'luvi', 'gautam', 'shadi', 'fahad'];
+/** The daily Smile Club x YMK pilot section (approved 7 Oct). */
+const YMK_READERS: Who[] = ['akbar', 'luvi', 'gautam', 'mohan', 'fahad'];
 const MORNING: Who[] = ['akbar', 'luvi', 'shadi', 'gautam', 'mohan', 'fahad'];
 const EVENING: Who[] = ['fahad', 'luvi', 'shadi', 'gautam', 'mohan'];
 const SHOOT_CC: Who[] = ['luvi', 'akbar', 'shadi', 'gautam', 'fahad', 'mohan'];
@@ -383,7 +386,9 @@ function tasksHtml(ctx: Ctx, who: Owner) {
   }
   if (who === 'mohan') {
     const shoots = SHOOT_PLAN.filter((d) => d.iso === today || d.iso === addDays(today, 1));
-    extra = `${h4('Shoots')}${shoots.length ? shoots.map((d) => `<p><b>${esc(d.label)}</b> — ${esc(d.stops.map((st) => `${BRANCH_LABEL[st.branch]}: ${st.slots.map((x) => `${x.time} ${dentistById(x.id).name}`).join(', ')}`).join('; '))}</p>`).join('') : '<p style="color:#767769">No shoot today or tomorrow.</p>'}`;
+    const ymkFilm = YMK.film.days.some((d) => d === today || d === addDays(today, 1))
+      ? `<p><b>YMK Let’s Play session, ${esc(YMK.film.label)}</b> — ${esc(YMK.film.note)}</p>` : '';
+    extra = `${h4('Shoots')}${shoots.length || ymkFilm ? shoots.map((d) => `<p><b>${esc(d.label)}</b> — ${esc(d.stops.map((st) => `${BRANCH_LABEL[st.branch]}: ${st.slots.map((x) => `${x.time} ${dentistById(x.id).name}`).join(', ')}`).join('; '))}</p>`).join('') + ymkFilm : '<p style="color:#767769">No shoot today or tomorrow.</p>'}`;
   }
   return {
     s,
@@ -474,6 +479,17 @@ export function buildBriefing(ctx: Ctx, who: Who): { subject: string; html: stri
     }
     for (const u of updatesFor(ctx.today, who)) lines.push(u.html);
     parts.push(h3('Reviews and updates') + `<ul style="margin:4px 0 10px;padding-left:18px">${lines.map((l) => `<li style="margin-bottom:4px">${l}</li>`).join('')}</ul>`);
+  }
+  // Smile Club x YMK Let's Play: the approved 10-day pilot, every morning until the final report.
+  if (YMK_READERS.includes(who) && ymkActive(ctx.today)) {
+    const w = ymkWindow(ctx.today);
+    const line = (i: YmkItem, withDay: boolean) => `<li style="margin-bottom:4px">${withDay ? `<b>${esc(fmtYmkDay(i.iso))}</b> · ` : ''}<b${i.owner === NAME[who] ? ' style="color:#B45F53"' : ''}>${esc(i.owner)}</b>: ${esc(i.what)}</li>`;
+    parts.push(h3('Smile Club x YMK Let’s Play pilot') +
+      `<p><b>${esc(ymkStatus(ctx.today))}</b> 10-day pilot, ${esc(fmtYmkDay(YMK.start))} to ${esc(fmtYmkDay(YMK.end))}, organic on YMK’s Instagram (20.5K followers) and WhatsApp community (4,153 members), no media spend. ${esc(YMK.offer)}</p>` +
+      `${h4('Today')}${w.today.length ? `<ul style="margin:4px 0 8px;padding-left:18px">${w.today.map((i) => line(i, false)).join('')}</ul>` : '<p style="color:#767769">Nothing due today.</p>'}` +
+      `${w.next.length ? `${h4('Next 3 days')}<ul style="margin:4px 0 8px;padding-left:18px">${w.next.map((i) => line(i, true)).join('')}</ul>` : ''}` +
+      `<p style="color:#767769;font-size:12px">Results come at the mid-point check (Mon 19 Oct) and the final report (Mon 26 Oct): reach and views, link clicks, enquiries, memberships and YMK20 / YMK code use.</p>`);
+    if (w.today.length) bits.push('YMK pilot');
   }
   if (isReviewer(who)) {
     const list = approvalsWaiting(ctx, who);

@@ -14,6 +14,7 @@
 
 import { Fragment, createContext, useContext, useState } from 'react';
 import { CLINIC_CLOSED, COORDINATOR, DAYS, FILMED, HOURS, NOT_FILMING, SHOOT_CHANGES, SHOOT_PLAN, SLOT_STATUS, WARDROBE, dentistById, hoursOn, nextClinicDays, shootLoad } from '@/lib/smileclub/shoots';
+import { YMK, YMK_ITEMS, fmtYmkDay } from '@/lib/smileclub/ymk';
 import { ALERT_CAP, ALERT_RULES, PREVIEWS } from '@/lib/smileclub/alertRules';
 import { CASTING, CONCEPTS, video2, type Concept } from '@/lib/smileclub/creative';
 import { commentTeamTaskAction, previewAlertAction, reviewScriptAction, saveCompanyAction, sendScriptsForReviewAction, updateTeamTaskAction, uploadCalendarAction, verifyCrmTestAction } from '@/app/(app)/smileclub-actions';
@@ -4072,6 +4073,26 @@ function ShootSchedule() {
         <b style={{ color: NAVY }}>Already filmed:</b>
         {FILMED.map((f) => <span key={f.id} className="rounded px-1.5 py-0.5" style={{ backgroundColor: '#e7efe6', color: '#2C5E3F' }}>✓ {dentistById(f.id).name} · {f.when} · {f.what}</span>)}
         {NOT_FILMING.map((f) => <span key={f.id} className="rounded px-1.5 py-0.5" style={{ backgroundColor: '#F1F1EA', color: OLIVE }}>✕ {dentistById(f.id).name} — {f.why}</span>)}
+      </div>
+      <div className="rounded-xl border bg-white p-2.5" style={{ borderColor: LINE }}>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="rounded-lg px-2 py-1 text-[12px] font-bold text-white" style={{ backgroundColor: BLUE }}>{YMK.film.label}</span>
+          <span className="text-[11px] font-bold" style={{ color: NAVY }}>Partner shoot · YMK Let&apos;s Play</span>
+          <span className="text-[10px]" style={{ color: OLIVE }}>Smile Club x YMK 10-day pilot, {fmtYmkDay(YMK.start)} to {fmtYmkDay(YMK.end)} (approved 7 Oct)</span>
+        </div>
+        <p className="mt-1 text-[10.5px] leading-snug" style={{ color: '#3a4148' }}>{YMK.film.note}</p>
+        <div className="mt-1 overflow-x-auto">
+          <table className="w-full min-w-[560px] border-collapse text-[10.5px]">
+            <tbody>
+              {YMK_ITEMS.filter((i) => i.owner === 'Mohan').map((i) => (
+                <tr key={`${i.iso}:${i.what}`} className="border-t align-top" style={{ borderColor: '#EEEFE1' }}>
+                  <td className="w-[86px] py-1 pr-2 font-bold tabular-nums" style={{ color: BLUE }}>{fmtYmkDay(i.iso)}</td>
+                  <td className="py-1" style={{ color: '#3a4148' }}>{i.what}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
       {SHOOT_PLAN.map((day) => {
         const keys = [...new Set([...(day.tasks ?? []), ...day.stops.flatMap((st) => st.slots.map((x) => x.task).filter((x): x is string => !!x)), `m-shoot-${day.key}`])];
