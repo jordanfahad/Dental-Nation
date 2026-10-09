@@ -93,6 +93,10 @@ export function leadTrackerChannel(sourceType: string, inquiryPlatform: string, 
   const pc = preferredChannel.toLowerCase();
   // Explicit paid traces first: Meta lead forms and anything reception marked "ADS".
   if (st.includes('lead form') || pc.startsWith('ads')) return 'paid-social';
+  // The desk logs Meta ad chats with the platform as the Source Type ("Facebook",
+  // 17 Sep to 1 Oct 2026, the Meta WhatsApp campaign); organic DMs are logged as
+  // "Organic leads" and fall through to the Inquiry Platform rule below.
+  if (st === 'facebook' || st === 'instagram') return 'paid-social';
   if (st.includes('website') || pc.includes('website')) return 'website';
   if (ip.includes('walk') || st.includes('walk')) return 'direct-walkin';
   if (ip.includes('telephone') || st.includes('redirect call')) return 'direct-walkin';

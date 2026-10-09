@@ -16,6 +16,8 @@ interface OwnSide {
   from: string;
   to: string;
   enquiries: Record<string, number>;
+  /** Google Ads enquiries that are the phone-path estimate (ad call and WhatsApp taps), included in enquiries['paid-search']. */
+  googleEstEnquiries: number;
   total: number;
   followers: Record<string, number>;
   /** Last 30 days: ad spend (AED) and Meta leads counted as people. */
@@ -36,10 +38,16 @@ interface OwnSide {
 async function ownSide(): Promise<OwnSide> {
   const to = new Date().toISOString().slice(0, 10);
   const from = new Date(Date.now() - 90 * 86400_000).toISOString().slice(0, 10);
-  const out: OwnSide = { from, to, enquiries: {}, total: 0, followers: {}, metaSpend30: 0, googleSpend30: 0, metaGross30: 0, metaNet30: 0, googleConv30: 0, tracker30: 0, reviews: 0, rating: null, newPatients30: 0, returning30: 0 };
+  const out: OwnSide = { from, to, enquiries: {}, googleEstEnquiries: 0, total: 0, followers: {}, metaSpend30: 0, googleSpend30: 0, metaGross30: 0, metaNet30: 0, googleConv30: 0, tracker30: 0, reviews: 0, rating: null, newPatients30: 0, returning30: 0 };
   try {
     const perf = await getChannelPerformance({ from, to });
-    for (const ch of perf.channels) { out.enquiries[ch.key] = ch.enquiries; out.total += ch.enquiries; }
+    for (const ch of perf.channels) {
+      // Google Ads enquiries arrive as calls and WhatsApp taps, not form fills: add the Growth Platform's phone-path estimate.
+      const est = ch.key === 'paid-search' ? Math.round(ch.estEnquiries ?? 0) : 0;
+      if (est) out.googleEstEnquiries = est;
+      out.enquiries[ch.key] = ch.enquiries + est;
+      out.total += ch.enquiries + est;
+    }
   } catch { /* the mapping card says so */ }
   const db = getSupabaseAdmin();
   if (db) {
@@ -227,13 +235,14 @@ function CompetitorBlock({ c, s, own, mine }: { c: CompetitorDef; s: CompetitorS
   }));
   const channelRows = c.channels.map((ch) => {
     const modelled: [number, number] = [totalLeads[0] * ch.share[0], totalLeads[1] * ch.share[1]];
-    const measured: [number, number] | null = ch.key === 'google-organic' ? searchLeads : ch.key === 'google-paid' ? paidLeads : null;
+    const measured: [number, number] | null = c.groupSiteOnly ? null : ch.key === 'google-organic' ? searchLeads : ch.key === 'google-paid' ? paidLeads : null;
     const leads = measured ?? modelled;
     const evidence =
       ch.key === 'meta-paid' && s.metaAds
         ? s.metaAds.error
           ? `Ad Library could not be read (${s.metaAds.error})`
           : `${s.metaAds.activeAds} ads live in ${s.metaAds.countries.join('/')} right now${s.metaAds.euReach ? `, reaching ${int(s.metaAds.euReach)} people in the EU` : ''}${Object.keys(s.metaAds.platforms).length ? ` (${Object.entries(s.metaAds.platforms).map(([k, v]) => `${k} ${v}`).join(', ')})` : ''}`
+        : c.groupSiteOnly && (ch.key === 'google-organic' || ch.key === 'google-paid') ? `${ch.basis}. Typical share, not measured: their patient-facing practice sites are not in the Google data on this page`
         : ch.key === 'google-organic' ? `measured: ${int(brandV)} brand visits × ${pct(ol.brandRate[0])}–${pct(ol.brandRate[1])}, plus ${int(otherOrganic)} other visits (${pct(ol.commercialShare[0])}–${pct(ol.commercialShare[1])} with treatment intent) and ${int(homeOrganic)} home-market blog visits × ${pct(ol.enquiryRate[0])}–${pct(ol.enquiryRate[1])}`
         : ch.key === 'google-paid' ? (paidOff ? `benchmark for a brand of this size: about ${int(t.paid)} clicks for AED ${int(t.adSpendAed)} a month across ${ga.marketsRunning} markets` : `measured: ${int(t.paid)} paid Google clicks a month`)
         : ch.key === 'social-organic' ? `${int(sum(c.social.map((x) => x.followers)))} followers across ${c.social.map((x) => x.platform).join(', ')}`
@@ -243,6 +252,13 @@ function CompetitorBlock({ c, s, own, mine }: { c: CompetitorDef; s: CompetitorS
   const bestChannel = [...channelRows].sort((a, b) => mid(b.leads) - mid(a.leads))[0];
   const modelTotal = channelRows.reduce((n, r) => n + mid(r.leads), 0);
   const ownBuckets = c.channels.map((ch) => ({ ch, enquiries: ch.own.reduce((n, k) => n + (mine.enquiries[k] ?? 0), 0) }));
+  // Spend rows worked out once, so the totals equal the rows shown (the Google row follows the traffic estimate).
+  const spendRows = c.spend.map((l) => {
+    const theirs: [number, number] = l.key === 'google' && !paidOff ? [t.adSpendAed, t.adSpendAed] : l.key === 'google' ? [t.adSpendAed * 0.5, t.adSpendAed] : l.theirs;
+    const ours = l.ours === 'meta' ? mine.metaSpend30 : l.ours === 'google' ? mine.googleSpend30 : typeof l.ours === 'object' ? l.ours.aed : null;
+    return { l, theirs, ours };
+  });
+  const ourSpendTotal = sum(spendRows.map((r) => r.ours));
   const ownBest = [...ownBuckets].sort((a, b) => b.enquiries - a.enquiries)[0];
   const sortedMarkets = [...s.markets].sort((a, b) => (b.organicVisits ?? 0) + (b.paidVisits ?? 0) - (a.organicVisits ?? 0) - (a.paidVisits ?? 0));
   const top = sortedMarkets[0];
@@ -370,9 +386,9 @@ function CompetitorBlock({ c, s, own, mine }: { c: CompetitorDef; s: CompetitorS
         <div className="px-5 pb-5 pt-4">
           <KpiBand items={kpis} />
           <Takeaway>
-            {c.name} gets about <b>{int(t.search)}</b> visits a month from Google search across {s.markets.length} markets, which points to
+            {c.name} gets about <b>{int(t.search)}</b> visits a month from Google search {s.markets.length > 1 ? `across ${s.markets.length} markets` : `in the ${s.markets[0]?.market ?? ''}`}{c.groupSiteOnly ? ' (group site only)' : ''}, which points to
             <b> {int(totalVisits[0])}–{int(totalVisits[1])}</b> visits a month in all (organic search is usually {pct(c.traffic.organicShare[0])}–{pct(c.traffic.organicShare[1])} of a site like this)
-            {top ? <> (largest: <b>{top.market}</b>, {int((top.organicVisits ?? 0) + (top.paidVisits ?? 0))})</> : null}.
+            {top && s.markets.length > 1 ? <> (largest: <b>{top.market}</b>, {int((top.organicVisits ?? 0) + (top.paidVisits ?? 0))})</> : null}.
             {' '}<b>{pct(t.brandShare)}</b> of its Google visits come from people already searching “{c.brandKeyword}”, and
             {' '}<b>{int(t.brandSearches)}</b> people search the brand by name each month
             {brandGrowth != null ? <> ({brandGrowth >= 0 ? 'up' : 'down'} {pct(Math.abs(brandGrowth))} on a year ago)</> : null}.
@@ -416,6 +432,8 @@ function CompetitorBlock({ c, s, own, mine }: { c: CompetitorDef; s: CompetitorS
                   <td className="py-2 pl-3 text-right tabular-nums text-ink-soft">{int(m.brandVisits)}</td>
                 </tr>
               ))}
+              {/* A single-market competitor (a UK group) needs no total: it would repeat the row above. */}
+              {s.markets.length > 1 ? (
               <tr className="font-semibold">
                 <td className="py-2 pr-3 text-ink">All markets</td>
                 <td className="py-2 pr-3 text-right tabular-nums">{int(t.organic)}</td>
@@ -426,6 +444,7 @@ function CompetitorBlock({ c, s, own, mine }: { c: CompetitorDef; s: CompetitorS
                 <td className="py-2 pr-3 text-right tabular-nums">{int(t.brandSearches)}</td>
                 <td className="py-2 pl-3 text-right tabular-nums">{int(sum(s.markets.map((m) => m.brandVisits)))}</td>
               </tr>
+              ) : null}
             </tbody>
           </table>
           <p className="mt-2 text-[11px] text-ink-faint">
@@ -518,8 +537,12 @@ function CompetitorBlock({ c, s, own, mine }: { c: CompetitorDef; s: CompetitorS
               </p>
             ) : null}
             <p className="mt-2">
-              {implied && implied[0] > searchLeads[1]
+              {c.groupSiteOnly
+                ? <>Estimate 1 covers only the group site ({c.domain}); patients find each practice through its own local site and Google listing, which this data does not include. So estimate {byRevenue ? '3' : '2'} is the one used.</>
+                : implied && implied[0] > searchLeads[1]
                 ? <>The gap between the two is the share of leads that come from outside Google, mostly paid social and agents. That makes Meta their main lead engine, with Google second.</>
+                : (byRevenue ?? implied) && (byRevenue ?? implied)![0] > searchLeads[1]
+                ? <>Google search explains only part of their leads; the rest come from other channels (see Leads by channel below).</>
                 : <>The two estimates overlap, which suggests Google is a major source of their leads.</>}
             </p>
             <p className="mt-3 text-[11px] text-ink-faint">
@@ -649,8 +672,8 @@ function CompetitorBlock({ c, s, own, mine }: { c: CompetitorDef; s: CompetitorS
               {' '}{s.metaAds && !s.metaAds.error && s.metaAds.activeAds === 0 ? 'No Meta ads were live in the EU on the day of the read, so the Meta figure leans on the benchmark share rather than live evidence.' : ''}
             </p>
             <p className="mt-2 text-[11px] text-ink-faint">
-              * measured from Google data on this page (visits × 1–3% enquiry rate; paid clicks × 2–5%). Other rows are the typical share for
-              a {c.kind ?? 'dental tourism brand'} of this size (agency benchmarks, 2026) applied to the total. Ranges, not facts: no outside tool can
+              {channelRows.some((r) => r.measured) ? <>* measured from Google data on this page (visits × 1–3% enquiry rate; paid clicks × 2–5%). Other rows are the typical share for
+              a {c.kind ?? 'dental tourism brand'} of this size (agency benchmarks, 2026) applied to the total.</> : <>Every row is the typical share for a {c.kind ?? 'dental tourism brand'} of this size (UK dental marketing benchmarks, 2026) applied to the total.</>} Ranges, not facts: no outside tool can
               see a competitor's leads.
             </p>
           </div>
@@ -671,38 +694,40 @@ function CompetitorBlock({ c, s, own, mine }: { c: CompetitorDef; s: CompetitorS
               </tr>
             </thead>
             <tbody>
-              {c.spend.map((l) => {
-                const theirs: [number, number] = l.key === 'google' && !paidOff ? [t.adSpendAed, t.adSpendAed] : l.key === 'google' ? [t.adSpendAed * 0.5, t.adSpendAed] : l.theirs;
-                const ours = l.ours === 'meta' ? mine.metaSpend30 : l.ours === 'google' ? mine.googleSpend30 : null;
+              {spendRows.map(({ l, theirs, ours }) => {
                 return (
                   <tr key={l.key} className="border-b border-line/60 align-top">
                     <td className="py-2 pr-3 text-ink">{l.label}</td>
                     <td className="py-2 pr-3 text-right tabular-nums text-ink">{int(theirs[0])}–{int(theirs[1])}</td>
                     <td className="py-2 pr-3 text-[11px] text-ink-faint">{l.basis}</td>
-                    <td className="py-2 pr-3 text-right tabular-nums text-ink">{ours == null ? <span className="text-[11px] font-normal text-ink-faint">{l.ours}</span> : int(ours)}</td>
+                    <td className="py-2 pr-3 text-right tabular-nums text-ink">
+                      {ours == null ? <span className="text-[11px] font-normal text-ink-faint">{typeof l.ours === 'string' ? l.ours : ''}</span> : int(ours)}
+                      {typeof l.ours === 'object' ? <span className="block text-[10.5px] font-normal text-ink-faint">{l.ours.note}</span> : null}
+                    </td>
                     <td className="py-2 pl-3 text-right tabular-nums font-semibold text-watch">{ours ? `${Math.round(mid(theirs) / ours)}×` : '—'}</td>
                   </tr>
                 );
               })}
               <tr className="font-semibold">
                 <td className="py-2 pr-3 text-ink">All channels</td>
-                <td className="py-2 pr-3 text-right tabular-nums">{int(sum(c.spend.map((l) => l.theirs[0])))}–{int(sum(c.spend.map((l) => l.theirs[1])))}</td>
+                <td className="py-2 pr-3 text-right tabular-nums">{int(sum(spendRows.map((r) => r.theirs[0])))}–{int(sum(spendRows.map((r) => r.theirs[1])))}</td>
                 <td className="py-2 pr-3 text-[11px] font-normal text-ink-faint">media plus people; people costs are not visible from outside</td>
-                <td className="py-2 pr-3 text-right tabular-nums">{int(mine.metaSpend30 + mine.googleSpend30)} media</td>
-                <td className="py-2 pl-3 text-right tabular-nums text-watch">{Math.round(sum(c.spend.map((l) => mid(l.theirs))) / Math.max(1, mine.metaSpend30 + mine.googleSpend30))}×</td>
+                <td className="py-2 pr-3 text-right tabular-nums">{int(ourSpendTotal)} <span className="text-[11px] font-normal">media and CRM</span></td>
+                <td className="py-2 pl-3 text-right tabular-nums text-watch">{Math.round(sum(spendRows.map((r) => mid(r.theirs))) / Math.max(1, ourSpendTotal))}×</td>
               </tr>
             </tbody>
           </table>
           <p className="mt-2 text-[11px] text-ink-faint">
-            Dental Nation media spend is read from the Meta and Google Ads accounts for the last 30 days. Our content, video and social work is done
-            in-house and by CRM-DN and is not costed per channel here; when Finance gives those figures, the table shows them. {c.name} figures are estimates built from
+            Dental Nation media spend is read from the Meta and Google Ads accounts for the last 30 days. CRM-DN (Zavis) is an outside supplier, costed from its
+            invoices: AI Pro 3 seats AED 2,422 and the care retainer AED 3,000 a quarter (March 2026), plus Azure hosting AED 367 a month; WhatsApp message fees
+            are billed on top and not yet recorded. Staff time (Mohan, content writing) is not costed. {c.name} figures are estimates built from
             the lead model and typical team sizes for a {c.kind ?? 'dental tourism brand'} of this size.
           </p>
         </div>
       </Card>
 
       <Card>
-        <SectionHeader tag="C8" eyebrow="Mapped to Dental Nation" title={`Channel mix: ${c.name} (estimate) vs Dental Nation (actual, ${dubaiDateLabel(mine.from)} to ${dubaiDateLabel(mine.to)})`} />
+        <SectionHeader tag="C8" eyebrow="Mapped to Dental Nation" title={`Channel mix: ${c.name} (estimate) vs Dental Nation (${dubaiDateLabel(mine.from)} to ${dubaiDateLabel(mine.to)})`} />
         <div className="overflow-x-auto px-5 pb-5 pt-4">
           {mine.total ? (
             <>
@@ -748,8 +773,9 @@ function CompetitorBlock({ c, s, own, mine }: { c: CompetitorDef; s: CompetitorS
                 those are the channels to build, in the order of their share.
               </Takeaway>
               <p className="mt-2 text-[11px] text-ink-faint">
-                Dental Nation enquiries are the Growth Platform's attributed enquiries for the last 90 days, grouped into the same channels.
-                Shares compare mix, not volume: {c.name} sells trips from Europe, we sell visits in Dubai.
+                Dental Nation enquiries are the Growth Platform's enquiries for the last 90 days, grouped into the same channels: desk-logged chats,
+                website forms and AI agent bookings, plus Meta ad chats.{mine.googleEstEnquiries ? ` Google Ads includes ${int(mine.googleEstEnquiries)} estimated enquiries from ad call and WhatsApp taps (the Growth Platform's phone-path model), because Google Ads enquiries arrive by phone and WhatsApp, not by form.` : ''}
+                {' '}Shares compare mix, not volume: {c.mixNote ?? `${c.name} sells trips from Europe, we sell visits in Dubai.`}
               </p>
             </>
           ) : (

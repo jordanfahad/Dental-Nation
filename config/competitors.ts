@@ -85,9 +85,19 @@ export interface SpendLine {
   /** Competitor estimate in AED (low, high) and its basis. */
   theirs: [number, number];
   basis: string;
-  /** How Dental Nation's figure is sourced: 'meta' and 'google' are measured from the ad accounts; otherwise a note. */
-  ours: 'meta' | 'google' | string;
+  /** How Dental Nation's figure is sourced: 'meta' and 'google' are measured from the ad accounts; a fixed monthly cost from invoices; otherwise a note. */
+  ours: 'meta' | 'google' | { aed: number; note: string } | string;
 }
+
+/**
+ * What Dental Nation pays CRM-DN (Zavis, an outside supplier: website, booking
+ * module, WhatsApp desk) each month, from its invoices in lane_e.mos_costs:
+ * AI Pro 3 seats AED 2,422 a quarter (INV-000042, 13 Mar 2026) plus the
+ * Continuous Care retainer AED 3,000 a quarter (INV-000045) = AED 1,807 a
+ * month, plus Azure hosting USD 100 (AED 367) a month. WhatsApp message fees
+ * are billed on top and not yet recorded. Update when a newer invoice lands.
+ */
+export const DN_CRM_MONTHLY = { aed: 2174, note: 'CRM-DN (Zavis) AED 1,807 a month plus Azure hosting AED 367 (Mar 2026 invoices); content written in-house' };
 
 /**
  * The fact-finding frame for Mr Akbar: where Dental Nation stands against the
@@ -163,6 +173,15 @@ export interface CompetitorDef {
   caveat?: string;
   /** One line under the social table explaining how the follower figures are built. */
   socialNote?: string;
+  /**
+   * The measured domain is a group or corporate site, not where patients
+   * book (each practice has its own local site). Its Google figures then
+   * cannot stand in for the brand's Google leads, so the lead model uses
+   * the typical channel shares instead.
+   */
+  groupSiteOnly?: boolean;
+  /** The line under the channel-mix table saying why the mixes differ (default: the dental tourism wording). */
+  mixNote?: string;
 }
 
 const UAE: Market = { code: 2784, name: 'UAE', lang: 'en', peers: true };
@@ -192,7 +211,7 @@ const DENTAL_TOURISM_TRAFFIC: TrafficModel = {
 const DENTAL_TOURISM_SPEND: SpendLine[] = [
   { key: 'meta', label: 'Meta ads (Facebook, Instagram)', theirs: [45_000, 115_000], basis: '430 to 1,190 leads a month at GBP 8 to 35 a lead', ours: 'meta' },
   { key: 'google', label: 'Google Ads', theirs: [35_000, 70_000], basis: 'GBP 1,500 to 3,000 a month per market in six markets', ours: 'google' },
-  { key: 'content', label: 'Content and SEO (people)', theirs: [40_000, 60_000], basis: 'Treatment, price and blog pages in five languages: an SEO lead plus writers and translators', ours: 'in-house and CRM-DN, not costed separately' },
+  { key: 'content', label: 'Content and SEO (people)', theirs: [40_000, 60_000], basis: 'Treatment, price and blog pages in five languages: an SEO lead plus writers and translators', ours: DN_CRM_MONTHLY },
   { key: 'video', label: 'Video and social production', theirs: [30_000, 50_000], basis: 'Daily video across four language accounts and YouTube: videographer, editor, community manager', ours: 'in-house (Mohan), not costed separately' },
   { key: 'platforms', label: 'Medical tourism platforms (commission)', theirs: [20_000, 40_000], basis: '10 to 20% commission on 50 to 220 platform leads a month that convert', ours: 'ArabyAds affiliate, commission only' },
   { key: 'other', label: 'Influencers, PR, events', theirs: [10_000, 30_000], basis: 'Patient-influencer trips and press; not visible from outside', ours: 'none running' },
@@ -260,7 +279,7 @@ const UK_GROUP_GOOGLE_ADS: GoogleAdsBenchmark = {
 const UK_GROUP_SPEND: SpendLine[] = [
   { key: 'meta', label: 'Meta ads (Facebook, Instagram)', theirs: [23_500, 70_500], basis: 'GBP 5,000 to 15,000 a month across the group for treatment offers', ours: 'meta' },
   { key: 'google', label: 'Google Ads', theirs: [70_500, 188_000], basis: 'GBP 300 to 800 a month per practice across 50 practices', ours: 'google' },
-  { key: 'content', label: 'Websites, local SEO and listings', theirs: [25_000, 50_000], basis: 'One local site and Google listing per practice, run centrally', ours: 'in-house and CRM-DN, not costed separately' },
+  { key: 'content', label: 'Websites, local SEO and listings', theirs: [25_000, 50_000], basis: 'One local site and Google listing per practice, run centrally', ours: DN_CRM_MONTHLY },
   { key: 'video', label: 'Content and social production', theirs: [15_000, 30_000], basis: 'A central marketing team producing for practice accounts', ours: 'in-house (Mohan), not costed separately' },
   { key: 'platforms', label: 'Finance, NHS and directory listings', theirs: [5_000, 15_000], basis: 'Patient finance partners and directory fees', ours: 'ArabyAds affiliate, commission only' },
   { key: 'other', label: 'PR, recruitment marketing, events', theirs: [10_000, 25_000], basis: 'Dentist recruitment and partner acquisition campaigns; not visible from outside', ours: 'none running' },
@@ -340,6 +359,8 @@ export const COMPETITORS: CompetitorDef[] = [
     name: 'Dental Beauty Partners',
     tabKey: 'dbp',
     kind: 'UK dental group',
+    groupSiteOnly: true,
+    mixNote: 'Dental Beauty Partners serves local patients from about 50 UK practices; we serve Dubai from 3 clinics.',
     socialNote: 'Dental Beauty Partners has two group Instagram accounts: @dentalbeautygroup (patient-facing, about 21k) and @dentalbeautypartners (the group brand, about 7.1k). Some practices and dentists also post on their own accounts; those are not added here. Counts are as Instagram showed them in search results on 9 Oct 2026 and are rounded.',
     brand: 'dental beauty',
     brandKeyword: 'dental beauty',

@@ -299,6 +299,8 @@ const computeChannelPerformance = cache(async (
       if (!name && !S(d['Contact Number'])) continue;
       if (/^patient name$/i.test(name)) continue;
       const p9 = phone9(S(d['Contact Number']));
+      // Day markers the desk types into the sheet ("N/A", "CLINIC CLOSED"), no phone: not enquiries.
+      if (!p9 && /^(n\/?a\b|-+$|clinic\b|closed\b)/i.test(name)) continue;
       const text = `${S(d['Notes / Remarks'])} ${S(d['Follow-up Remarks'])} ${S(d['Follow up Remarks'])} ${S(d['Source Type'])} ${S(d['Preferred Channel'])}`.toLowerCase();
       const channel =
         tagHit(text) ?? leadTrackerChannel(S(d['Source Type']), S(d['Inquiry Platform']), S(d['Preferred Channel']));
