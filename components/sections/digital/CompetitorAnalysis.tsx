@@ -254,7 +254,8 @@ function CompetitorBlock({ c, s, own, mine }: { c: CompetitorDef; s: CompetitorS
   const ownBuckets = c.channels.map((ch) => ({ ch, enquiries: ch.own.reduce((n, k) => n + (mine.enquiries[k] ?? 0), 0) }));
   // Spend rows worked out once, so the totals equal the rows shown (the Google row follows the traffic estimate).
   const spendRows = c.spend.map((l) => {
-    const theirs: [number, number] = l.key === 'google' && !paidOff ? [t.adSpendAed, t.adSpendAed] : l.key === 'google' ? [t.adSpendAed * 0.5, t.adSpendAed] : l.theirs;
+    // Google: measured when DataForSEO sees paid clicks, otherwise the benchmark range (low to high budget per market).
+    const theirs: [number, number] = l.key === 'google' && !paidOff ? [t.adSpendAed, t.adSpendAed] : l.key === 'google' ? [ga.spendPerMarketGbp[0] * ga.marketsRunning * GBP_AED, t.adSpendAed] : l.theirs;
     const ours = l.ours === 'meta' ? mine.metaSpend30 : l.ours === 'google' ? mine.googleSpend30 : typeof l.ours === 'object' ? l.ours.aed : null;
     return { l, theirs, ours };
   });
@@ -774,7 +775,8 @@ function CompetitorBlock({ c, s, own, mine }: { c: CompetitorDef; s: CompetitorS
               </Takeaway>
               <p className="mt-2 text-[11px] text-ink-faint">
                 Dental Nation enquiries are the Growth Platform's enquiries for the last 90 days, grouped into the same channels: desk-logged chats,
-                website forms and AI agent bookings, plus Meta ad chats.{mine.googleEstEnquiries ? ` Google Ads includes ${int(mine.googleEstEnquiries)} estimated enquiries from ad call and WhatsApp taps (the Growth Platform's phone-path model), because Google Ads enquiries arrive by phone and WhatsApp, not by form.` : ''}
+                website forms and AI agent bookings, plus Meta ad chats. WhatsApp chats the desk logs without a source (marked ZAVIS, from 1 Oct) count
+                under word of mouth: the sheet does not record which ad, if any, they came from.{mine.googleEstEnquiries ? ` Google Ads includes ${int(mine.googleEstEnquiries)} estimated enquiries from ad call and WhatsApp taps (the Growth Platform's phone-path model), because Google Ads enquiries arrive by phone and WhatsApp, not by form.` : ''}
                 {' '}Shares compare mix, not volume: {c.mixNote ?? `${c.name} sells trips from Europe, we sell visits in Dubai.`}
               </p>
             </>
