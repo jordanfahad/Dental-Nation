@@ -38,6 +38,22 @@ interface TaskRow {
   updated_at: string | null;
 }
 
+/** Status of every team task (key -> open | in_progress | blocked | done), for pages that
+ *  only need it. live=false when the database cannot be read, so the page can say so. */
+export async function loadTaskStatuses(): Promise<{ live: boolean; status: Record<string, string> }> {
+  const sb = getSupabaseAdmin();
+  if (!sb) return { live: false, status: {} };
+  try {
+    const { data, error } = await selectAll(() => sb.from('tasks').select('id,external_id,status').eq('source', TRACKER_SOURCE), 'id');
+    if (error || !data) return { live: false, status: {} };
+    const status: Record<string, string> = {};
+    for (const r of data as { external_id: string; status: string | null }[]) status[r.external_id.replace(/^sc-team:/, '')] = r.status ?? 'open';
+    return { live: true, status };
+  } catch {
+    return { live: false, status: {} };
+  }
+}
+
 /** Live progress + activity trail for every team task. Never throws: an
  *  unreachable database renders the plan with every task at stage 0. */
 export async function loadTracker(): Promise<TrackerState> {

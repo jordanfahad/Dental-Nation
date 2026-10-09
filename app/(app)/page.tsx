@@ -59,6 +59,7 @@ export default async function DashboardPage({
     compare?: string;
     tab?: string;
     mtab?: string;
+    ccamp?: string;
     btab?: string;
     ptab?: string;
     gtab?: string;
@@ -132,7 +133,7 @@ export default async function DashboardPage({
           navigation so the skeleton shows immediately instead of the shell
           hanging on the tab's data. */}
       <Suspense
-        key={`${tab}|${sp.tab ?? ''}|${sp.from ?? ''}|${sp.to ?? ''}|${sp.preset ?? ''}|${sp.compare ?? ''}|${sp.mtab ?? ''}|${sp.mscope ?? ''}|${sp.mgrp ?? ''}|${sp.mchan ?? ''}|${sp.mcamp ?? ''}|${sp.gcamp ?? ''}|${sp.btab ?? ''}|${sp.ptab ?? ''}|${sp.gtab ?? ''}|${sp.gchan ?? ''}|${sp.gclinic ?? ''}|${sp.mpipe ?? ''}|${sp.rdate ?? ''}|${sp.rcad ?? ''}|${sp.rcmp ?? ''}|${sp.otab ?? ''}|${sp.dtab ?? ''}|${sp.comp ?? ''}|${clinic}`}
+        key={`${tab}|${sp.tab ?? ''}|${sp.from ?? ''}|${sp.to ?? ''}|${sp.preset ?? ''}|${sp.compare ?? ''}|${sp.mtab ?? ''}|${sp.mscope ?? ''}|${sp.mgrp ?? ''}|${sp.mchan ?? ''}|${sp.mcamp ?? ''}|${sp.gcamp ?? ''}|${sp.btab ?? ''}|${sp.ptab ?? ''}|${sp.gtab ?? ''}|${sp.gchan ?? ''}|${sp.gclinic ?? ''}|${sp.mpipe ?? ''}|${sp.rdate ?? ''}|${sp.rcad ?? ''}|${sp.rcmp ?? ''}|${sp.otab ?? ''}|${sp.dtab ?? ''}|${sp.comp ?? ''}|${sp.ccamp ?? ''}|${clinic}`}
         fallback={<TabSkeleton />}
       >
         {tab === 'executive' ? <ExecutiveDashboard query={query} gclinic={sp.gclinic} /> : null}
@@ -143,7 +144,7 @@ export default async function DashboardPage({
         {tab === 'practo' ? <PractoReport range={{ ...range, clinic }} sub={sp.ptab} /> : null}
         {tab === 'bookings' ? <BookingsReport report={shell} sub={sp.btab} /> : null}
         {tab === 'arabyads' ? <ArabyAdsReport range={range} /> : null}
-        {tab === 'marketing' ? <MarketingReport sub={sp.mtab} range={range} mscope={sp.mscope} mgrp={sp.mgrp} mchan={sp.mchan} mcamp={sp.mcamp} gcamp={sp.gcamp} /> : null}
+        {tab === 'marketing' ? <MarketingReport sub={sp.mtab} range={range} mscope={sp.mscope} mgrp={sp.mgrp} mchan={sp.mchan} mcamp={sp.mcamp} gcamp={sp.gcamp} ccamp={sp.ccamp} /> : null}
         {tab === 'social' ? <SocialReport range={range} /> : null}
         {tab === 'analytics' ? <GoogleAnalyticsReport range={range} /> : null}
         {tab === 'digital' ? <DigitalReport range={range} sub={sp.dtab} comp={sp.comp} /> : null}

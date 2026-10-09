@@ -123,7 +123,7 @@ export const SHOOT_PLAN: ShootDay[] = [
   { key: 'mon05', iso: '2026-10-05', label: 'Mon 5 Oct', stops: [
     { branch: 'tosun', slots: [
       { id: 'maysoun-ahmad', time: '08:30', status: 'proposed', note: 'In clinic 08:00–18:00. Backup: Mon 12 Oct 08:00–18:00' },
-      { id: 'sevinc-behruzoglu', time: '09:15', status: 'proposed', note: 'In clinic 08:00–18:00. Backup: Wed 7 Oct 08:00–18:00' },
+      { id: 'sevinc-behruzoglu', time: '09:15', status: 'filmed', note: 'Filmed (English; Turkish version in edit). English approved by Marketing on 9 Oct' },
       { id: 'maysoon-abdelmajeed', time: '10:00', status: 'proposed', note: 'In clinic 08:00–12:00. Backup: Tue 6 Oct 10:00–19:00' },
       { id: 'yahya-tosun', time: '12:00', only: 'lane', status: 'proposed', task: 'm-shoot-tosun', note: 'In clinic 11:30–16:00. Video 2 (The DN Scan ad), and Video 3 (announcement) once Gautam confirms the facts. Backup: Tue 13 Oct 09:00–19:00' },
     ] },

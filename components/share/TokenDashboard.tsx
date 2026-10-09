@@ -144,7 +144,7 @@ export async function TokenDashboard({
             compare={shell.range.compare === 'prev'}
           />
         ) : null}
-        {tab === 'marketing' ? <MarketingReport sub={sp.mtab} range={range} mscope={sp.mscope} /> : null}
+        {tab === 'marketing' ? <MarketingReport sub={sp.mtab} range={range} mscope={sp.mscope} publicView /> : null}
         {tab === 'analytics' ? <GoogleAnalyticsReport range={range} /> : null}
         {tab === 'digital' ? <DigitalSeo range={range} /> : null}
         {tab === 'social' ? <SocialReport range={range} /> : null}

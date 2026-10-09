@@ -1,7 +1,7 @@
 import { getMarketingReport } from '@/lib/marketing/report';
 import { ChannelTree } from './ChannelTree';
 import { MarketingSubNav } from './MarketingSubNav';
-import { resolveMarketingSub } from './subtabs';
+import { INTERNAL_MARKETING_SUBTABS, resolveMarketingSub } from './subtabs';
 import { MarketingJourneySection } from '@/components/sections/shared/MarketingJourneySection';
 import { ChannelOutcome } from './ChannelOutcome';
 import { GoogleAdsPerformance } from './GoogleAdsPerformance';
@@ -22,6 +22,7 @@ import { FunnelViz, type FunnelStageViz } from '@/components/charts/FunnelViz';
 import { ownerFor } from '@/config/data-gap-owners';
 import { dubaiDateLabel } from '@/lib/dates';
 import { DemandToDesk } from './DemandToDesk';
+import { ContentCalendar } from './ContentCalendar';
 
 const aed = (n: number) => `AED ${Math.round(n).toLocaleString('en-US')}`;
 const int = (n: number) => Math.round(n).toLocaleString('en-US');
@@ -73,8 +74,10 @@ function ScopePills({ active, sub, channelLabel, rangeQs }: { active: 'channel' 
  * scope pill for the whole-clinic journey. The Overview keeps the all-channel
  * journey, where it belongs.
  */
-export async function MarketingReport({ sub, range, mscope, mgrp, mchan, mcamp, gcamp }: { sub?: string; range?: { from: string; to: string }; mscope?: string; mgrp?: string; mchan?: string; mcamp?: string; gcamp?: string }) {
-  const active = resolveMarketingSub(sub);
+export async function MarketingReport({ sub, range, mscope, mgrp, mchan, mcamp, gcamp, ccamp, publicView = false }: { sub?: string; range?: { from: string; to: string }; mscope?: string; mgrp?: string; mchan?: string; mcamp?: string; gcamp?: string; ccamp?: string; publicView?: boolean }) {
+  // The no-login share links never show internal sub-tabs (the content calendar names staff and owners).
+  const resolved = resolveMarketingSub(sub);
+  const active = publicView && INTERNAL_MARKETING_SUBTABS.includes(resolved) ? resolveMarketingSub(undefined) : resolved;
   const scope: 'channel' | 'all' = mscope === 'all' ? 'all' : 'channel';
   const channelKey = active === 'google' ? ('paid-search' as const) : active === 'meta' ? ('paid-social' as const) : null;
   const channelLabel = active === 'google' ? 'Google' : 'Meta';
@@ -92,7 +95,7 @@ export async function MarketingReport({ sub, range, mscope, mgrp, mchan, mcamp, 
           the map; Google and Meta are the paid deep-dives; Reconciliation is where the three counting lenses
           (platform · site · tracker) are held against each other.
         </p>
-        <div className="mt-2.5"><MarketingSubNav active={active} /></div>
+        <div className="mt-2.5"><MarketingSubNav active={active} hide={publicView ? INTERNAL_MARKETING_SUBTABS : []} /></div>
       </header>
       {active === 'google' ? (
         <GoogleAdsPerformance range={range} gcamp={gcamp} />
@@ -100,6 +103,8 @@ export async function MarketingReport({ sub, range, mscope, mgrp, mchan, mcamp, 
         <MetaAdsPerformance range={range} mcamp={mcamp} />
       ) : active === 'demand' ? (
         <DemandToDesk range={range} />
+      ) : active === 'calendar' ? (
+        <ContentCalendar campaign={ccamp} qs={range ? `&from=${range.from}&to=${range.to}&preset=custom` : ''} />
       ) : active === 'recon' ? (
         <MarketingOverview />
       ) : range ? (

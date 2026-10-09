@@ -9,7 +9,7 @@ import { MARKETING_SUBTABS, type MarketingSubTab } from './subtabs';
  * preserving the rest of the query (tab=marketing, date params), mirroring the
  * top TabBar pattern so deep links stay shareable.
  */
-export function MarketingSubNav({ active }: { active: MarketingSubTab }) {
+export function MarketingSubNav({ active, hide = [] }: { active: MarketingSubTab; hide?: MarketingSubTab[] }) {
   const params = useSearchParams();
   const hrefFor = (sub: MarketingSubTab) => {
     const next = new URLSearchParams(params.toString());
@@ -21,7 +21,7 @@ export function MarketingSubNav({ active }: { active: MarketingSubTab }) {
   return (
     <nav className="no-print">
       <ul className="flex flex-wrap gap-1.5">
-        {MARKETING_SUBTABS.map((t) => {
+        {MARKETING_SUBTABS.filter((t) => !hide.includes(t.key)).map((t) => {
           const isActive = t.key === active;
           return (
             <li key={t.key}>
