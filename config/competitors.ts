@@ -161,6 +161,8 @@ export interface CompetitorDef {
   summary?: string;
   /** A caveat shown at the top of the tab. */
   caveat?: string;
+  /** One line under the social table explaining how the follower figures are built. */
+  socialNote?: string;
 }
 
 const UAE: Market = { code: 2784, name: 'UAE', lang: 'en', peers: true };
@@ -288,6 +290,7 @@ export const COMPETITORS: CompetitorDef[] = [
     name: 'Dentakay',
     tabKey: 'dentakay',
     kind: 'dental tourism brand',
+    socialNote: 'Dentakay runs separate accounts per language (English, French, Arabic, Spanish); the Instagram figure adds them up.',
     brand: 'dentakay',
     brandKeyword: 'dentakay',
     brandAliases: ['دينتاكاي'],
@@ -337,6 +340,7 @@ export const COMPETITORS: CompetitorDef[] = [
     name: 'Dental Beauty Partners',
     tabKey: 'dbp',
     kind: 'UK dental group',
+    socialNote: 'Dental Beauty Partners has no group-wide patient account: each practice runs its own Instagram and Facebook under its local name (for example Dental Beauty Acton, Dulwich, Southgate), so their followers are not totalled here.',
     brand: 'dental beauty',
     brandKeyword: 'dental beauty',
     markets: [{ code: 2826, name: 'UK', lang: 'en', peers: true }],

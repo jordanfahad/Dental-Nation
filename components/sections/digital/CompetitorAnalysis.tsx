@@ -595,16 +595,22 @@ function CompetitorBlock({ c, s, own, mine }: { c: CompetitorDef; s: CompetitorS
                     <td className="py-2 pl-3 text-right tabular-nums text-ink-soft">{x.platform.toLowerCase() in mine.followers ? int(mine.followers[x.platform.toLowerCase()]) : '—'}</td>
                   </tr>
                 ))}
+                {c.social.length === 0 ? (
+                  <tr className="border-b border-line/60">
+                    <td className="py-2 pr-3 text-ink">Instagram and Facebook</td>
+                    <td className="py-2 pr-3 text-right text-[11.5px] text-ink-faint">per practice, not totalled</td>
+                    <td className="py-2 pl-3 text-right tabular-nums text-ink-soft">{int((mine.followers['instagram'] ?? 0) + (mine.followers['facebook'] ?? 0))}</td>
+                  </tr>
+                ) : null}
                 <tr className="font-semibold">
                   <td className="py-2 pr-3 text-ink">All platforms</td>
-                  <td className="py-2 pr-3 text-right tabular-nums">{int(sum(c.social.map((x) => x.followers)))}</td>
+                  <td className="py-2 pr-3 text-right tabular-nums">{c.social.length ? int(sum(c.social.map((x) => x.followers))) : '—'}</td>
                   <td className="py-2 pl-3 text-right tabular-nums">{int(sum(Object.values(mine.followers)))}</td>
                 </tr>
               </tbody>
             </table>
             <p className="mt-2 text-[11px] text-ink-faint">
-              {c.name} runs separate accounts per language (English, French, Arabic, Spanish); the Instagram figure adds them up. Dental Nation
-              figures are the live counts the dashboard syncs from Meta. Sources: {c.social[0]?.source ?? ''}.
+              {c.socialNote ?? ''} Dental Nation figures are the live counts the dashboard syncs from Meta.{c.social.length ? ` Sources: ${c.social[0].source}.` : ''}
             </p>
           </div>
         </Card>
