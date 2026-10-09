@@ -340,7 +340,7 @@ export const COMPETITORS: CompetitorDef[] = [
     name: 'Dental Beauty Partners',
     tabKey: 'dbp',
     kind: 'UK dental group',
-    socialNote: 'Dental Beauty Partners has no group-wide patient account: each practice runs its own Instagram and Facebook under its local name (for example Dental Beauty Acton, Dulwich, Southgate), so their followers are not totalled here.',
+    socialNote: 'Dental Beauty Partners has two group Instagram accounts: @dentalbeautygroup (patient-facing, about 21k) and @dentalbeautypartners (the group brand, about 7.1k). Some practices and dentists also post on their own accounts; those are not added here. Counts are as Instagram showed them in search results on 9 Oct 2026 and are rounded.',
     brand: 'dental beauty',
     brandKeyword: 'dental beauty',
     markets: [{ code: 2826, name: 'UK', lang: 'en', peers: true }],
@@ -361,7 +361,9 @@ export const COMPETITORS: CompetitorDef[] = [
     // A local practice converts enquiries far better than dental tourism: the patient lives nearby and often has NHS or insurance cover.
     leadToPatient: [0.3, 0.5],
     netOfGross: [0.5, 0.7],
-    social: [],
+    social: [
+      { platform: 'Instagram', handle: '@dentalbeautygroup (+ @dentalbeautypartners 7.1k)', followers: 28100, source: 'instagram.com profiles as shown in search results, read 9 Oct 2026' },
+    ],
     channels: UK_GROUP_CHANNELS,
     traffic: UK_GROUP_TRAFFIC,
     googleAds: UK_GROUP_GOOGLE_ADS,
@@ -377,7 +379,7 @@ export const COMPETITORS: CompetitorDef[] = [
       brand: { missing: 'Not much: their group name is mostly a business-to-business brand; patients know the local practice name.', effort: 'Keep one consistent Dental Nation name across every clinic, listing and ad.', level: 'Low' },
       organic: { missing: 'Fifty local websites and listings, each ranking for "dentist near me" in its own area.', effort: 'Local pages and Google listings for each of our clinics; treatment and area pages in English and Arabic.', level: 'Medium' },
       authority: { missing: 'Press and trade coverage from acquisitions and deals.', effort: 'PR around Smile Club, partnerships and new clinics; UAE directories and partner links.', level: 'Medium' },
-      social: { theirs: null, fmtT: 'per-practice accounts (not totalled)', missing: 'Not a group strength: social runs practice by practice.', effort: 'Doctor videos and one consistent Dental Nation account do more for us than many small accounts.', level: 'Medium' },
+      social: { missing: 'A modest gap: about 28k Instagram followers across two group accounts, far below Dentakay. Social is not where this group wins.', effort: 'Doctor videos and one consistent Dental Nation account do more for us than many small accounts.', level: 'Medium' },
       reviews: { theirs: null, fmtT: 'per practice on Google (not totalled); Trustpilot only a handful', missing: 'Volume per practice across 50 sites.', effort: 'Ask after every completed visit at every clinic: 50 to 100 Google reviews a month.', level: 'Low' },
       footprint: { theirs: 50, fmtT: '50+ practices across the UK; 1,000+ colleagues', missing: 'Capital and a buy-and-build model: they grew from 1 to 50 practices in 10 years by acquiring practices, backed by private equity.', effort: 'Not a marketing task: a growth and investment decision. Their partnership model (the dentist co-owns the practice) is the part worth studying.', level: 'High' },
       languages: { theirs: 1, fmtT: '1 language, UK only (local patients)', missing: 'Nothing: they serve local patients in English.', effort: 'Our two languages are an advantage in Dubai; keep Arabic in content, ads and the desk.', level: 'Low' },
