@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { Card, SectionHeader, Takeaway } from '@/components/ui/Card';
 import { DataGapInline } from '@/components/ui/DataGap';
 import { KpiBand, type KpiItem } from '@/components/charts/KpiBand';
@@ -121,18 +122,36 @@ type MarketRowLike = { market: string; organicVisits: number | null };
  * refreshed weekly by the sync cron (lib/analytics/competitor.ts); public
  * claims and their sources sit in config/competitors.ts.
  */
-export async function CompetitorAnalysis() {
+export async function CompetitorAnalysis({ comp }: { comp?: string } = {}) {
   const [snaps, mine] = await Promise.all([
     getCompetitorSnapshots().catch(() => new Map<string, CompetitorSnapshot>()),
     ownSide(),
   ]);
   const ownSnap = snaps.get(OWN.domain) ?? null;
   const own = hasData(ownSnap) ? ownSnap : null;
+  // One tab per competitor (?comp=); Dentakay first, as before.
+  const active = COMPETITORS.find((c) => (c.tabKey ?? c.domain) === comp) ?? COMPETITORS[0];
   return (
     <div className="space-y-4">
-      {COMPETITORS.map((c) => (
-        <CompetitorBlock key={c.domain} c={c} s={snaps.get(c.domain) ?? null} own={own} mine={mine} />
-      ))}
+      <nav className="flex flex-wrap gap-2" aria-label="Competitors">
+        {COMPETITORS.map((c) => {
+          const on = c === active;
+          return (
+            <Link
+              key={c.domain}
+              href={`?tab=digital&dtab=competitors&comp=${c.tabKey ?? c.domain}`}
+              className={`rounded-full border px-3 py-1.5 text-[12.5px] font-medium ${on ? 'border-accent bg-accent text-white' : 'border-line bg-card text-ink-soft hover:text-ink'}`}
+              aria-current={on ? 'page' : undefined}
+            >
+              {c.name}
+            </Link>
+          );
+        })}
+      </nav>
+      {active.caveat ? (
+        <p className="rounded-card border border-dashed border-watch/60 bg-watch/5 px-4 py-2.5 text-[12px] leading-snug text-ink-soft">{active.caveat}</p>
+      ) : null}
+      <CompetitorBlock key={active.domain} c={active} s={snaps.get(active.domain) ?? null} own={own} mine={mine} />
     </div>
   );
 }
@@ -186,7 +205,8 @@ function CompetitorBlock({ c, s, own, mine }: { c: CompetitorDef; s: CompetitorS
     : null;
   // Leads by channel: the brand's total (revenue-based, else their claim, else Google scaled up by its typical share),
   // split by the channel model; the two Google rows use the measured figures instead of the typical share.
-  const totalLeads: [number, number] = byRevenue ?? implied ?? [searchLeads[0] / 0.25, searchLeads[1] / 0.15];
+  const shareOfLeads = c.searchShareOfLeads ?? [0.15, 0.25];
+  const totalLeads: [number, number] = byRevenue ?? implied ?? [searchLeads[0] / shareOfLeads[1], searchLeads[1] / shareOfLeads[0]];
   // Google Ads leads: measured clicks × 2–5%, or the benchmark leads when the clicks are the benchmark.
   const ga = c.googleAds;
   const gaLeads: [number, number] = [ga.leadsPerMarket[0] * ga.marketsRunning, ga.leadsPerMarket[1] * ga.marketsRunning];
@@ -253,7 +273,8 @@ function CompetitorBlock({ c, s, own, mine }: { c: CompetitorDef; s: CompetitorS
   // The fact-finding frame: where we stand on each measure, what is missing, what it takes.
   const ownMetaSpend = mine.metaSpend30 + mine.googleSpend30;
   const ownNetLeads = mine.metaNet30 + Math.round(mine.googleConv30);
-  const theirPaid = 20_000 * GBP_AED * 0.5 + t.adSpendAed; // Meta midpoint of GBP 10k–25k plus the Google figure
+  const metaGbp = c.metaMonthlyGbp ?? [10_000, 25_000];
+  const theirPaid = ((metaGbp[0] + metaGbp[1]) / 2) * GBP_AED + t.adSpendAed; // Meta midpoint plus the Google figure
   const gapRows = GAP_DIMENSIONS.map((g) => {
     const v = {
       returning: { theirs: Math.round(netLeads * 0.07), ours: mine.returning30, fmtT: `about ${int(netLeads * 0.07)} (5–10% of leads; one trip, no recall)`, fmtO: `${int(mine.returning30)} patients seen again (Practo, last 30 days)` },
@@ -268,8 +289,10 @@ function CompetitorBlock({ c, s, own, mine }: { c: CompetitorDef; s: CompetitorS
       footprint: { theirs: 60, ours: DENTISTS.length, fmtT: '7 clinics (6 in Turkey, 1 in Riyadh), London office; 60 dentists', fmtO: `3 clinics in Dubai; ${DENTISTS.length} dentists` },
       languages: { theirs: 11, ours: 1, fmtT: '5 languages, 11 countries', fmtO: '2 languages, 1 city' },
     }[g.key];
-    const ratio = v.ours > 0 ? v.theirs / v.ours : null;
-    return { g, ...v, ratio };
+    const o2 = c.gap?.[g.key];
+    const theirs = o2 && 'theirs' in o2 ? o2.theirs ?? null : v.theirs;
+    const ratio = theirs != null && v.ours > 0 ? theirs / v.ours : null;
+    return { g: { ...g, missing: o2?.missing ?? g.missing, effort: o2?.effort ?? g.effort, level: o2?.level ?? g.level }, ...v, fmtT: o2?.fmtT ?? v.fmtT, ratio };
   });
 
   return (
@@ -308,12 +331,16 @@ function CompetitorBlock({ c, s, own, mine }: { c: CompetitorDef; s: CompetitorS
               ))}
             </tbody>
           </table>
+          {c.summary ? (
+            <Takeaway>In one line: {c.summary}</Takeaway>
+          ) : (
           <Takeaway>
             In one line: {c.name} is a 15-year brand spending roughly {int(theirPaid / Math.max(ownMetaSpend, 1))} times our media budget, with a content and video engine in five
             languages, and it has to buy almost every patient with ads because dental tourism patients do not come back. We have {int(mine.returning30)} returning
             patients a month that they do not; the target is to grow new leads while keeping that base, not to match their volume. The gap is not one thing: it is budget (paid media), production (content and video) and operations (lead handling and
             capacity), built over years. The roadmap below sequences it; the first three months cost little and fix the leaks before the budget goes up.
           </Takeaway>
+          )}
           <div className="mt-3 grid gap-3 md:grid-cols-3">
             {[
               ['Months 0 to 3: fix the leaks', 'Reply to every lead within minutes; reviews after every visit; the doctor video programme at three videos a week; Arabic Instagram account; Meta budget to AED 25k a month. Roughly AED 40k a month in all.'],
@@ -327,7 +354,7 @@ function CompetitorBlock({ c, s, own, mine }: { c: CompetitorDef; s: CompetitorS
             ))}
           </div>
           <p className="mt-2 text-[11px] text-ink-faint">
-            Dentakay figures are the estimates on this page; ours are live from the dashboard (DataForSEO for search, Meta and Google Ads for spend
+            {c.name} figures are the estimates on this page; ours are live from the dashboard (DataForSEO for search, Meta and Google Ads for spend
             and leads, Google Business Profile for reviews). Budgets and timelines are planning estimates to be costed per line before commitment.
           </p>
         </div>
@@ -431,7 +458,7 @@ function CompetitorBlock({ c, s, own, mine }: { c: CompetitorDef; s: CompetitorS
               </tr>
             </tbody>
           </table>
-          <p className="mt-2 text-[11px] text-ink-faint">* measured. Other rows apply the typical traffic mix of a dental tourism brand to the estimated total; no outside tool can see a competitor's non-Google traffic.</p>
+          <p className="mt-2 text-[11px] text-ink-faint">* measured. Other rows apply the typical traffic mix of a {c.kind ?? 'dental tourism brand'} to the estimated total; no outside tool can see a competitor's non-Google traffic.</p>
         </div>
       </Card>
 
@@ -474,21 +501,20 @@ function CompetitorBlock({ c, s, own, mine }: { c: CompetitorDef; s: CompetitorS
             <p className="mt-2">
               <b className="text-ink">1. From Google traffic:</b> {int(brandV)} brand-search visits × {pct(ol.brandRate[0])}–{pct(ol.brandRate[1])}, plus the
               treatment and price searches among the other {int(otherOrganic + homeOrganic)} visits × {pct(ol.enquiryRate[0])}–{pct(ol.enquiryRate[1])} =
-              <b className="text-ink"> {int(searchLeads[0])}–{int(searchLeads[1])} leads a month</b> from Google search. Blog reading (most of the Turkish traffic) is not counted as prospects.
+              <b className="text-ink"> {int(searchLeads[0])}–{int(searchLeads[1])} leads a month</b> from Google search. {homeOrganic > 0 ? 'Blog reading in the home market is not counted as prospects.' : ''}
             </p>
             {implied ? (
               <p className="mt-2">
                 <b className="text-ink">2. From their own patient numbers:</b> they say they treat {int(c.claimedPatientsPerYear)} patients
-                a year, about {int(c.claimedPatientsPerYear! / 12)} a month. In dental tourism {pct(c.leadToPatient[0])}–{pct(c.leadToPatient[1])} of
+                a year, about {int(c.claimedPatientsPerYear! / 12)} a month. For a {c.kind ?? 'dental tourism brand'} {pct(c.leadToPatient[0])}–{pct(c.leadToPatient[1])} of
                 leads travel and get treated, so that needs <b className="text-ink">{int(implied[0])}–{int(implied[1])} leads a month</b> from
                 all channels (Google, Facebook, Instagram, agents, referrals).
               </p>
             ) : null}
             {byRevenue && c.revenueCheck ? (
               <p className="mt-2">
-                <b className="text-ink">3. From their revenue:</b> {c.revenueCheck.note}, about {int(c.revenueCheck.patientsPerYear / 12)} patients a
-                month, which needs <b className="text-ink">{int(byRevenue[0])}–{int(byRevenue[1])} leads a month</b>. Their own patient claim
-                looks overstated, so the real figure is most likely nearer this one.
+                <b className="text-ink">3. {c.revenueLabel ?? 'From their revenue'}:</b> {c.revenueCheck.note}, about {int(c.revenueCheck.patientsPerYear / 12)} patients a
+                month, which needs <b className="text-ink">{int(byRevenue[0])}–{int(byRevenue[1])} leads a month</b>.{implied ? ' Their own patient claim looks overstated, so the real figure is most likely nearer this one.' : ''}
               </p>
             ) : null}
             <p className="mt-2">
@@ -618,7 +644,7 @@ function CompetitorBlock({ c, s, own, mine }: { c: CompetitorDef; s: CompetitorS
             </p>
             <p className="mt-2 text-[11px] text-ink-faint">
               * measured from Google data on this page (visits × 1–3% enquiry rate; paid clicks × 2–5%). Other rows are the typical share for
-              a dental tourism brand of this size (agency benchmarks, 2026) applied to the total. Ranges, not facts: no outside tool can
+              a {c.kind ?? 'dental tourism brand'} of this size (agency benchmarks, 2026) applied to the total. Ranges, not facts: no outside tool can
               see a competitor's leads.
             </p>
           </div>
@@ -664,7 +690,7 @@ function CompetitorBlock({ c, s, own, mine }: { c: CompetitorDef; s: CompetitorS
           <p className="mt-2 text-[11px] text-ink-faint">
             Dental Nation media spend is read from the Meta and Google Ads accounts for the last 30 days. Our content, video and social work is done
             in-house and by CRM-DN and is not costed per channel here; when Finance gives those figures, the table shows them. {c.name} figures are estimates built from
-            the lead model and typical team sizes for a dental tourism brand of this size.
+            the lead model and typical team sizes for a {c.kind ?? 'dental tourism brand'} of this size.
           </p>
         </div>
       </Card>

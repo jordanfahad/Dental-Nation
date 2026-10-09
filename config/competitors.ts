@@ -145,6 +145,22 @@ export interface CompetitorDef {
   googleAds: GoogleAdsBenchmark;
   organicLeads: OrganicLeadModel;
   spend: SpendLine[];
+  /** Short key for the tab in the URL (?comp=). */
+  tabKey?: string;
+  /** What kind of business it is, used in the page's wording ("a dental tourism brand"). */
+  kind?: string;
+  /** Monthly Meta budget assumed for the paid-media gap (GBP, low and high). */
+  metaMonthlyGbp?: [number, number];
+  /** Share of all leads that Google search brings for this kind of business; used when no patient or revenue figure exists. */
+  searchShareOfLeads?: [number, number];
+  /** Label for the third lead estimate (default "From their revenue"). */
+  revenueLabel?: string;
+  /** The us-vs-them rows that differ from the Dentakay defaults. */
+  gap?: Partial<Record<GapDimension['key'], { theirs?: number | null; fmtT?: string; missing?: string; effort?: string; level?: GapDimension['level'] }>>;
+  /** The one-line summary under the fact-finding table. */
+  summary?: string;
+  /** A caveat shown at the top of the tab. */
+  caveat?: string;
 }
 
 const UAE: Market = { code: 2784, name: 'UAE', lang: 'en', peers: true };
@@ -201,6 +217,53 @@ const DENTAL_TOURISM_CHANNELS: ChannelModel[] = [
   { key: 'referral-direct', label: 'Word of mouth, returning patients, direct', share: [0.05, 0.12], basis: '15,000+ treated patients and 1,000+ reviews; dental tourism repeat rates are low (one trip)', own: ['patient-referral', 'doctor-referral', 'direct-walkin', 'retention', 'whatsapp', 'ai-concierge'] },
 ];
 
+
+/**
+ * A UK multi-site dental group (NHS and private, one city to national). Most
+ * new patients find a practice on Google (search and Maps, one listing and
+ * local site per practice), then word of mouth and recall; paid social is a
+ * smaller share than in dental tourism. Ranges from UK dental marketing
+ * benchmarks (2026); every modelled figure on the page is labelled an estimate.
+ */
+const UK_GROUP_TRAFFIC: TrafficModel = {
+  organicShare: [0.35, 0.5],
+  sources: [
+    { key: 'organic-search', label: 'Organic search and Maps (Google)', share: [0.35, 0.5] },
+    { key: 'direct', label: 'Direct and returning patients', share: [0.2, 0.3] },
+    { key: 'paid-search', label: 'Paid search (Google Ads)', share: [0.08, 0.15] },
+    { key: 'paid-social', label: 'Paid social (Meta ads)', share: [0.05, 0.12] },
+    { key: 'referral', label: 'Referrals, NHS finder and directories', share: [0.05, 0.1] },
+    { key: 'organic-social', label: 'Organic social', share: [0.03, 0.08] },
+  ],
+};
+
+const UK_GROUP_CHANNELS: ChannelModel[] = [
+  { key: 'google-organic', label: 'Google search and Maps (organic)', share: [0.3, 0.45], basis: 'Each practice has its own Google listing and local site; most UK patients choose a dentist near home through Google', own: ['website', 'gmb', 'ai-chat'] },
+  { key: 'referral-direct', label: 'Word of mouth, recall and NHS registrations', share: [0.2, 0.35], basis: 'Mixed NHS and private practices with 65,000 patients on recall; families and colleagues follow', own: ['patient-referral', 'doctor-referral', 'direct-walkin', 'retention', 'whatsapp', 'ai-concierge'] },
+  { key: 'google-paid', label: 'Google Ads', share: [0.1, 0.2], basis: 'Local campaigns per practice for private treatments (implants, aligners, whitening)', own: ['paid-search'] },
+  { key: 'meta-paid', label: 'Meta ads (Facebook, Instagram)', share: [0.1, 0.2], basis: 'Treatment offers (aligners, whitening, implants) with finance; smaller share than in dental tourism', own: ['paid-social'] },
+  { key: 'aggregators', label: 'NHS finder, insurers and directories', share: [0.03, 0.08], basis: 'NHS "find a dentist", insurer and employer lists', own: ['affiliate', 'partnership'] },
+  { key: 'social-organic', label: 'Social (organic)', share: [0.03, 0.08], basis: 'Practice-level Instagram and Facebook accounts', own: ['social-organic', 'influencer'] },
+];
+
+const UK_GROUP_GOOGLE_ADS: GoogleAdsBenchmark = {
+  markets: ['UK'],
+  marketsRunning: 1,
+  spendPerMarketGbp: [15000, 40000],
+  cpcGbp: [2, 6],
+  leadsPerMarket: [250, 600],
+  source: 'UK dental Google Ads benchmarks, 2026: about GBP 300–800 a month per practice at GBP 2–6 a click; applied to 50 practices',
+};
+
+const UK_GROUP_SPEND: SpendLine[] = [
+  { key: 'meta', label: 'Meta ads (Facebook, Instagram)', theirs: [23_500, 70_500], basis: 'GBP 5,000 to 15,000 a month across the group for treatment offers', ours: 'meta' },
+  { key: 'google', label: 'Google Ads', theirs: [70_500, 188_000], basis: 'GBP 300 to 800 a month per practice across 50 practices', ours: 'google' },
+  { key: 'content', label: 'Websites, local SEO and listings', theirs: [25_000, 50_000], basis: 'One local site and Google listing per practice, run centrally', ours: 'in-house and CRM-DN, not costed separately' },
+  { key: 'video', label: 'Content and social production', theirs: [15_000, 30_000], basis: 'A central marketing team producing for practice accounts', ours: 'in-house (Mohan), not costed separately' },
+  { key: 'platforms', label: 'Finance, NHS and directory listings', theirs: [5_000, 15_000], basis: 'Patient finance partners and directory fees', ours: 'ArabyAds affiliate, commission only' },
+  { key: 'other', label: 'PR, recruitment marketing, events', theirs: [10_000, 25_000], basis: 'Dentist recruitment and partner acquisition campaigns; not visible from outside', ours: 'none running' },
+];
+
 export const OWN: CompetitorDef = {
   domain: 'dentalnation.com',
   name: 'Dental Nation',
@@ -223,6 +286,8 @@ export const COMPETITORS: CompetitorDef[] = [
   {
     domain: 'dentakay.com',
     name: 'Dentakay',
+    tabKey: 'dentakay',
+    kind: 'dental tourism brand',
     brand: 'dentakay',
     brandKeyword: 'dentakay',
     brandAliases: ['دينتاكاي'],
@@ -266,6 +331,55 @@ export const COMPETITORS: CompetitorDef[] = [
     googleAds: DENTAL_TOURISM_GOOGLE_ADS,
     organicLeads: ORGANIC_LEADS,
     spend: DENTAL_TOURISM_SPEND,
+  },
+  {
+    domain: 'dentalbeautypartners.co.uk',
+    name: 'Dental Beauty Partners',
+    tabKey: 'dbp',
+    kind: 'UK dental group',
+    brand: 'dental beauty',
+    brandKeyword: 'dental beauty',
+    markets: [{ code: 2826, name: 'UK', lang: 'en', peers: true }],
+    facts: [
+      { label: 'What it is', value: 'A UK dental group built by buying practices and keeping each practice\'s dentist as an invested partner ("partnership model"), with mixed NHS and private dentistry', source: 'company announcements and trade press (Dentistry.co.uk 2022; Greater Birmingham Chambers, Jan 2025)' },
+      { label: 'Founded', value: '2015 as a single practice in Swanley; the group company was formed in 2019. Co-founder and CEO: Dev Patel', source: 'Healthcare & Protection (Feb 2021); Greater Birmingham Chambers (Jan 2025)' },
+      { label: 'Ownership', value: 'Majority owned since February 2021 by European Dental Group, a pan-European dental group backed by the private equity firm Nordic Capital', source: 'Healthcare & Protection; LaingBuisson News (Feb 2021)' },
+      { label: 'Practices', value: '50 practices across the UK (January 2025), up from 14 (2021) and 35+ (2022), mostly in and around London, plus Kiss Dental in Manchester and practices in Essex', source: 'Greater Birmingham Chambers (Jan 2025); BusinessWire (Mar 2022)' },
+      { label: 'Patients and team', value: '65,000 patients (including NHS) and more than 1,000 colleagues', source: 'company announcement, Jan 2025' },
+      { label: 'Revenue', value: 'Run-rate turnover above GBP 100 million (about AED 470 million) after the 50th practice, with 73% compound annual growth (company figure). Outside databases estimate far less (about USD 18 million), so treat the company figure as a run-rate claim', source: 'company announcement, Jan 2025; Prospeo profile' },
+      { label: 'Recent moves', value: 'Launched a group orthodontics offer (2025); keeps adding practices (Streatham, Teddington, Clapham in Jan 2025; Colchester)', source: 'Greater Birmingham Chambers (Jan 2025); PKF Smith Cooper' },
+      { label: 'How it markets', value: 'Each practice trades under its own local name and website (for example dentalbeautysouthgate.co.uk, dentalbeautyromford.co.uk); dentalbeautypartners.co.uk is the group site for dentists, partners and recruitment', source: 'practice websites and Trustpilot pages, read 9 Oct 2026' },
+      { label: 'Reviews', value: 'Reviews sit with each practice on Google; on Trustpilot the practice pages have only a handful (Southgate 2.8 from 3 reviews, Romford 3.5 from 1)', source: 'trustpilot.com, read 9 Oct 2026' },
+    ],
+    claimedPatientsPerYear: null,
+    revenueCheck: { patientsPerYear: 8000, note: 'The group has 65,000 patients; UK practices typically gain 10 to 15% new patients a year, so about 8,000 new patients a year (an estimate)' },
+    revenueLabel: 'From their patient base',
+    // A local practice converts enquiries far better than dental tourism: the patient lives nearby and often has NHS or insurance cover.
+    leadToPatient: [0.3, 0.5],
+    netOfGross: [0.5, 0.7],
+    social: [],
+    channels: UK_GROUP_CHANNELS,
+    traffic: UK_GROUP_TRAFFIC,
+    googleAds: UK_GROUP_GOOGLE_ADS,
+    organicLeads: ORGANIC_LEADS,
+    spend: UK_GROUP_SPEND,
+    searchShareOfLeads: [0.3, 0.45],
+    metaMonthlyGbp: [5000, 15000],
+    caveat: 'Dental Beauty Partners is not a dental tourism brand like Dentakay. It is a UK group of about 50 local practices, each marketed under its own name and website. The search figures below are for the group site (dentalbeautypartners.co.uk) and the "dental beauty" brand; each practice\'s own local site is not included, so their real patient traffic is much higher than the group site shows.',
+    gap: {
+      returning: { theirs: 5400, fmtT: 'about 5,400 (65,000 patients on recall, about one visit in 12 months each)', missing: 'Scale, not the model: like us, they live on returning patients and recall. Their base is about 20 times ours because they own 50 practices.', effort: 'Smile Club and recall reminders for every patient; this is the part of their model we already share.', level: 'Low' },
+      leads: { missing: 'Locations: each of their 50 practices brings its own local Google listing and walk-in patients.', effort: 'Our lever is per-clinic local marketing: a strong Google listing, reviews and local pages for each clinic, plus fast replies at the desk.', level: 'Medium' },
+      paid: { missing: 'Central marketing that runs local campaigns for every practice from one team.', effort: 'One performance marketer running local Google and Meta campaigns per clinic, with a fixed monthly budget per clinic.', level: 'High' },
+      brand: { missing: 'Not much: their group name is mostly a business-to-business brand; patients know the local practice name.', effort: 'Keep one consistent Dental Nation name across every clinic, listing and ad.', level: 'Low' },
+      organic: { missing: 'Fifty local websites and listings, each ranking for "dentist near me" in its own area.', effort: 'Local pages and Google listings for each of our clinics; treatment and area pages in English and Arabic.', level: 'Medium' },
+      authority: { missing: 'Press and trade coverage from acquisitions and deals.', effort: 'PR around Smile Club, partnerships and new clinics; UAE directories and partner links.', level: 'Medium' },
+      social: { theirs: null, fmtT: 'per-practice accounts (not totalled)', missing: 'Not a group strength: social runs practice by practice.', effort: 'Doctor videos and one consistent Dental Nation account do more for us than many small accounts.', level: 'Medium' },
+      reviews: { theirs: null, fmtT: 'per practice on Google (not totalled); Trustpilot only a handful', missing: 'Volume per practice across 50 sites.', effort: 'Ask after every completed visit at every clinic: 50 to 100 Google reviews a month.', level: 'Low' },
+      footprint: { theirs: 50, fmtT: '50+ practices across the UK; 1,000+ colleagues', missing: 'Capital and a buy-and-build model: they grew from 1 to 50 practices in 10 years by acquiring practices, backed by private equity.', effort: 'Not a marketing task: a growth and investment decision. Their partnership model (the dentist co-owns the practice) is the part worth studying.', level: 'High' },
+      languages: { theirs: 1, fmtT: '1 language, UK only (local patients)', missing: 'Nothing: they serve local patients in English.', effort: 'Our two languages are an advantage in Dubai; keep Arabic in content, ads and the desk.', level: 'Low' },
+      keywords: { missing: 'Local rankings come with each practice site.', effort: 'Comes with local pages per clinic; tracked monthly on the Digital & SEO tab.', level: 'Medium' },
+    },
+    summary: 'Dental Beauty Partners is a different kind of competitor from Dentakay. It is a private-equity-backed buy-and-build group: it grew from one practice in 2015 to about 50 by acquiring practices and keeping each practice\'s dentist as an invested partner, with NHS and private income and 65,000 patients on recall. Its growth comes from acquisitions and recall, and its marketing is local, practice by practice, under each practice\'s own name. The lessons for us are the partnership model, one central marketing team running local marketing for each clinic, and a recall engine, which Smile Club already gives us.',
   },
 ];
 
