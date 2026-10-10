@@ -10,9 +10,9 @@ import { CoverageStrip, fmtAed, fmtInt, type CoveragePill } from './parts';
 function execNarrative(k: ExecutiveReport['kpis']): string | null {
   const parts: string[] = [];
   if (k.clinicRevenue != null) parts.push(`${fmtAed(k.clinicRevenue)} in finalized clinic revenue`);
-  if (k.appointmentsCompleted != null) parts.push(`${fmtInt(k.appointmentsCompleted)} completed appointments`);
+  if (k.appointmentsCompleted != null) parts.push(`${fmtInt(k.appointmentsCompleted)} attended appointments`);
   if (k.appointmentsBooked != null) parts.push(`${fmtInt(k.appointmentsBooked)} appointments booked`);
-  if (k.leadsGenerated != null) parts.push(`${fmtInt(k.leadsGenerated)} tracked leads`);
+  if (k.leadsGenerated != null) parts.push(`${fmtInt(k.leadsGenerated)} ${k.enquiriesUnique ? 'enquiries' : 'tracked leads'}`);
   if (k.marketingSpend != null) parts.push(`${fmtAed(k.marketingSpend)} of measured media spend`);
   if (k.conversationsHandled != null) parts.push(`${fmtInt(k.conversationsHandled)} patient conversations`);
   if (parts.length < 2) return null;

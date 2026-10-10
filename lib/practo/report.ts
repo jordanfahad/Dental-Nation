@@ -21,8 +21,13 @@ export interface PractoSummary {
   source: 'live' | 'empty';
   billCount: number;
   amountKnown: number;
+  /** Bills that actually charged something (amount > 0). Zero bills are
+   *  no-charge visits (reviews, follow-ups) or cancellations. */
+  paidBills: number;
   revenue: number;
-  /** Average bill value (AED). null when no priced bills. */
+  /** Average value of a PAID bill (AED): revenue ÷ paidBills. Zero bills are
+   *  left out, or a month of no-charge reviews would halve the average. null
+   *  when no bill charged anything. */
   avgBill: number | null;
   periodStart: string | null;
   periodEnd: string | null;
@@ -56,6 +61,7 @@ const empty = (configured: boolean): PractoSummary => ({
   source: 'empty',
   billCount: 0,
   amountKnown: 0,
+  paidBills: 0,
   revenue: 0,
   avgBill: null,
   periodStart: null,
@@ -127,6 +133,7 @@ export async function getPractoSummary(range?: {
 
     let revenue = 0;
     let amountKnown = 0;
+    let paidBills = 0;
     const days = new Map<string, PractoDayPoint>();
     const dates: string[] = [];
     const byDept = new Map<string, number>();
@@ -139,6 +146,7 @@ export async function getPractoSummary(range?: {
       if (amt != null) {
         revenue += amt;
         amountKnown += 1;
+        if (amt > 0) paidBills += 1;
       }
       if (r.bill_date) {
         dates.push(r.bill_date);
@@ -172,8 +180,9 @@ export async function getPractoSummary(range?: {
       source: 'live',
       billCount: rows.length,
       amountKnown,
+      paidBills,
       revenue,
-      avgBill: amountKnown > 0 ? revenue / amountKnown : null,
+      avgBill: paidBills > 0 ? revenue / paidBills : null,
       periodStart: dates.length ? dates[0] : null,
       periodEnd: dates.length ? dates[dates.length - 1] : null,
       byDay: [...days.values()].sort((a, b) => a.date.localeCompare(b.date)),

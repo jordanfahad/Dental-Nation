@@ -94,7 +94,7 @@ async function PractoRevenue({
       value: p.avgBill != null ? aed(p.avgBill) : null,
       gapDetail: 'no priced bills yet',
       gapOwner: ownerFor('clinic'),
-      hint: p.avgBill != null ? `over ${int(p.amountKnown)} priced bills` : undefined,
+      hint: p.avgBill != null ? `over ${int(p.paidBills)} paid bills (no-charge visits left out)` : undefined,
     },
     {
       label: 'Amount coverage',

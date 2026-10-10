@@ -142,10 +142,10 @@ export async function BoardReport({
             <p className="mt-2 text-[13.5px] text-white/85">{periodStr}{compareNote ? <span className="text-white/60"> · {compareNote}</span> : null}</p>
             <div className="mt-6 flex flex-wrap gap-x-8 gap-y-2 border-t border-white/15 pt-5 text-[12.5px]">
               <Cover label="Marketing spend" value={aedK(k.marketingSpend)} delta={chg(k.marketingSpend, pk?.marketingSpend)} goodUp={false} />
-              <Cover label="New patients" value={int(a.billedNewPatients)} delta={chg(a.billedNewPatients, pa?.billedNewPatients)} />
-              <Cover label="Cost / new patient" value={aed(a.cpaAll)} delta={chg(a.cpaAll, pa?.cpaAll)} goodUp={false} />
+              <Cover label="New patients · Al Wasl" value={a.notMeasurable ? '—' : int(a.billedNewPatients)} delta={chg(a.billedNewPatients, pa?.billedNewPatients)} />
+              <Cover label="Ad spend / new patient" value={aed(a.cpaAll)} delta={chg(a.cpaAll, pa?.cpaAll)} goodUp={false} />
               <Cover label="Clinic revenue" value={aedK(k.clinicRevenue)} delta={chg(k.clinicRevenue, pk?.clinicRevenue)} />
-              <Cover label="New-patient ROAS" value={a.roas != null ? `${a.roas.toFixed(1)}×` : '—'} delta={chg(a.roas, pa?.roas)} />
+              <Cover label="New-patient revenue ÷ ad spend" value={a.roas != null ? `${a.roas.toFixed(1)}×` : '—'} delta={chg(a.roas, pa?.roas)} />
             </div>
           </div>
         </header>
@@ -153,13 +153,13 @@ export async function BoardReport({
         {/* Headline */}
         <Section eyebrow="Summary" title="The story in one line">
           <p className="text-[15px] leading-relaxed text-ink">
-            Over this period, <strong>{aed(k.marketingSpend)}</strong> of marketing acquired{' '}
-            <strong>{int(a.billedNewPatients)} new patients</strong>
-            {a.cpaAll != null ? <> at <strong>{aed(a.cpaAll)}</strong> each</> : null}, contributing{' '}
-            <strong>{aed(a.newPatientRevenue)}</strong> of new-patient revenue
-            {a.roas != null ? <> (a <strong>{a.roas.toFixed(1)}×</strong> return)</> : null}. Total clinic revenue was{' '}
+            Over this period, <strong>{aed(k.marketingSpend)}</strong> was spent on ads, and Dental Nation Al Wasl billed{' '}
+            <strong>{a.notMeasurable ? '—' : int(a.billedNewPatients)} new patients</strong> from every source
+            {a.cpaAll != null ? <> (<strong>{aed(a.cpaAll)}</strong> of ad spend each, blended)</> : null}, worth{' '}
+            <strong>{aed(a.newPatientRevenue)}</strong> in this period
+            {a.roas != null ? <> ({a.roas.toFixed(1)}× the ad spend)</> : null}. Total clinic revenue was{' '}
             <strong>{aed(k.clinicRevenue)}</strong> across <strong>{int(p.billCount)}</strong> bills, from{' '}
-            <strong>{int(k.appointmentsBooked)}</strong> bookings ({pct(k.completionRate)} completed).
+            <strong>{int(k.appointmentsBooked)}</strong> appointments ({pct(k.completionRate)} attended).
           </p>
         </Section>
 
@@ -168,12 +168,12 @@ export async function BoardReport({
           {compareNote ? <p className="mb-3 text-[11px] text-ink-faint">Change shown {compareNote}.</p> : null}
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             <Metric label="Marketing spend" value={aed(k.marketingSpend)} sub="Meta + Google · live" delta={chg(k.marketingSpend, pk?.marketingSpend)} goodUp={false} />
-            <Metric label="New patients (billed)" value={int(a.billedNewPatients)} sub="distinct · revenue-backed" delta={chg(a.billedNewPatients, pa?.billedNewPatients)} />
-            <Metric label="Cost / new patient" value={aed(a.cpaAll)} sub="blended (all sources)" accent delta={chg(a.cpaAll, pa?.cpaAll)} goodUp={false} />
+            <Metric label="New patients · Al Wasl" value={a.notMeasurable ? '—' : int(a.billedNewPatients)} sub="first billed visit in this period" delta={chg(a.billedNewPatients, pa?.billedNewPatients)} />
+            <Metric label="Ad spend / new patient" value={aed(a.cpaAll)} sub="blended: all spend ÷ all new patients" accent delta={chg(a.cpaAll, pa?.cpaAll)} goodUp={false} />
             <Metric label="New-patient revenue" value={aed(a.newPatientRevenue)} sub={a.revenuePerNewPatient != null ? `${aed(a.revenuePerNewPatient)} / patient` : undefined} delta={chg(a.newPatientRevenue, pa?.newPatientRevenue)} />
-            <Metric label="Bookings" value={int(k.appointmentsBooked)} sub={k.aiAgentBookings != null ? `${int(k.aiAgentBookings)} by AI agent` : undefined} delta={chg(k.appointmentsBooked, pk?.appointmentsBooked)} />
-            <Metric label="Completed" value={int(k.appointmentsCompleted)} sub={k.completionRate != null ? `${pct(k.completionRate)} of concluded` : undefined} delta={chg(k.appointmentsCompleted, pk?.appointmentsCompleted)} />
-            <Metric label="Clinic revenue" value={aed(k.clinicRevenue)} sub={k.avgBillValue != null ? `${aed(k.avgBillValue)} avg bill` : undefined} accent delta={chg(k.clinicRevenue, pk?.clinicRevenue)} />
+            <Metric label="Appointments" value={int(k.appointmentsBooked)} sub={k.aiAgentBookings != null ? `Practo · ${int(k.aiAgentBookings)} by the AI agent` : 'Practo'} delta={chg(k.appointmentsBooked, pk?.appointmentsBooked)} />
+            <Metric label="Attended" value={int(k.appointmentsCompleted)} sub={k.completionRate != null ? `${pct(k.completionRate)} (no-shows and cancellations count)` : undefined} delta={chg(k.appointmentsCompleted, pk?.appointmentsCompleted)} />
+            <Metric label="Clinic revenue" value={aed(k.clinicRevenue)} sub={k.avgBillValue != null ? `${aed(k.avgBillValue)} per paid bill` : undefined} accent delta={chg(k.clinicRevenue, pk?.clinicRevenue)} />
             <Metric label="Website sessions" value={int(k.websiteSessions)} sub={k.websiteConversions != null ? `${int(k.websiteConversions)} conversions` : 'GA4'} delta={chg(k.websiteSessions, pk?.websiteSessions)} />
           </div>
         </Section>
@@ -181,14 +181,17 @@ export async function BoardReport({
         {/* Acquisition */}
         <Section eyebrow="Acquisition" title="What it costs to win a new patient" breakBefore>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <Metric label="Cost / new patient · All" value={aed(a.cpaAll)} sub="spend ÷ all new patients" accent />
-            <Metric label="Cost / new patient · Website" value={aed(a.cpaWebsite)} sub={`${int(a.websiteNewPatients)} via widget`} />
-            <Metric label="New-patient revenue" value={aed(a.newPatientRevenue)} />
-            <Metric label="New-patient ROAS" value={a.roas != null ? `${a.roas.toFixed(1)}×` : '—'} sub="revenue ÷ spend" accent />
+            <Metric label="Ad spend / new patient · All" value={aed(a.cpaAll)} sub="all spend ÷ all new patients" accent />
+            <Metric label="Ad spend / new patient · Website" value={aed(a.cpaWebsite)} sub={`${int(a.websiteNewPatients)} booked on the website`} />
+            <Metric label="New-patient revenue" value={aed(a.newPatientRevenue)} sub="billed in this period" />
+            <Metric label="New-patient revenue ÷ ad spend" value={a.roas != null ? `${a.roas.toFixed(1)}×` : '—'} sub="all new patients, not only from ads" accent />
           </div>
           <Insight>
-            &ldquo;All&rdquo; is a blended acquisition cost — total ad spend over every new patient (incl. organic / walk-in), not a
-            paid-only CPL. The website lens isolates patients whose phone matches a booking-widget submission.
+            A new patient is a Dental Nation Al Wasl patient whose first billed visit falls in this period. &ldquo;All&rdquo; divides
+            all ad spend by every new patient, including word of mouth, walk-ins and referrals, so it is a blended cost, not the
+            cost of a patient from ads. The website line counts patients whose phone matches a website booking.
+            {a.tosunFilesBilled > 0 ? <> {int(a.tosunFilesBilled)} Dr Tosun patient files billed in this period are left out: the
+            clinic moved onto Practo in July 2026, so new and returning can&apos;t be told apart there yet.</> : null}
           </Insight>
         </Section>
 
@@ -318,10 +321,10 @@ export async function BoardReport({
         {/* Demand funnel */}
         <Section eyebrow="Demand" title="Enquiry → booking → revenue">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-            <Funnel label="Enquiries" value={int(k.leadsGenerated)} note="tracker + widget" />
-            <Funnel label="Bookings" value={int(k.appointmentsBooked)} note="CRM-DN/Practo" />
-            <Funnel label="Completed" value={int(k.appointmentsCompleted)} note={pct(k.completionRate)} />
-            <Funnel label="New patients" value={int(a.billedNewPatients)} note="billed" />
+            <Funnel label="Enquiries" value={int(k.leadsGenerated)} note={k.enquiriesUnique ? 'unique people' : 'lead tracker'} />
+            <Funnel label="Appointments" value={int(k.appointmentsBooked)} note="Practo" />
+            <Funnel label="Attended" value={int(k.appointmentsCompleted)} note={pct(k.completionRate)} />
+            <Funnel label="New patients" value={a.notMeasurable ? '—' : int(a.billedNewPatients)} note="Al Wasl · first bill" />
             <Funnel label="Revenue" value={aedK(k.clinicRevenue)} note={`${int(p.billCount)} bills`} strong />
           </div>
         </Section>
@@ -500,17 +503,19 @@ export async function BoardReport({
         <Section eyebrow="So what" title="Takeaways">
           <ul className="space-y-2.5 text-[13.5px] leading-relaxed text-ink">
             <Take>
-              Acquisition is efficient: <strong>{aed(a.cpaAll)}</strong> per new patient against{' '}
-              <strong>{a.revenuePerNewPatient != null ? aed(a.revenuePerNewPatient) : '—'}</strong> average new-patient value
-              {a.roas != null ? <> — a <strong>{a.roas.toFixed(1)}×</strong> blended return.</> : '.'}
+              Blended: <strong>{aed(a.cpaAll)}</strong> of ad spend per new patient against{' '}
+              <strong>{a.revenuePerNewPatient != null ? aed(a.revenuePerNewPatient) : '—'}</strong> billed per new patient in
+              this period. This covers every new patient, not only those from ads; the cost of a patient from ads becomes
+              measurable as the desk records how each patient found us (from 7 Oct 2026).
             </Take>
             <Take>
-              The website widget contributed <strong>{int(a.websiteNewPatients)}</strong> of the {int(a.billedNewPatients)} billed
-              new patients — {a.websiteNewPatients === 0 ? 'no' : 'a small share of'} paying demand still comes through the site,
-              worth improving.
+              Website bookings account for <strong>{int(a.websiteNewPatients)}</strong> of the {int(a.billedNewPatients)} new
+              patients: {a.websiteNewPatients === 0 ? 'none of the' : 'a small share of'} paying demand comes through the site,
+              which is worth improving.
             </Take>
             <Take>
-              Booking follow-through: <strong>{pct(k.completionRate)}</strong> of concluded appointments completed
+              Booking follow-through: <strong>{pct(k.completionRate)}</strong> of appointments were attended (no-shows and
+              cancellations count)
               {k.cancellationRate != null ? <>, <strong>{pct(k.cancellationRate)}</strong> cancelled.</> : '.'}
             </Take>
           </ul>

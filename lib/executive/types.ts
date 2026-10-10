@@ -8,7 +8,7 @@ import type {
 } from '@/lib/types';
 import type { CrmReport } from '@/lib/crm/types';
 import type { PractoSummary } from '@/lib/practo/report';
-import type { NewPatientAcquisition } from './acquisition';
+import type { NewPatientAcquisition } from './acquisitionCore';
 
 /**
  * The Executive Dashboard model — the investor-facing hero. It composes EVERY
@@ -22,8 +22,12 @@ import type { NewPatientAcquisition } from './acquisition';
 export interface ExecKpis {
   /** Paid media spend (AED) — raw_raw_social perf. */
   marketingSpend: number | null;
-  /** Inquiries from the lead tracker. */
+  /** Enquiries: unique people, deduped by phone across the lead tracker, the
+   *  website widget and the AI agent (the Growth Platform total). Falls back
+   *  to raw lead-tracker rows only when the Growth Platform read is empty. */
   leadsGenerated: number | null;
+  /** True when leadsGenerated is the deduped people count (not tracker rows). */
+  enquiriesUnique: boolean;
   /** Paid leads (perf). */
   paidLeads: number | null;
   /** Spend ÷ paid leads (AED). */
@@ -32,24 +36,28 @@ export interface ExecKpis {
   websiteSessions: number | null;
   /** Website conversions (GA4). */
   websiteConversions: number | null;
-  /** Total real (non-test) CRM appointments. */
+  /** Practo appointments in the window (every channel; tests and calendar
+   *  blocks excluded). Falls back to CRM-DN appointments if Practo is empty. */
   appointmentsBooked: number | null;
-  /** Completed (attended) appointments. */
+  /** Attended (arrived or completed) Practo appointments. */
   appointmentsCompleted: number | null;
-  /** completed / (completed + cancel). */
+  /** attended ÷ (attended + no-show + cancelled). */
   completionRate: number | null;
-  /** cancel / total. */
+  /** cancelled ÷ (attended + no-show + cancelled). */
   cancellationRate: number | null;
   /** Appointments booked by the Zavis AI agent. */
   aiAgentBookings: number | null;
   /** Finalized clinic revenue (AED) — Practo bills. */
   clinicRevenue: number | null;
-  /** Average finalized bill value (AED). */
+  /** Average value of a paid bill (AED); no-charge bills left out. */
   avgBillValue: number | null;
-  /** Conversations handled (Zavis). */
+  /** Conversations handled (Zavis). Only when the CRM-DN conversation export
+   *  covers the selected window; null otherwise (never a stale figure). */
   conversationsHandled: number | null;
-  /** Avg first-response time (hours) — the responsiveness signal. */
+  /** Avg first-response time (hours), under the same rule as conversations. */
   avgFirstResponseHours: number | null;
+  /** The period the CRM-DN conversation export covers, for the label. */
+  conversationsPeriod: { start: string | null; end: string | null } | null;
 }
 
 /** One month across the business: spend, leads, appointments, clinic revenue. */

@@ -339,9 +339,9 @@ export const DECISIONS: Decision[] = [
     title: 'Cost per new patient (replaces manual-tracker CPL)',
     area: 'Revenue',
     agreed:
-      'The Executive dashboard now shows real acquisition economics: New patients (billed) = distinct DN-series (new) patients with a Practo bill in the window (revenue-backed, counted once each); Cost / new patient · All = ad spend ÷ all billed new patients (a BLENDED CAC — total spend over all new patients incl. organic/walk-in, not pure paid-CPL); Cost / new patient · Website = ad spend ÷ billed new patients whose phone matches a non-test website-widget submission; plus New-patient revenue and ROAS. The old "Leads generated / CPL" card is kept but relabelled "manual tracker" (largely unmaintained since April — reads ~3 vs 48 real billed new patients for July). Verified July: 48 billed new patients, 2 website-sourced, AED 95,132 revenue, spend AED 4,507 → CPA(All) ~AED 94, ROAS ~21×.',
-    decidedOn: '2026-07-20',
-    codeRef: 'lib/executive/acquisition.ts · components/sections/executive/ExecAcquisition.tsx',
+      'Revised 10 Oct 2026. New patient = a Dental Nation Al Wasl DN-series Practo file whose FIRST non-cancelled bill falls in the window (a file billed again later is returning). Dr Tosun is left out and shown as not measurable: every patient there got a DN-series file when the clinic moved onto Practo in July 2026, so new and returning cannot be told apart; the count of Dr Tosun files billed is shown separately. All tables are read in full (a plain select stopped at 1,000 bills and dropped a third of them). Ad spend per new patient · All = ad spend ÷ all new patients (a BLENDED cost, word of mouth and walk-ins included, not the cost of a patient from ads); · Website = ad spend ÷ new patients whose phone matches a non-test website booking. New-patient revenue = their non-cancelled bills in the window; revenue ÷ ad spend replaces the "ROAS" label. September 2026: 26 new patients at Al Wasl, AED 97,227, spend AED 11,347, about AED 436 each and 8.6×. Superseded July figures (48 patients, ~21×) included Dr Tosun files and returning DN patients.',
+    decidedOn: '2026-10-10',
+    codeRef: 'lib/executive/acquisitionCore.ts · lib/executive/acquisition.ts · components/sections/executive/ExecAcquisition.tsx',
   },
   {
     id: 'd-exec-date-scope',

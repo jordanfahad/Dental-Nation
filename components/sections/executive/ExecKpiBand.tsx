@@ -7,12 +7,22 @@ import { fmtAedCompact, fmtInt } from './parts';
 
 /**
  * Headline cross-source KPI band — the answer-first strip a CEO reads first.
- * Marketing spend, leads, appointments booked + completed, clinic revenue and
- * conversations handled. Sparklines come from the monthly roll-up; a null KPI
- * renders an honest owned data-gap card (never a fabricated 0).
+ * Marketing spend, enquiries (unique people), Practo appointments booked and
+ * attended, clinic revenue and conversations handled. Sparklines come from the
+ * monthly roll-up; a null KPI renders an honest owned data-gap card (never a
+ * fabricated 0).
  */
+const dayMonth = (iso: string | null) => {
+  if (!iso) return '?';
+  const d = new Date(`${iso.slice(0, 10)}T00:00:00Z`);
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+};
+
 export function ExecKpiBand({ report }: { report: ExecutiveReport }) {
-  const { kpis, monthly } = report;
+  const { kpis, monthly, practo } = report;
+  const convPeriod = kpis.conversationsPeriod
+    ? `${dayMonth(kpis.conversationsPeriod.start)} to ${dayMonth(kpis.conversationsPeriod.end)}`
+    : null;
 
   const spendSpark = monthly.map((m) => m.spend);
   const leadsSpark = monthly.map((m) => m.leads);
@@ -31,12 +41,14 @@ export function ExecKpiBand({ report }: { report: ExecutiveReport }) {
       gapOwner: ownerFor('spend'),
     },
     {
-      label: 'Leads generated',
+      label: 'Enquiries',
       value: kpis.leadsGenerated == null ? null : fmtInt(kpis.leadsGenerated),
       spark: leadsSpark,
       sparkColor: TOKENS.accent,
-      hint: kpis.costPerLead != null ? `manual-tracker rows only · AED ${Math.round(kpis.costPerLead)} blended CPL (all spend ÷ these leads) · Growth Platform enquiries dedupe tracker + widget + AI agent by phone, so the two differ by design` : 'manual tracker',
-      gapDetail: 'lead tracker not sourced',
+      hint: kpis.enquiriesUnique
+        ? `unique people · lead tracker, website and AI agent, each person once${kpis.costPerLead != null ? ` · AED ${Math.round(kpis.costPerLead)} of ad spend per enquiry` : ''}`
+        : 'lead-tracker rows (not yet deduped)',
+      gapDetail: 'enquiries come through Dental Nation Al Wasl channels',
       gapOwner: ownerFor('attribution'),
     },
     {
@@ -44,16 +56,19 @@ export function ExecKpiBand({ report }: { report: ExecutiveReport }) {
       value: kpis.appointmentsBooked == null ? null : fmtInt(kpis.appointmentsBooked),
       spark: apptSpark,
       sparkColor: TOKENS.accent600,
-      hint: kpis.aiAgentBookings != null ? `${fmtInt(kpis.aiAgentBookings)} by AI agent` : 'CRM (real, non-test)',
-      gapDetail: 'no appointment export ingested',
+      hint: `Practo · every channel${kpis.aiAgentBookings ? ` · ${fmtInt(kpis.aiAgentBookings)} by the AI agent` : ''}`,
+      gapDetail: 'no Practo appointments in this period',
       gapOwner: ownerFor('crm'),
     },
     {
-      label: 'Appointments completed',
+      label: 'Appointments attended',
       value: kpis.appointmentsCompleted == null ? null : fmtInt(kpis.appointmentsCompleted),
       sparkColor: TOKENS.good,
-      hint: kpis.completionRate != null ? `${Math.round(kpis.completionRate * 100)}% of concluded` : 'attended',
-      gapDetail: 'no appointment export ingested',
+      hint:
+        kpis.completionRate != null
+          ? `${Math.round(kpis.completionRate * 100)}% of appointments that happened or were missed (no-shows and cancellations count)`
+          : 'arrived or completed',
+      gapDetail: 'no Practo appointments in this period',
       gapOwner: ownerFor('attendance'),
     },
     {
@@ -61,7 +76,10 @@ export function ExecKpiBand({ report }: { report: ExecutiveReport }) {
       value: kpis.clinicRevenue == null ? null : fmtAedCompact(kpis.clinicRevenue),
       spark: revSpark,
       sparkColor: TOKENS.good,
-      hint: kpis.avgBillValue != null ? `AED ${Math.round(kpis.avgBillValue).toLocaleString('en-US')} avg bill` : 'finalized bills',
+      hint:
+        kpis.avgBillValue != null
+          ? `AED ${Math.round(kpis.avgBillValue).toLocaleString('en-US')} per paid bill · ${fmtInt(practo.paidBills)} of ${fmtInt(practo.billCount)} bills charged (the rest are no-charge visits)`
+          : 'Practo bills',
       gapDetail: 'no clinic-PMS revenue source',
       gapOwner: ownerFor('clinic'),
     },
@@ -69,8 +87,8 @@ export function ExecKpiBand({ report }: { report: ExecutiveReport }) {
       label: 'Conversations handled',
       value: kpis.conversationsHandled == null ? null : fmtInt(kpis.conversationsHandled),
       sparkColor: TOKENS.accent400,
-      hint: 'CRM-DN',
-      gapDetail: 'no conversation summary ingested',
+      hint: convPeriod ? `CRM-DN · export for ${convPeriod}` : 'CRM-DN',
+      gapDetail: convPeriod ? `the CRM-DN export covers ${convPeriod} only` : 'no conversation summary ingested',
       gapOwner: ownerFor('pac'),
     },
   ];

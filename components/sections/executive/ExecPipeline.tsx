@@ -24,9 +24,9 @@ export function ExecPipeline({ report }: { report: ExecutiveReport }) {
   const { kpis } = report;
 
   const stages: FunnelStageViz[] = [
-    { label: 'Enquiries (leads)', value: kpis.leadsGenerated, hint: 'lead tracker not sourced' },
-    { label: 'Bookings', value: kpis.appointmentsBooked, hint: 'no CRM export' },
-    { label: 'Attended (shows)', value: kpis.appointmentsCompleted, hint: 'no CRM export' },
+    { label: 'Enquiries', value: kpis.leadsGenerated, hint: 'enquiries come through Dental Nation Al Wasl channels' },
+    { label: 'Bookings', value: kpis.appointmentsBooked, hint: 'no Practo appointments' },
+    { label: 'Attended (shows)', value: kpis.appointmentsCompleted, hint: 'no Practo appointments' },
   ];
 
   const revenue = kpis.clinicRevenue;
@@ -36,8 +36,8 @@ export function ExecPipeline({ report }: { report: ExecutiveReport }) {
       : null;
 
   const sources: { stage: string; src: string }[] = [
-    { stage: 'Enquiries', src: 'Lead tracker · general-booking sheet' },
-    { stage: 'Bookings', src: 'CRM-DN · incl. website booking widget (deduped)' },
+    { stage: 'Enquiries', src: 'Lead tracker + website widget + AI agent, one per person (phone)' },
+    { stage: 'Bookings', src: 'Practo · every appointment, every channel' },
     { stage: 'Attended', src: 'CRM-DN · completed appointments' },
     { stage: 'Revenue', src: 'Practo Insta · finalized bills' },
   ];
@@ -78,14 +78,13 @@ export function ExecPipeline({ report }: { report: ExecutiveReport }) {
         </div>
 
         <Takeaway>
-          Each stage is read from its own source and de-duplicated — the website booking widget already writes
-          into CRM-DN, so bookings aren&apos;t double-counted. <strong>Attended ÷ Bookings</strong> is a true
-          conversion (same population). <strong>Enquiries</strong> is only the tracked-lead channel, so bookings
-          can exceed it (walk-ins &amp; direct bookings aren&apos;t in the tracker) — read that step as coverage,
-          not a drop-off.
+          Each stage is read from its own source. <strong>Attended ÷ Bookings</strong> is a true conversion (same
+          population: Practo appointments). <strong>Enquiries</strong> are people who contacted us through the tracked
+          channels, each counted once; bookings include existing patients, walk-ins and phone bookings that never
+          appear as an enquiry, so bookings can exceed enquiries. Read that step as coverage, not a drop-off.
           {revenue != null ? ` Clinic revenue stands at ${fmtAed(revenue)} (Practo).` : ''}
           {kpis.leadsGenerated != null && kpis.appointmentsBooked != null && kpis.leadsGenerated > 0
-            ? ` Tracked enquiries: ${int(kpis.leadsGenerated)}; bookings: ${int(kpis.appointmentsBooked)}.`
+            ? ` Enquiries: ${int(kpis.leadsGenerated)}; bookings: ${int(kpis.appointmentsBooked)}.`
             : ''}
         </Takeaway>
       </div>

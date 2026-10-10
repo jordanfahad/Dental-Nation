@@ -35,13 +35,13 @@ export function ExecOperations({ report }: { report: ExecutiveReport }) {
           <MetricCallout
             label="Completion rate"
             value={fmtPct(kpis.completionRate)}
-            caption="Appointments attended vs. resolved — the show-up engine."
+            caption="Attended ÷ attended, no-shows and cancellations (Practo)."
             tone={kpis.completionRate != null && kpis.completionRate >= 0.7 ? 'good' : 'accent'}
           />
           <MetricCallout
             label="Cancellation rate"
             value={fmtPct(kpis.cancellationRate)}
-            caption="Booked appointments lost before attendance."
+            caption="Cancelled ÷ attended, no-shows and cancellations (Practo)."
             tone={kpis.cancellationRate != null && kpis.cancellationRate >= 0.3 ? 'watch' : 'accent'}
           />
           <MetricCallout

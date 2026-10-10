@@ -12,7 +12,7 @@ export function ExecClosing({ report }: { report: ExecutiveReport }) {
 
   const facts: string[] = [];
   if (kpis.marketingSpend != null) facts.push(`${fmtAedCompact(kpis.marketingSpend)} in measured marketing spend`);
-  if (kpis.leadsGenerated != null) facts.push(`${fmtInt(kpis.leadsGenerated)} tracked leads`);
+  if (kpis.leadsGenerated != null) facts.push(`${fmtInt(kpis.leadsGenerated)} ${kpis.enquiriesUnique ? 'enquiries' : 'tracked leads'}`);
   if (kpis.appointmentsBooked != null) facts.push(`${fmtInt(kpis.appointmentsBooked)} appointments`);
   if (kpis.clinicRevenue != null) facts.push(`${fmtAedCompact(kpis.clinicRevenue)} clinic revenue`);
 

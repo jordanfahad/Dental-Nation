@@ -7,6 +7,7 @@ import { getPractoSummary } from '@/lib/practo/report';
 import { getAdSpendForRange, getAdFeedFreshness } from '@/lib/marketing/report';
 import { getWidgetEnquiries } from '@/lib/bookings/widgetEnquiries';
 import { getNewPatientAcquisition } from './acquisition';
+import { getChannelPerformance, type GrowthPerfClinic } from '@/lib/growth/channelPerformance';
 import type { ClinicFilterKey } from '@/config/clinics';
 import type { ExecKpis, ExecMonthPoint, ExecutiveReport } from './types';
 
@@ -55,11 +56,17 @@ export async function getExecutiveReport(query: ExecQuery = {}): Promise<Executi
   const clinicFrom = isAll ? undefined : range.range.from;
   const clinicTo = isAll ? undefined : range.range.to;
 
-  const [crm, practo, adSpend, freshness] = await Promise.all([
+  // The Growth Platform funnel (deduped enquiries, Practo appointments and
+  // attendance) over the same window and clinic: the headline counts come from
+  // it, so the top of the page and the Growth Platform card can never disagree.
+  // React cache shares this read with the Growth Platform card on the page.
+  const gclinic: GrowthPerfClinic = clinic === 'dental-nation' ? 'dn-alwasl' : clinic === 'dr-tosun' ? 'dr-tosun' : 'all';
+  const [crm, practo, adSpend, freshness, growth] = await Promise.all([
     getCrmReport({ from: clinicFrom, to: clinicTo, clinic }),
     getPractoSummary({ from: clinicFrom, to: clinicTo, clinic }),
     getAdSpendForRange(range.range.from, range.range.to),
     getAdFeedFreshness(),
+    getChannelPerformance({ from: range.range.from, to: range.range.to }, gclinic),
   ]);
 
   const { paid, leads, ga4, bookings, series } = range;
@@ -74,30 +81,53 @@ export async function getExecutiveReport(query: ExecQuery = {}): Promise<Executi
   const marketingSpend = adSpend.rows > 0 ? adSpend.total : (paid.spend.value ?? null);
   // New-patient acquisition economics (cost per new patient, ROAS) over the same
   // resolved window + spend — the real replacement for the manual-tracker CPL.
-  const acquisition = await getNewPatientAcquisition({ from: clinicFrom, to: clinicTo, spend: marketingSpend });
-  const leadsGenerated = leads.total.value;
-  // Cost per lead = live spend ÷ tracked leads (the two figures shown together).
+  const acquisition = await getNewPatientAcquisition({ from: clinicFrom, to: clinicTo, spend: marketingSpend, clinic });
+
+  // Enquiries = unique people (Growth Platform: tracker + widget + AI agent,
+  // deduped by phone). Raw tracker rows counted day markers ("no enquiries
+  // today") and repeat rows, so they overstated demand. Enquiry channels are
+  // Dental Nation Al Wasl's, so the Dr Tosun lens shows a gap, not a zero.
+  const growthLive = growth.source === 'live';
+  const enquiriesUnique = growthLive && gclinic !== 'dr-tosun';
+  const leadsGenerated = enquiriesUnique ? growth.totals.enquiries : gclinic === 'dr-tosun' ? null : leads.total.value;
+  // Cost per enquiry = live spend ÷ the enquiries shown beside it.
   const costPerLead =
     marketingSpend != null && leadsGenerated && leadsGenerated > 0
       ? marketingSpend / leadsGenerated
       : paid.costPerLead.value;
 
+  // Appointments and attendance from Practo (every booking, every channel), not
+  // the CRM-DN feed, which only holds the bookings made through CRM-DN.
+  const sumCh = (f: (c: (typeof growth.channels)[number]) => number) => growth.channels.reduce((a, c) => a + f(c), 0);
+  const concluded = growth.totals.showed + sumCh((c) => c.noshow) + sumCh((c) => c.cancelled);
+  const practoAppts = growthLive && growth.totals.booked > 0;
+
+  // The CRM-DN conversation export is one summary row for a fixed period.
+  // Show it only when that period overlaps the selected window.
+  const convOverlaps =
+    conv != null &&
+    (isAll ||
+      ((conv.periodStart == null || conv.periodStart.slice(0, 10) <= range.range.to) &&
+        (conv.periodEnd == null || conv.periodEnd.slice(0, 10) >= range.range.from)));
+
   const kpis: ExecKpis = {
     marketingSpend,
     leadsGenerated,
+    enquiriesUnique,
     paidLeads: paid.leads.value,
     costPerLead,
     websiteSessions: ga4?.sessions.value ?? null,
     websiteConversions: ga4?.conversions.value ?? null,
-    appointmentsBooked: appt.total,
-    appointmentsCompleted: appt.completed,
-    completionRate: appt.completionRate,
-    cancellationRate: appt.cancellationRate,
+    appointmentsBooked: practoAppts ? growth.totals.booked : appt.total,
+    appointmentsCompleted: practoAppts ? growth.totals.showed : appt.completed,
+    completionRate: practoAppts ? growth.totals.showRate : appt.completionRate,
+    cancellationRate: practoAppts ? (concluded > 0 ? sumCh((c) => c.cancelled) / concluded : null) : appt.cancellationRate,
     aiAgentBookings: appt.aiAgentBookings,
     clinicRevenue: practo.source === 'live' ? practo.revenue : null,
     avgBillValue: practo.avgBill,
-    conversationsHandled: conv?.conversations ?? null,
-    avgFirstResponseHours: conv?.avgFirstResponseHours ?? null,
+    conversationsHandled: convOverlaps ? conv?.conversations ?? null : null,
+    avgFirstResponseHours: convOverlaps ? conv?.avgFirstResponseHours ?? null : null,
+    conversationsPeriod: conv ? { start: conv.periodStart, end: conv.periodEnd } : null,
   };
 
   // Monthly roll-up across the business (each metric from its own population).

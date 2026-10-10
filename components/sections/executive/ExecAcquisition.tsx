@@ -7,50 +7,53 @@ import { fmtAedCompact, fmtInt } from './parts';
 const aed = (n: number) => `AED ${Math.round(n).toLocaleString('en-US')}`;
 
 /**
- * New-patient acquisition economics — the real cost-per-acquisition, replacing
- * the manual-tracker CPL. Denominator = distinct NEW patients who were BILLED
- * (revenue-backed), split into a website-widget lens and an all-sources lens.
+ * New-patient acquisition economics. New patient = a Dental Nation Al Wasl
+ * DN-series Practo file, counted in the period of its first billed visit (see
+ * lib/executive/acquisitionCore.ts). Dr Tosun files are left out: the clinic's
+ * move onto Practo gave every patient a DN-series file, so new and returning
+ * can't be told apart there yet.
  */
 export function ExecAcquisition({ report }: { report: ExecutiveReport }) {
   const a = report.acquisition;
   const gapOwner = ownerFor('clinic');
+  const tosunGap = 'Dr Tosun files were renumbered when the clinic moved onto Practo, so new and returning patients can\u2019t be told apart yet';
 
   const items: KpiItem[] = [
     {
-      label: 'New patients (billed)',
+      label: 'New patients · Al Wasl',
       value: a.billedNewPatients > 0 ? fmtInt(a.billedNewPatients) : null,
-      hint: 'distinct · revenue-backed',
-      gapDetail: 'no billed new patients in window',
+      hint: 'first billed visit in this period · any source',
+      gapDetail: a.notMeasurable ? tosunGap : 'no new patients billed in this period',
       gapOwner,
     },
     {
-      label: 'Cost / new patient · All',
+      label: 'Ad spend per new patient',
       value: a.cpaAll != null ? aed(a.cpaAll) : null,
       goodWhenUp: false,
-      hint: 'spend ÷ all new patients (blended CAC)',
-      gapDetail: 'needs spend + new patients',
+      hint: 'all ad spend ÷ all new patients (not only those from ads)',
+      gapDetail: a.notMeasurable ? tosunGap : 'needs spend + new patients',
       gapOwner: ownerFor('spend'),
     },
     {
-      label: 'Cost / new patient · Website',
+      label: 'Ad spend per new patient · Website',
       value: a.cpaWebsite != null ? aed(a.cpaWebsite) : null,
       goodWhenUp: false,
-      hint: `${fmtInt(a.websiteNewPatients)} via booking widget`,
-      gapDetail: 'no website-sourced new patients yet',
+      hint: `${fmtInt(a.websiteNewPatients)} booked through the website`,
+      gapDetail: a.notMeasurable ? tosunGap : 'no website-booked new patients yet',
       gapOwner: ownerFor('spend'),
     },
     {
       label: 'New-patient revenue',
       value: a.newPatientRevenue > 0 ? fmtAedCompact(a.newPatientRevenue) : null,
-      hint: a.revenuePerNewPatient != null ? `${aed(a.revenuePerNewPatient)} / patient` : 'invoiced',
-      gapDetail: 'no new-patient bills in window',
+      hint: a.revenuePerNewPatient != null ? `${aed(a.revenuePerNewPatient)} per new patient, billed in this period` : 'billed in this period',
+      gapDetail: a.notMeasurable ? tosunGap : 'no new-patient bills in this period',
       gapOwner,
     },
     {
-      label: 'New-patient ROAS',
+      label: 'New-patient revenue ÷ ad spend',
       value: a.roas != null ? `${a.roas.toFixed(1)}×` : null,
-      hint: 'new-patient revenue ÷ spend',
-      gapDetail: 'needs spend + new-patient revenue',
+      hint: 'all new patients, not only those from ads',
+      gapDetail: a.notMeasurable ? tosunGap : 'needs spend + new-patient revenue',
       gapOwner: ownerFor('spend'),
     },
   ];
@@ -64,12 +67,18 @@ export function ExecAcquisition({ report }: { report: ExecutiveReport }) {
       <div className="px-5 pb-5 pt-3">
         <KpiBand items={items} />
         <Takeaway>
-          A <strong>new patient</strong> is a DN-series Practo file (the Apr-2026 new-patient numbering); we count each one once,
-          only when they&apos;ve been <strong>billed</strong> (revenue-backed) — a far truer demand signal than the manual lead
-          tracker (which the &ldquo;Leads generated&rdquo; card above still reflects). <strong>Website</strong> counts those whose
-          phone matches a website booking-widget submission; <strong>All</strong> is every new patient regardless of source.
-          Note <strong>Cost / new patient · All</strong> divides <em>total</em> ad spend by <em>all</em> new patients (incl.
-          organic / walk-in / referral), so it&apos;s a <strong>blended acquisition cost</strong>, not a pure paid-only CPL.
+          A <strong>new patient</strong> is a Dental Nation Al Wasl patient whose first billed visit falls in this period
+          (a DN-series Practo file); a patient billed again later counts as returning. The ad-spend figures divide{' '}
+          <em>all</em> ad spend by <em>all</em> new patients, including word of mouth, walk-ins and referrals, so they are a
+          blended cost, not the cost of a patient from ads; that becomes measurable as the desk records how each patient
+          found us (from 7 Oct 2026).
+          {a.tosunFilesBilled > 0 ? (
+            <>
+              {' '}<strong>{fmtInt(a.tosunFilesBilled)}</strong> Dr Tosun patient files billed in this period are left out:
+              the clinic moved onto Practo in July 2026 and every patient got a new-style file, so new and returning can&apos;t
+              be told apart there yet.
+            </>
+          ) : null}
         </Takeaway>
       </div>
     </Card>
