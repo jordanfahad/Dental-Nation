@@ -59,6 +59,8 @@ P&L pathway block complete on all 24 capabilities, pending finance ticks.
 
 ## Done via the bus
 
+- DN-012 (11 Oct 2026): Marketing performance 2025 and 2026 by branch for Ms Shadi, under Head of Operations (otab=marketing) and the internal room tier only (/share/room/<token>/marketing, 404 when sections.dash is false). Reuses the Executive new-patient rule and the Growth attribution verdicts. QA: tsc clean, 147 tests pass, June cohort re-derived in SQL (23 patients, AED 110,399 to date, median 580, 8 billed again). 2025 patient metrics, Dr Tosun new vs returning and LTV beyond early cohorts are shown as not available, with reasons.
+
 - DN-001 (19 Sep) — GMB review reconciliation. Astra built (99,917 OpenAI
   tokens; 23 tests), Claude QA'd, migrated, merged, deployed. First prod run
   tripped Astra's strict totalReviewCount==snapshot guard: Google's counter
