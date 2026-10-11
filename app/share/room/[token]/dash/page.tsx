@@ -36,7 +36,7 @@ export default async function RoomDashPage({
       dashBase={`/share/room/${token}/dash`}
       backHref={`/share/room/${token}/growth`}
       backLabel="Back to the Growth report"
-      roomNav={<RoomSectionBar backHref={`/share/room/${token}`} section="Live dashboard" />}
+      roomNav={<RoomSectionBar backHref={`/share/room/${token}`} section="Live dashboard" showMarketing />}
     />
   );
 }

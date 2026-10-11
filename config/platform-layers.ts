@@ -77,7 +77,7 @@ export interface PlatformLayer {
    *  platform is the overarching structure — Operations, Growth, Finance and
    *  Branding contribute their reports INTO layers, they are not parallel
    *  categories). Room-relative paths, rendered under the room token. */
-  reports: { label: string; href: string }[];
+  reports: { label: string; href: string; internalOnly?: boolean }[];
   capabilities: Capability[];
 }
 
@@ -185,6 +185,7 @@ export const PLATFORM_LAYERS: PlatformLayer[] = [
     highlights: ['3.68M ad impressions in H1-2026', '48% enquiry-to-booking', '28,210 pages published · ~19.4K indexed'],
     reports: [
       { label: 'Growth Department Live Dashboard', href: GROWTH },
+      { label: 'Marketing performance', href: '/marketing', internalOnly: true },
       { label: 'Digital & SEO', href: DIGITAL },
       { label: 'Social & Local', href: SOCIAL },
       { label: 'Marketing — paid media', href: MARKETING },
@@ -297,6 +298,7 @@ export const PLATFORM_LAYERS: PlatformLayer[] = [
     highlights: ['885 appointments booked in H1-2026', '3,521 conversations centralised (WhatsApp & Instagram)', '46% booking-to-attendance'],
     reports: [
       { label: 'Clinical Operations (worklists & alerts)', href: CLINOPS },
+      { label: 'Retention & lifetime value', href: '/marketing', internalOnly: true },
       { label: 'Growth report — patient journey funnel', href: GROWTH },
     ],
     capabilities: [

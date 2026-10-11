@@ -1,5 +1,6 @@
 import 'server-only';
-import { getSupabaseAdmin } from '@/lib/supabase/server';
+import { getSupabaseAdmin, type AdminClient } from '@/lib/supabase/server';
+import { selectAll } from '@/lib/supabase/selectAll';
 import { fetchGa4LeadLens, type Ga4LeadByChannel } from '@/lib/sync/adapters/ga4-adapter';
 
 /**
@@ -30,14 +31,17 @@ export interface AdSpendRange {
   googleLatest: string | null;
 }
 
-export async function getAdSpendForRange(from: string, to: string): Promise<AdSpendRange> {
-  const supabase = getSupabaseAdmin();
+export async function getAdSpendForRange(
+  from: string,
+  to: string,
+  supabase: AdminClient | null = getSupabaseAdmin(),
+): Promise<AdSpendRange> {
   const emptyRange: AdSpendRange = { meta: 0, google: 0, total: 0, rows: 0, daily: [], metaLatest: null, googleLatest: null };
   if (!supabase) return emptyRange;
   try {
     const [{ data: m }, { data: g }] = await Promise.all([
-      supabase.from('meta_insights_raw').select('date, spend').gte('date', from).lte('date', to),
-      supabase.from('google_ads_insights_raw').select('date, spend').gte('date', from).lte('date', to),
+      selectAll(() => supabase.from('meta_insights_raw').select('date, spend').gte('date', from).lte('date', to), 'key'),
+      selectAll(() => supabase.from('google_ads_insights_raw').select('date, spend').gte('date', from).lte('date', to), 'key'),
     ]);
     const metaRows = (m as { date: string | null; spend: number | null }[]) ?? [];
     const gadsRows = (g as { date: string | null; spend: number | null }[]) ?? [];

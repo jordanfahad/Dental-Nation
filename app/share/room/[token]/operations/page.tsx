@@ -23,7 +23,7 @@ export default async function RoomOperationsPage({ params }: { params: Promise<{
 
   return (
     <main className="mx-auto max-w-[1180px] px-4 py-6 sm:px-8 sm:py-8">
-      <RoomSectionBar backHref={`/share/room/${token}`} section="Operating Platform reports" />
+      <RoomSectionBar backHref={`/share/room/${token}`} section="Operating Platform reports" showMarketing={link.sections?.dash !== false} />
 
       {/* The section as the blueprint frames it: the platform model first
           (one-page summary, evolution infographic, comparison), then the

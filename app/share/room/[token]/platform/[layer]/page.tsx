@@ -31,13 +31,13 @@ export default async function RoomPlatformLayerPage({
   const base = `/share/room/${token}`;
   return (
     <main className="mx-auto max-w-[1180px] px-4 py-6 sm:px-8 sm:py-8">
-      <RoomSectionBar backHref={base} section={`Platform layer ${layer.n}`} active="platform" />
+      <RoomSectionBar backHref={base} section={`Platform layer ${layer.n}`} active="platform" showMarketing={link.sections?.dash !== false} />
       <p className="mb-3 text-[11.5px]">
         <Link href={`${base}/platform`} className="font-semibold no-underline" style={{ color: C.navyMid }}>
           ← All six layers
         </Link>
       </p>
-      <LayerPage base={base} layer={layer} showKpis={link.sections?.kpis !== false} />
+      <LayerPage base={base} layer={layer} showKpis={link.sections?.kpis !== false} showMarketing={link.sections?.dash !== false} />
     </main>
   );
 }

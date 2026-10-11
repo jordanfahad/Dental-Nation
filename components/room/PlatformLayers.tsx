@@ -312,7 +312,8 @@ function ReadinessBar({ layer }: { layer: PlatformLayer }) {
  *  schematic → live reports → capabilities. `showKpis: false` (investor links
  *  minted without KPIs) drops the live KPI band and trend entirely — the
  *  narrative capability pages remain. */
-export async function LayerPage({ base, layer, showKpis = true }: { base: string; layer: PlatformLayer; showKpis?: boolean }) {
+export async function LayerPage({ base, layer, showKpis = true, showMarketing = false }: { base: string; layer: PlatformLayer; showKpis?: boolean; showMarketing?: boolean }) {
+  const reports = layer.reports.filter((report) => !report.internalOnly || showMarketing);
   const visuals = showKpis
     ? await getLayerVisuals(layer.slug).catch(() => ({ kpis: [] as LayerKpi[], trend: undefined }))
     : { kpis: [] as LayerKpi[], trend: undefined };
@@ -365,13 +366,13 @@ export async function LayerPage({ base, layer, showKpis = true }: { base: string
         <ReadinessBar layer={layer} />
       </div>
 
-      {layer.reports.length > 0 ? (
+      {reports.length > 0 ? (
         <section className="rounded-lg border p-4" style={{ borderColor: C.navyPale, background: C.navyWash }}>
           <p className="text-[10.5px] font-bold uppercase tracking-wide" style={{ color: C.navyMid }}>
             Live reports in this layer
           </p>
           <div className="mt-2 flex flex-wrap gap-2">
-            {layer.reports.map((rep) => (
+            {reports.map((rep) => (
               <Link
                 key={rep.label}
                 href={`${base}${rep.href}`}

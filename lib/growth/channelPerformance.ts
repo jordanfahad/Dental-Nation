@@ -221,6 +221,138 @@ function isTestWidgetRow(d: Record<string, unknown>): boolean {
   return /zavis|test/i.test(email) || /test|sagar/i.test(name) || ref.startsWith('BK');
 }
 
+/** All-time evidence and first-appointment verdicts, shared by Growth and
+ * leadership marketing performance. Failures throw: a missing source must not
+ * silently reclassify every acquired patient as Direct / Walk-in. */
+const readAttributionInputs = cache(async (db: AdminClient) => {
+  const [apptRes, zavisRes, leadRes, crmRes, existRes, practoPtRes] = await Promise.all([
+    selectAll(() => db.from('practo_appointments_raw').select('appt_date, status, mr_no, patient_phone, patient_name, doctor, data'), 'appt_key'),
+    selectAll(() => db.from('raw_zavis').select('data'), 'id'),
+    selectAll(() => db.from('leads').select('inquiry_date, raw_row'), 'id'),
+    selectAll(() => db.from('crm_appointments').select('patient_phone, source, is_test, timeslot'), 'appointment_id'),
+    selectAll(() => db.from('existing_patients').select('phone9'), ['source', 'phone9']),
+    selectAll(() => db.from('practo_patients').select('phone'), 'phone'),
+  ]);
+
+  /* ─── Build the waterfall's evidence lookups (all-time, not range-scoped) ── */
+
+  const widgetByPhone = new Map<string, { hasLane: boolean; paidSearch: boolean }>();
+  const widgetRows: { p9: string; date: string | null; hasLane: boolean; paidSearch: boolean }[] = [];
+  for (const r of (zavisRes.data as { data: Record<string, unknown> }[] | null) ?? []) {
+    const d = r.data ?? {};
+    if (!('Full Name' in d) || isTestWidgetRow(d)) continue;
+    const p9 = phone9(S(d['Phone Number']));
+    const src = S(d['Source']);
+    const hasLane = Boolean(parseArabySource(src)?.lane);
+    // The site writes captured UTMs into Source as "google / <campaignid>
+    // (PID:<keyword>)" — verified with a tagged test booking.
+    // Raw gclid/utm_source forms kept as a fallback in case the
+    // format changes. Either marks Paid Search.
+    const paidSearch = !hasLane && (/^\s*google\s*\//i.test(src) || /gclid|utm_source\s*[=:]\s*google/i.test(src));
+    const date = S(d['Timestamp']).slice(0, 10) || S(d['Date']).slice(0, 10) || null;
+    widgetRows.push({ p9, date, hasLane, paidSearch });
+    if (!p9) continue;
+    const prev = widgetByPhone.get(p9);
+    // A campaign tag anywhere on the phone's history wins (paid trace beats none).
+    if (!prev || ((hasLane || paidSearch) && !prev.hasLane && !prev.paidSearch)) {
+      widgetByPhone.set(p9, { hasLane, paidSearch });
+    }
+  }
+
+  const leadChannelByPhone = new Map<string, string>();
+  const leadTextByPhone = new Map<string, string>();
+  const leadRows: { p9: string; date: string | null; channel: string; text: string }[] = [];
+  for (const r of (leadRes.data as { inquiry_date: string | null; raw_row: Record<string, unknown> }[] | null) ?? []) {
+    const d = r.raw_row ?? {};
+    const name = S(d['Patient Name']);
+    // Skip header echoes / placeholder rows the sheet sync lets through.
+    if (!name && !S(d['Contact Number'])) continue;
+    if (/^patient name$/i.test(name)) continue;
+    const p9 = phone9(S(d['Contact Number']));
+    // Day markers the desk types into the sheet ("N/A", "CLINIC CLOSED"), no phone: not enquiries.
+    if (!p9 && /^(n\/?a\b|-+$|clinic\b|closed\b)/i.test(name)) continue;
+    const text = `${S(d['Notes / Remarks'])} ${S(d['Follow-up Remarks'])} ${S(d['Follow up Remarks'])} ${S(d['Source Type'])} ${S(d['Preferred Channel'])}`.toLowerCase();
+    const channel =
+      tagHit(text) ?? leadTrackerChannel(S(d['Source Type']), S(d['Inquiry Platform']), S(d['Preferred Channel']));
+    leadRows.push({ p9, date: r.inquiry_date, channel, text });
+    if (p9) {
+      if (!leadChannelByPhone.has(p9)) leadChannelByPhone.set(p9, channel);
+      leadTextByPhone.set(p9, `${leadTextByPhone.get(p9) ?? ''} ${text}`.trim());
+    }
+  }
+
+  const aiAgentPhones = new Set<string>();
+  const crmRows: { p9: string; date: string | null; source: string }[] = [];
+  for (const r of (crmRes.data as { patient_phone: string | null; source: string | null; is_test: boolean; timeslot: string | null }[] | null) ?? []) {
+    if (r.is_test) continue;
+    const p9 = phone9(r.patient_phone);
+    const source = S(r.source);
+    crmRows.push({ p9, date: r.timeslot ? String(r.timeslot).slice(0, 10) : null, source });
+    if (p9 && source === 'aiAgent') aiAgentPhones.add(p9);
+  }
+
+  const existingPhones = new Set<string>();
+  for (const r of (existRes.data as { phone9: string | null }[] | null) ?? []) {
+    const p = phone9(r.phone9);
+    if (p) existingPhones.add(p);
+  }
+  for (const r of (practoPtRes.data as { phone: string | null }[] | null) ?? []) {
+    const p = phone9(r.phone);
+    if (p) existingPhones.add(p);
+  }
+
+  /* ─── Prepare appointments + the family-link map ─────────────────────── */
+
+  interface ApptRow { date: string | null; status: string; doctor: string; facts: ApptFacts }
+  const appts: ApptRow[] = [];
+  const filesByPhone = new Map<string, Set<string>>();
+  for (const r of (apptRes.data as { appt_date: string | null; status: string | null; mr_no: string | null; patient_phone: string | null; patient_name: string | null; doctor: string | null; data: Record<string, unknown> }[] | null) ?? []) {
+    const d = r.data ?? {};
+    const freeText = `${S(d['remarks'])} ${S(d['complaint'])}`.toLowerCase();
+    const facts: ApptFacts = {
+      p9: phone9(r.patient_phone),
+      mrNo: S(r.mr_no),
+      bookedBy: S(d['booked_by']),
+      freeText,
+      isTest: isTestAppt(`${freeText} ${S(r.patient_name)}`) || isBlockAppt(S(r.patient_name)),
+    };
+    appts.push({ date: r.appt_date, status: S(r.status).toLowerCase(), doctor: S(r.doctor), facts });
+    if (facts.p9 && facts.mrNo && !facts.isTest) {
+      (filesByPhone.get(facts.p9) ?? filesByPhone.set(facts.p9, new Set()).get(facts.p9)!).add(facts.mrNo);
+    }
+  }
+
+  const lookups: Lookups = { widgetByPhone, leadChannelByPhone, aiAgentPhones, existingPhones, filesByPhone, leadTextByPhone };
+
+  /* ─── Classify appointments; derive each patient file's channel ───────── */
+
+  // Sort by date so a patient's FIRST appointment decides their channel:
+  // acquisition credit belongs to what brought them in, not to a re-booking.
+  // selectAll orders appointments by appt_key, so equal dates keep that stable
+  // tie-break. Preserve the Growth report's existing null-date ordering too.
+  const byDate = [...appts].sort((a, b) => (a.date ?? '').localeCompare(b.date ?? ''));
+  const patientChannel = new Map<string, Verdict>(); // mr_no → verdict
+  const apptVerdicts = new Map<ApptRow, Verdict>();
+  for (const a of byDate) {
+    const v = classifyAppointment(a.facts, lookups);
+    if (!v) continue;
+    apptVerdicts.set(a, v);
+    if (a.facts.mrNo && !patientChannel.has(a.facts.mrNo)) patientChannel.set(a.facts.mrNo, v);
+  }
+  return { appts, apptVerdicts, patientChannel, widgetRows, leadRows, crmRows };
+});
+
+/** Server-only patient-file join for aggregate reporting. The verdicts use the
+ * identical Growth waterfall and all-time evidence; modelled phone-path
+ * estimates are deliberately absent. An unavailable source rejects the read. */
+export async function getFirstAppointmentChannels(
+  db: AdminClient | null = getSupabaseAdmin(),
+): Promise<ReadonlyMap<string, string>> {
+  if (!db) throw new Error('Attribution sources unavailable');
+  const { patientChannel } = await readAttributionInputs(db);
+  return new Map([...patientChannel].map(([file, verdict]) => [file, verdict.channel]));
+}
+
 /** Clinics the channel report can scope to (AMC has no feed — handled in UI). */
 export type GrowthPerfClinic = 'all' | 'dn-alwasl' | 'dr-tosun';
 
@@ -250,15 +382,10 @@ const computeChannelPerformance = cache(async (
     clinic === 'all' || (clinicOfDoctor(doctor) === 'dr-tosun' ? clinic === 'dr-tosun' : clinic === 'dn-alwasl');
 
   try {
-    const [apptRes, billRes, zavisRes, leadRes, crmRes, existRes, practoPtRes, metaRes, gadsRes, ga4Res, gmbRes, ctRes, metaPlatRes, sourceRes] =
+    const [attribution, billRes, metaRes, gadsRes, ga4Res, gmbRes, ctRes, metaPlatRes, sourceRes] =
       await Promise.all([
-        selectAll(() => db.from('practo_appointments_raw').select('appt_date, status, mr_no, patient_phone, patient_name, doctor, data'), "appt_key"),
+        readAttributionInputs(db),
         selectAll(() => db.from('practo_bills_raw').select('bill_date, amount, data'), "bill_key"),
-        selectAll(() => db.from('raw_zavis').select('data'), "id"),
-        selectAll(() => db.from('leads').select('inquiry_date, raw_row'), "id"),
-        selectAll(() => db.from('crm_appointments').select('patient_phone, source, is_test, timeslot'), "appointment_id"),
-        selectAll(() => db.from('existing_patients').select('phone9'), ["source","phone9"]),
-        selectAll(() => db.from('practo_patients').select('phone'), "phone"),
         selectAll(() => db.from('meta_insights_raw').select('date, spend, impressions, clicks, leads, campaign_name'), "key"),
         selectAll(() => db.from('google_ads_insights_raw').select('date, spend, impressions'), "key"),
         db.from('ga4_summary').select('period_start, period_end, sessions, users, channels, sources').order('period_end', { ascending: false }).limit(1),
@@ -268,109 +395,7 @@ const computeChannelPerformance = cache(async (
         selectAll(() => db.from('ga4_lead_events_source').select('day,event_name,source_medium,campaign,event_count'), ['day', 'event_name', 'source_medium', 'campaign']).catch(() => ({ data: null, error: true })),
       ]);
 
-    /* ─── Build the waterfall's evidence lookups (all-time, not range-scoped) ── */
-
-    const widgetByPhone = new Map<string, { hasLane: boolean; paidSearch: boolean }>();
-    const widgetRows: { p9: string; date: string | null; hasLane: boolean; paidSearch: boolean }[] = [];
-    for (const r of (zavisRes.data as { data: Record<string, unknown> }[] | null) ?? []) {
-      const d = r.data ?? {};
-      if (!('Full Name' in d) || isTestWidgetRow(d)) continue;
-      const p9 = phone9(S(d['Phone Number']));
-      const src = S(d['Source']);
-      const hasLane = Boolean(parseArabySource(src)?.lane);
-      // The site writes captured UTMs into Source as "google / <campaignid>
-      // (PID:<keyword>)" — verified live with a tagged test booking (ref 128640,
-      // 29 Jul). Raw gclid/utm_source forms kept as a fallback in case the
-      // format changes. Either marks Paid Search.
-      const paidSearch = !hasLane && (/^\s*google\s*\//i.test(src) || /gclid|utm_source\s*[=:]\s*google/i.test(src));
-      const date = S(d['Timestamp']).slice(0, 10) || S(d['Date']).slice(0, 10) || null;
-      widgetRows.push({ p9, date, hasLane, paidSearch });
-      if (!p9) continue;
-      const prev = widgetByPhone.get(p9);
-      // A campaign tag anywhere on the phone's history wins (paid trace beats none).
-      if (!prev || ((hasLane || paidSearch) && !prev.hasLane && !prev.paidSearch)) {
-        widgetByPhone.set(p9, { hasLane, paidSearch });
-      }
-    }
-
-    const leadChannelByPhone = new Map<string, string>();
-    const leadTextByPhone = new Map<string, string>();
-    const leadRows: { p9: string; date: string | null; channel: string; text: string }[] = [];
-    for (const r of (leadRes.data as { inquiry_date: string | null; raw_row: Record<string, unknown> }[] | null) ?? []) {
-      const d = r.raw_row ?? {};
-      const name = S(d['Patient Name']);
-      // Skip header echoes / placeholder rows the sheet sync lets through.
-      if (!name && !S(d['Contact Number'])) continue;
-      if (/^patient name$/i.test(name)) continue;
-      const p9 = phone9(S(d['Contact Number']));
-      // Day markers the desk types into the sheet ("N/A", "CLINIC CLOSED"), no phone: not enquiries.
-      if (!p9 && /^(n\/?a\b|-+$|clinic\b|closed\b)/i.test(name)) continue;
-      const text = `${S(d['Notes / Remarks'])} ${S(d['Follow-up Remarks'])} ${S(d['Follow up Remarks'])} ${S(d['Source Type'])} ${S(d['Preferred Channel'])}`.toLowerCase();
-      const channel =
-        tagHit(text) ?? leadTrackerChannel(S(d['Source Type']), S(d['Inquiry Platform']), S(d['Preferred Channel']));
-      leadRows.push({ p9, date: r.inquiry_date, channel, text });
-      if (p9) {
-        if (!leadChannelByPhone.has(p9)) leadChannelByPhone.set(p9, channel);
-        leadTextByPhone.set(p9, `${leadTextByPhone.get(p9) ?? ''} ${text}`.trim());
-      }
-    }
-
-    const aiAgentPhones = new Set<string>();
-    const crmRows: { p9: string; date: string | null; source: string }[] = [];
-    for (const r of (crmRes.data as { patient_phone: string | null; source: string | null; is_test: boolean; timeslot: string | null }[] | null) ?? []) {
-      if (r.is_test) continue;
-      const p9 = phone9(r.patient_phone);
-      const source = S(r.source);
-      crmRows.push({ p9, date: r.timeslot ? String(r.timeslot).slice(0, 10) : null, source });
-      if (p9 && source === 'aiAgent') aiAgentPhones.add(p9);
-    }
-
-    const existingPhones = new Set<string>();
-    for (const r of (existRes.data as { phone9: string | null }[] | null) ?? []) {
-      const p = phone9(r.phone9);
-      if (p) existingPhones.add(p);
-    }
-    for (const r of (practoPtRes.data as { phone: string | null }[] | null) ?? []) {
-      const p = phone9(r.phone);
-      if (p) existingPhones.add(p);
-    }
-
-    /* ─── Prepare appointments + the family-link map ─────────────────────── */
-
-    interface ApptRow { date: string | null; status: string; doctor: string; facts: ApptFacts }
-    const appts: ApptRow[] = [];
-    const filesByPhone = new Map<string, Set<string>>();
-    for (const r of (apptRes.data as { appt_date: string | null; status: string | null; mr_no: string | null; patient_phone: string | null; patient_name: string | null; doctor: string | null; data: Record<string, unknown> }[] | null) ?? []) {
-      const d = r.data ?? {};
-      const freeText = `${S(d['remarks'])} ${S(d['complaint'])}`.toLowerCase();
-      const facts: ApptFacts = {
-        p9: phone9(r.patient_phone),
-        mrNo: S(r.mr_no),
-        bookedBy: S(d['booked_by']),
-        freeText,
-        isTest: isTestAppt(`${freeText} ${S(r.patient_name)}`) || isBlockAppt(S(r.patient_name)),
-      };
-      appts.push({ date: r.appt_date, status: S(r.status).toLowerCase(), doctor: S(r.doctor), facts });
-      if (facts.p9 && facts.mrNo && !facts.isTest) {
-        (filesByPhone.get(facts.p9) ?? filesByPhone.set(facts.p9, new Set()).get(facts.p9)!).add(facts.mrNo);
-      }
-    }
-
-    const lookups: Lookups = { widgetByPhone, leadChannelByPhone, aiAgentPhones, existingPhones, filesByPhone, leadTextByPhone };
-
-    /* ─── Classify appointments; derive each patient file's channel ───────── */
-
-    // Sort by date so a patient's FIRST appointment decides their channel:
-    // acquisition credit belongs to what brought them in, not to a re-booking.
-    const byDate = [...appts].sort((a, b) => (a.date ?? '').localeCompare(b.date ?? ''));
-    const patientChannel = new Map<string, Verdict>(); // mr_no → verdict
-    const apptVerdicts = new Map<ApptRow, Verdict>();
-    for (const a of byDate) {
-      const v = classifyAppointment(a.facts, lookups);
-      if (!v) continue;
-      apptVerdicts.set(a, v);
-      if (a.facts.mrNo && !patientChannel.has(a.facts.mrNo)) patientChannel.set(a.facts.mrNo, v);
-    }
+    const { appts, apptVerdicts, patientChannel, widgetRows, leadRows, crmRows } = attribution;
 
     /* ─── Aggregate the in-window funnel per channel ─────────────────────── */
 

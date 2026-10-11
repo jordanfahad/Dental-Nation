@@ -23,7 +23,7 @@ export default async function RoomPlatformPage({ params }: { params: Promise<{ t
   const base = `/share/room/${token}`;
   return (
     <main className="mx-auto max-w-[1180px] px-4 py-6 sm:px-8 sm:py-8">
-      <RoomSectionBar backHref={base} section="Operating Platform — six layers" active="platform" />
+      <RoomSectionBar backHref={base} section="Operating Platform — six layers" active="platform" showMarketing={link.sections?.dash !== false} />
       <PlatformHome base={base} />
     </main>
   );

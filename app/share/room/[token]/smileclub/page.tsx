@@ -53,7 +53,7 @@ export default async function RoomSmileClubPage({ params }: { params: Promise<{ 
 
   return (
     <main className="mx-auto max-w-[880px] px-4 py-6 sm:px-8 sm:py-8">
-      <RoomSectionBar backHref={base} section="Smile Club — Membership Programme" active="smileclub" />
+      <RoomSectionBar backHref={base} section="Smile Club — Membership Programme" active="smileclub" showMarketing={link.sections?.dash !== false} />
 
       <header className="rounded-lg px-5 py-5 text-white sm:px-6" style={{ background: C.navyDeep }}>
         <p className="text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: '#c9d6e6' }}>

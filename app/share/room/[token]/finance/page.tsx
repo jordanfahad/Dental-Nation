@@ -33,7 +33,7 @@ export default async function RoomFinancePage({ params }: { params: Promise<{ to
 
   return (
     <main className="mx-auto max-w-[880px] px-4 py-6 sm:px-8 sm:py-8">
-      <RoomSectionBar backHref={base} section="Financial reports" />
+      <RoomSectionBar backHref={base} section="Financial reports" showMarketing={dashAllowed} />
 
       <h1 className="text-[20px] font-semibold text-ink">Financial reports</h1>
       <p className="mt-1 text-[12px] leading-snug text-ink-soft">

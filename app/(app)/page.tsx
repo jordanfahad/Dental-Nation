@@ -30,6 +30,7 @@ import { DigitalReport } from '@/components/sections/digital/DigitalReport';
 import { GroupRevenue } from '@/components/sections/clinics/GroupRevenue';
 import { UserManagement } from '@/components/sections/users/UserManagement';
 import { OpsReport } from '@/components/sections/opsreport/OpsReport';
+import { MarketingPerformance } from '@/components/sections/opsreport/MarketingPerformance';
 import { CeoIntelligence } from '@/components/sections/opsreport/CeoIntelligence';
 import { ClinicalPortal, DailyReportPortal, DoctorPortal, OrthoPortal, PractoPortal, ProcurementPortal, ZavisPortal } from '@/components/sections/opsreport/Portals';
 
@@ -172,6 +173,7 @@ export default async function DashboardPage({
               {([
                 ['', 'Live Report'],
                 ['ceo', 'CEO Intelligence'],
+                ['marketing', 'Marketing performance'],
                 ['clinical', 'Clinical Performance'],
                 ['doctors', 'Doctor Performance'],
                 ['ortho', 'DN Ortho'],
@@ -194,6 +196,7 @@ export default async function DashboardPage({
               })}
             </nav>
             {sp.otab === 'ceo' ? <CeoIntelligence /> : null}
+            {sp.otab === 'marketing' ? <MarketingPerformance /> : null}
             {sp.otab === 'clinical' ? <ClinicalPortal /> : null}
             {sp.otab === 'doctors' ? <DoctorPortal /> : null}
             {sp.otab === 'ortho' ? <OrthoPortal /> : null}

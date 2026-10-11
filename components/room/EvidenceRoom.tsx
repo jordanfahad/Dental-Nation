@@ -88,7 +88,7 @@ export function EvidenceRoom({ base }: { base: string }) {
  * investor can move Growth ↔ Operations ↔ Finance without returning to the
  * landing first.
  */
-export function RoomSectionBar({ backHref, section, active }: { backHref: string; section: string; active?: string }) {
+export function RoomSectionBar({ backHref, section, active, showMarketing = false }: { backHref: string; section: string; active?: string; showMarketing?: boolean }) {
   const items = [
     { label: 'Overview', href: backHref, key: 'overview' },
     { label: 'Platform', href: `${backHref}/platform`, key: 'platform' },
@@ -96,6 +96,7 @@ export function RoomSectionBar({ backHref, section, active }: { backHref: string
     { label: 'Operations', href: `${backHref}/operations`, key: 'operations' },
     { label: 'Finance', href: `${backHref}/finance`, key: 'finance' },
     { label: 'Smile Club', href: `${backHref}/smileclub`, key: 'smileclub' },
+    ...(showMarketing ? [{ label: 'Marketing performance', href: `${backHref}/marketing`, key: 'marketing' }] : []),
   ];
   // "platform" is never inferred from the section label — the Operations
   // section is titled "Operating Platform reports" and must not match it.
