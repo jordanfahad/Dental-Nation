@@ -121,6 +121,10 @@ export interface GrowthReport {
   to: string | null;
   channels: ChannelPerf[];
   totals: GrowthFunnelTotals;
+  /** The same enquiries / booked / showed as `totals`, per month (YYYY-MM), so trend lines match the headline. */
+  byMonth: { month: string; enquiries: number; booked: number; showed: number }[];
+  /** Rows read from the Practo appointment feed (all time): 0 means the feed could not be read. */
+  apptFeedRows: number;
   /** Confidence over booked appointments: how much is hard-traced vs logic vs default. */
   confidence: { tagged: number; inferred: number; defaulted: number };
   /** Site-wide visibility context (latest GA4 sync — not range-scoped). */
@@ -203,7 +207,7 @@ function emptyReport(from: string | null, to: string | null): GrowthReport {
       noshow: 0, treated: 0, revenue: 0, taggedBooked: 0, inferredBooked: 0, spend: null,
       spendThrough: null, costPerEnquiry: null, costPerBooked: null, costPerShowed: null, costPerPatient: null, roas: null,
     })),
-    totals: emptyTotals, confidence: { tagged: 0, inferred: 0, defaulted: 0 },
+    totals: emptyTotals, byMonth: [], apptFeedRows: 0, confidence: { tagged: 0, inferred: 0, defaulted: 0 },
     ga4: null, unattributedRevenue: 0, unattributedPatients: 0, phonePath: null,
     organicSplit: null, metaSplit: null, trackerLeadRows: 0, mvmSelection: null, notes: [],
   };
@@ -382,12 +386,20 @@ const computeChannelPerformance = cache(async (
     // Enquiries — dedupe by phone across sources (widget > lead > crm-widget);
     // phoneless rows count individually (nothing to dedupe on).
     const enquirySeen = new Set<string>();
-    const countEnquiry = (p9: string, channel: string) => {
+    const byMonth = new Map<string, { month: string; enquiries: number; booked: number; showed: number }>();
+    const monthOf = (day: string | null | undefined) => {
+      const m = (day ?? '').slice(0, 7);
+      if (!m) return null;
+      return byMonth.get(m) ?? byMonth.set(m, { month: m, enquiries: 0, booked: 0, showed: 0 }).get(m)!;
+    };
+    const countEnquiry = (p9: string, channel: string, day: string | null) => {
       if (p9) {
         if (enquirySeen.has(p9)) return;
         enquirySeen.add(p9);
       }
       at(channel).enquiries += 1;
+      const mo = monthOf(day);
+      if (mo) mo.enquiries += 1;
     };
     // Enquiries are shared acquisition surfaces (the website, the desk, the
     // WhatsApp line — all Dental Nation Al Wasl's). They can't be split per
@@ -395,9 +407,9 @@ const computeChannelPerformance = cache(async (
     let trackerLeadRows = 0;
     if (dnAssets) {
       // A lane tag = ArabyAds = the Affiliates channel (commission partner, not our Meta spend).
-      for (const w of widgetRows) if (inRange(w.date, from, to)) countEnquiry(w.p9, w.hasLane ? 'affiliate' : w.paidSearch ? 'paid-search' : 'website');
-      for (const l of leadRows) if (inRange(l.date, from, to)) { trackerLeadRows += 1; countEnquiry(l.p9, l.channel); }
-      for (const c of crmRows) if (c.source === 'aiAgent' && inRange(c.date, from, to)) countEnquiry(c.p9, 'ai-concierge');
+      for (const w of widgetRows) if (inRange(w.date, from, to)) countEnquiry(w.p9, w.hasLane ? 'affiliate' : w.paidSearch ? 'paid-search' : 'website', w.date);
+      for (const l of leadRows) if (inRange(l.date, from, to)) { trackerLeadRows += 1; countEnquiry(l.p9, l.channel, l.date); }
+      for (const c of crmRows) if (c.source === 'aiAgent' && inRange(c.date, from, to)) countEnquiry(c.p9, 'ai-concierge', c.date);
     }
 
     // Appointments booked / showed / cancelled / no-show.
@@ -439,6 +451,11 @@ const computeChannelPerformance = cache(async (
       if (!apptInClinic(a.doctor)) continue;
       const p = at(v.channel);
       p.booked += 1;
+      const mo = monthOf(a.date);
+      if (mo) {
+        mo.booked += 1;
+        if (a.status === 'arrived' || a.status === 'completed') mo.showed += 1;
+      }
       if (v.evidence === 'tagged') {
         p.taggedBooked += 1;
         taggedAll += 1;
@@ -849,6 +866,8 @@ const computeChannelPerformance = cache(async (
     return {
       source: booked + totals.enquiries > 0 ? 'live' : 'empty',
       from, to, channels, totals,
+      byMonth: [...byMonth.values()].sort((x, y) => x.month.localeCompare(y.month)),
+      apptFeedRows: appts.length,
       confidence: { tagged: taggedAll, inferred: inferredAll, defaulted: defaultedAll },
       ga4: dnAssets && ga4Row
         ? { periodStart: ga4Row.period_start, periodEnd: ga4Row.period_end, sessions: ga4Row.sessions ?? 0, users: ga4Row.users ?? 0, channels: (ga4Row.channels ?? []).map((c) => ({ channel: c.channel, sessions: c.sessions })) }

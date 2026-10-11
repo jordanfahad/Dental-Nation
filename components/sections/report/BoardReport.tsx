@@ -97,6 +97,13 @@ export async function BoardReport({
 
   const k = report.kpis;
   const a = report.acquisition;
+  // Under the Dr Tosun lens new patients can't be measured, so every
+  // acquisition figure shows a dash, never a zero.
+  const npRev = a.notMeasurable ? null : a.newPatientRevenue;
+  const webNp = a.notMeasurable ? null : a.websiteNewPatients;
+  const convLabel = k.conversationsPeriod?.start && k.conversationsPeriod?.end
+    ? `CRM-DN · export for ${format(parseISO(k.conversationsPeriod.start), 'd MMM')} to ${format(parseISO(k.conversationsPeriod.end), 'd MMM yyyy')}`
+    : 'CRM-DN';
   const p = report.practo;
   const pk = priorReport?.kpis ?? null;
   const pa = priorReport?.acquisition ?? null;
@@ -153,11 +160,18 @@ export async function BoardReport({
         {/* Headline */}
         <Section eyebrow="Summary" title="The story in one line">
           <p className="text-[15px] leading-relaxed text-ink">
-            Over this period, <strong>{aed(k.marketingSpend)}</strong> was spent on ads, and Dental Nation Al Wasl billed{' '}
-            <strong>{a.notMeasurable ? '—' : int(a.billedNewPatients)} new patients</strong> from every source
-            {a.cpaAll != null ? <> (<strong>{aed(a.cpaAll)}</strong> of ad spend each, blended)</> : null}, worth{' '}
-            <strong>{aed(a.newPatientRevenue)}</strong> in this period
-            {a.roas != null ? <> ({a.roas.toFixed(1)}× the ad spend)</> : null}. Total clinic revenue was{' '}
+            Over this period, <strong>{aed(k.marketingSpend)}</strong> was spent on ads.{' '}
+            {a.notMeasurable ? (
+              <>New patients can&apos;t be measured for Dr Tosun yet: every patient got a new-style file when the clinic moved onto Practo in July 2026.</>
+            ) : (
+              <>
+                Dental Nation Al Wasl billed <strong>{int(a.billedNewPatients)} new patients</strong> from every source
+                {a.cpaAll != null ? <> (<strong>{aed(a.cpaAll)}</strong> of ad spend each, blended)</> : null}, worth{' '}
+                <strong>{aed(npRev)}</strong> in this period
+                {a.roas != null ? <> ({a.roas.toFixed(1)}× the ad spend)</> : null}.
+              </>
+            )}{' '}
+            Total clinic revenue was{' '}
             <strong>{aed(k.clinicRevenue)}</strong> across <strong>{int(p.billCount)}</strong> bills, from{' '}
             <strong>{int(k.appointmentsBooked)}</strong> appointments ({pct(k.completionRate)} attended).
           </p>
@@ -170,7 +184,7 @@ export async function BoardReport({
             <Metric label="Marketing spend" value={aed(k.marketingSpend)} sub="Meta + Google · live" delta={chg(k.marketingSpend, pk?.marketingSpend)} goodUp={false} />
             <Metric label="New patients · Al Wasl" value={a.notMeasurable ? '—' : int(a.billedNewPatients)} sub="first billed visit in this period" delta={chg(a.billedNewPatients, pa?.billedNewPatients)} />
             <Metric label="Ad spend / new patient" value={aed(a.cpaAll)} sub="blended: all spend ÷ all new patients" accent delta={chg(a.cpaAll, pa?.cpaAll)} goodUp={false} />
-            <Metric label="New-patient revenue" value={aed(a.newPatientRevenue)} sub={a.revenuePerNewPatient != null ? `${aed(a.revenuePerNewPatient)} / patient` : undefined} delta={chg(a.newPatientRevenue, pa?.newPatientRevenue)} />
+            <Metric label="New-patient revenue" value={aed(npRev)} sub={a.revenuePerNewPatient != null ? `${aed(a.revenuePerNewPatient)} / patient` : undefined} delta={chg(a.newPatientRevenue, pa?.newPatientRevenue)} />
             <Metric label="Appointments" value={int(k.appointmentsBooked)} sub={k.aiAgentBookings != null ? `Practo · ${int(k.aiAgentBookings)} by the AI agent` : 'Practo'} delta={chg(k.appointmentsBooked, pk?.appointmentsBooked)} />
             <Metric label="Attended" value={int(k.appointmentsCompleted)} sub={k.completionRate != null ? `${pct(k.completionRate)} (no-shows and cancellations count)` : undefined} delta={chg(k.appointmentsCompleted, pk?.appointmentsCompleted)} />
             <Metric label="Clinic revenue" value={aed(k.clinicRevenue)} sub={k.avgBillValue != null ? `${aed(k.avgBillValue)} per paid bill` : undefined} accent delta={chg(k.clinicRevenue, pk?.clinicRevenue)} />
@@ -182,8 +196,8 @@ export async function BoardReport({
         <Section eyebrow="Acquisition" title="What it costs to win a new patient" breakBefore>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             <Metric label="Ad spend / new patient · All" value={aed(a.cpaAll)} sub="all spend ÷ all new patients" accent />
-            <Metric label="Ad spend / new patient · Website" value={aed(a.cpaWebsite)} sub={`${int(a.websiteNewPatients)} booked on the website`} />
-            <Metric label="New-patient revenue" value={aed(a.newPatientRevenue)} sub="billed in this period" />
+            <Metric label="Ad spend / new patient · Website" value={aed(a.cpaWebsite)} sub={`${int(webNp)} booked on the website`} />
+            <Metric label="New-patient revenue" value={aed(npRev)} sub="billed in this period" />
             <Metric label="New-patient revenue ÷ ad spend" value={a.roas != null ? `${a.roas.toFixed(1)}×` : '—'} sub="all new patients, not only from ads" accent />
           </div>
           <Insight>
@@ -334,7 +348,7 @@ export async function BoardReport({
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             <Metric label="Completion rate" value={pct(k.completionRate)} sub="attended ÷ concluded" />
             <Metric label="Cancellation rate" value={pct(k.cancellationRate)} />
-            <Metric label="Conversations handled" value={int(k.conversationsHandled)} sub="CRM-DN" />
+            <Metric label="Conversations handled" value={int(k.conversationsHandled)} sub={convLabel} />
             <Metric label="Avg first response" value={k.avgFirstResponseHours != null ? `${k.avgFirstResponseHours.toFixed(1)}h` : '—'} sub="patient enquiries" />
           </div>
         </Section>
@@ -502,17 +516,21 @@ export async function BoardReport({
         {/* Takeaways */}
         <Section eyebrow="So what" title="Takeaways">
           <ul className="space-y-2.5 text-[13.5px] leading-relaxed text-ink">
-            <Take>
-              Blended: <strong>{aed(a.cpaAll)}</strong> of ad spend per new patient against{' '}
-              <strong>{a.revenuePerNewPatient != null ? aed(a.revenuePerNewPatient) : '—'}</strong> billed per new patient in
-              this period. This covers every new patient, not only those from ads; the cost of a patient from ads becomes
-              measurable as the desk records how each patient found us (from 7 Oct 2026).
-            </Take>
-            <Take>
-              Website bookings account for <strong>{int(a.websiteNewPatients)}</strong> of the {int(a.billedNewPatients)} new
-              patients: {a.websiteNewPatients === 0 ? 'none of the' : 'a small share of'} paying demand comes through the site,
-              which is worth improving.
-            </Take>
+            {a.notMeasurable ? null : (
+              <Take>
+                Blended: <strong>{aed(a.cpaAll)}</strong> of ad spend per new patient against{' '}
+                <strong>{a.revenuePerNewPatient != null ? aed(a.revenuePerNewPatient) : '—'}</strong> billed per new patient in
+                this period. This covers every new patient, not only those from ads; the cost of a patient from ads becomes
+                measurable as the desk records how each patient found us (from 7 Oct 2026).
+              </Take>
+            )}
+            {a.notMeasurable ? null : (
+              <Take>
+                Website bookings account for <strong>{int(a.websiteNewPatients)}</strong> of the {int(a.billedNewPatients)} new
+                patients: {a.websiteNewPatients === 0 ? 'none of the' : 'a small share of'} paying demand comes through the site,
+                which is worth improving.
+              </Take>
+            )}
             <Take>
               Booking follow-through: <strong>{pct(k.completionRate)}</strong> of appointments were attended (no-shows and
               cancellations count)

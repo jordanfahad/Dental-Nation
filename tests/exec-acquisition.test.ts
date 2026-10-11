@@ -71,6 +71,29 @@ test('Dr Tosun files are counted apart and never added to new patients', () => {
   assert.equal(only.tosunFilesBilled, 2);
 });
 
+test('a Dr Tosun file billed at Al Wasl is never an Al Wasl new patient', () => {
+  const tosun = { center_name: 'Dr Tosun Dental Clinic' };
+  const r = computeNewPatientAcquisition({
+    bills: [
+      bill('DNJ7', '2026-08-27', 0, tosun), // Tosun first, then Al Wasl in September
+      bill('DNJ7', '2026-09-04', 0),
+      bill('DNJ8', '2026-09-12', 300), // Tosun numbering, only ever billed at Al Wasl
+      bill('DNW9', '2026-09-03', 500), // Al Wasl first, Dr Tosun later: stays an Al Wasl new patient
+      bill('DNW9', '2026-09-20', 200, tosun),
+      bill('DNW10', '2026-09-08', 900),
+      bill('DNW11', '2026-08-30', 100, tosun), // Dr Tosun first, Al Wasl later: Dr Tosun's
+      bill('DNW11', '2026-09-15', 700),
+    ],
+    appts: [],
+    widgetPhones: new Set(),
+    ...SEP,
+    spend: 1400,
+  });
+  assert.equal(r.billedNewPatients, 2);
+  assert.equal(r.newPatientRevenue, 1400);
+  assert.equal(r.tosunFilesBilled, 3); // DNJ7, DNJ8, DNW11; DNW9 is Al Wasl's
+});
+
 test('website new patients match a widget phone on the last nine digits', () => {
   const r = computeNewPatientAcquisition({
     bills: [bill('DNW7', '2026-09-15', 600), bill('DNW8', '2026-09-16', 600)],

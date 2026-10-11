@@ -1,5 +1,6 @@
 import 'server-only';
 import { parseISO, format, differenceInCalendarDays } from 'date-fns';
+import { selectAll } from '@/lib/supabase/selectAll';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
 import { getRangeReport } from '@/lib/report';
 import { getCrmReport } from '@/lib/crm/report';
@@ -34,6 +35,11 @@ export interface ExecQuery {
   clinic?: ClinicFilterKey;
 }
 
+/** The Growth Platform lens for a page clinic lens; the Executive page and its
+ *  Growth Platform card both use it so they read the same cached report. */
+export const growthClinicOf = (c: ClinicFilterKey = 'all'): GrowthPerfClinic =>
+  c === 'dental-nation' ? 'dn-alwasl' : c === 'dr-tosun' ? 'dr-tosun' : 'all';
+
 export async function getExecutiveReport(query: ExecQuery = {}): Promise<ExecutiveReport> {
   // Acquisition sources (ad spend, leads, GA4, booking widget) are SHARED across
   // both clinics — the website + booking widget are the same — so they are never
@@ -60,7 +66,7 @@ export async function getExecutiveReport(query: ExecQuery = {}): Promise<Executi
   // attendance) over the same window and clinic: the headline counts come from
   // it, so the top of the page and the Growth Platform card can never disagree.
   // React cache shares this read with the Growth Platform card on the page.
-  const gclinic: GrowthPerfClinic = clinic === 'dental-nation' ? 'dn-alwasl' : clinic === 'dr-tosun' ? 'dr-tosun' : 'all';
+  const gclinic = growthClinicOf(clinic);
   const [crm, practo, adSpend, freshness, growth] = await Promise.all([
     getCrmReport({ from: clinicFrom, to: clinicTo, clinic }),
     getPractoSummary({ from: clinicFrom, to: clinicTo, clinic }),
@@ -100,15 +106,20 @@ export async function getExecutiveReport(query: ExecQuery = {}): Promise<Executi
   // the CRM-DN feed, which only holds the bookings made through CRM-DN.
   const sumCh = (f: (c: (typeof growth.channels)[number]) => number) => growth.channels.reduce((a, c) => a + f(c), 0);
   const concluded = growth.totals.showed + sumCh((c) => c.noshow) + sumCh((c) => c.cancelled);
-  const practoAppts = growthLive && growth.totals.booked > 0;
+  // Practo whenever its feed was read, so a real zero (a closed day) shows 0,
+  // not CRM-DN rows filtered by the day the booking was made.
+  const practoAppts = growth.apptFeedRows > 0;
 
   // The CRM-DN conversation export is one summary row for a fixed period.
-  // Show it only when that period overlaps the selected window.
-  const convOverlaps =
+  // Show it only when the selected window contains that whole period;
+  // otherwise six months of conversations would read as this window's.
+  const convInWindow =
     conv != null &&
     (isAll ||
-      ((conv.periodStart == null || conv.periodStart.slice(0, 10) <= range.range.to) &&
-        (conv.periodEnd == null || conv.periodEnd.slice(0, 10) >= range.range.from)));
+      (conv.periodStart != null &&
+        conv.periodEnd != null &&
+        range.range.from <= conv.periodStart.slice(0, 10) &&
+        range.range.to >= conv.periodEnd.slice(0, 10)));
 
   const kpis: ExecKpis = {
     marketingSpend,
@@ -125,8 +136,8 @@ export async function getExecutiveReport(query: ExecQuery = {}): Promise<Executi
     aiAgentBookings: appt.aiAgentBookings,
     clinicRevenue: practo.source === 'live' ? practo.revenue : null,
     avgBillValue: practo.avgBill,
-    conversationsHandled: convOverlaps ? conv?.conversations ?? null : null,
-    avgFirstResponseHours: convOverlaps ? conv?.avgFirstResponseHours ?? null : null,
+    conversationsHandled: convInWindow ? conv?.conversations ?? null : null,
+    avgFirstResponseHours: convInWindow ? conv?.avgFirstResponseHours ?? null : null,
     conversationsPeriod: conv ? { start: conv.periodStart, end: conv.periodEnd } : null,
   };
 
@@ -144,32 +155,29 @@ export async function getExecutiveReport(query: ExecQuery = {}): Promise<Executi
     if (patch.revenue) row.revenue += patch.revenue;
     months.set(m, row);
   };
-  // Monthly enquiries: lead tracker (lane_e.leads) + non-test website-widget
-  // enquiries, grouped by month, scoped to the window — so the enquiry line
-  // matches the Platforms tab (e.g. July = 3 tracker + 1 widget = 4).
-  for (const [m, n] of await leadsByMonth(range.range.from, range.range.to)) {
-    const row =
-      months.get(m) ?? { month: m, label: safeMonthLabel(m), spend: 0, leads: 0, appointments: 0, revenue: 0 };
-    row.leads += n;
-    months.set(m, row);
-  }
-  try {
-    const widgetEnq = await getWidgetEnquiries({ from: range.range.from, to: range.range.to });
-    for (const e of widgetEnq.enquiries) {
-      if (!e.enquiredAt) continue;
-      const m = e.enquiredAt.slice(0, 7);
-      const row =
-        months.get(m) ?? { month: m, label: safeMonthLabel(m), spend: 0, leads: 0, appointments: 0, revenue: 0 };
-      row.leads += 1;
-      months.set(m, row);
+  // Monthly enquiries and appointments come from the same population as the
+  // headline cards: unique people and Practo appointments (Growth Platform).
+  // The older sources (tracker + widget rows, CRM-DN bookings) are the
+  // fallback only when the headline falls back to them too.
+  if (enquiriesUnique) {
+    for (const g of growth.byMonth) if (g.enquiries) bump(`${g.month}-01`, { leads: g.enquiries });
+  } else {
+    for (const [m, n] of await leadsByMonth(range.range.from, range.range.to)) bump(`${m}-01`, { leads: n });
+    try {
+      const widgetEnq = await getWidgetEnquiries({ from: range.range.from, to: range.range.to });
+      for (const e of widgetEnq.enquiries) if (e.enquiredAt) bump(e.enquiredAt, { leads: 1 });
+    } catch {
+      /* widget enquiries best-effort */
     }
-  } catch {
-    /* widget enquiries best-effort */
   }
   // Monthly spend from the LIVE per-day ad spend (Meta + Google), scoped to the
   // window — consistent with the headline.
   for (const d of adSpend.daily) bump(d.date, { spend: d.spend });
-  for (const d of appt.series) bump(d.date, { appointments: d.appointments });
+  if (practoAppts) {
+    for (const g of growth.byMonth) if (g.booked) bump(`${g.month}-01`, { appointments: g.booked });
+  } else {
+    for (const d of appt.series) bump(d.date, { appointments: d.appointments });
+  }
   for (const d of practo.byDay) bump(d.date, { revenue: d.revenue });
   const monthly = [...months.values()].sort((a, b) => a.month.localeCompare(b.month));
 
@@ -226,10 +234,12 @@ async function leadsByMonth(from: string, to: string): Promise<Map<string, numbe
   const db = getSupabaseAdmin();
   if (!db) return out;
   try {
-    let q = db.from('leads').select('inquiry_date');
-    if (from) q = q.gte('inquiry_date', from);
-    if (to) q = q.lte('inquiry_date', to);
-    const { data } = await q;
+    const { data } = await selectAll(() => {
+      let q = db.from('leads').select('inquiry_date');
+      if (from) q = q.gte('inquiry_date', from);
+      if (to) q = q.lte('inquiry_date', to);
+      return q;
+    }, 'id');
     for (const r of (data as { inquiry_date: string | null }[] | null) ?? []) {
       const m = (r.inquiry_date ?? '').slice(0, 7);
       if (m) out.set(m, (out.get(m) ?? 0) + 1);

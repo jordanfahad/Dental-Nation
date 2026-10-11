@@ -1,5 +1,6 @@
 import 'server-only';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
+import { selectAll } from '@/lib/supabase/selectAll';
 import { CLINICS, clinicOfDoctor } from '@/config/clinics';
 import type {
   ClinicApptCounts,
@@ -326,13 +327,16 @@ export async function getCrmReport(range?: CrmRange): Promise<CrmReport> {
 
   // --- Appointments (non-test only) ----------------------------------------
   try {
-    let q = db
-      .from('crm_appointments')
-      .select('status, source, professional_name, professional_department, created_at')
-      .eq('is_test', false);
-    if (range?.from) q = q.gte('created_at', `${range.from}T00:00:00+04:00`);
-    if (range?.to) q = q.lte('created_at', `${range.to}T23:59:59+04:00`);
-    const { data, error } = await q;
+    // Read in full: a plain select stops at 1,000 rows (1,588 non-test rows by Oct 2026).
+    const { data, error } = await selectAll(() => {
+      let q = db
+        .from('crm_appointments')
+        .select('status, source, professional_name, professional_department, created_at')
+        .eq('is_test', false);
+      if (range?.from) q = q.gte('created_at', `${range.from}T00:00:00+04:00`);
+      if (range?.to) q = q.lte('created_at', `${range.to}T23:59:59+04:00`);
+      return q;
+    }, 'appointment_id');
     if (!error && Array.isArray(data)) {
       const all = data as AppointmentRow[];
       // Comparison is over BOTH clinics in the window; the headline stats scope

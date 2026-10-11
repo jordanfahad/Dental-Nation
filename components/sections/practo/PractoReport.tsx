@@ -233,8 +233,9 @@ async function PractoRevenue({
             <HBarChart data={p.byDoctor as BarDatum[]} valueFormat="aed" accent={TOKENS.accent600} />
             <Takeaway>
               This is real finalized clinic revenue from Practo&apos;s line-item charges — not a forecast or a
-              booking estimate. Average bill value:{' '}
-              <span className="font-medium text-ink-soft">{p.avgBill != null ? aed(p.avgBill) : '—'}</span>.
+              booking estimate. Average paid-bill value:{' '}
+              <span className="font-medium text-ink-soft">{p.avgBill != null ? aed(p.avgBill) : '—'}</span>
+              {p.avgBill != null ? ` (${p.paidBills.toLocaleString('en-US')} of ${p.billCount.toLocaleString('en-US')} bills charged; no-charge visits left out)` : ''}.
             </Takeaway>
           </div>
         </Card>

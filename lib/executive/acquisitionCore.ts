@@ -13,8 +13,12 @@ import { clinicOfCenter, type ClinicFilterKey } from '@/config/clinics';
  *                  a later month is returning, not new.
  *  - Dr Tosun    : every patient got a DN-series file when the clinic moved
  *                  onto Practo in July 2026, so new and returning cannot be
- *                  told apart there yet. Those files are counted separately
- *                  and never added to new patients.
+ *                  told apart there yet. A file is Dr Tosun's when it carries
+ *                  the clinic's DNJ numbering or was billed there first; those
+ *                  files are counted separately and never added to new
+ *                  patients, even when they are later billed at Al Wasl. An
+ *                  Al Wasl patient who later visits Dr Tosun stays an Al Wasl
+ *                  new patient, so past months never change after the fact.
  *  - Revenue     : the new patients' non-cancelled bills inside the window.
  *  - Website     : the patient's phone matches a non-test booking-widget
  *                  submission.
@@ -65,6 +69,8 @@ export const phone9 = (s: string | null | undefined): string => {
   return d.length >= 9 ? d.slice(-9) : '';
 };
 const isNewMr = (mr: string): boolean => /^DN/i.test(mr);
+/** Dr Tosun's Practo numbering (the July 2026 migration). */
+const isTosunSeries = (mr: string): boolean => /^DNJ/i.test(mr);
 const inRange = (day: string | null, from?: string, to?: string) =>
   !!day && (!from || day >= from) && (!to || day <= to);
 
@@ -85,12 +91,15 @@ export function computeNewPatientAcquisition(input: {
   const firstBill = new Map<string, string>();
   const windowRevenue = new Map<string, number>();
   const tosunInWindow = new Set<string>();
+  const firstTosunBill = new Map<string, string>();
   for (const b of bills) {
     const d = b.data ?? {};
     const mr = String(d.mr_no ?? '').trim();
     if (!mr || !isNewMr(mr) || !b.bill_date) continue;
     if (String(d.bill_status ?? '').toUpperCase() === 'CANCELLED') continue;
-    if (clinicOfCenter(String(d.center_name ?? '')) === 'dr-tosun') {
+    if (clinicOfCenter(String(d.center_name ?? '')) === 'dr-tosun' || isTosunSeries(mr)) {
+      const prevT = firstTosunBill.get(mr);
+      if (!prevT || b.bill_date < prevT) firstTosunBill.set(mr, b.bill_date);
       if (inRange(b.bill_date, from, to)) tosunInWindow.add(mr);
       continue;
     }
@@ -100,10 +109,22 @@ export function computeNewPatientAcquisition(input: {
       windowRevenue.set(mr, (windowRevenue.get(mr) ?? 0) + (b.amount != null ? Number(b.amount) || 0 : 0));
     }
   }
-  const tosunFilesBilled = tosunInWindow.size;
+  // Dr Tosun's numbering, only Dr Tosun bills, or a Dr Tosun bill on or before
+  // the first Al Wasl bill makes the file Dr Tosun's.
+  const isTosunFile = (mr: string) => {
+    if (isTosunSeries(mr)) return true;
+    const t = firstTosunBill.get(mr);
+    const w = firstBill.get(mr);
+    return t != null && (w == null || t <= w);
+  };
+  // Dr Tosun files billed in the window, at either clinic: shown apart, never new patients.
+  const billedInWindow = new Set<string>([...tosunInWindow, ...windowRevenue.keys()]);
+  const tosunFilesBilled = [...billedInWindow].filter(isTosunFile).length;
   if (clinic === 'dr-tosun') return { ...emptyAcquisition, notMeasurable: true, tosunFilesBilled };
 
-  const newFiles = [...firstBill.entries()].filter(([, first]) => inRange(first, from, to)).map(([mr]) => mr);
+  const newFiles = [...firstBill.entries()]
+    .filter(([mr, first]) => !isTosunFile(mr) && inRange(first, from, to))
+    .map(([mr]) => mr);
   const billedNewPatients = newFiles.length;
   const newPatientRevenue = newFiles.reduce((a, mr) => a + (windowRevenue.get(mr) ?? 0), 0);
 

@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { getExecutiveReport, type ExecQuery } from '@/lib/executive/report';
+import { getExecutiveReport, growthClinicOf, type ExecQuery } from '@/lib/executive/report';
 import { dubaiDateLabel } from '@/lib/dates';
 import { ExecHero } from './ExecHero';
 import { ExecKpiBand } from './ExecKpiBand';
@@ -49,7 +49,7 @@ export async function ExecutiveDashboard({ query, gclinic }: { query?: ExecQuery
           the CEO's first screen: channel P&L, attribution and phone path, on
           the same date range. The Group tab stays its canonical home. */}
       <Suspense fallback={<div className="h-64 animate-pulse rounded-card border border-line bg-panel/40" />}>
-        <GrowthPlatform range={{ from: report.range.from, to: report.range.to }} gclinic={gclinic} />
+        <GrowthPlatform range={{ from: report.range.from, to: report.range.to }} gclinic={gclinic ?? growthClinicOf(query?.clinic)} />
       </Suspense>
 
       <ExecClinicSplit report={report} />

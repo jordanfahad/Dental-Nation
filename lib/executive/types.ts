@@ -51,8 +51,9 @@ export interface ExecKpis {
   clinicRevenue: number | null;
   /** Average value of a paid bill (AED); no-charge bills left out. */
   avgBillValue: number | null;
-  /** Conversations handled (Zavis). Only when the CRM-DN conversation export
-   *  covers the selected window; null otherwise (never a stale figure). */
+  /** Conversations handled (Zavis). Only when the selected window contains the
+   *  whole CRM-DN export period (or 'All'); null otherwise, so the export total
+   *  is never read as a shorter window's figure. */
   conversationsHandled: number | null;
   /** Avg first-response time (hours), under the same rule as conversations. */
   avgFirstResponseHours: number | null;

@@ -84,8 +84,9 @@ export async function CrmPractoRevenue({ range }: { range?: CrmRange }) {
             <Takeaway>
               Revenue is read from Practo&apos;s finalized bills (the clinic PMS — a distinct
               population from the booking funnel), broken down by treating department, treatment
-              (line-item services) and conducting doctor. Average bill value:{' '}
-              <span className="font-medium text-ink-soft">{p.avgBill != null ? aed(p.avgBill) : '—'}</span>.
+              (line-item services) and conducting doctor. Average paid-bill value:{' '}
+              <span className="font-medium text-ink-soft">{p.avgBill != null ? aed(p.avgBill) : '—'}</span>
+              {p.avgBill != null ? ` (${p.paidBills.toLocaleString('en-US')} of ${p.billCount.toLocaleString('en-US')} bills charged; no-charge visits left out)` : ''}.
             </Takeaway>
           </>
         )}

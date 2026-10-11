@@ -8,10 +8,10 @@ const int = (n: number) => Math.round(n).toLocaleString('en-US');
 /**
  * The acquisition → outcome funnel: Enquiries → Bookings → Attended → Revenue,
  * each stage read from its ONE authoritative source and de-duplicated:
- *   • Enquiries  ← lead tracker (general-booking sheet)
- *   • Bookings   ← CRM-DN appointments (the website booking widget writes into
- *                  CRM-DN, so it's already counted here — not added twice)
- *   • Attended   ← CRM-DN completed appointments (a true subset of bookings)
+ *   • Enquiries  ← unique people: lead tracker + website widget + AI agent,
+ *                  deduped by phone (Growth Platform)
+ *   • Bookings   ← Practo appointments, every channel (Growth Platform)
+ *   • Attended   ← Practo arrived or completed (a true subset of bookings)
  *   • Revenue    ← Practo Insta finalized bills
  *
  * Honest framing: Enquiries is only the TRACKED-lead channel, so bookings can
@@ -38,7 +38,7 @@ export function ExecPipeline({ report }: { report: ExecutiveReport }) {
   const sources: { stage: string; src: string }[] = [
     { stage: 'Enquiries', src: 'Lead tracker + website widget + AI agent, one per person (phone)' },
     { stage: 'Bookings', src: 'Practo · every appointment, every channel' },
-    { stage: 'Attended', src: 'CRM-DN · completed appointments' },
+    { stage: 'Attended', src: 'Practo · arrived or completed appointments' },
     { stage: 'Revenue', src: 'Practo Insta · finalized bills' },
   ];
 

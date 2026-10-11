@@ -84,8 +84,10 @@ export function ExecRevenueDeepDive({ report }: { report: ExecutiveReport }) {
       {practo.revenue > 0 ? (
         <div className="px-5 pb-5">
           <Takeaway>
-            Finalized clinic revenue totals {fmtAed(practo.revenue)} across {practo.billCount.toLocaleString('en-US')} bills
-            {practo.avgBill != null ? ` at an average bill of ${fmtAed(practo.avgBill)}` : ''}.{' '}
+            Clinic revenue totals {fmtAed(practo.revenue)} across {practo.billCount.toLocaleString('en-US')} bills
+            {practo.avgBill != null
+              ? ` (${practo.paidBills.toLocaleString('en-US')} charged, averaging ${fmtAed(practo.avgBill)} per paid bill; the rest are no-charge visits)`
+              : ''}.{' '}
             {doctorIsRevenue && attributedPct != null ? (
               <>
                 Just {attributedPct}% is attributed to a named doctor — the rest carries no doctor on the bill,
