@@ -68,6 +68,9 @@ export class SheetsAdapter implements SourceAdapter {
     tabTitle: string,
   ): RawRow[] {
     const headers = (values[headerIdx] ?? []).map((h) => String(h ?? '').trim());
+    if (this.source.requiredHeaders?.some((h) => headers.filter((v) => v === h).length !== 1)) {
+      throw new Error(`${this.label}: required headers missing or duplicated; previous snapshot retained`);
+    }
     const rows: RawRow[] = [];
     for (let i = headerIdx + 1; i < values.length; i++) {
       const cells = values[i] ?? [];
@@ -139,6 +142,7 @@ export class SheetsAdapter implements SourceAdapter {
     }
     if (buffer.byteLength > MAX_EXCEL_BYTES) throw new Error(EXCEL_SIZE_ERROR);
     const wb = XLSX.read(buffer, { type: 'buffer', cellDates: false });
+    if (this.source.requiredHeaders && tab && !wb.SheetNames.includes(tab)) throw new Error('Required tab is missing; previous snapshot retained');
     const title = tab && wb.SheetNames.includes(tab) ? tab : wb.SheetNames[0];
     const values = XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets[title], { header: 1, raw: false, defval: '' });
     return { title, values };
@@ -211,6 +215,7 @@ export class SheetsAdapter implements SourceAdapter {
 
     const values = await this.readTab(title);
     if (values.length === 0) {
+      if (this.source.requiredHeaders) throw new Error('Required header row is missing; previous snapshot retained');
       return { key: this.key, rows: [], warnings: [...warnings, 'tab is empty'] };
     }
 
@@ -226,7 +231,10 @@ export class SheetsAdapter implements SourceAdapter {
     } catch (err) {
       if (!SheetsAdapter.isOfficeFile(err)) throw err;
       const { title, values } = await this.readExcel(this.source.tab);
-      if (values.length === 0) return { key: this.key, rows: [], warnings: ['Excel file is empty'] };
+      if (values.length === 0) {
+        if (this.source.requiredHeaders) throw new Error('Required header row is missing; previous snapshot retained');
+        return { key: this.key, rows: [], warnings: ['Excel file is empty'] };
+      }
       const headerIdx = Math.max(0, this.source.headerRow - 1);
       return { key: this.key, rows: this.rowsFromValues(values, headerIdx, title), warnings: ['read as an Excel file from Drive'] };
     }

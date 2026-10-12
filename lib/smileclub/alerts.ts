@@ -14,6 +14,7 @@ import { buildMetaLeadsDigest, metaSectionHtml, type MetaLeadsDigest } from '@/l
 import { CONTENTOS_LEADS, contentosFlags, contentosStatsHtml, fetchContentos, type ContentosLeads } from '@/lib/ops/contentosLeads';
 import { REVIEW_TARGET, loadBriefingFile, loadReleased, notesFor, shootNotesFor, updatesFor, type Released } from '@/lib/smileclub/briefingNotes';
 import { OWNER_LABEL, TEAM_TASKS, TOTAL_WEIGHT, TRACKER_SOURCE, type Person, type TeamTask } from '@/lib/smileclub/team';
+import { runPerformanceAlerts } from '@/lib/performance/alerts';
 
 /**
  * Smile Club email alerts — at most TWO emails per person per day (26 Sep).
@@ -60,8 +61,9 @@ const NAME: Record<Who, string> = { fahad: 'Fahad', akbar: 'Mr Akbar', luvi: 'Dr
 /** Addresses stored in the database (loaded once per run). */
 let STORED: Record<string, string> = {};
 export async function loadStoredEmails(sb: NonNullable<ReturnType<typeof getSupabaseAdmin>>) {
-  const { data } = await sb.from('app_secrets').select('key,value').like('key', 'sc_email_%');
+  const { data, error } = await sb.from('app_secrets').select('key,value').like('key', 'sc_email_%');
   STORED = Object.fromEntries((data ?? []).map((r) => [(r.key as string).slice(9), (r.value as string).trim()]));
+  return !error;
 }
 
 export function emailOf(w: Who): string | null {
@@ -84,7 +86,7 @@ const META_READERS: Who[] = ['luvi', 'akbar', 'shadi', 'fahad'];
 const REVIEW_READERS: Who[] = ['akbar', 'luvi', 'gautam', 'shadi', 'fahad'];
 /** The daily Smile Club x YMK pilot section (approved 7 Oct). */
 const YMK_READERS: Who[] = ['akbar', 'luvi', 'gautam', 'mohan', 'fahad'];
-// Owner's decision (12 Oct 2026): no alert emails to Mr Akbar or Ms Shadi, and
+// Owner's decision (12 Oct 2026): no Smile Club emails to Mr Akbar or Ms Shadi, and
 // Dr Luvi receives only the shoot schedule (copied on MJ's evening email).
 const MORNING: Who[] = ['gautam', 'mohan', 'fahad'];
 const EVENING: Who[] = ['fahad', 'gautam', 'mohan'];
@@ -134,6 +136,9 @@ async function dayLog(sb: Sb, today: string): Promise<DayLog> {
   const log: DayLog = { kinds: new Set(), slot: { am: new Set(), pm: new Set() }, count: new Map() };
   for (const r of data ?? []) {
     const kind = r.kind as string;
+    // Fahad's two explicitly requested performance copies are separate from
+    // his existing Smile Club morning/evening allowance.
+    if (kind === 'am:gbp-daily' || kind === 'am:akbar-perf') continue;
     log.kinds.add(kind);
     const s = slotOf(kind);
     if (s && r.ok) for (const a of (r.recipients as string[] | null) ?? []) mark(log, s, a);
@@ -682,12 +687,21 @@ async function runEvening(sb: Sb, today: string, out: string[]) {
 export async function runSmileClubAlerts(): Promise<string[]> {
   const sb = getSupabaseAdmin();
   if (!sb) return ['no db'];
-  await loadStoredEmails(sb);
+  const emailConfigOk = await loadStoredEmails(sb);
   const now = new Date();
   const today = dubai(now);
   const hour = dubaiHour(now);
   const out: string[] = [];
-  if (hour >= 9 && hour < 11) await runMorning(sb, today, out);
+  if (hour >= 9 && hour < 11) {
+    if (emailConfigOk) out.push(...await runPerformanceAlerts(sb, emailOf, now));
+    else {
+      for (const kind of ['am:gbp-daily', 'am:akbar-perf']) {
+        await logSent(sb, kind, today, { ok: false, recipients: [], note: 'Email configuration read failed; nothing sent' });
+        out.push(`${kind}: email configuration read failed`);
+      }
+    }
+    await runMorning(sb, today, out);
+  }
   if (hour >= 17 && hour < 22) await runEvening(sb, today, out);
   return out;
 }

@@ -48,6 +48,8 @@ export interface SourceMapping {
   /** Not synced (kept for reference). */
   disabled?: boolean;
   headerRow: number;
+  /** Require these headers before a snapshot may replace stored data. */
+  requiredHeaders?: readonly string[];
   target: CanonicalTarget;
   /** Bronze mirror table name (see supabase migration). */
   rawTable: string;
@@ -84,6 +86,13 @@ const asDate = (v: string): string | null => {
 export const sharedTransforms = { truthy, lower, trimmed, asDate };
 
 export const sheetMapping: Record<string, SourceMapping> = {
+  gbpDailyLog: {
+    key: 'gbpDailyLog', label: 'GBP Daily log',
+    spreadsheetId: '142joaIN0oEPt3hfUmcrQlxmWaLdhNduV5b0UB_D9Rnk',
+    tab: 'Daily log', headerRow: 1, target: 'none', rawTable: 'raw_gbp_daily_log', priority: 'high',
+    requiredHeaders: ['Date', 'Branch', 'Plan day', 'Activity', 'Status', 'Done by', 'Proof link', 'Notes'],
+    columns: { date: 'Date', branch: 'Branch', planDay: 'Plan day', activity: 'Activity', status: 'Status', doneBy: 'Done by', proof: 'Proof link', notes: 'Notes' },
+  },
   // 1 — Inhouse lead tracker → `leads`. Per-branch tabs (DN + Lane "E"), each
   // with junk in row 1 on some tabs → multi-tab read + per-tab header detection
   // (see SheetsAdapter). Real-lead total across these ≈ 243. Lead-level

@@ -29,7 +29,7 @@ export function emailTransport(): 'graph' | 'smtp' | 'resend' | 'none' {
   return 'none';
 }
 
-export async function sendEmail(opts: { to: string[]; subject: string; html: string; from: string; attachments?: Attachment[] }): Promise<SendResult> {
+export async function sendEmail(opts: { to: string[]; cc?: string[]; subject: string; html: string; from: string; attachments?: Attachment[] }): Promise<SendResult> {
   if (graphConfigured()) return sendEmailGraph(opts);
   if (smtpConfigured()) return sendEmailSmtp(opts);
   return sendViaResend(opts);

@@ -31,6 +31,7 @@ import { GroupRevenue } from '@/components/sections/clinics/GroupRevenue';
 import { UserManagement } from '@/components/sections/users/UserManagement';
 import { OpsReport } from '@/components/sections/opsreport/OpsReport';
 import { MarketingPerformance } from '@/components/sections/opsreport/MarketingPerformance';
+import { GbpPlan } from '@/components/sections/opsreport/GbpPlan';
 import { CeoIntelligence } from '@/components/sections/opsreport/CeoIntelligence';
 import { ClinicalPortal, DailyReportPortal, DoctorPortal, OrthoPortal, PractoPortal, ProcurementPortal, ZavisPortal } from '@/components/sections/opsreport/Portals';
 
@@ -76,6 +77,7 @@ export default async function DashboardPage({
     rcad?: string;
     rcmp?: string;
     otab?: string;
+    gbpbranch?: string;
     dtab?: string;
     comp?: string;
     clinic?: string;
@@ -135,7 +137,7 @@ export default async function DashboardPage({
           navigation so the skeleton shows immediately instead of the shell
           hanging on the tab's data. */}
       <Suspense
-        key={`${tab}|${sp.tab ?? ''}|${sp.from ?? ''}|${sp.to ?? ''}|${sp.preset ?? ''}|${sp.compare ?? ''}|${sp.mtab ?? ''}|${sp.mscope ?? ''}|${sp.mgrp ?? ''}|${sp.mchan ?? ''}|${sp.mcamp ?? ''}|${sp.gcamp ?? ''}|${sp.btab ?? ''}|${sp.ptab ?? ''}|${sp.gtab ?? ''}|${sp.gchan ?? ''}|${sp.gclinic ?? ''}|${sp.mpipe ?? ''}|${sp.rdate ?? ''}|${sp.rcad ?? ''}|${sp.rcmp ?? ''}|${sp.otab ?? ''}|${sp.dtab ?? ''}|${sp.comp ?? ''}|${sp.ccamp ?? ''}|${clinic}|${sp.bpclinic ?? ''}`}
+        key={`${tab}|${sp.tab ?? ''}|${sp.from ?? ''}|${sp.to ?? ''}|${sp.preset ?? ''}|${sp.compare ?? ''}|${sp.mtab ?? ''}|${sp.mscope ?? ''}|${sp.mgrp ?? ''}|${sp.mchan ?? ''}|${sp.mcamp ?? ''}|${sp.gcamp ?? ''}|${sp.btab ?? ''}|${sp.ptab ?? ''}|${sp.gtab ?? ''}|${sp.gchan ?? ''}|${sp.gclinic ?? ''}|${sp.mpipe ?? ''}|${sp.rdate ?? ''}|${sp.rcad ?? ''}|${sp.rcmp ?? ''}|${sp.otab ?? ''}|${sp.dtab ?? ''}|${sp.comp ?? ''}|${sp.ccamp ?? ''}|${clinic}|${sp.bpclinic ?? ''}|${sp.gbpbranch ?? ''}`}
         fallback={<TabSkeleton />}
       >
         {tab === 'executive' ? <ExecutiveDashboard query={query} gclinic={sp.gclinic} /> : null}
@@ -175,6 +177,7 @@ export default async function DashboardPage({
                 ['', 'Live Report'],
                 ['ceo', 'CEO Intelligence'],
                 ['marketing', 'Marketing performance'],
+                ['gbp', 'GBP plan'],
                 ['clinical', 'Clinical Performance'],
                 ['doctors', 'Doctor Performance'],
                 ['ortho', 'DN Ortho'],
@@ -198,6 +201,7 @@ export default async function DashboardPage({
             </nav>
             {sp.otab === 'ceo' ? <CeoIntelligence /> : null}
             {sp.otab === 'marketing' ? <MarketingPerformance /> : null}
+            {sp.otab === 'gbp' ? <GbpPlan branch={sp.gbpbranch} /> : null}
             {sp.otab === 'clinical' ? <ClinicalPortal /> : null}
             {sp.otab === 'doctors' ? <DoctorPortal /> : null}
             {sp.otab === 'ortho' ? <OrthoPortal /> : null}

@@ -99,25 +99,27 @@ export const GMB_SECRET_KEYS = [
   'gmb_location_clinics',
 ] as const;
 
-/** Read the credentials from lane_e.app_secrets. Best-effort, never throws. */
-export async function readGmbSecrets(supabase: AdminClient | null): Promise<Map<string, string>> {
+/** Best-effort by default; daily performance readers opt into strict failures. */
+export async function readGmbSecrets(supabase: AdminClient | null, strict = false): Promise<Map<string, string>> {
   if (!supabase) return new Map();
   try {
-    const { data } = await supabase.from('app_secrets').select('key, value').in('key', [...GMB_SECRET_KEYS]);
+    const { data, error } = await supabase.from('app_secrets').select('key, value').in('key', [...GMB_SECRET_KEYS]);
+    if (error) throw new Error('GBP configuration read failed');
     return new Map((data ?? []).map((r: { key: string; value: string }) => [r.key, String(r.value ?? '').trim()]));
-  } catch {
+  } catch (error) {
+    if (strict) throw error;
     return new Map();
   }
 }
 
 /** Env first, then Supabase-stored secrets. Preferred for the sync pipeline. */
-export async function resolveGmbConfig(supabase: AdminClient | null): Promise<GmbConfig | null> {
+export async function resolveGmbConfig(supabase: AdminClient | null, strict = false): Promise<GmbConfig | null> {
   const env = getGmbConfig();
   if (env) return env;
   // A complete but invalid env configuration must not silently activate a
   // different set of locations from the database.
   if ([process.env.GMB_CLIENT_ID, process.env.GMB_CLIENT_SECRET, process.env.GMB_REFRESH_TOKEN, process.env.GMB_LOCATION_IDS].every((v) => v?.trim())) return null;
-  const s = await readGmbSecrets(supabase);
+  const s = await readGmbSecrets(supabase, strict);
   return buildGmbConfig(
     s.get('gmb_client_id'),
     s.get('gmb_client_secret'),

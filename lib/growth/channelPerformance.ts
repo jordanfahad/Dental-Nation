@@ -360,8 +360,9 @@ export async function getChannelPerformance(
   range: { from?: string; to?: string } = {},
   clinic: GrowthPerfClinic = 'all',
   db: AdminClient | null = getSupabaseAdmin(),
+  options: { strict?: boolean; excludeCancelledBills?: boolean } = {},
 ): Promise<GrowthReport> {
-  return computeChannelPerformance(range.from ?? null, range.to ?? null, clinic, db);
+  return computeChannelPerformance(range.from ?? null, range.to ?? null, clinic, db, options.strict ?? false, options.excludeCancelledBills ?? false);
 }
 
 /** Request-deduped core (React cache keys on the primitive args): the board
@@ -372,8 +373,13 @@ const computeChannelPerformance = cache(async (
   to: string | null,
   clinic: GrowthPerfClinic,
   db: AdminClient | null,
+  strict: boolean,
+  excludeCancelledBills: boolean,
 ): Promise<GrowthReport> => {
-  if (!db) return emptyReport(from, to);
+  if (!db) {
+    if (strict) throw new Error('Growth database unavailable');
+    return emptyReport(from, to);
+  }
   // Spend, reach, GA4 and the phone path are Dental Nation Al Wasl properties
   // (the ads and the site). They render on All and DN views;
   // never on Dr Tosun's.
@@ -395,6 +401,7 @@ const computeChannelPerformance = cache(async (
         selectAll(() => db.from('ga4_lead_events_source').select('day,event_name,source_medium,campaign,event_count'), ['day', 'event_name', 'source_medium', 'campaign']).catch(() => ({ data: null, error: true })),
       ]);
 
+    if (strict && (ga4Res.error || sourceRes.error)) throw new Error('Growth source read failed');
     const { appts, apptVerdicts, patientChannel, widgetRows, leadRows, crmRows } = attribution;
 
     /* ─── Aggregate the in-window funnel per channel ─────────────────────── */
@@ -510,6 +517,9 @@ const computeChannelPerformance = cache(async (
     const dnDwRevenueByMr = new Map<string, number>();
     for (const b of (billRes.data as { bill_date: string | null; amount: number | null; data: Record<string, unknown> }[] | null) ?? []) {
       if (!inRange(b.bill_date, from, to)) continue;
+      // The daily performance brief reports non-cancelled billing, like the
+      // Executive acquisition rule. Leave the existing dashboard lens intact.
+      if (excludeCancelledBills && S(b.data?.bill_status).toUpperCase() === 'CANCELLED') continue;
       const isDnBill = clinicOfCenter(S(b.data?.['center_name'])) !== 'dr-tosun';
       const mr = S(b.data?.['mr_no']);
       const amount = b.amount != null ? Number(b.amount) || 0 : 0;
@@ -908,7 +918,8 @@ const computeChannelPerformance = cache(async (
       mvmSelection: report_mvmSelection,
       notes,
     };
-  } catch {
+  } catch (error) {
+    if (strict) throw error;
     return emptyReport(from, to);
   }
 });

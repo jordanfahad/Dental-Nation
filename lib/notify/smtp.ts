@@ -33,13 +33,14 @@ function transporter(): Transporter {
   return cached;
 }
 
-export async function sendEmailSmtp(opts: { to: string[]; subject: string; html: string; from: string; attachments?: Attachment[] }): Promise<SendResult> {
+export async function sendEmailSmtp(opts: { to: string[]; cc?: string[]; subject: string; html: string; from: string; attachments?: Attachment[] }): Promise<SendResult> {
   if (!smtpConfigured()) return { ok: false, skipped: true, error: 'SMTP not configured' };
   if (opts.to.length === 0) return { ok: false, error: 'no recipients' };
   try {
     await transporter().sendMail({
       from: opts.from || process.env.SMTP_FROM || process.env.SMTP_USER,
       to: opts.to,
+      cc: opts.cc,
       subject: opts.subject,
       html: opts.html,
       attachments: opts.attachments?.map((a) => ({ filename: a.name, contentType: a.contentType, content: Buffer.from(a.base64, 'base64') })),

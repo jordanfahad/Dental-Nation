@@ -20,6 +20,7 @@ export interface SendResult {
 
 export async function sendEmail(opts: {
   to: string[];
+  cc?: string[];
   subject: string;
   html: string;
   from: string;
@@ -34,6 +35,7 @@ export async function sendEmail(opts: {
       headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         from: opts.from, to: opts.to, subject: opts.subject, html: opts.html,
+        ...(opts.cc?.length ? { cc: opts.cc } : {}),
         ...(opts.attachments?.length ? { attachments: opts.attachments.map((a) => ({ filename: a.name, content: a.base64 })) } : {}),
       }),
       cache: 'no-store',

@@ -2,6 +2,7 @@ import 'server-only';
 import { type AdminClient, getSupabaseAdmin, isSupabaseConfigured } from '@/lib/supabase/server';
 import { getSheetsClient, isGoogleConfigured } from './google-auth';
 import { SheetsAdapter } from './adapters/sheets-adapter';
+import { mirrorGbpDailyLog } from './gbpDailyLog';
 import { fetchGa4Summary } from './adapters/ga4-adapter';
 import { syncGa4Daily } from './adapters/ga4-daily';
 import { syncGa4Device } from './adapters/ga4-device';
@@ -188,7 +189,12 @@ export async function runSync(trigger: SyncTrigger): Promise<SyncSummary> {
         dataGaps.push({ area: 'tracking', detail: `${source.label}: ${w}`, owner: 'Data/Analytics' });
       }
       if (source.key === 'leadTracker') trackerReadClean = !warnings.some((w) => /unreadable|not found|could not list/i.test(w));
-      await mirrorBronze(supabase, source.rawTable, rows);
+      if (source.key === 'gbpDailyLog') {
+        const result = await mirrorGbpDailyLog(supabase, rows);
+        if (result.invalid) dataGaps.push({ area: 'tracking', detail: `GBP Daily log: ${result.invalid} invalid row(s) retained raw and excluded from progress`, owner: 'Operations' });
+      } else {
+        await mirrorBronze(supabase, source.rawTable, rows);
+      }
 
       if (source.target === 'performance') {
         const { rows: perfRows, dataGaps: gaps } = normalizePerformance(source, rows);
