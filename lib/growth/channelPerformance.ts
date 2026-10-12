@@ -375,7 +375,7 @@ const computeChannelPerformance = cache(async (
 ): Promise<GrowthReport> => {
   if (!db) return emptyReport(from, to);
   // Spend, reach, GA4 and the phone path are Dental Nation Al Wasl properties
-  // (the ads, the site, the GMB profile). They render on All and DN views;
+  // (the ads and the site). They render on All and DN views;
   // never on Dr Tosun's.
   const dnAssets = clinic !== 'dr-tosun';
   const apptInClinic = (doctor: string): boolean =>
@@ -389,7 +389,7 @@ const computeChannelPerformance = cache(async (
         selectAll(() => db.from('meta_insights_raw').select('date, spend, impressions, clicks, leads, campaign_name'), "key"),
         selectAll(() => db.from('google_ads_insights_raw').select('date, spend, impressions'), "key"),
         db.from('ga4_summary').select('period_start, period_end, sessions, users, channels, sources').order('period_end', { ascending: false }).limit(1),
-        selectAll(() => db.from('social_insights').select('channel, metric, day, value').in('channel', ['gmb', 'instagram', 'facebook']), ["clinic","channel","metric","day"]),
+        selectAll(() => db.from('social_insights').select('clinic, channel, metric, day, value').in('channel', ['gmb', 'instagram', 'facebook']), ["clinic","channel","metric","day"]),
         selectAll(() => db.from('google_ads_click_types').select('date, click_type, clicks, campaign_name'), "key"),
         selectAll(() => db.from('meta_platform_insights_raw').select('date, platform, spend, impressions, leads'), "key"),
         selectAll(() => db.from('ga4_lead_events_source').select('day,event_name,source_medium,campaign,event_count'), ['day', 'event_name', 'source_medium', 'campaign']).catch(() => ({ data: null, error: true })),
@@ -573,7 +573,7 @@ const computeChannelPerformance = cache(async (
       }
     } else {
       notes.push(
-        'Paid ads ran only for Dental Nation Al Wasl — spend, ad reach, GA4 visibility and the phone-path estimates are not attributed to this clinic. Enquiry surfaces (website, desk, WhatsApp) are shared and can’t be clinic-split, so this view shows the Practo funnel only.',
+        'Paid ads ran only for Dental Nation Al Wasl — spend, ad reach, GA4 visibility and the phone-path estimates are not attributed to this clinic. Enquiry surfaces (website, desk, WhatsApp) are shared and can’t be clinic-split, so this view shows the Practo funnel and its own Business Profile reach.',
       );
     }
 
@@ -581,13 +581,15 @@ const computeChannelPerformance = cache(async (
     // profile-level tallies with no patient identity, so they inform the REACH
     // column only; the patients they produce surface under Direct / Walk-in
     // until reception tags them (the coverage note says exactly that).
-    if (dnAssets) {
-      const allSocial = (gmbRes.data as { channel: string; metric: string; day: string | null; value: number | null }[] | null) ?? [];
-      const gmbRows = allSocial.filter((r) => r.channel === 'gmb');
+    {
+      const allSocial = (gmbRes.data as { clinic: string; channel: string; metric: string; day: string | null; value: number | null }[] | null) ?? [];
+      const gmbRows = allSocial.filter((r) => r.channel === 'gmb' &&
+        (clinic === 'all' ? ['dental-nation', 'dr-tosun', 'al-maher'].includes(r.clinic) :
+          r.clinic === (clinic === 'dr-tosun' ? 'dr-tosun' : 'dental-nation')));
 
       // Social Organic reach — Instagram/Facebook daily reach from the social
       // sync, plus profile views and the latest follower count as context.
-      {
+      if (dnAssets) {
         const soc = allSocial.filter((r) => r.channel === 'instagram' || r.channel === 'facebook');
         let reach = 0, profileViews = 0, latestFollowers = 0, latestDay = '';
         for (const r of soc) {
@@ -611,7 +613,7 @@ const computeChannelPerformance = cache(async (
       const gmb = at('gmb');
       if (gmbRows.length === 0) {
         notes.push(
-          'Google Business Profile feed is not connected yet — the sync code exists but GMB_CLIENT_ID / GMB_CLIENT_SECRET / GMB_REFRESH_TOKEN / GMB_LOCATION_IDS are not set in Vercel. Until then its reach column stays empty and its patients appear under Direct / Walk-in.',
+          'No Business Profile data has been synced for this clinic selection. Its reach stays empty; untagged patients appear under Direct / Walk-in.',
         );
       } else {
         const sums = new Map<string, number>();

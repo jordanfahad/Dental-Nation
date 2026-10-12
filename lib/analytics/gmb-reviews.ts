@@ -1,5 +1,8 @@
 import 'server-only';
-import { getSupabaseAdmin } from '@/lib/supabase/server';
+import { getSupabaseAdmin, type AdminClient } from '@/lib/supabase/server';
+import { selectAll } from '@/lib/supabase/selectAll';
+import { resolveGmbConfig } from '@/config/gmb';
+import type { GmbClinicFilter } from '@/config/gmb-clinics';
 
 /**
  * Google reviews read layer — reads lane_e.gmb_reviews (synced hourly by the
@@ -40,18 +43,22 @@ interface Row {
   reply_comment: string | null;
 }
 
-export async function getGmbReviewsReport(): Promise<GmbReviewsReport | null> {
-  const supabase = getSupabaseAdmin();
+export async function getGmbReviewsReport(clinic: GmbClinicFilter = 'dental-nation', supabase: AdminClient | null = getSupabaseAdmin()): Promise<GmbReviewsReport | null> {
   if (!supabase) return null;
 
-  const { data, error } = await supabase
-    .from('gmb_reviews')
-    .select('reviewer_name, rating, comment, create_time, reply_comment')
-    .is('removed_at', null)
-    .order('create_time', { ascending: false })
-    .limit(2000);
-  if (error || !data || data.length === 0) return null;
-  const rows = data as Row[];
+  const config = await resolveGmbConfig(supabase);
+  const paths = config?.locations.filter((l) => clinic === 'all' || l.clinic === clinic).map((l) => l.path) ?? [];
+  if (!paths.length) return null;
+  let rows: Row[];
+  try {
+    const { data } = await selectAll(() => supabase
+      .from('gmb_reviews')
+      .select('reviewer_name, rating, comment, create_time, reply_comment')
+      .in('location_path', paths)
+      .is('removed_at', null), 'review_id');
+    rows = (data as Row[]).sort((a, b) => b.create_time.localeCompare(a.create_time));
+  } catch { return null; }
+  if (!rows.length) return null;
 
   const total = rows.length;
   const avg = rows.reduce((s, r) => s + r.rating, 0) / total;

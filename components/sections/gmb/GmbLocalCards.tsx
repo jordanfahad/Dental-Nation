@@ -1,3 +1,4 @@
+import type { GmbClinicFilter } from '@/config/gmb-clinics';
 import { getGmbReviewsReport } from '@/lib/analytics/gmb-reviews';
 import { getGmbKeywordsReport } from '@/lib/analytics/gmb-keywords';
 import { Card, SectionHeader, Takeaway } from '@/components/ui/Card';
@@ -27,8 +28,8 @@ function Stat({ label, value }: { label: string; value: string }) {
 
 /** Reputation — full review history (not range-filtered: the rating is a
     property of the clinic, not of the week being viewed). */
-export async function GoogleReviewsCard({ tag }: { tag: string }) {
-  const reviews = await getGmbReviewsReport();
+export async function GoogleReviewsCard({ tag, clinic = 'dental-nation', connected = true }: { tag: string; clinic?: GmbClinicFilter; connected?: boolean }) {
+  const reviews = connected ? await getGmbReviewsReport(clinic) : null;
   return (
     <Card>
       <SectionHeader tag={tag} eyebrow="Reputation · Google Business Profile" title="Google reviews" />
@@ -80,7 +81,7 @@ export async function GoogleReviewsCard({ tag }: { tag: string }) {
           </>
         ) : (
           <DataGapInline
-            detail="no reviews synced yet — the hourly sync fills this automatically (needs the Google My Business API enabled in the same Google Cloud project)"
+            detail={connected ? 'No reviews synced yet for this branch selection.' : 'Business Profile not connected yet.'}
             owner={ownerFor('channel')}
           />
         )}
@@ -92,8 +93,8 @@ export async function GoogleReviewsCard({ tag }: { tag: string }) {
 /** Local discovery — the terms people typed into Google Search/Maps when the
     profile appeared. Latest closed month (Google revises the current one);
     counts under Google's privacy threshold render as a ceiling. */
-export async function LocalSearchCard({ tag }: { tag: string }) {
-  const localKw = await getGmbKeywordsReport();
+export async function LocalSearchCard({ tag, clinic = 'dental-nation', connected = true }: { tag: string; clinic?: GmbClinicFilter; connected?: boolean }) {
+  const localKw = connected ? await getGmbKeywordsReport(clinic) : null;
   return (
     <Card>
       <SectionHeader tag={tag} eyebrow="Local search · Google Business Profile" title="What people searched to find the profile" />
@@ -124,7 +125,7 @@ export async function LocalSearchCard({ tag }: { tag: string }) {
           </>
         ) : (
           <DataGapInline
-            detail="no keyword data synced yet — fills automatically after the next hourly sync (needs a closed month of Business Profile data)"
+            detail={connected ? 'No keyword data synced yet for this branch selection (requires a closed month).' : 'Business Profile not connected yet.'}
             owner={ownerFor('channel')}
           />
         )}

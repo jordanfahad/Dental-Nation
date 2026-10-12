@@ -2,13 +2,14 @@ import 'server-only';
 import type { AdminClient } from '@/lib/supabase/server';
 import { resolveGmbConfig, type GmbConfig } from '@/config/gmb';
 import { missingGmbReviewIds, parseGmbReviewsPage, type ApiReview } from '../gmb-reviews-reconciliation';
+import { discoverGmbLocations } from '../gmb-discovery';
 
 /**
  * Google reviews adapter — pulls every review on the Business Profile into
  * lane_e.gmb_reviews via the My Business v4 API (the Performance API carries
  * counts only; reviews live in v4). Same OAuth credentials as the GMB
- * performance pull; the account id the v4 path needs is resolved with one
- * accounts.list call. Mirrors the other adapters: best-effort, never throws.
+ * performance pull; each configured location's owning account is resolved by
+ * paginated account/location discovery. A location failure does not block peers.
  *
  *   POST oauth2.googleapis.com/token                     (refresh → access)
  *   GET  mybusinessaccountmanagement.googleapis.com/v1/accounts
@@ -49,17 +50,6 @@ async function accessToken(cfg: GmbConfig): Promise<string> {
   return data.access_token;
 }
 
-async function firstAccount(token: string): Promise<string> {
-  const res = await fetch('https://mybusinessaccountmanagement.googleapis.com/v1/accounts', {
-    headers: { Authorization: `Bearer ${token}` },
-    cache: 'no-store',
-  });
-  const data = (await res.json().catch(() => ({}))) as { accounts?: { name?: string }[]; error?: { message?: string } };
-  const name = data.accounts?.[0]?.name;
-  if (!res.ok || !name) throw new Error(`accounts.list ${res.status}: ${data.error?.message ?? 'no accounts visible'}`);
-  return name; // "accounts/{id}"
-}
-
 const STARS: Record<string, number> = { ONE: 1, TWO: 2, THREE: 3, FOUR: 4, FIVE: 5 };
 
 export async function syncGmbReviews(supabase: AdminClient, opts: { config?: GmbConfig } = {}): Promise<GmbReviewsSyncResult> {
@@ -67,10 +57,13 @@ export async function syncGmbReviews(supabase: AdminClient, opts: { config?: Gmb
   if (!cfg) return { ok: false, fetched: 0, stored: 0, averageRating: null, totalOnGoogle: null, error: 'GMB not configured' };
 
   let token: string;
-  let account: string;
+  const accountByLocation = new Map<string, string>();
   try {
     token = await accessToken(cfg);
-    account = await firstAccount(token);
+    const discovery = await discoverGmbLocations(token);
+    for (const account of discovery.accounts) {
+      for (const location of account.locations) accountByLocation.set(location.id, account.account);
+    }
   } catch (err) {
     return { ok: false, fetched: 0, stored: 0, averageRating: null, totalOnGoogle: null, error: (err as Error).message };
   }
@@ -79,13 +72,19 @@ export async function syncGmbReviews(supabase: AdminClient, opts: { config?: Gmb
   let stored = 0;
   let averageRating: number | null = null;
   let totalOnGoogle: number | null = null;
+  const errors: string[] = [];
+  let ratingSum = 0;
+  let ratingCount = 0;
 
   for (const loc of cfg.locations) {
     try {
+      const account = accountByLocation.get(loc.path);
+      if (!account) throw new Error('owning account unavailable; reconciliation skipped');
       const reviews: ApiReview[] = [];
       const reviewIds = new Set<string>();
       const pageTokens = new Set<string>();
       let locationTotal: number | undefined;
+      let locationAverage: number | undefined;
       let pageToken: string | undefined;
       do {
         const u = new URL(`${V4}/${account}/${loc.path}/reviews`);
@@ -95,8 +94,7 @@ export async function syncGmbReviews(supabase: AdminClient, opts: { config?: Gmb
         if (!res.ok) throw new Error(`reviews.list ${res.status}: request failed`);
         const data = parseGmbReviewsPage(await res.json());
         fetched += data.reviews.length;
-        averageRating = data.averageRating ?? averageRating;
-        totalOnGoogle = data.totalReviewCount ?? totalOnGoogle;
+        locationAverage = data.averageRating ?? locationAverage;
 
         if (data.totalReviewCount != null) {
           if (locationTotal != null && locationTotal !== data.totalReviewCount) {
@@ -122,6 +120,13 @@ export async function syncGmbReviews(supabase: AdminClient, opts: { config?: Gmb
           pageTokens.add(pageToken);
         }
       } while (pageToken);
+
+      if (locationTotal != null) totalOnGoogle = (totalOnGoogle ?? 0) + locationTotal;
+      if (locationAverage != null && locationTotal) {
+        ratingSum += locationAverage * locationTotal;
+        ratingCount += locationTotal;
+        averageRating = ratingSum / ratingCount;
+      }
 
       // An empty source is not evidence that every stored review was removed.
       if (reviews.length === 0) continue;
@@ -179,9 +184,10 @@ export async function syncGmbReviews(supabase: AdminClient, opts: { config?: Gmb
         if (removalError) throw new Error(`review removal failed: ${removalError.message}`);
       }
     } catch (err) {
-      return { ok: false, fetched, stored, averageRating, totalOnGoogle, error: (err as Error).message };
+      errors.push(`${loc.clinic}: ${(err as Error).message}`);
     }
   }
 
-  return { ok: true, fetched, stored, averageRating, totalOnGoogle };
+  return { ok: errors.length === 0, fetched, stored, averageRating, totalOnGoogle,
+    ...(errors.length ? { error: errors.join('; ') } : {}) };
 }

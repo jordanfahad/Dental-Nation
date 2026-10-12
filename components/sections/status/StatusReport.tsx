@@ -1,5 +1,6 @@
 import { runChecks, DECISIONS, type CheckResult } from '@/lib/status/registry';
 import { Card, SectionHeader, Takeaway } from '@/components/ui/Card';
+import { GmbBackfill } from './GmbBackfill';
 
 /**
  * Status & Rules — admin-only. Live green/red checks (regression guard, run on
@@ -14,6 +15,7 @@ export async function StatusReport() {
 
   return (
     <div className="space-y-5">
+      <GmbBackfill />
       <Card highlight={!allGreen}>
         <SectionHeader
           tag="✓"

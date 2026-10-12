@@ -35,7 +35,6 @@ export interface GmbSyncOpts {
 }
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
-const CLINIC = 'dental-nation';
 
 async function accessToken(cfg: GmbConfig): Promise<string> {
   const res = await fetch('https://oauth2.googleapis.com/token', {
@@ -112,62 +111,52 @@ export async function syncGmb(supabase: AdminClient, opts: GmbSyncOpts = {}): Pr
   }
 
   const labelOf = new Map(GMB_METRICS.map((m) => [m.api, m] as const));
-  const rows: Row[] = [];
   let fetched = 0;
+  let stored = 0;
+  const errors: string[] = [];
 
   for (const loc of cfg.locations) {
-    let res: Response;
+    const rows: Row[] = [];
     try {
-      res = await fetch(perfUrl(loc.path, from, to), {
+      const res = await fetch(perfUrl(loc.path, from, to), {
         headers: { Authorization: `Bearer ${token}` },
         cache: 'no-store',
       });
-    } catch (err) {
-      return { ok: false, fetched, stored: 0, locations: cfg.locations.length, error: (err as Error).message };
-    }
-    const data = (await res.json().catch(() => ({}))) as PerfResponse;
-    if (!res.ok) {
-      return {
-        ok: false,
-        fetched,
-        stored: 0,
-        locations: cfg.locations.length,
-        error: `Performance API ${res.status}: ${data.error?.message ?? 'request failed'}`,
-      };
-    }
-    const series = data.multiDailyMetricTimeSeries?.[0]?.dailyMetricTimeSeries ?? [];
-    for (const s of series) {
-      const def = labelOf.get(s.dailyMetric ?? '');
-      if (!def) continue;
-      for (const dv of s.timeSeries?.datedValues ?? []) {
-        const day = ymd(dv.date);
-        if (!day) continue;
-        const value = Number(dv.value ?? 0) || 0;
-        fetched += 1;
-        rows.push({
-          clinic: CLINIC,
-          channel: 'gmb',
-          integration: loc.label ?? loc.path,
-          metric: def.key,
-          metric_label: def.label,
-          day,
-          value,
-        });
+      if (!res.ok) throw new Error(`Performance API HTTP ${res.status}`);
+      const data = await res.json() as PerfResponse;
+      const series = data.multiDailyMetricTimeSeries?.[0]?.dailyMetricTimeSeries ?? [];
+      for (const s of series) {
+        const def = labelOf.get(s.dailyMetric ?? '');
+        if (!def) continue;
+        for (const dv of s.timeSeries?.datedValues ?? []) {
+          const day = ymd(dv.date);
+          if (!day) continue;
+          const value = Number(dv.value ?? 0) || 0;
+          fetched += 1;
+          rows.push({
+            clinic: loc.clinic,
+            channel: 'gmb',
+            integration: loc.label,
+            metric: def.key,
+            metric_label: def.label,
+            day,
+            value,
+          });
+        }
       }
+      for (let i = 0; i < rows.length; i += 500) {
+        const chunk = rows.slice(i, i + 500).map((r) => ({ ...r, synced_at: new Date().toISOString() }));
+        const { error } = await supabase.from('social_insights').upsert(chunk, { onConflict: 'clinic,channel,metric,day' });
+        if (error) throw new Error('Performance storage failed');
+        stored += chunk.length;
+      }
+    } catch (err) {
+      const message = (err as Error).message;
+      const detail = /^Performance (API HTTP \d{3}|storage failed)$/.test(message) ? message : 'performance request or response failed';
+      errors.push(`${loc.clinic}: ${detail}`);
     }
   }
 
-  if (rows.length === 0) {
-    return { ok: true, fetched, stored: 0, locations: cfg.locations.length, note: 'no GMB data in range' };
-  }
-
-  let stored = 0;
-  for (let i = 0; i < rows.length; i += 500) {
-    const chunk = rows.slice(i, i + 500).map((r) => ({ ...r, synced_at: new Date().toISOString() }));
-    const { error } = await supabase.from('social_insights').upsert(chunk, { onConflict: 'clinic,channel,metric,day' });
-    if (error) return { ok: false, fetched, stored, locations: cfg.locations.length, error: error.message };
-    stored += chunk.length;
-  }
-
-  return { ok: true, fetched, stored, locations: cfg.locations.length };
+  return { ok: errors.length === 0, fetched, stored, locations: cfg.locations.length,
+    ...(errors.length ? { error: errors.join('; ') } : stored === 0 ? { note: 'no GMB data in range' } : {}) };
 }

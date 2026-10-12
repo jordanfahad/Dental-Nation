@@ -1,3 +1,5 @@
+import { resolveGmbClinic } from '@/config/gmb-clinics';
+import { BusinessProfileCard } from '@/components/sections/gmb/BusinessProfileCard';
 import {
   getSocialReport,
   getSocialPosts,
@@ -23,9 +25,10 @@ const int = (n: number) => Math.round(n).toLocaleString('en-US');
  * per-story performance and audience demographics for Instagram. Distinct from
  * paid ad spend (Marketing tab) and GA4 website analytics.
  */
-export async function SocialReport({ range }: { range: { from: string; to: string } }) {
+export async function SocialReport({ range, branch }: { range: { from: string; to: string }; branch?: string }) {
+  const clinic = resolveGmbClinic(branch);
   const [report, media, demo] = await Promise.all([
-    getSocialReport({ from: range.from, to: range.to }),
+    getSocialReport({ from: range.from, to: range.to, gmbClinic: clinic }),
     getSocialPosts({ limit: 60 }),
     getSocialDemographics({ channel: 'instagram' }),
   ]);
@@ -60,6 +63,10 @@ export async function SocialReport({ range }: { range: { from: string; to: strin
         </div>
       </Card>
 
+      <BusinessProfileCard report={report.gmb} />
+      <GoogleReviewsCard tag="S2" clinic={clinic} connected={report.gmb.branches.some((b) => b.connected)} />
+      <LocalSearchCard tag="S3" clinic={clinic} connected={report.gmb.branches.some((b) => b.connected)} />
+
       {report.channels.map((ch) => (
         <SocialChannelCard key={ch.channel} ch={ch} />
       ))}
@@ -67,10 +74,6 @@ export async function SocialReport({ range }: { range: { from: string; to: strin
       <PostPerformance posts={media.posts} stories={media.stories} />
       <Demographics demo={demo} />
 
-      {/* Google Business Profile: reputation + local search. Shared cards —
-          the same two sections render on Digital & SEO. */}
-      <GoogleReviewsCard tag="S2" />
-      <LocalSearchCard tag="S3" />
 
       {report.source === 'live' ? (
         <Takeaway>

@@ -92,49 +92,60 @@ export async function syncGmbSearchKeywords(
   }
 
   let stored = 0;
+  const errors: string[] = [];
   for (const loc of cfg.locations) {
-    for (const { year, month } of monthsList) {
-      let pageToken: string | undefined;
-      do {
-        let data: KeywordsPage;
-        try {
-          const res = await fetch(monthUrl(loc.path, year, month, pageToken), {
-            headers: { Authorization: `Bearer ${token}` },
-            cache: 'no-store',
-          });
-          data = (await res.json().catch(() => ({}))) as KeywordsPage;
-          if (!res.ok) {
-            return { ok: false, months: span, stored, error: `searchkeywords ${res.status}: ${data.error?.message ?? 'request failed'}` };
+    try {
+      for (const { year, month } of monthsList) {
+        let pageToken: string | undefined;
+        const seen = new Set<string>();
+        do {
+          let data: KeywordsPage;
+          try {
+            const res = await fetch(monthUrl(loc.path, year, month, pageToken), {
+              headers: { Authorization: `Bearer ${token}` },
+              cache: 'no-store',
+            });
+            data = await res.json() as KeywordsPage;
+            if (!res.ok) {
+              throw new Error(`searchkeywords HTTP ${res.status}`);
+            }
+          } catch (err) {
+            throw err;
           }
-        } catch (err) {
-          return { ok: false, months: span, stored, error: (err as Error).message };
-        }
 
-        const rows = (data.searchKeywordsCounts ?? [])
-          .map((k) => {
-            const raw = k.insightsValue?.value ?? k.insightsValue?.threshold;
-            const n = Number(raw);
-            if (!k.searchKeyword || !Number.isFinite(n)) return null;
-            return {
-              month: `${year}-${pad2(month)}`,
-              keyword: k.searchKeyword,
-              location_path: loc.path,
-              impressions: n,
-              is_threshold: k.insightsValue?.value == null,
-              synced_at: new Date().toISOString(),
-            };
-          })
-          .filter((r): r is NonNullable<typeof r> => r !== null);
+          const rows = (data.searchKeywordsCounts ?? [])
+            .map((k) => {
+              const raw = k.insightsValue?.value ?? k.insightsValue?.threshold;
+              const n = Number(raw);
+              if (!k.searchKeyword || !Number.isFinite(n)) return null;
+              return {
+                month: `${year}-${pad2(month)}`,
+                keyword: k.searchKeyword,
+                location_path: loc.path,
+                impressions: n,
+                is_threshold: k.insightsValue?.value == null,
+                synced_at: new Date().toISOString(),
+              };
+            })
+            .filter((r): r is NonNullable<typeof r> => r !== null);
 
-        if (rows.length > 0) {
-          const { error } = await supabase.from('gmb_search_keywords').upsert(rows, { onConflict: 'month,keyword,location_path' });
-          if (error) return { ok: false, months: span, stored, error: `upsert failed: ${error.message}` };
-          stored += rows.length;
-        }
-        pageToken = data.nextPageToken;
-      } while (pageToken);
+          if (rows.length > 0) {
+            const { error } = await supabase.from('gmb_search_keywords').upsert(rows, { onConflict: 'month,keyword,location_path' });
+            if (error) throw new Error('Keyword storage failed');
+            stored += rows.length;
+          }
+          pageToken = data.nextPageToken;
+          if (pageToken) {
+            if (seen.has(pageToken)) throw new Error('Repeated keyword page token');
+            seen.add(pageToken);
+          }
+        } while (pageToken);
+      }
+    } catch {
+      errors.push(`${loc.clinic}: keyword sync failed`);
     }
   }
 
-  return { ok: true, months: span, stored };
+  return { ok: errors.length === 0, months: span, stored,
+    ...(errors.length ? { error: errors.join('; ') } : {}) };
 }

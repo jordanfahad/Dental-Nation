@@ -8,7 +8,7 @@ import { missingGmbReviewIds, parseGmbReviewsPage } from '../lib/sync/gmb-review
 const location = 'locations/test';
 const config: GmbConfig = {
   clientId: 'unused', clientSecret: 'unused', refreshToken: 'unused',
-  locations: [{ path: location, label: 'Test clinic' }],
+  locations: [{ path: location, label: 'Test clinic', clinic: 'dental-nation' }],
 };
 const review = (reviewId: string) => ({
   reviewId, starRating: 'FIVE', createTime: '2026-09-01T10:00:00.123456789Z',
@@ -32,6 +32,9 @@ function mockGoogle(t: TestContext, pages: unknown[]) {
     if (url === 'https://oauth2.googleapis.com/token') return Response.json({ access_token: 'unused' });
     if (url === 'https://mybusinessaccountmanagement.googleapis.com/v1/accounts') {
       return Response.json({ accounts: [{ name: 'accounts/test' }] });
+    }
+    if (url.startsWith('https://mybusinessbusinessinformation.googleapis.com/')) {
+      return Response.json({ locations: [{ name: location }, { name: 'locations/other' }] });
     }
     assert.ok(url.startsWith('https://mybusiness.googleapis.com/v4/accounts/test/locations/'));
     assert.ok(pending.length > 0, 'unexpected request after the last simulated page');
@@ -165,7 +168,7 @@ test('complete paginated snapshots remove missing reviews once and restore retur
   assert.equal(byId('still-gone').removed_at, previousRemoval);
   assert.equal(byId('other-location').removed_at, null);
   assert.equal(byId('first').rating, 5);
-  assert.equal(new URL(String(fetchMock.mock.calls[3].arguments[0])).searchParams.get('pageToken'), 'page-2');
+  assert.equal(new URL(String(fetchMock.mock.calls[4].arguments[0])).searchParams.get('pageToken'), 'page-2');
   assert.equal((await syncGmbReviews(db.client, { config })).ok, true);
   assert.equal(byId('gone').removed_at, removedAt);
   assert.deepEqual(db.removalBatches, [['gone']]);
@@ -176,7 +179,7 @@ test('an empty location remains untouched even when another location has a non-e
   const db = mockDatabase([storedReview('keep-empty'), storedReview('gone-other', null, other)]);
   mockGoogle(t, [{ reviews: [], totalReviewCount: 0 }, { reviews: [review('new-other')], totalReviewCount: 1 }]);
   const result = await syncGmbReviews(db.client, {
-    config: { ...config, locations: [...config.locations, { path: other, label: null }] },
+    config: { ...config, locations: [...config.locations, { path: other, label: null, clinic: 'dr-tosun' }] },
   });
   assert.equal(result.ok, true);
   assert.equal(db.rows.find((r) => r.review_id === 'keep-empty')!.removed_at, null);
@@ -279,5 +282,42 @@ for (const failure of ['lookup', 'upsert', 'removal'] as const) {
     assert.equal(db.rows[0].removed_at, null);
     if (failure !== 'removal') assert.deepEqual(db.removalBatches, []);
     if (failure === 'lookup') assert.deepEqual(db.writes, []);
+  });
+}
+
+for (const failFirst of [false, true]) {
+  test(`reviews resolve separate owning accounts and continue after failure (${failFirst})`, async (t) => {
+    const other = 'locations/other';
+    const requested: string[] = [];
+    t.mock.method(globalThis, 'fetch', async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url === 'https://oauth2.googleapis.com/token') return Response.json({ access_token: 'unused' });
+      if (url.startsWith('https://mybusinessaccountmanagement.googleapis.com/')) return Response.json({
+        accounts: [{ name: 'accounts/synthetic-a' }, { name: 'accounts/synthetic-b' }, { name: 'accounts/unrelated' }],
+      });
+      if (url.startsWith('https://mybusinessbusinessinformation.googleapis.com/')) return Response.json({ locations: [
+        { name: url.includes('synthetic-a') ? location : url.includes('synthetic-b') ? other : 'locations/unrelated' },
+      ] });
+      requested.push(url);
+      if (url.includes('/synthetic-a/')) {
+        assert.ok(url.includes(`/${location}/reviews`));
+        return failFirst ? new Response('{}', { status: 503 }) : Response.json({ reviews: [review('new-a')], totalReviewCount: 1, averageRating: 4 });
+      }
+      assert.ok(url.includes(`/synthetic-b/${other}/reviews`));
+      return Response.json({ reviews: [review('new-b')], totalReviewCount: 1, averageRating: 2 });
+    });
+    const db = mockDatabase([storedReview('old-a'), storedReview('old-b', null, other), storedReview('unrelated', null, 'locations/unrelated')]);
+    const result = await syncGmbReviews(db.client, { config: { ...config, locations: [
+      ...config.locations, { path: other, label: null, clinic: 'dr-tosun' },
+    ] } });
+    assert.equal(result.ok, !failFirst);
+    assert.equal(result.stored, failFirst ? 1 : 2);
+    assert.equal(result.averageRating, failFirst ? 2 : 3);
+    assert.equal(db.rows.find((r) => r.review_id === 'new-b')?.location_path, other);
+    assert.ok(db.rows.find((r) => r.review_id === 'old-b')?.removed_at);
+    assert.equal(db.rows.find((r) => r.review_id === 'unrelated')?.removed_at, null);
+    if (failFirst) assert.equal(db.rows.find((r) => r.review_id === 'old-a')?.removed_at, null);
+    assert.equal(requested.length, 2);
+    assert.ok(requested.every((url) => !url.includes('unrelated')));
   });
 }

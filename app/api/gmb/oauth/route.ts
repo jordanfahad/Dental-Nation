@@ -17,7 +17,7 @@ export const maxDuration = 60;
  *      copy the code value from the address bar.
  *   2. GET /api/gmb/oauth?code=4/…   → exchanges the code and stores the
  *      refresh token in app_secrets (gmb_refresh_token). From then on the
- *      sync self-sustains; next stop /api/gmb/locations?store=1.
+ *      sync self-sustains; next stop /api/gmb/locations.
  *
  * Admin- or CRON_SECRET-gated like the other GMB routes.
  */
@@ -100,6 +100,6 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     step: 2,
     stored: 'gmb_refresh_token',
-    next: 'Open /api/gmb/locations?store=1 to discover and store the clinic location ids, then /api/gmb/probe?from=2026-01-01 to backfill.',
+    next: 'Open /api/gmb/locations to discover the dental-group configuration values for review and manual storage, then /api/gmb/probe?from=2026-01-01 to backfill.',
   });
 }

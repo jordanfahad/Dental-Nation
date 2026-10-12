@@ -1,7 +1,7 @@
 import 'server-only';
 import { cache } from 'react';
 import { selectAll } from '@/lib/supabase/selectAll';
-import { getSupabaseAdmin } from '@/lib/supabase/server';
+import { getSupabaseAdmin, type AdminClient } from '@/lib/supabase/server';
 import { getBoardCrm, getManualMetrics, getLastIngestion, delta } from '@/lib/board/metrics';
 import { DECK_COMPONENTS, type ComponentKey, type ModuleStatus } from '@/config/command-deck';
 import { getSearchConsoleReport } from '@/lib/analytics/search-console';
@@ -140,13 +140,12 @@ interface GmbDayRow {
   metric: string;
   value: number | null;
 }
-const getDeckGmbDays = cache(async (): Promise<GmbDayRow[]> => {
-  const db = getSupabaseAdmin();
+export const getDeckGmbDays = cache(async (db: AdminClient | null = getSupabaseAdmin()): Promise<GmbDayRow[]> => {
   if (!db) return [];
   // Read in full: .limit() cannot lift the server's 1,000-row cap.
   try {
     const { data } = await selectAll(
-      () => db.from('social_insights').select('day, metric, value').eq('channel', 'gmb'),
+      () => db.from('social_insights').select('day, metric, value').eq('channel', 'gmb').eq('clinic', 'dental-nation'),
       ['clinic', 'channel', 'metric', 'day'],
     );
     return ((data as { day: unknown; metric: unknown; value: unknown }[] | null) ?? []).map((r) => ({ day: String(r.day), metric: String(r.metric), value: num(r.value) }));

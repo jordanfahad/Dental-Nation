@@ -1,5 +1,6 @@
 import 'server-only';
 import type { AdminClient } from '@/lib/supabase/server';
+import { GMB_CLINICS, inferGmbClinic, type GmbClinicKey } from './gmb-clinics';
 
 /**
  * Google Business Profile (GMB) — local-search performance config. Uses a
@@ -11,7 +12,7 @@ import type { AdminClient } from '@/lib/supabase/server';
  * env change required once the secrets are stored in the database):
  *   1. Env vars (below)
  *   2. lane_e.app_secrets rows: gmb_client_id / gmb_client_secret /
- *      gmb_refresh_token / gmb_location_ids / gmb_location_labels
+ *      gmb_refresh_token / gmb_location_ids / gmb_location_labels / gmb_location_clinics
  *
  * Env names:
  *   GMB_CLIENT_ID       OAuth client id of the Google Cloud project
@@ -21,13 +22,14 @@ import type { AdminClient } from '@/lib/supabase/server';
  *   GMB_LOCATION_IDS    one or more location ids, comma-separated. Accepts the
  *                       bare id, "locations/123", or "accounts/x/locations/123".
  *   GMB_LOCATION_LABELS optional, comma-separated display names (aligned to IDs)
+ *   GMB_LOCATION_CLINICS optional, aligned dental-nation, dr-tosun, al-maher keys
  */
 export interface GmbConfig {
   clientId: string;
   clientSecret: string;
   refreshToken: string;
   /** Normalised to "locations/{id}". */
-  locations: { path: string; label: string | null }[];
+  locations: { path: string; label: string | null; clinic: GmbClinicKey }[];
 }
 
 /** Normalise any accepted location form to "locations/{id}". */
@@ -39,35 +41,47 @@ function normLocation(raw: string): string | null {
   return id ? `locations/${id}` : null;
 }
 
-function buildConfig(
+export function buildGmbConfig(
   clientId?: string,
   clientSecret?: string,
   refreshToken?: string,
   rawLocations?: string,
   rawLabels?: string,
+  rawClinics?: string,
 ): GmbConfig | null {
   if (!clientId || !clientSecret || !refreshToken || !rawLocations) return null;
 
   const labels = (rawLabels ?? '').split(',').map((s) => s.trim());
+  const ids = rawLocations.split(',');
+  const clinics = rawClinics?.trim() ? rawClinics.split(',').map((s) => s.trim()) : null;
+  // Fail closed on a misaligned explicit list, rather than assigning a branch's
+  // history to a neighbour. Blank ID slots retain their original list index.
+  if (clinics && (clinics.length !== ids.length || clinics.some((c) => !GMB_CLINICS.some((def) => def.key === c)))) return null;
+  if (rawLabels?.trim() && labels.length !== ids.length) return null;
   const locations = rawLocations
     .split(',')
     .map((raw, i) => {
       const path = normLocation(raw);
-      return path ? { path, label: labels[i] || null } : null;
+      const label = labels[i] || null;
+      return path ? { path, label, clinic: clinics ? clinics[i] as GmbClinicKey : inferGmbClinic(label) } : null;
     })
-    .filter((x): x is { path: string; label: string | null } => x !== null);
+    .filter((x): x is GmbConfig['locations'][number] => x !== null);
 
   if (locations.length === 0) return null;
+  // The daily table has one row per branch/metric/day, not per location.
+  if (new Set(locations.map((l) => l.path)).size !== locations.length ||
+      new Set(locations.map((l) => l.clinic)).size !== locations.length) return null;
   return { clientId, clientSecret, refreshToken, locations };
 }
 
 export function getGmbConfig(): GmbConfig | null {
-  return buildConfig(
+  return buildGmbConfig(
     process.env.GMB_CLIENT_ID?.trim(),
     process.env.GMB_CLIENT_SECRET?.trim(),
     process.env.GMB_REFRESH_TOKEN?.trim(),
     process.env.GMB_LOCATION_IDS?.trim(),
     process.env.GMB_LOCATION_LABELS?.trim(),
+    process.env.GMB_LOCATION_CLINICS?.trim(),
   );
 }
 
@@ -82,6 +96,7 @@ export const GMB_SECRET_KEYS = [
   'gmb_refresh_token',
   'gmb_location_ids',
   'gmb_location_labels',
+  'gmb_location_clinics',
 ] as const;
 
 /** Read the credentials from lane_e.app_secrets. Best-effort, never throws. */
@@ -99,13 +114,17 @@ export async function readGmbSecrets(supabase: AdminClient | null): Promise<Map<
 export async function resolveGmbConfig(supabase: AdminClient | null): Promise<GmbConfig | null> {
   const env = getGmbConfig();
   if (env) return env;
+  // A complete but invalid env configuration must not silently activate a
+  // different set of locations from the database.
+  if ([process.env.GMB_CLIENT_ID, process.env.GMB_CLIENT_SECRET, process.env.GMB_REFRESH_TOKEN, process.env.GMB_LOCATION_IDS].every((v) => v?.trim())) return null;
   const s = await readGmbSecrets(supabase);
-  return buildConfig(
+  return buildGmbConfig(
     s.get('gmb_client_id'),
     s.get('gmb_client_secret'),
     s.get('gmb_refresh_token'),
     s.get('gmb_location_ids'),
     s.get('gmb_location_labels'),
+    s.get('gmb_location_clinics'),
   );
 }
 

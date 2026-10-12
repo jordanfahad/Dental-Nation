@@ -1,5 +1,8 @@
 import 'server-only';
-import { getSupabaseAdmin } from '@/lib/supabase/server';
+import { getSupabaseAdmin, type AdminClient } from '@/lib/supabase/server';
+import { selectAll } from '@/lib/supabase/selectAll';
+import { resolveGmbConfig } from '@/config/gmb';
+import type { GmbClinicFilter } from '@/config/gmb-clinics';
 
 /**
  * Local search keywords read layer — reads lane_e.gmb_search_keywords (synced
@@ -28,19 +31,30 @@ interface Row {
   is_threshold: boolean;
 }
 
-export async function getGmbKeywordsReport(): Promise<GmbKeywordsReport | null> {
-  const supabase = getSupabaseAdmin();
+export async function getGmbKeywordsReport(clinic: GmbClinicFilter = 'dental-nation', supabase: AdminClient | null = getSupabaseAdmin()): Promise<GmbKeywordsReport | null> {
   if (!supabase) return null;
 
   const thisMonth = new Date().toISOString().slice(0, 7);
-  const { data, error } = await supabase
-    .from('gmb_search_keywords')
-    .select('month, keyword, impressions, is_threshold')
-    .lt('month', thisMonth)
-    .order('month', { ascending: false })
-    .limit(2000);
-  if (error || !data || data.length === 0) return null;
-  const rows = data as Row[];
+  const config = await resolveGmbConfig(supabase);
+  const paths = config?.locations.filter((l) => clinic === 'all' || l.clinic === clinic).map((l) => l.path) ?? [];
+  if (!paths.length) return null;
+  let rows: Row[];
+  try {
+    const { data } = await selectAll(() => supabase
+      .from('gmb_search_keywords')
+      .select('month, keyword, impressions, is_threshold')
+      .in('location_path', paths)
+      .lt('month', thisMonth), ['month', 'keyword', 'location_path']);
+    const grouped = new Map<string, Row>();
+    for (const row of data as Row[]) {
+      const key = JSON.stringify([row.month, row.keyword]);
+      const prior = grouped.get(key);
+      grouped.set(key, { ...row, impressions: Number(row.impressions) + (prior?.impressions ?? 0),
+        is_threshold: row.is_threshold || (prior?.is_threshold ?? false) });
+    }
+    rows = [...grouped.values()].sort((a, b) => b.month.localeCompare(a.month));
+  } catch { return null; }
+  if (!rows.length) return null;
 
   const month = rows[0].month;
   const prevMonth = [...new Set(rows.map((r) => r.month))].sort().reverse()[1] ?? null;

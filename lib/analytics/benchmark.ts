@@ -1,7 +1,7 @@
 import { selectAll } from '../supabase/selectAll';
 import 'server-only';
 import { unstable_cache } from 'next/cache';
-import { getSupabaseAdmin } from '@/lib/supabase/server';
+import { getSupabaseAdmin, type AdminClient } from '@/lib/supabase/server';
 
 /**
  * Competitor benchmarking beyond backlinks — the technical and commercial
@@ -166,8 +166,7 @@ export interface OwnActuals {
   gmbCallTaps30d: number | null;
 }
 
-async function getOwnActuals(): Promise<OwnActuals> {
-  const db = getSupabaseAdmin();
+export async function getOwnActuals(db: AdminClient | null = getSupabaseAdmin()): Promise<OwnActuals> {
   const none: OwnActuals = { widgetLeads30d: null, formLeads30d: null, gmbCallTaps30d: null };
   if (!db) return none;
   const from = new Date(Date.now() - 30 * 86400_000).toISOString();
@@ -176,7 +175,7 @@ async function getOwnActuals(): Promise<OwnActuals> {
     const [widget, forms, gmb] = await Promise.all([
       selectAll(() => db.from('raw_zavis').select('data'), "id"),
       selectAll(() => db.from('ops_form_entries').select('phone9, entry_id, submitted_at').gte('submitted_at', from), "entry_id"),
-      selectAll(() => db.from('social_insights').select('value').eq('channel', 'gmb').eq('metric', 'calls').gte('day', fromDay), ["clinic","channel","metric","day"]),
+      selectAll(() => db.from('social_insights').select('value').eq('channel', 'gmb').eq('clinic', 'dental-nation').eq('metric', 'calls').gte('day', fromDay), ["clinic","channel","metric","day"]),
     ]);
     let widgetLeads = 0;
     for (const r of (widget.data as { data: Record<string, unknown> }[] | null) ?? []) {

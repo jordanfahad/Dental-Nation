@@ -1,6 +1,9 @@
 import 'server-only';
-import { getSupabaseAdmin } from '@/lib/supabase/server';
+import { getSupabaseAdmin, type AdminClient } from '@/lib/supabase/server';
 import { selectAll } from '@/lib/supabase/selectAll';
+import { resolveGmbConfig } from '@/config/gmb';
+import type { GmbClinicFilter } from '@/config/gmb-clinics';
+import { buildGmbReport, type BusinessProfileReport } from './gmb-report';
 
 /**
  * Organic social + Google Business Profile signals for the Social tab, read from
@@ -52,6 +55,7 @@ export interface SocialChannel {
 }
 
 export interface SocialReport {
+  gmb: BusinessProfileReport;
   source: 'live' | 'empty';
   from: string;
   to: string;
@@ -60,6 +64,7 @@ export interface SocialReport {
 }
 
 interface Row {
+  clinic: string;
   channel: string;
   integration: string | null;
   metric: string;
@@ -72,11 +77,12 @@ interface Row {
 const titleCase = (s: string) =>
   s.replace(/[_-]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
-export async function getSocialReport(opts: { from: string; to: string; clinic?: string }): Promise<SocialReport> {
+export async function getSocialReport(opts: { from: string; to: string; clinic?: string; gmbClinic?: GmbClinicFilter }, db: AdminClient | null = getSupabaseAdmin()): Promise<SocialReport> {
   const { from, to } = opts;
-  const empty: SocialReport = { source: 'empty', from, to, channels: [], lastSyncedAt: null };
-
-  const db = getSupabaseAdmin();
+  const config = await resolveGmbConfig(db);
+  const connected = config?.locations.map((l) => l.clinic) ?? [];
+  const empty: SocialReport = { source: 'empty', from, to, channels: [], lastSyncedAt: null,
+    gmb: buildGmbReport([], connected, opts.gmbClinic) };
   if (!db) return empty;
 
   let rows: Row[] = [];
@@ -86,7 +92,7 @@ export async function getSocialReport(opts: { from: string; to: string; clinic?:
     const { data } = await selectAll(() => {
       let q = db
         .from('social_insights')
-        .select('channel, integration, metric, metric_label, day, value, synced_at');
+        .select('clinic, channel, integration, metric, metric_label, day, value, synced_at');
       if (opts.clinic && opts.clinic !== 'all') q = q.eq('clinic', opts.clinic);
       if (from) q = q.gte('day', from);
       if (to) q = q.lte('day', to);
@@ -97,12 +103,14 @@ export async function getSocialReport(opts: { from: string; to: string; clinic?:
     return empty;
   }
   if (rows.length === 0) return empty;
+  const gmb = buildGmbReport(rows.filter((r) => r.channel === 'gmb'), connected, opts.gmbClinic);
 
   // channel → metric → rows
   const byChannel = new Map<string, Map<string, Row[]>>();
   let lastSyncedAt: string | null = null;
   for (const r of rows) {
     if (r.synced_at && (!lastSyncedAt || r.synced_at > lastSyncedAt)) lastSyncedAt = r.synced_at;
+    if (r.channel === 'gmb') continue;
     const mm = byChannel.get(r.channel) ?? new Map<string, Row[]>();
     const arr = mm.get(r.metric) ?? [];
     arr.push(r);
@@ -141,7 +149,7 @@ export async function getSocialReport(opts: { from: string; to: string; clinic?:
     (a, b) => (ORDER_OF.get(a.channel) ?? 99) - (ORDER_OF.get(b.channel) ?? 99) || a.label.localeCompare(b.label),
   );
 
-  return { source: 'live', from, to, channels, lastSyncedAt };
+  return { source: 'live', from, to, channels, lastSyncedAt, gmb };
 }
 
 // ---------------------------------------------------------------------------

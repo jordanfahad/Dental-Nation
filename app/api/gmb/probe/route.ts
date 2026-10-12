@@ -3,6 +3,9 @@ import { getSupabaseAdmin } from '@/lib/supabase/server';
 import { isAdmin } from '@/lib/auth/role';
 import { syncGmb } from '@/lib/sync/adapters/gmb-adapter';
 import { resolveGmbConfig } from '@/config/gmb';
+import { currentUser } from '@/lib/auth/role';
+import { backfillGmb, validGmbBackfillDate } from '@/lib/sync/gmb-backfill';
+import { revalidatePath } from 'next/cache';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // a multi-month backfill spans many rows.
@@ -41,6 +44,37 @@ export async function GET(req: NextRequest) {
   const from = sp.get('from') ?? undefined;
   const to = sp.get('to') ?? undefined;
   const days = sp.get('days') ? Number(sp.get('days')) : undefined;
+  if ((from != null && !validGmbBackfillDate(from)) || (to != null && !validGmbBackfillDate(to)) ||
+      (from && to && from > to) || (days != null && (!Number.isInteger(days) || days < 1 || days > 548))) {
+    return NextResponse.json({ error: 'Invalid sync date range' }, { status: 400 });
+  }
   const result = await syncGmb(supabase, { from, to, days, config });
   return NextResponse.json(result, { status: result.ok ? 200 : 502 });
+}
+
+/** The Status form requires an authenticated, currently active admin. No cron
+ * credential or open-scaffold admin fallback is accepted for this action. */
+export async function POST(req: NextRequest) {
+  if (!process.env.AUTH_SESSION_SECRET || !process.env.DASHBOARD_PASSWORD || (await currentUser())?.role !== 'admin') {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  const origin = req.headers.get('origin');
+  if (!origin || origin !== req.nextUrl.origin) {
+    return NextResponse.json({ error: 'Invalid origin' }, { status: 403 });
+  }
+  const input = await req.json().catch(() => null);
+  if (!validGmbBackfillDate(input?.from)) {
+    return NextResponse.json({ error: 'Choose a valid start date on or before today.' }, { status: 400 });
+  }
+  const db = getSupabaseAdmin();
+  if (!db) return NextResponse.json({ error: 'Supabase not configured' }, { status: 503 });
+  const config = await resolveGmbConfig(db);
+  if (!config) return NextResponse.json({ error: 'Business Profile configuration is missing or invalid.' }, { status: 503 });
+  try {
+    const result = await backfillGmb(db, config, input.from);
+    revalidatePath('/');
+    return NextResponse.json(result, { status: result.ok ? 200 : 502 });
+  } catch {
+    return NextResponse.json({ error: 'Business Profile backfill failed. Retry from the same date.' }, { status: 502 });
+  }
 }
