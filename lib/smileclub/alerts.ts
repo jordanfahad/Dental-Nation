@@ -84,9 +84,11 @@ const META_READERS: Who[] = ['luvi', 'akbar', 'shadi', 'fahad'];
 const REVIEW_READERS: Who[] = ['akbar', 'luvi', 'gautam', 'shadi', 'fahad'];
 /** The daily Smile Club x YMK pilot section (approved 7 Oct). */
 const YMK_READERS: Who[] = ['akbar', 'luvi', 'gautam', 'mohan', 'fahad'];
-const MORNING: Who[] = ['akbar', 'luvi', 'shadi', 'gautam', 'mohan', 'fahad'];
-const EVENING: Who[] = ['fahad', 'luvi', 'shadi', 'gautam', 'mohan'];
-const SHOOT_CC: Who[] = ['luvi', 'akbar', 'shadi', 'gautam', 'fahad', 'mohan'];
+// Owner's decision (12 Oct 2026): no alert emails to Mr Akbar or Ms Shadi, and
+// Dr Luvi receives only the shoot schedule (copied on MJ's evening email).
+const MORNING: Who[] = ['gautam', 'mohan', 'fahad'];
+const EVENING: Who[] = ['fahad', 'gautam', 'mohan'];
+const SHOOT_CC: Who[] = ['luvi', 'gautam', 'fahad', 'mohan'];
 const MAX_PER_DAY = 2;
 
 const LINK = 'https://reports.dentalnation.com/?tab=smileclub';
@@ -525,7 +527,9 @@ export function buildBriefing(ctx: Ctx, who: Who): { subject: string; html: stri
 /* ── 17:00 — the evening before a shoot: tomorrow's schedule (MJ, team copied) ── */
 
 /** Who gets the shoot email's dated notes (briefingNotes.ts, slot 'shoot'); MJ and Mohan get the schedule alone. */
-const SHOOT_LEADS: Who[] = ['luvi', 'akbar', 'shadi', 'gautam', 'fahad'];
+const SHOOT_LEADS: Who[] = ['gautam', 'fahad'];
+/** Copied on the schedule-only email to MJ on a day with dated notes (Dr Luvi gets the schedule, never the notes). */
+const SHOOT_TEAM_CC: Who[] = ['mohan', 'luvi'];
 
 /**
  * `version`: 'all' — one email to MJ with everyone copied (no dated notes that day);
@@ -565,12 +569,12 @@ export function buildShootEmail(ctx: Ctx, version: 'all' | 'team' | 'leads' = 'a
     ? `${notes.map((x) => x.subjectBit).filter(Boolean).join(' · ')} · tomorrow’s shoot, ${day.label}`
     : `Tomorrow’s Smile Club shoot — ${day.label} · ${where} · ${plural(n, 'dentist')}${notFinal ? ` · ${notFinal} not yet approved` : ''}`;
   const intro = version === 'leads'
-    ? `<p>Dr Luvi, Mr Akbar, Ms Shadi, Gautam,</p><p>This evening’s email has Fahad’s notes first, then tomorrow’s Smile Club shoot schedule (MJ and Mohan have the schedule in their own email).</p>${notes.map((x) => h3(esc(x.title)) + x.html(ctx.today, ctx.contentos)).join('')}${h3(`Tomorrow’s shoot — ${esc(day.label)}`)}`
+    ? `<p>Gautam,</p><p>This evening’s email has Fahad’s notes first, then tomorrow’s Smile Club shoot schedule (MJ, Mohan and Dr Luvi have the schedule in their own email).</p>${notes.map((x) => h3(esc(x.title)) + x.html(ctx.today, ctx.contentos)).join('')}${h3(`Tomorrow’s shoot — ${esc(day.label)}`)}`
     : `<p>Hi MJ,</p><p>Here is tomorrow’s Smile Club filming schedule. As shoot coordinator, please confirm each slot with the dentist, make sure it is blocked in their diary, and tell the branch desk Mohan is coming. Mohan arrives 15 minutes before the first slot.</p>`;
   const copied = version === 'all'
-    ? `Copied: Dr Luvi, Mr Akbar, Ms Shadi, Gautam, Fahad${emailOf('mohan') ? ', Mohan' : ''} — for them this is today’s evening email.`
+    ? `Copied: Dr Luvi, Gautam, Fahad${emailOf('mohan') ? ', Mohan' : ''} — for them this is today’s evening email.`
     : version === 'team'
-      ? 'Dr Luvi, Mr Akbar, Ms Shadi, Gautam and Fahad have this schedule in their own evening email.'
+      ? 'Copied: Dr Luvi and Mohan. Gautam and Fahad have this schedule in their own evening email.'
       : 'For you this is today’s evening email.';
   const body = `${intro}
 ${table(['Time', 'Dentist', 'Clinic', 'In clinic', 'What is filmed', 'Scripts'], rows)}
@@ -644,7 +648,7 @@ async function runEvening(sb: Sb, today: string, out: string[]) {
   if (needShoot) {
     const m = buildShootEmail(ctx, split ? 'team' : 'all');
     if (m) {
-      const r = await send(['mj'], split ? ['mohan'] : SHOOT_CC, m.subject, m.html, { log, slot: 'pm' });
+      const r = await send(['mj'], split ? SHOOT_TEAM_CC : SHOOT_CC, m.subject, m.html, { log, slot: 'pm' });
       await logSent(sb, 'shoot-tomorrow', today, r);
       out.push(`shoot-tomorrow: ${r.note}`);
     } else {
