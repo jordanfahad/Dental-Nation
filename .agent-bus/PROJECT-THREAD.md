@@ -59,6 +59,8 @@ P&L pathway block complete on all 24 capabilities, pending finance ticks.
 
 ## Done via the bus
 
+- DN-013 (12 Oct 2026): Ms Shadi's four questions from the clinics' own exports (Al Wasl register, visits and receipts from 2023; Dr Tosun payment ledger 2017 to Jul 2026; Al Maher register and last-visit snapshot) plus live feeds and Dr Luvi's portal. Aggregates only in out/results.md; patient files stay on the owner's PC. Still missing: Treatment_Dr's wise.zip and the Dr Tosun demographic register (so Dr Tosun new vs returning after the July move stays unmeasurable). QA: identifier scan clean; spend, Executive new files and portal/Zoho revenue re-checked.
+
 - DN-012 (11 Oct 2026): Marketing performance 2025 and 2026 by branch for Ms Shadi, under Head of Operations (otab=marketing) and the internal room tier only (/share/room/<token>/marketing, 404 when sections.dash is false). Reuses the Executive new-patient rule and the Growth attribution verdicts. QA: tsc clean, 147 tests pass, June cohort re-derived in SQL (23 patients, AED 110,399 to date, median 580, 8 billed again). 2025 patient metrics, Dr Tosun new vs returning and LTV beyond early cohorts are shown as not available, with reasons.
 
 - DN-001 (19 Sep) — GMB review reconciliation. Astra built (99,917 OpenAI
