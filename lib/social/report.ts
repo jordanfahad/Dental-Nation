@@ -1,5 +1,6 @@
 import 'server-only';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
+import { selectAll } from '@/lib/supabase/selectAll';
 
 /**
  * Organic social + Google Business Profile signals for the Social tab, read from
@@ -80,13 +81,17 @@ export async function getSocialReport(opts: { from: string; to: string; clinic?:
 
   let rows: Row[] = [];
   try {
-    let q = db
-      .from('social_insights')
-      .select('channel, integration, metric, metric_label, day, value, synced_at');
-    if (opts.clinic && opts.clinic !== 'all') q = q.eq('clinic', opts.clinic);
-    if (from) q = q.gte('day', from);
-    if (to) q = q.lte('day', to);
-    const { data } = await q;
+    // Read in full: Business Profile + Instagram + Facebook rows pass the
+    // 1,000-row cap, which cut the Business Profile charts off in late August.
+    const { data } = await selectAll(() => {
+      let q = db
+        .from('social_insights')
+        .select('channel, integration, metric, metric_label, day, value, synced_at');
+      if (opts.clinic && opts.clinic !== 'all') q = q.eq('clinic', opts.clinic);
+      if (from) q = q.gte('day', from);
+      if (to) q = q.lte('day', to);
+      return q;
+    }, ['clinic', 'channel', 'metric', 'day']);
     rows = (data as Row[] | null) ?? [];
   } catch {
     return empty;
