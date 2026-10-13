@@ -81,13 +81,13 @@ test('GBP email caps activities at five per branch, includes metrics and skips g
   const empty = buildGbpPlan({ rows: [], metrics: [], reviews: [], connected: [], asOf: '2026-10-11', syncedAt: null });
   assert.equal(buildGbpDaily(empty, '2026-10-12'), null);
   empty.branches[0].status = 'Off track'; assert.ok(buildGbpDaily(empty, '2026-10-12'));
-  assert.deepEqual(PERFORMANCE_RECIPIENTS['am:gbp-daily'], { to: 'shadi', cc: ['fahad'], max: 1 });
+  assert.deepEqual(PERFORMANCE_RECIPIENTS['am:gbp-daily'], { to: 'shadi', cc: ['fahad', 'luvi'], max: 1 });
 });
 
 test('review cap excludes Akbar and adds one review copy for Luvi and Shadi', () => {
   assert.equal(ALERT_CAP.find((r) => r.who === 'Mr Akbar')?.max, 0);
   assert.equal(ALERT_CAP.find((r) => r.who === 'Ms Shadi')?.max, 2);
-  assert.deepEqual(ALERT_CAP.find((r) => r.who === 'Dr Luvi'), { who: 'Dr Luvi', morning: 'Performance template review (copied)', evening: 'Shoot schedule (copied), evenings before a shoot', max: 2 });
+  assert.deepEqual(ALERT_CAP.find((r) => r.who === 'Dr Luvi'), { who: 'Dr Luvi', morning: 'GBP daily plus performance template review (copied)', evening: 'Shoot schedule (copied), evenings before a shoot', max: 3 });
   assert.equal(ALERT_CAP.find((r) => r.who === 'Fahad')?.max, 4);
 });
 

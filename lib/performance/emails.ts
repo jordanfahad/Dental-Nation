@@ -3,7 +3,7 @@ import type { PerformanceBrief, PerformancePeriod } from './core';
 
 export type PerformanceKind = 'am:gbp-daily' | 'am:akbar-perf';
 export const PERFORMANCE_RECIPIENTS = {
-  'am:gbp-daily': { to: 'shadi', cc: ['fahad'], max: 1 },
+  'am:gbp-daily': { to: 'shadi', cc: ['fahad', 'luvi'], max: 1 },
   // Owner request, 13 Oct 2026: review only until explicit template approval.
   // No expiry or date-based fallback to Mr Akbar.
   'am:akbar-perf': { to: 'fahad', cc: ['luvi', 'shadi'], max: 1 },
@@ -17,7 +17,7 @@ const table = (head: string[], rows: (string | number)[][]) => `<table style="bo
 const h = (t: string) => `<h3 style="font-size:15px;margin:20px 0 6px;border-bottom:1px solid #E6E6DA">${esc(t)}</h3>`;
 const note = (t: string) => `<p style="color:#767769;font-size:12px">Data note: ${esc(t)}</p>`;
 // Same typography, colours and table shell as Smile Club, without its task links/cap copy.
-const shell = (title: string, body: string, footer = '09:00 Dubai daily performance reporting. Copied to Fahad.') => `<div style="font-family:Arial,sans-serif;font-size:14px;color:#244260;line-height:1.5;max-width:960px"><p style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#B45F53;font-weight:bold">Dental Nation</p><h2>${esc(title)}</h2>${body}<p style="font-size:12px">${esc(footer)}</p></div>`;
+const shell = (title: string, body: string, footer = '09:00 Dubai daily performance reporting. Copied to Fahad and Dr Luvi.') => `<div style="font-family:Arial,sans-serif;font-size:14px;color:#244260;line-height:1.5;max-width:960px"><p style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#B45F53;font-weight:bold">Dental Nation</p><h2>${esc(title)}</h2>${body}<p style="font-size:12px">${esc(footer)}</p></div>`;
 // Encode an owner's literal em dash rather than changing their verbatim note.
 // Generated copy uses hyphens throughout; user text remains visually verbatim.
 const finish = (subject: string, html: string) => ({ subject: subject.replace(/\u2014/g, '-'), html: html.replace(/\u2014/g, '&#8212;') });
