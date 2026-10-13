@@ -3,8 +3,10 @@ import type { PerformanceBrief, PerformancePeriod } from './core';
 
 export type PerformanceKind = 'am:gbp-daily' | 'am:akbar-perf';
 export const PERFORMANCE_RECIPIENTS = {
-  'am:gbp-daily': { to: 'shadi', cc: 'fahad', max: 1 },
-  'am:akbar-perf': { to: 'akbar', cc: 'fahad', max: 1 },
+  'am:gbp-daily': { to: 'shadi', cc: ['fahad'], max: 1 },
+  // Owner request, 13 Oct 2026: review only until explicit template approval.
+  // No expiry or date-based fallback to Mr Akbar.
+  'am:akbar-perf': { to: 'fahad', cc: ['luvi', 'shadi'], max: 1 },
 } as const;
 const escRaw = (s: unknown) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 const esc = (s: unknown) => escRaw(String(s ?? '').replace(/\u2014/g, '-'));
@@ -15,7 +17,7 @@ const table = (head: string[], rows: (string | number)[][]) => `<table style="bo
 const h = (t: string) => `<h3 style="font-size:15px;margin:20px 0 6px;border-bottom:1px solid #E6E6DA">${esc(t)}</h3>`;
 const note = (t: string) => `<p style="color:#767769;font-size:12px">Data note: ${esc(t)}</p>`;
 // Same typography, colours and table shell as Smile Club, without its task links/cap copy.
-const shell = (title: string, body: string) => `<div style="font-family:Arial,sans-serif;font-size:14px;color:#244260;line-height:1.5;max-width:960px"><p style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#B45F53;font-weight:bold">Dental Nation</p><h2>${esc(title)}</h2>${body}<p style="font-size:12px">09:00 Dubai daily performance reporting. Copied to Fahad.</p></div>`;
+const shell = (title: string, body: string, footer = '09:00 Dubai daily performance reporting. Copied to Fahad.') => `<div style="font-family:Arial,sans-serif;font-size:14px;color:#244260;line-height:1.5;max-width:960px"><p style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#B45F53;font-weight:bold">Dental Nation</p><h2>${esc(title)}</h2>${body}<p style="font-size:12px">${esc(footer)}</p></div>`;
 // Encode an owner's literal em dash rather than changing their verbatim note.
 // Generated copy uses hyphens throughout; user text remains visually verbatim.
 const finish = (subject: string, html: string) => ({ subject: subject.replace(/\u2014/g, '-'), html: html.replace(/\u2014/g, '&#8212;') });
@@ -45,7 +47,8 @@ function funnel(p: PerformancePeriod, label: string) {
     table(['Clinic', 'Patients by billing file', 'New patients', 'Existing patients', 'Unclassified', 'Data note'], p.patients.map((r) => [r.clinic, count(r.total), count(r.new), count(r.existing), count(r.unclassified), r.note])) + p.notes.map(note).join('');
 }
 export function buildAkbarPerformance(report: PerformanceBrief) {
-  let body = `<p>Reporting through ${esc(report.yesterday.to)} (Dubai). All figures are recorded counts or amounts.</p>`;
+  let body = '<p><b>Template review:</b> for Fahad, Dr Luvi and Ms Shadi only. Mr Akbar is excluded until Fahad explicitly approves the template.</p>';
+  body += `<p>Reporting through ${esc(report.yesterday.to)} (Dubai). All figures are recorded counts or amounts.</p>`;
   body += h('1. Demand and funnel by channel group') + '<p>Why: show how demand becomes appointments and billed revenue.</p>';
   body += funnel(report.yesterday, 'Yesterday') + funnel(report.mtd, 'Month-to-date through yesterday');
   body += h('2. Why') + '<p>Why: identify measured changes over the last two completed 7-day windows.</p><ul>' + report.why.map((s) => `<li>${esc(s)}</li>`).join('') + '</ul>';
@@ -68,5 +71,5 @@ export function buildAkbarPerformance(report: PerformanceBrief) {
   const rev = report.yesterday.total.revenue ?? 0;
   const amount = rev >= 1000 ? `${(rev / 1000).toFixed(1)}k` : count(rev);
   const flags = report.gbp.branches.filter((b) => b.status === 'Off track').length;
-  return finish(`Daily performance - ${dayLabel(report.today)} - AED ${amount} billed · ${count(report.yesterday.total.net)} net enquiries · ${flags} off-track flags`, shell('Daily performance', body));
+  return finish(`[Template review] Daily performance - ${dayLabel(report.today)} - AED ${amount} billed · ${count(report.yesterday.total.net)} net enquiries · ${flags} off-track flags`, shell('Daily performance - template review', body, '09:00 Dubai daily performance review. To Fahad; copied to Dr Luvi and Ms Shadi.'));
 }
