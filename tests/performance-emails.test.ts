@@ -1,10 +1,60 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import { buildAkbarPerformance, buildGbpDaily, PERFORMANCE_RECIPIENTS } from '../lib/performance/emails';
-import { benchmarks, groupOf, parseGrossRows, patientSplits, performanceWhy } from '../lib/performance/core';
+import { benchmarks, buildPeriod, groupOf, parseGrossRows, patientSplits, performanceWhy } from '../lib/performance/core';
 import { buildGbpPlan } from '../lib/gbp/plan';
 import { ALERT_CAP } from '../lib/smileclub/alertRules';
 import { briefFixture, gbpFixture, growth } from './fixtures/dn015';
+
+test('Akbar email renders Unclassified gross, source-labelled patient counts and reconciliation notes', () => {
+  const report = briefFixture();
+  const mail = buildAkbarPerformance(report);
+  const wasl = report.yesterday.rows.filter((r) => r.clinic === 'Al Wasl');
+  assert.equal(wasl.find((r) => r.group === 'Unclassified')?.gross, 65);
+  assert.equal(wasl.find((r) => r.group === 'Organic digital')?.gross, 0);
+  assert.deepEqual(wasl.find((r) => r.group === 'Total'), {
+    clinic: 'Al Wasl', group: 'Total', gross: 65, net: 41, bookings: 12, shows: 9, billed: 8, revenue: 23400,
+  });
+  for (const field of ['gross', 'net', 'bookings', 'shows', 'billed', 'revenue'] as const) {
+    assert.equal(wasl.filter((r) => r.group !== 'Total').reduce((n, r) => n + (r[field] ?? 0), 0), wasl.at(-1)![field]);
+  }
+  assert.match(mail.html, /<tr><td[^>]*>Al Wasl<\/td><td[^>]*>Unclassified<\/td><td[^>]*>65<\/td>/);
+  assert.match(mail.html, /Billed patients \(Growth\)/);
+  assert.match(mail.html, /Patients by billing file/);
+  assert.match(mail.html, /Group-level gross and net are not directly comparable because classification sources differ\./);
+  assert.match(mail.html, /Billing-file count differs from Growth billed count by 8; the funnel shows the Growth count\./);
+  assert.match(mail.html, /<tr><td[^>]*>Al Maher<\/td>(<td[^>]*>Unavailable<\/td>){4}<td[^>]*>Al Maher: no patient feed<\/td><\/tr>/);
+  assert.equal(/\u2014/.test(mail.subject + mail.html), false);
+});
+
+test('Akbar reconciliation compares each clinic and window including unattributed Growth billing; matching counts have no note', () => {
+  const bill = (mr: string, day = '2026-10-11', center = 'Dental Nation') => ({ bill_date: day, amount: 100, data: { mr_no: mr, center_name: center } });
+  const bills = [bill('DN-SYN-A'), bill('DN-SYN-A'), bill('DN-SYN-B'), bill('DN-SYN-OLD', '2026-10-10'), bill('DNJ-SYN-T', '2026-10-11', 'Dr Tosun')];
+  const wasl = growth(), tosun = growth();
+  wasl.channels[0].treated = 1; wasl.unattributedPatients = 1;
+  tosun.channels[0].treated = 1;
+  const makePeriod = (from = '2026-10-11') => buildPeriod(from, '2026-10-11', { all: growth(), wasl, tosun }, parseGrossRows([]), bills);
+  const brief = briefFixture();
+  brief.yesterday = makePeriod(); brief.mtd = makePeriod();
+  assert.deepEqual(brief.yesterday.patients.map((p) => p.total), [2, 1, null]);
+  assert.equal(brief.yesterday.rows.find((r) => r.clinic === 'Al Wasl' && r.group === 'Total')?.billed, 2);
+  assert.doesNotMatch(buildAkbarPerformance(brief).html, /Billing-file count differs/);
+
+  brief.mtd = makePeriod('2026-10-01');
+  assert.match(brief.mtd.patients[0].note, /differs from Growth billed count by 1;/);
+  assert.doesNotMatch(brief.yesterday.patients[0].note, /Billing-file count differs/);
+  assert.equal((buildAkbarPerformance(brief).html.match(/Billing-file count differs/g) ?? []).length, 1);
+
+  wasl.unattributedPatients = 4; tosun.channels[0].treated = 0;
+  brief.yesterday = makePeriod();
+  assert.match(brief.yesterday.patients[0].note, /differs from Growth billed count by 3;/);
+  assert.match(brief.yesterday.patients[1].note, /differs from Growth billed count by 1;/);
+  assert.doesNotMatch(brief.yesterday.patients[2].note, /Billing-file count differs/);
+  const mail = buildAkbarPerformance(brief);
+  assert.match(mail.html, /<tr><td[^>]*>Al Wasl<\/td><td[^>]*>2<\/td>.*?differs from Growth billed count by 3;/);
+  assert.match(mail.html, /<tr><td[^>]*>Dr Tosun<\/td><td[^>]*>1<\/td>.*?differs from Growth billed count by 1;/);
+  assert.equal(/\u2014/.test(mail.subject + mail.html), false);
+});
 
 test('Akbar performance email has synthetic figures, labelled gross/net and honest caveats in section order', () => {
   const report = briefFixture(); const mail = buildAkbarPerformance(report);

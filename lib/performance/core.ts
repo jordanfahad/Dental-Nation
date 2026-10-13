@@ -6,9 +6,11 @@ import { leadTrackerChannel, tagHit } from '@/lib/growth/attribution';
 import type { GrowthReport } from '@/lib/growth/channelPerformance';
 import { addDays, validDay, type GbpPlan } from '@/lib/gbp/plan';
 
-export const GROUPS = ['Paid digital', 'Organic digital', 'Direct & walk-in', 'Referral', 'Existing patients'] as const;
+export const GROUPS = ['Paid digital', 'Organic digital', 'Direct & walk-in', 'Referral', 'Existing patients', 'Unclassified'] as const;
 export type PerfGroup = typeof GROUPS[number];
-export function groupOf(key: string): PerfGroup {
+export function groupOf(key: string | null): PerfGroup {
+  // Only the gross parser supplies null; Growth channel keys keep their mapping.
+  if (key === null) return 'Unclassified';
   if (key === 'direct-walkin') return 'Direct & walk-in';
   if (key === 'retention') return 'Existing patients';
   // Commission affiliates and creator collaborations sit with paid digital;
@@ -19,7 +21,18 @@ export function groupOf(key: string): PerfGroup {
 }
 export const TOSUN_NOTE = 'Dr Tosun: renumbered at migration - not measurable yet';
 export const MAHER_NOTE = 'Al Maher: no patient feed';
-export const DEMAND_NOTE = 'Gross enquiries = raw tracker rows before deduplication. Net enquiries = Growth Platform people deduped by phone across widget, tracker and CRM; phoneless entries count individually. These are different source populations. Shared net enquiry sources are shown under Al Wasl, not a verified branch split; Dr Tosun and Al Maher net enquiries are unavailable. Affiliate/influencer channels sit in Paid digital; partnerships in Referral. Bookings and shows are appointments, billed patients are distinct files, revenue is AED billed (not cash collected). Channel assignment includes inference; phone-path estimates are excluded. Group patients are deduped across clinics.';
+export const DEMAND_NOTE = 'Gross enquiries = raw tracker rows before deduplication. Net enquiries = Growth Platform people deduped by phone across widget, tracker and CRM; phoneless entries count individually. These are different source populations. Group-level gross and net are not directly comparable because classification sources differ. Shared net enquiry sources are shown under Al Wasl, not a verified branch split; Dr Tosun and Al Maher net enquiries are unavailable. Affiliate/influencer channels sit in Paid digital; partnerships in Referral. Bookings and shows are appointments, billed patients are distinct files, revenue is AED billed (not cash collected). Channel assignment includes inference; phone-path estimates are excluded. Group patients are deduped across clinics.';
+
+/** Existing explicit tag/tracker rules, without Growth's default WhatsApp attribution. */
+export function performanceChannel(sourceType: string, inquiryPlatform: string, preferredChannel: string, notes = ''): string | null {
+  const tagged = tagHit(`${notes} ${sourceType} ${preferredChannel}`.toLowerCase());
+  if (tagged) return tagged;
+  const channel = leadTrackerChannel(sourceType, inquiryPlatform, preferredChannel);
+  // Every non-WhatsApp result is explicit. Preserve WhatsApp only when its
+  // existing tracker rule matched, rather than the identical fallback value.
+  const st = sourceType.toLowerCase(), ip = inquiryPlatform.toLowerCase();
+  return channel !== 'whatsapp' || st.includes('whatsapp') || ip.includes('whatsapp') || ip.includes('zavis') ? channel : null;
+}
 export interface GrossRow { date: string; clinic: GmbClinicKey | null; group: PerfGroup }
 export function parseGrossRows(rows: { data: Record<string, unknown> }[]) {
   let undated = 0;
@@ -36,14 +49,14 @@ export function parseGrossRows(rows: { data: Record<string, unknown> }[]) {
       { key: 'dr-tosun' as const, match: /tosun|\btdc\b/.test(branch) },
       { key: 'al-maher' as const, match: /maher|\bamc\b/.test(branch) },
     ].filter((b) => b.match);
-    const text = ['Notes / Remarks', 'Follow-up Remarks', 'Follow up Remarks', 'Source Type', 'Preferred Channel'].map(s).join(' ').toLowerCase();
-    const channel = tagHit(text) ?? leadTrackerChannel(s('Source Type'), s('Inquiry Platform'), s('Preferred Channel'));
+    const notes = ['Notes / Remarks', 'Follow-up Remarks', 'Follow up Remarks'].map(s).join(' ');
+    const channel = performanceChannel(s('Source Type'), s('Inquiry Platform'), s('Preferred Channel'), notes);
     parsed.push({ date, clinic: hits.length === 1 ? hits[0].key : null, group: groupOf(channel) });
   }
   return { rows: parsed, undated };
 }
 export interface FunnelRow { clinic: string; group: string; gross: number | null; net: number | null; bookings: number | null; shows: number | null; billed: number | null; revenue: number | null }
-export interface PatientSplit { clinic: string; new: number | null; existing: number | null; unclassified: number | null; note: string }
+export interface PatientSplit { clinic: string; total: number | null; new: number | null; existing: number | null; unclassified: number | null; note: string }
 export interface PerformancePeriod { from: string; to: string; rows: FunnelRow[]; patients: PatientSplit[]; total: FunnelRow; notes: string[] }
 
 export function patientSplits(bills: BillInput[], from: string, to: string): PatientSplit[] {
@@ -58,13 +71,14 @@ export function patientSplits(bills: BillInput[], from: string, to: string): Pat
     if (!p[clinic] || b.bill_date! < p[clinic]!) p[clinic] = b.bill_date!;
     first.set(mr, p);
   }
-  const files = new Set(clean.filter((b) => b.bill_date! >= from && b.bill_date! <= to && clinicOfCenter(String(b.data?.center_name ?? '')) !== 'dr-tosun').map((b) => String(b.data?.mr_no ?? '').trim()).filter(Boolean));
+  const periodFiles = (tosun: boolean) => new Set(clean.filter((b) => b.bill_date! >= from && b.bill_date! <= to && (clinicOfCenter(String(b.data?.center_name ?? '')) === 'dr-tosun') === tosun).map((b) => String(b.data?.mr_no ?? '').trim()).filter(Boolean));
+  const files = periodFiles(false);
   const unresolved = [...files].filter((mr) => /^DNJ/i.test(mr) || (/^DN/i.test(mr) && first.get(mr)?.tosun && first.get(mr)!.tosun! <= (first.get(mr)?.wasl ?? '9999'))).length;
   return [
-    { clinic: 'Al Wasl', new: acquisition.billedNewPatients, existing: Math.max(0, files.size - acquisition.billedNewPatients - unresolved), unclassified: unresolved,
+    { clinic: 'Al Wasl', total: files.size, new: acquisition.billedNewPatients, existing: Math.max(0, files.size - acquisition.billedNewPatients - unresolved), unclassified: unresolved,
       note: 'Executive rule: Al Wasl DN-series files count as new on their first non-cancelled bill. Other measurable billed files are existing; transferred Dr Tosun files remain unclassified.' },
-    { clinic: 'Dr Tosun', new: null, existing: null, unclassified: null, note: TOSUN_NOTE },
-    { clinic: 'Al Maher', new: null, existing: null, unclassified: null, note: MAHER_NOTE },
+    { clinic: 'Dr Tosun', total: periodFiles(true).size, new: null, existing: null, unclassified: null, note: TOSUN_NOTE },
+    { clinic: 'Al Maher', total: null, new: null, existing: null, unclassified: null, note: MAHER_NOTE },
   ];
 }
 
@@ -91,7 +105,12 @@ export function buildPeriod(from: string, to: string, reports: { all: GrowthRepo
   const total = summarise(reports.all, 'Group', null);
   total.billed! += reports.all.unattributedPatients; total.revenue! += reports.all.unattributedRevenue;
   rows.push(total);
-  return { from, to, rows, total, patients: patientSplits(bills, from, to), notes: [DEMAND_NOTE,
+  const patients = patientSplits(bills, from, to).map((patient) => {
+    const billed = rows.find((r) => r.clinic === patient.clinic && r.group === 'Total')?.billed;
+    if (patient.total == null || billed == null || patient.total === billed) return patient;
+    return { ...patient, note: `${patient.note} Billing-file count differs from Growth billed count by ${Math.abs(patient.total - billed)}; the funnel shows the Growth count.` };
+  });
+  return { from, to, rows, total, patients, notes: [DEMAND_NOTE,
     ...(['Al Wasl', 'Dr Tosun'] as const).map((label) => {
       const last = bills.filter((b) => String(b.data?.bill_status ?? '').toUpperCase() !== 'CANCELLED' && (clinicOfCenter(String(b.data?.center_name ?? '')) === 'dr-tosun') === (label === 'Dr Tosun')).map((b) => b.bill_date ?? '').filter(Boolean).sort().at(-1);
       return `${label} billing feed: latest recorded bill ${last || 'unavailable'}. Period totals describe recorded non-cancelled bills; later missing days are not proof of no business.`;

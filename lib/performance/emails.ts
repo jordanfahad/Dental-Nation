@@ -40,9 +40,9 @@ export function buildGbpDaily(plan: GbpPlan, today: string) {
 }
 
 function funnel(p: PerformancePeriod, label: string) {
-  return h(`${label}: ${p.from} to ${p.to}`) + table(['Clinic', 'Channel group', 'Enquiries gross (raw rows)', 'Enquiries net (people)', 'Bookings', 'Shows', 'Billed patients', 'Revenue AED'],
+  return h(`${label}: ${p.from} to ${p.to}`) + table(['Clinic', 'Channel group', 'Enquiries gross (raw rows)', 'Enquiries net (people)', 'Bookings', 'Shows', 'Billed patients (Growth)', 'Revenue AED'],
     p.rows.map((r) => [r.clinic, r.group, ...[r.gross, r.net, r.bookings, r.shows, r.billed, r.revenue].map(count)])) +
-    table(['Clinic', 'New patients', 'Existing patients', 'Unclassified', 'Data note'], p.patients.map((r) => [r.clinic, count(r.new), count(r.existing), count(r.unclassified), r.note])) + p.notes.map(note).join('');
+    table(['Clinic', 'Patients by billing file', 'New patients', 'Existing patients', 'Unclassified', 'Data note'], p.patients.map((r) => [r.clinic, count(r.total), count(r.new), count(r.existing), count(r.unclassified), r.note])) + p.notes.map(note).join('');
 }
 export function buildAkbarPerformance(report: PerformanceBrief) {
   let body = `<p>Reporting through ${esc(report.yesterday.to)} (Dubai). All figures are recorded counts or amounts.</p>`;
