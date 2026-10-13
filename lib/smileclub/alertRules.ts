@@ -8,7 +8,7 @@
  */
 export const ALERT_RULES = [
   { when: '09:00 daily - template review until Fahad approves', what: 'Performance brief for review only. Mr Akbar is excluded until explicit template approval.', to: 'Fahad', cc: 'Dr Luvi, Ms Shadi' },
-  { when: '09:00 - when there is new GBP activity or an Off track flag', what: 'GBP daily activities, plan progress and branch results', to: 'Ms Shadi', cc: 'Fahad' },
+  { when: '09:00 - when there is new GBP activity or an Off track flag', what: 'GBP daily activities, plan progress and branch results', to: 'Ms Shadi', cc: 'Fahad, Dr Luvi' },
   { when: '09:00 — morning briefing, when he has something', what: 'Scripts waiting on his approval · his tasks, score and dependencies · company pipeline and today’s calendar entries · since yesterday', to: 'Gautam', cc: '' },
   { when: '09:00 — morning briefing, when he has something', what: 'His tasks and score · today’s and tomorrow’s shoots · final approvals (cleared to film) · review comments on his work', to: 'Mohan', cc: '' },
   { when: '09:00 daily — morning briefing', what: 'Meta leads red flags, the whole team’s status, script sign-offs, his own tasks, every sign-off decision since yesterday', to: 'Fahad', cc: '' },
@@ -19,7 +19,7 @@ export const ALERT_RULES = [
 /** The most anyone receives in a day. */
 export const ALERT_CAP = [
   { who: 'Mr Akbar', morning: 'Excluded until template approval', evening: '-', max: 0 },
-  { who: 'Dr Luvi', morning: 'Performance template review (copied)', evening: 'Shoot schedule (copied), evenings before a shoot', max: 2 },
+  { who: 'Dr Luvi', morning: 'GBP daily plus performance template review (copied)', evening: 'Shoot schedule (copied), evenings before a shoot', max: 3 },
   { who: 'Ms Shadi', morning: 'GBP daily plus performance template review', evening: '-', max: 2 },
   { who: 'Gautam', morning: 'Briefing (when he has something)', evening: 'Shoot schedule (copied) or his evening update', max: 2 },
   { who: 'Mohan', morning: 'Briefing (when he has something)', evening: 'Shoot schedule (copied) or his evening update', max: 2 },

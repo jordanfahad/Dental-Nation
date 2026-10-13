@@ -32,7 +32,7 @@ export async function deliverPerformance(now: Date, deps: DeliveryDependencies):
       const to = deps.address(target.to)?.trim();
       const cc = target.cc.map((who) => deps.address(who)?.trim());
       const recipients = [to, ...cc];
-      const excluded = kind === 'am:akbar-perf' ? deps.address('akbar')?.trim().toLowerCase() : null;
+      const excluded = deps.address('akbar')?.trim().toLowerCase();
       if (!deps.configured || recipients.some((address) => !address) ||
           new Set(recipients.map((address) => address?.toLowerCase())).size !== recipients.length ||
           (excluded && recipients.some((address) => address?.toLowerCase() === excluded))) {

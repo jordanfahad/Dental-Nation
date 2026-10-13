@@ -24,7 +24,7 @@ test('Dubai delivery window is 09:00 inclusive to 11:00 exclusive', async () => 
   for (const utc of ['2026-10-12T05:00:00Z', '2026-10-12T06:59:59Z']) {
     const x = dependencies(); await deliverPerformance(new Date(utc), x.deps); assert.equal(x.sent.length, 2);
     assert.deepEqual(x.sent.map((m) => m.to), [['shadi@example.invalid'], ['fahad@example.invalid']]);
-    assert.deepEqual(x.sent.map((m) => m.cc), [['fahad@example.invalid'], ['luvi@example.invalid', 'shadi@example.invalid']]);
+    assert.deepEqual(x.sent.map((m) => m.cc), [['fahad@example.invalid', 'luvi@example.invalid'], ['luvi@example.invalid', 'shadi@example.invalid']]);
   }
 });
 test('repeated and concurrent cron calls cannot exceed one daily email to each primary', async () => {
@@ -76,12 +76,14 @@ test('review stays restricted tomorrow and in future; missing, duplicate or excl
     const x = dependencies(); x.deps.address = (who) => who === missing ? null : `${who}@example.invalid`;
     await deliverPerformance(new Date('2026-10-14T05:00:00Z'), x.deps);
     assert.ok(!x.claims.has('am:akbar-perf:2026-10-14'));
+    assert.ok(!x.claims.has('am:gbp-daily:2026-10-14'));
     assert.ok(!x.sent.some((mail) => mail.subject.startsWith('[Template review]')));
   }
   for (const wrong of ['FAHAD@example.invalid', ' AKBAR@example.invalid ']) {
     const x = dependencies(); x.deps.address = (who) => who === 'luvi' ? wrong : `${who}@example.invalid`;
     await deliverPerformance(new Date('2026-10-14T05:00:00Z'), x.deps);
-    assert.ok(!x.sent.some((mail) => mail.subject.startsWith('[Template review]')));
+    assert.equal(x.sent.length, 0);
+    assert.ok(!x.claims.has('am:gbp-daily:2026-10-14'));
   }
 });
 
