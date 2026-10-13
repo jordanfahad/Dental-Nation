@@ -66,7 +66,10 @@ test('Akbar performance email has synthetic figures, labelled gross/net and hone
   assert.ok(!mail.html.includes('Team task calendar')); assert.ok(!mail.html.includes('logged activities'));
   report.action = 'Keep priorities A & B\nReview <next> week.';
   assert.ok(buildAkbarPerformance(report).html.includes('Keep priorities A &amp; B\nReview &lt;next&gt; week.'));
-  assert.deepEqual(PERFORMANCE_RECIPIENTS['am:akbar-perf'], { to: 'akbar', cc: 'fahad', max: 1 });
+  assert.deepEqual(PERFORMANCE_RECIPIENTS['am:akbar-perf'], { to: 'fahad', cc: ['luvi', 'shadi'], max: 1 });
+  assert.match(mail.subject, /^\[Template review\]/);
+  assert.match(mail.html, /Mr Akbar is excluded until Fahad explicitly approves the template/);
+  assert.match(mail.html, /To Fahad; copied to Dr Luvi and Ms Shadi/);
 });
 
 test('GBP email caps activities at five per branch, includes metrics and skips genuinely empty report', () => {
@@ -78,13 +81,13 @@ test('GBP email caps activities at five per branch, includes metrics and skips g
   const empty = buildGbpPlan({ rows: [], metrics: [], reviews: [], connected: [], asOf: '2026-10-11', syncedAt: null });
   assert.equal(buildGbpDaily(empty, '2026-10-12'), null);
   empty.branches[0].status = 'Off track'; assert.ok(buildGbpDaily(empty, '2026-10-12'));
-  assert.deepEqual(PERFORMANCE_RECIPIENTS['am:gbp-daily'], { to: 'shadi', cc: 'fahad', max: 1 });
+  assert.deepEqual(PERFORMANCE_RECIPIENTS['am:gbp-daily'], { to: 'shadi', cc: ['fahad'], max: 1 });
 });
 
-test('alert caps preserve Luvi shoot-only and give Akbar and Shadi exactly one performance email', () => {
-  assert.equal(ALERT_CAP.find((r) => r.who === 'Mr Akbar')?.max, 1);
-  assert.equal(ALERT_CAP.find((r) => r.who === 'Ms Shadi')?.max, 1);
-  assert.deepEqual(ALERT_CAP.find((r) => r.who === 'Dr Luvi'), { who: 'Dr Luvi', morning: '—', evening: 'Shoot schedule (copied), evenings before a shoot', max: 1 });
+test('review cap excludes Akbar and adds one review copy for Luvi and Shadi', () => {
+  assert.equal(ALERT_CAP.find((r) => r.who === 'Mr Akbar')?.max, 0);
+  assert.equal(ALERT_CAP.find((r) => r.who === 'Ms Shadi')?.max, 2);
+  assert.deepEqual(ALERT_CAP.find((r) => r.who === 'Dr Luvi'), { who: 'Dr Luvi', morning: 'Performance template review (copied)', evening: 'Shoot schedule (copied), evenings before a shoot', max: 2 });
   assert.equal(ALERT_CAP.find((r) => r.who === 'Fahad')?.max, 4);
 });
 

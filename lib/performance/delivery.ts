@@ -4,13 +4,20 @@ import { buildAkbarPerformance, buildGbpDaily, PERFORMANCE_RECIPIENTS, type Perf
 
 export interface DeliveryDependencies {
   configured: boolean;
-  address: (who: 'shadi' | 'akbar' | 'fahad') => string | null;
+  address: (who: 'shadi' | 'akbar' | 'fahad' | 'luvi') => string | null;
   alreadySent: (kind: PerformanceKind, day: string, primary: string) => Promise<boolean>;
   claim: (kind: PerformanceKind, day: string) => Promise<boolean>;
   log: (kind: PerformanceKind, day: string, ok: boolean, recipients: string[], note: string) => Promise<void>;
   gbp: (asOf: string) => Promise<GbpPlan>;
   brief: (today: string, gbp: GbpPlan) => Promise<PerformanceBrief>;
   send: (mail: { to: string[]; cc: string[]; subject: string; html: string }) => Promise<{ ok: boolean }>;
+}
+
+/** The explicitly requested review copy is separate from other email caps. */
+export function performanceAlreadySent(rows: { kind: string; ok: boolean; recipients: string[] | null }[], kind: PerformanceKind, primary: string): boolean {
+  return rows.some((row) => row.ok && (row.kind === kind ||
+    (kind !== 'am:akbar-perf' && row.kind !== 'am:akbar-perf' &&
+      (row.recipients ?? []).some((address) => address.toLowerCase() === primary.toLowerCase()))));
 }
 /** Injectable runner: synthetic tests exercise the same time, skip and cap logic as cron. */
 export async function deliverPerformance(now: Date, deps: DeliveryDependencies): Promise<string[]> {
@@ -22,13 +29,17 @@ export async function deliverPerformance(now: Date, deps: DeliveryDependencies):
   for (const kind of ['am:gbp-daily', 'am:akbar-perf'] as const) {
     try {
       const target = PERFORMANCE_RECIPIENTS[kind];
-      const to = deps.address(target.to);
-      const cc = deps.address(target.cc);
-      if (!deps.configured || !to || !cc || to.toLowerCase() === cc.toLowerCase()) {
-        await deps.log(kind, today, false, [], 'Not sent: transport or distinct To/cc addresses unavailable');
+      const to = deps.address(target.to)?.trim();
+      const cc = target.cc.map((who) => deps.address(who)?.trim());
+      const recipients = [to, ...cc];
+      const excluded = kind === 'am:akbar-perf' ? deps.address('akbar')?.trim().toLowerCase() : null;
+      if (!deps.configured || recipients.some((address) => !address) ||
+          new Set(recipients.map((address) => address?.toLowerCase())).size !== recipients.length ||
+          (excluded && recipients.some((address) => address?.toLowerCase() === excluded))) {
+        await deps.log(kind, today, false, [], 'Not sent: transport or distinct permitted recipient addresses unavailable');
         out.push(`${kind}: configuration unavailable`); continue;
       }
-      if (await deps.alreadySent(kind, today, to)) { out.push(`${kind}: daily cap reached`); continue; }
+      if (await deps.alreadySent(kind, today, to!)) { out.push(`${kind}: daily cap reached`); continue; }
       plan ??= deps.gbp(addDays(today, -1));
       const gbp = await plan;
       const email = kind === 'am:gbp-daily' ? buildGbpDaily(gbp, today) : buildAkbarPerformance(await deps.brief(today, gbp));
@@ -39,8 +50,8 @@ export async function deliverPerformance(now: Date, deps: DeliveryDependencies):
       if (!await deps.claim(kind, today)) { out.push(`${kind}: already claimed today`); continue; }
       // Claim stays even after transport failure: an ambiguous provider timeout
       // must never trigger a duplicate. Read failures above acquire no claim.
-      const result = await deps.send({ to: [to], cc: [cc], ...email });
-      await deps.log(kind, today, result.ok, [to, cc], result.ok ? 'Sent' : 'Transport failed or delivery uncertain; daily claim retained');
+      const result = await deps.send({ to: [to!], cc: cc as string[], ...email });
+      await deps.log(kind, today, result.ok, recipients as string[], result.ok ? 'Sent' : 'Transport failed or delivery uncertain; daily claim retained');
       out.push(`${kind}: ${result.ok ? 'sent' : 'transport failed; claim retained'}`);
     } catch {
       // No raw exception text: upstream errors can contain row contents or URLs.

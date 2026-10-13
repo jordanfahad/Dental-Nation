@@ -2,11 +2,12 @@
  * The Smile Club email alerts, as shown on the Team tab (implemented in
  * lib/smileclub/alerts.ts). Since 26 Sep: at most TWO emails per person per
  * day — one 09:00 morning briefing and at most one evening email.
- * DN-015 adds two performance kinds: Akbar and Shadi receive only their own
- * daily kind; Fahad receives both copies in addition to his Smile Club cap.
+ * The owner placed the performance brief in review on 13 Oct 2026: Fahad,
+ * Dr Luvi and Ms Shadi receive it; Mr Akbar receives nothing until approval.
+ * Performance kinds are separate from the Smile Club slot caps.
  */
 export const ALERT_RULES = [
-  { when: '09:00 daily - performance only', what: 'Demand and funnel, measured changes, owner action note, public benchmark signals, Smile Club outcomes and compact GBP results', to: 'Mr Akbar', cc: 'Fahad' },
+  { when: '09:00 daily - template review until Fahad approves', what: 'Performance brief for review only. Mr Akbar is excluded until explicit template approval.', to: 'Fahad', cc: 'Dr Luvi, Ms Shadi' },
   { when: '09:00 - when there is new GBP activity or an Off track flag', what: 'GBP daily activities, plan progress and branch results', to: 'Ms Shadi', cc: 'Fahad' },
   { when: '09:00 — morning briefing, when he has something', what: 'Scripts waiting on his approval · his tasks, score and dependencies · company pipeline and today’s calendar entries · since yesterday', to: 'Gautam', cc: '' },
   { when: '09:00 — morning briefing, when he has something', what: 'His tasks and score · today’s and tomorrow’s shoots · final approvals (cleared to film) · review comments on his work', to: 'Mohan', cc: '' },
@@ -17,12 +18,12 @@ export const ALERT_RULES = [
 
 /** The most anyone receives in a day. */
 export const ALERT_CAP = [
-  { who: 'Mr Akbar', morning: 'Performance brief only', evening: '—', max: 1 },
-  { who: 'Dr Luvi', morning: '—', evening: 'Shoot schedule (copied), evenings before a shoot', max: 1 },
-  { who: 'Ms Shadi', morning: 'GBP daily only', evening: '—', max: 1 },
+  { who: 'Mr Akbar', morning: 'Excluded until template approval', evening: '-', max: 0 },
+  { who: 'Dr Luvi', morning: 'Performance template review (copied)', evening: 'Shoot schedule (copied), evenings before a shoot', max: 2 },
+  { who: 'Ms Shadi', morning: 'GBP daily plus performance template review', evening: '-', max: 2 },
   { who: 'Gautam', morning: 'Briefing (when he has something)', evening: 'Shoot schedule (copied) or his evening update', max: 2 },
   { who: 'Mohan', morning: 'Briefing (when he has something)', evening: 'Shoot schedule (copied) or his evening update', max: 2 },
-  { who: 'Fahad', morning: 'Briefing plus two performance copies', evening: 'Shoot schedule (copied) or his evening update', max: 4 },
+  { who: 'Fahad', morning: 'Briefing, performance template review and GBP copy', evening: 'Shoot schedule (copied) or his evening update', max: 4 },
   { who: 'MJ', morning: '—', evening: 'Shoot schedule (to her), evenings before a shoot', max: 1 },
 ] as const;
 
