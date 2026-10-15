@@ -94,7 +94,7 @@ test('review cap excludes Akbar and adds one review copy for Luvi and Shadi', ()
 test('gross rows retain duplicates and ambiguous branches are not guessed', () => {
   const row = { data: { Date: '11/10/2026', '_source_tab': 'TDC Campaign Leads', 'Inquiry Platform': 'Google' } };
   const raw = parseGrossRows([row, row, { data: { Date: '2026-10-11', 'Clinic / Branch': 'Unknown' } }, { data: { Date: '31/02/2026' } }]);
-  assert.equal(raw.rows.length, 3); assert.equal(raw.undated, 1); assert.equal(raw.rows[0].clinic, 'dr-tosun'); assert.equal(raw.rows[2].clinic, null);
+  assert.equal(raw.rows.length, 3); assert.equal(raw.undated, 1); assert.equal(raw.rows[0].clinic, 'dental-nation'); // TDC is the Dental Nation main branch (owner, 13 Oct 2026) assert.equal(raw.rows[2].clinic, null);
   assert.equal(groupOf('affiliate'), 'Paid digital'); assert.equal(groupOf('partnership'), 'Referral'); assert.equal(groupOf('direct-walkin'), 'Direct & walk-in');
 });
 

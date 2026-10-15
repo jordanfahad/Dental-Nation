@@ -3,6 +3,7 @@ import { clinicOfCenter } from '@/config/clinics';
 import { CHANNELS } from '@/config/growth-channels';
 import { computeNewPatientAcquisition, type BillInput } from '@/lib/executive/acquisitionCore';
 import { leadTrackerChannel, tagHit } from '@/lib/growth/attribution';
+import { canonicalBranch, isHeaderEcho } from '@/lib/lead-tracker/branch';
 import type { GrowthReport } from '@/lib/growth/channelPerformance';
 import { addDays, validDay, type GbpPlan } from '@/lib/gbp/plan';
 
@@ -27,6 +28,8 @@ export const DEMAND_NOTE = 'Gross enquiries = raw tracker rows before deduplicat
 export function performanceChannel(sourceType: string, inquiryPlatform: string, preferredChannel: string, notes = ''): string | null {
   const tagged = tagHit(`${notes} ${sourceType} ${preferredChannel}`.toLowerCase());
   if (tagged) return tagged;
+  // "WEBSTE" is an observed desk misspelling of website (4 rows since 1 Sep 2026).
+  if (/webste/i.test(`${sourceType} ${inquiryPlatform}`)) return 'website';
   const channel = leadTrackerChannel(sourceType, inquiryPlatform, preferredChannel);
   // Every non-WhatsApp result is explicit. Preserve WhatsApp only when its
   // existing tracker rule matched, rather than the identical fallback value.
@@ -35,25 +38,21 @@ export function performanceChannel(sourceType: string, inquiryPlatform: string, 
 }
 export interface GrossRow { date: string; clinic: GmbClinicKey | null; group: PerfGroup }
 export function parseGrossRows(rows: { data: Record<string, unknown> }[]) {
-  let undated = 0;
+  let undated = 0, headerEchoes = 0;
   const parsed: GrossRow[] = [];
   for (const { data: d } of rows) {
+    if (isHeaderEcho(d)) { headerEchoes++; continue; }
     const s = (k: string) => String(d[k] ?? '').trim();
     let date = s('Date');
     const m = date.match(/^(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{4})$/);
     if (m) date = `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
     if (!validDay(date)) { undated++; continue; }
-    const branch = `${s('Clinic / Branch')} ${s('_source_tab')}`.toLowerCase();
-    const hits = [
-      { key: 'dental-nation' as const, match: /al[ -]?wasl|dn campaign|dental nation/.test(branch) },
-      { key: 'dr-tosun' as const, match: /tosun|\btdc\b/.test(branch) },
-      { key: 'al-maher' as const, match: /maher|\bamc\b/.test(branch) },
-    ].filter((b) => b.match);
+    const branch = canonicalBranch(d['Clinic / Branch'], d['_source_tab']);
     const notes = ['Notes / Remarks', 'Follow-up Remarks', 'Follow up Remarks'].map(s).join(' ');
     const channel = performanceChannel(s('Source Type'), s('Inquiry Platform'), s('Preferred Channel'), notes);
-    parsed.push({ date, clinic: hits.length === 1 ? hits[0].key : null, group: groupOf(channel) });
+    parsed.push({ date, clinic: branch === 'unassigned' ? null : branch, group: groupOf(channel) });
   }
-  return { rows: parsed, undated };
+  return { rows: parsed, undated, headerEchoes };
 }
 export interface FunnelRow { clinic: string; group: string; gross: number | null; net: number | null; bookings: number | null; shows: number | null; billed: number | null; revenue: number | null }
 export interface PatientSplit { clinic: string; total: number | null; new: number | null; existing: number | null; unclassified: number | null; note: string }
@@ -89,8 +88,10 @@ export function buildPeriod(from: string, to: string, reports: { all: GrowthRepo
     const sum = (key: 'enquiries' | 'booked' | 'showed' | 'treated' | 'revenue') => channels?.reduce((n, c) => n + c[key], 0) ?? null;
     return { clinic: label, group: group ?? 'Total',
       gross: raw.filter((r) => (!clinic || r.clinic === clinic) && (!group || r.group === group)).length,
-      net: clinic === 'dr-tosun' || clinic === 'al-maher' ? null : sum('enquiries'), bookings: sum('booked'), shows: sum('showed'),
-      billed: sum('treated'), revenue: sum('revenue') };
+      // Unclassified rows exist only on the gross side; their outcomes are not measured, not zero.
+      ...(group === 'Unclassified' ? { net: null, bookings: null, shows: null, billed: null, revenue: null } : {
+        net: clinic === 'dr-tosun' || clinic === 'al-maher' ? null : sum('enquiries'), bookings: sum('booked'), shows: sum('showed'),
+        billed: sum('treated'), revenue: sum('revenue') }) };
   };
   const rows: FunnelRow[] = [];
   for (const c of GMB_CLINICS) {
