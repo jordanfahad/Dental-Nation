@@ -13,6 +13,8 @@ P&L pathway block complete on all 24 capabilities, pending finance ticks.
 
 ## Dated decisions
 
+- 13 Oct 2026 (owner, via PRs #13 and #14 while Claude was offline): the daily performance brief stays in TEMPLATE REVIEW - To Fahad, cc Dr Luvi and Ms Shadi; Mr Akbar receives nothing until Fahad explicitly approves the template (no expiry, no date-based fallback; delivery guard refuses to send if Akbar's address appears). GBP daily now also cc's Dr Luvi. Caps: Akbar 0, Dr Luvi 3 (GBP cc + review cc + shoot), Shadi 2, Fahad 4. Reviewed and re-verified by Claude 15 Oct: tsc clean, 203 tests pass.
+
 - 2026-09-19 · Agent bus installed in REMOTE MODE (cloud Claude ↔ PC Codex,
   git as transport). See AGENT-BUS.md.
 - 2026-09-19 · Smile Club plan grantable as per-user dashboard tab
