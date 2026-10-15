@@ -687,6 +687,10 @@ async function runEvening(sb: Sb, today: string, out: string[]) {
 export async function runSmileClubAlerts(): Promise<string[]> {
   const sb = getSupabaseAdmin();
   if (!sb) return ['no db'];
+  // Owner pause: no scheduled team email while app_secrets alerts_paused is 'true'.
+  // A failed read also sends nothing, so the pause can never be skipped by an error.
+  const pause = await sb.from('app_secrets').select('value').eq('key', 'alerts_paused').maybeSingle();
+  if (pause.error || String(pause.data?.value ?? '').trim().toLowerCase() === 'true') return ['paused by owner'];
   const emailConfigOk = await loadStoredEmails(sb);
   const now = new Date();
   const today = dubai(now);
