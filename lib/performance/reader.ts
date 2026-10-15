@@ -3,7 +3,6 @@ import { getSupabaseAdmin, type AdminClient } from '@/lib/supabase/server';
 import { selectAll } from '@/lib/supabase/selectAll';
 import { getChannelPerformance } from '@/lib/growth/channelPerformance';
 import { META_ADS_PAUSED_SINCE } from '@/config/meta';
-import { COMPETITORS } from '@/config/competitors';
 import { isBlockAppt, isTestAppt } from '@/lib/growth/attribution';
 import type { BillInput } from '@/lib/executive/acquisitionCore';
 import { readGbpPlan } from '@/lib/gbp/reader';
@@ -42,15 +41,6 @@ export async function readPerformanceBrief(today: string, db: AdminClient | null
   const raw = parseGrossRows(gross.data as { data: Record<string, unknown> }[]);
   const bb = bills.data as BillInput[];
   const signalRows = social.data as Signal[];
-  // CompetitorAnalysis also stores dated public Instagram facts in config.
-  // Use only the two requested identities and only a parseable observation date.
-  for (const c of COMPETITORS.filter((c) => ['drjoydentalclinic.com', 'drmichaels.com'].includes(c.domain))) {
-    for (const s of c.social.filter((s) => s.platform === 'Instagram')) {
-      const match = s.source.match(/read (\d{1,2} [A-Za-z]+ \d{4})/);
-      const time = match ? Date.parse(match[1]) : NaN;
-      if (Number.isFinite(time)) signalRows.push({ clinic: c.domain, channel: 'instagram', metric: 'followers', day: new Date(time).toISOString().slice(0, 10), value: s.followers });
-    }
-  }
   const tagged = appointments.data.filter((r) => {
     const text = `${r.data?.remarks ?? ''} ${r.data?.complaint ?? ''}`;
     return /\bsmile\s*club\b/i.test(text) && !isTestAppt(`${r.patient_name ?? ''} ${text}`) && !isBlockAppt(String(r.patient_name ?? ''));
@@ -75,8 +65,8 @@ export async function readPerformanceBrief(today: string, db: AdminClient | null
   // Current reconciled reviews are an observed snapshot, not a retrospective
   // public counter. Never manufacture a 30-day count delta from review dates.
   if (ours?.observedAt) {
-    benchmark[0].reviews = { value: ours.count, date: ours.observedAt.slice(0, 10), delta30: null };
-    benchmark[0].rating = { value: ours.rating, date: ours.observedAt.slice(0, 10), delta30: null };
+    if (benchmark[0].reviews.value == null) benchmark[0].reviews = { value: ours.count, date: ours.observedAt.slice(0, 10), delta30: null };
+    if (benchmark[0].rating.value == null) benchmark[0].rating = { value: ours.rating, date: ours.observedAt.slice(0, 10), delta30: null };
   }
   return { today, yesterday: buildPeriod(yesterday, yesterday, day, raw, bb), mtd: buildPeriod(month, yesterday, mtd, raw, bb),
     action: note.body, gbp, benchmark, smile,

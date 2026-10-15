@@ -8,6 +8,8 @@ import * as clinics from '../config/gmb-clinics';
 import * as plan from '../lib/gbp/plan';
 import * as emails from '../lib/performance/emails';
 import { gbpFixture } from './fixtures/dn015';
+import * as comparison from '../lib/gbp/clinic-comparison';
+import { comparisonFixture } from './fixtures/dn019';
 
 function load<T>(file: string, deps: Record<string, unknown>): T {
   const code = ts.transpileModule(readFileSync(file, 'utf8'), { fileName: file, compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2021, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true } }).outputText;
@@ -27,19 +29,39 @@ function textOf(node: unknown): string {
 }
 test('GBP server view filters branch logs and renders measured/missing results and read failures', async () => {
   let fail = false;
+  const clinicTable = load<{ GbpClinicTable: (props: { report: comparison.ClinicComparison | null }) => React.ReactNode }>('components/sections/opsreport/GbpClinicTable.tsx', {
+    '@/lib/gbp/clinic-comparison': comparison,
+  });
   const component = load<{ GbpPlan: (props: { branch?: string }) => Promise<React.ReactNode> }>('components/sections/opsreport/GbpPlan.tsx', {
     'next/link': { __esModule: true, default: (p: { children: React.ReactNode }) => p.children },
     '@/config/gmb-clinics': clinics, '@/lib/auth/role': { currentUser: async () => ({ role: 'viewer' }) },
     '@/lib/gbp/reader': { readGbpPlan: async () => { if (fail) throw new Error('synthetic'); return gbpFixture(); } },
     '@/lib/gbp/plan': plan, '@/lib/performance/reader': { readPerformanceNote: async () => ({ body: '', updatedAt: null }) },
     '@/lib/performance/emails': emails, './PerformanceNote': { PerformanceNote: () => null },
+    '@/lib/gbp/clinic-comparison-reader': { readClinicComparison: async () => { if (fail) throw new Error('synthetic'); return comparisonFixture(); } },
+    './GbpClinicTable': clinicTable,
   });
   const wasl = textOf(await component.GbpPlan({ branch: 'dental-nation' }));
   assert.match(wasl, /Check opening hours/); assert.match(wasl, /28/); assert.match(wasl, /On track/);
+  assert.match(wasl, /GBP vs clinic/); assert.match(wasl, /partial month \(19\/30 days\)/);
+  assert.match(wasl, /Correlation is visual, not causal/); assert.match(wasl, /Unassigned leads: MTD\s+1\s*, last month\s+1/);
   const tosun = textOf(await component.GbpPlan({ branch: 'dr-tosun' }));
   assert.match(tosun, /Not connected yet/); assert.ok(!tosun.includes('Check opening hours'));
   assert.match(tosun, /No real entries/); assert.match(tosun, /Plan of action: to be updated/);
   fail = true; assert.match(textOf(await component.GbpPlan({})), /data could not be read/);
+  assert.match(textOf(await component.GbpPlan({})), /GBP vs clinic is unavailable/);
+});
+
+test('GBP comparison renders all three rows with paired periods and unavailable Al Maher outcomes', () => {
+  const component = load<{ GbpClinicTable: (props: { report: comparison.ClinicComparison | null }) => React.ReactNode }>('components/sections/opsreport/GbpClinicTable.tsx', {
+    '@/lib/gbp/clinic-comparison': comparison,
+  });
+  const text = textOf(component.GbpClinicTable({ report: comparisonFixture() }));
+  assert.match(text, /2026-10-01.*2026-10-14/); assert.match(text, /2026-09-01.*2026-09-30/);
+  assert.match(text, /GBP calls.*GBP direction requests.*GBP website clicks.*Tracker leads logged.*Growth bookings.*Billed AED/);
+  assert.equal((text.match(/MTD Last month/g) ?? []).length, 6);
+  assert.match(text, /Al Maher.*Unavailable Unavailable Unavailable Unavailable/);
+  assert.match(text, /250\.00 100\.25/); assert.match(text, /300\.25 200\.00/);
 });
 test('action note enforces authenticated owner access, length and exact text with failed-save feedback', async (t) => {
   const keys = ['AUTH_SESSION_SECRET', 'DASHBOARD_PASSWORD'];

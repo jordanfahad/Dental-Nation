@@ -7,6 +7,8 @@ import { rateChange, type GbpPlan as Plan, type MetricWindow } from '@/lib/gbp/p
 import { readPerformanceNote } from '@/lib/performance/reader';
 import { change, count } from '@/lib/performance/emails';
 import { PerformanceNote } from './PerformanceNote';
+import { readClinicComparison } from '@/lib/gbp/clinic-comparison-reader';
+import { GbpClinicTable } from './GbpClinicTable';
 
 const panel = 'rounded-card border border-line bg-card p-5';
 const safeProof = (value: string) => { try { const u = new URL(value); return ['https:', 'http:'].includes(u.protocol) ? u.href : null; } catch { return null; } };
@@ -39,7 +41,7 @@ function BranchResults({ branch: b }: { branch: Plan['branches'][number] }) {
 }
 
 export async function GbpPlan({ branch }: { branch?: string }) {
-  const [result, noteResult, user] = await Promise.allSettled([readGbpPlan(), readPerformanceNote(), currentUser()]);
+  const [result, noteResult, user, comparison] = await Promise.allSettled([readGbpPlan(), readPerformanceNote(), currentUser(), readClinicComparison()]);
   const active = resolveGmbClinic(branch);
   const report = result.status === 'fulfilled' ? result.value : null;
   const action = noteResult.status === 'fulfilled' ? noteResult.value : null;
@@ -59,6 +61,7 @@ export async function GbpPlan({ branch }: { branch?: string }) {
       <p className="mt-3 text-xs text-ink-soft">On track: activity coverage at least 80% and daily call rate down no more than 10% against the 28 days before the plan. Off track: coverage below 50% or calls down more than 25%. All other cases: Watch. Incomplete call comparisons cannot earn On track. Logged activity completion is not completion of the full plan&apos;s task inventory.</p>
     </section>
     <nav aria-label="GBP branch" className="flex flex-wrap gap-2">{[{ key: 'all', label: 'All branches' }, ...GMB_CLINICS].map((c) => <Link key={c.key} href={`?tab=operations&otab=gbp&gbpbranch=${c.key}`} aria-current={active === c.key ? 'page' : undefined} className={`rounded-full border px-3 py-1.5 text-sm ${active === c.key ? 'bg-accent text-white' : 'border-line bg-card'}`}>{c.label}</Link>)}</nav>
+    <GbpClinicTable report={comparison.status === 'fulfilled' ? comparison.value : null} />
     {report?.branches.filter((b) => active === 'all' || b.key === active).map((b) => <BranchResults key={b.key} branch={b} />)}
     <section className={panel}>
       <h3 className="mb-3 text-lg font-semibold">Daily log</h3>

@@ -2,6 +2,7 @@ import { selectAll } from '../supabase/selectAll';
 import 'server-only';
 import { unstable_cache } from 'next/cache';
 import { getSupabaseAdmin, type AdminClient } from '@/lib/supabase/server';
+import { storeBenchmarkObservations } from './benchmark-observations';
 
 /**
  * Competitor benchmarking beyond backlinks — the technical and commercial
@@ -429,13 +430,19 @@ const fetchBranchDemand = unstable_cache(
       }
     };
 
-    return Promise.all(
-      domains.map(async (domain) => ({
+    const groups = await Promise.all(
+      [...new Set(domains)].map(async (domain) => ({
         domain,
         pages: await pagesFor(domain),
         listings: await listingsFor(domain),
       })),
     );
+    const db = getSupabaseAdmin();
+    if (db) {
+      const observations = await storeBenchmarkObservations(db, groups);
+      if (observations.failed.length) console.warn('Benchmark observations not stored:', observations.failed.join(', '));
+    }
+    return groups;
   },
   ['branch-demand-v2'],
   { revalidate: 604800 }, // 7 days — Labs + Maps tasks per refresh
