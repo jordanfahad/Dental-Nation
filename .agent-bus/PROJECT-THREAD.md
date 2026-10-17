@@ -126,15 +126,14 @@ P&L pathway block complete on all 24 capabilities, pending finance ticks.
 
 ## Open via the bus
 
-- DN-023 (17 Oct, repo mode on codex/DN-019): fix DN-019 before merge.
-  DN-022 verdict fix-first. Claude checked the production schema read-only:
-  `lane_e.social_insights.value` is NOT NULL (PK clinic, channel, metric,
-  day), so DN-019's null-rating upsert would fail and drop the review
-  count too. Fix: never store a null; rating shown only when a same-day
-  rating row exists; snapshot only when no stored observation exists.
-  Also swap the real staff name in the new test for a synthetic one, and
-  show Unavailable (not 0) when a comparison feed is empty. Then Claude
-  re-QAs and merges; DN-017 follows.
+- DN-019 MERGED 17 Oct (owner approved) after DN-022 QA (fix-first) and
+  DN-023 fixes. Claude re-verified: tsc clean, 236/236 tests, no real
+  staff name in the new fixtures. Benchmark ratings: no null writes
+  (social_insights.value is NOT NULL), stars only from the same day as
+  the latest review count, GBP snapshot only before the first stored
+  observation. GBP vs clinic table shows Unavailable for an empty feed.
+  Watch the first weekly benchmark refresh for stored `benchmark` rows.
+  Next in order: DN-017 (precondition DN-016 met).
 
 - DN-021 (17 Oct, draft mode): DN Ortho Search build S1-01/S2-01/S3-01
   (keywords, negatives, RSAs, Ads Editor CSVs, all PAUSED) plus the data
