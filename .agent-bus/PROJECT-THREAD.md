@@ -131,11 +131,11 @@ P&L pathway block complete on all 24 capabilities, pending finance ticks.
   recommendations). Owner decided: Al Wasl only, no Arabic now, Invisalign
   by name, budgets not a gate. DN-025 builds the final paused import
   package from those decisions.
-- DN-017 (reception section in the brief + WhatsApp lead alert, OFF):
-  pushed on codex/DN-017. Claude spot-checked: tsc clean, 255/255 tests on
-  the merge with main; the alert returns before any DB call while off.
-  Migration 0048 must be applied before the alert is ever switched on.
-  Awaiting owner OK to merge.
+- DN-017 MERGED 17 Oct (owner approved): Reception desk section in the
+  daily brief; WhatsApp lead alert merged OFF (no recipient). Before ever
+  switching it on: apply migration 0048, then set mode and recipient in
+  config/lead-alerts.ts. DN-021/024/025 closed: final paused Al Wasl
+  Search package is on Fahad's PC (.agent-bus/work/DN-025/out/).
 
 - DN-019 MERGED 17 Oct (owner approved) after DN-022 QA (fix-first) and
   DN-023 fixes. Claude re-verified: tsc clean, 236/236 tests, no real
