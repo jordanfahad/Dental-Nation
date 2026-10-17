@@ -129,7 +129,7 @@ function dedupe(rows: Row[], field: string): Row[] {
 }
 
 export interface MarketKeyword { keyword: string; language: 'en' | 'ar'; searches: Count; cpcUsd: Count; competition: Count }
-export interface MarketSnapshot { version: 1 | 2; fetchedAt: string; location: 2784; keywords: MarketKeyword[]; errors: string[]; requestCount?: number; costUsd?: number }
+export interface MarketSnapshot { version: 1 | 2; fetchedAt: string; location: 2784; keywords: MarketKeyword[]; errors: string[]; notes?: string[]; requestCount?: number; costUsd?: number }
 export interface DemandInput {
   ads: Row[] | null; tracker: Row[] | null; canonical: Row[] | null; appointments: Row[] | null;
   calls: Row[] | null; gmb: Row[] | null; market: MarketSnapshot | null;
@@ -214,6 +214,7 @@ export function aggregateDemandToDesk(input: DemandInput, range: DemandRange): D
   if (rawInvalid) gaps.push(`${rawInvalid} tracker rows have no valid date and are excluded.`);
   if (!input.market) gaps.push('UAE keyword snapshot unavailable; market demand, CPC and competition remain unknown.');
   if (input.market?.errors.length) gaps.push(...input.market.errors.map((e) => `Market snapshot: ${e}`));
+  if (input.market?.notes?.length) gaps.push(...input.market.notes.map((n) => `Market snapshot: ${n}`));
   if (input.market && Date.parse(`${range.to}T23:59:59Z`) - Date.parse(input.market.fetchedAt) > 7 * 86400_000) gaps.push('UAE keyword snapshot is older than seven days relative to the report end.');
   if (input.ranked) gaps.push(`Ranked keywords cover only dentalnation.com's stored ${input.ranked.market} keyword sample; they are not total market demand.`);
   if (facts?.length && facts.some((r) => !r.callRef)) gaps.push('Call-log references exist for widget leads, not every tracker row. Call coverage uses only explicitly linked tracker references; unlinked calls are unknown.');
