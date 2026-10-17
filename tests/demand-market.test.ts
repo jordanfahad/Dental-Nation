@@ -81,3 +81,52 @@ test('Google Ads keyword responses preserve every result row and provider cost',
   assert.deepEqual(keywordResponse({ status_code: 20000, cost: .075, tasks: [{ status_code: 20000, result: rows }] }), { result: { items: rows }, error: null, costUsd: .075 });
   assert.ok(keywordResponse({ status_code: 50000, tasks: [] }).error);
 });
+test('oversized expansion keeps every seed plus the highest-volume related terms, capped, without discarding paid data', async () => {
+  const calls: { kind: string; keywords: string[] }[] = [];
+  const snapshot = await buildMarketSnapshot(async (language, keywords, kind) => {
+    calls.push({ kind, keywords });
+    if (kind === 'volume') return response(language, keywords, kind);
+    // 400 related terms per request, each carrying its own volume, far beyond the caps.
+    return { result: { items: keywords.flatMap((seed) => Array.from({ length: 20 }, (_, n) => ({ keyword: `${seed} option ${n}`, search_volume: n * 10, cpc: 1, competition_index: 50 }))) }, error: null };
+  }, now);
+  assert.deepEqual(snapshot.errors, []);
+  assert.ok(snapshot.notes?.some((n) => /^en: related terms capped at 150 per theme and 3000 per language/.test(n)));
+  for (const language of ['en', 'ar'] as const) {
+    const stored = snapshot.keywords.filter((k) => k.language === language);
+    const seeds = new Set(marketKeywords(language));
+    for (const seed of seeds) assert.ok(stored.some((k) => k.keyword === seed), `seed kept: ${seed}`);
+    const extra = stored.filter((k) => !seeds.has(k.keyword));
+    assert.ok(extra.length > 0 && extra.length <= 3000);
+    for (const theme of DEMAND_THEMES) assert.ok(extra.filter((k) => classifyTheme(k.keyword) === theme.key).length <= 150);
+    // Highest volumes win within the cap: a stored related term is never below a dropped one of the same theme.
+    assert.ok(extra.every((k) => k.searches! >= 0 && k.cpcUsd === 1 && k.competition === 50));
+  }
+  // Related terms arrived with volumes, so only seeds needed a volume request.
+  const volumeTerms = calls.filter((c) => c.kind === 'volume').flatMap((c) => c.keywords);
+  assert.equal(volumeTerms.length, marketKeywords('en').length + marketKeywords('ar').length);
+  assert.deepEqual(parseMarketSnapshot(snapshot), snapshot);
+});
+
+test('related-term ranking keeps higher volume first with a deterministic tie order', async () => {
+  const theme = DEMAND_THEMES[0], seed = marketKeywords('en').find((k) => classifyTheme(k) === theme.key)!;
+  const items = [...Array.from({ length: 160 }, (_, n) => ({ keyword: `${seed} low ${String(n).padStart(3, '0')}`, search_volume: 1 })),
+    { keyword: `${seed} high b`, search_volume: 900 }, { keyword: `${seed} high a`, search_volume: 900 }];
+  const snapshot = await buildMarketSnapshot(async (language, keywords, kind) => kind === 'volume' ? response(language, keywords, kind)
+    : { result: { items: language === 'en' && keywords.includes(seed) ? items : [] }, error: null }, now);
+  const stored = new Set(snapshot.keywords.map((k) => k.keyword));
+  assert.ok(stored.has(`${seed} high a`) && stored.has(`${seed} high b`));
+  assert.ok(stored.has(`${seed} low 147`) && !stored.has(`${seed} low 148`));
+  assert.ok(snapshot.notes?.some((n) => n.includes('(12 lower-volume terms not stored)')));
+});
+
+test('a capped snapshot stays usable for the demand report and its note is shown as a data gap', async () => {
+  const { aggregateDemandToDesk } = await import('../lib/analytics/demandToDesk');
+  const { fixtureInput, fixtureRange } = await import('./fixtures/demand-to-desk');
+  const input = fixtureInput();
+  assert.ok(input.market);
+  const capped = { ...input.market!, notes: ['en: related terms capped at 150 per theme and 3000 per language, highest volume first (5 lower-volume terms not stored)'] };
+  const plain = aggregateDemandToDesk(input, fixtureRange), report = aggregateDemandToDesk({ ...input, market: capped }, fixtureRange);
+  assert.ok(report.gaps.some((g) => g.startsWith('Market snapshot: en: related terms capped')));
+  assert.deepEqual(report.themes.map((t) => t.marketShare), plain.themes.map((t) => t.marketShare));
+  assert.ok(report.themes.some((t) => t.marketShare != null));
+});

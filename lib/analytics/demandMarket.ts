@@ -3,7 +3,9 @@ import { classifyTheme, numeric, record, type MarketKeyword, type MarketSnapshot
 
 export const DENTAL_MARKET_DOMAIN = 'market:uae-dental';
 export const DENTAL_MARKET_TTL = 7 * 86400_000;
-export const MARKET_BUDGET = { requests: 50, reservePerRequestUsd: 0.10, maxUsd: 5, maxKeywords: 10_000 } as const;
+// Seeds are always kept. Related terms are capped per theme, then per language,
+// highest search volume first, so an oversized expansion never discards paid data.
+export const MARKET_BUDGET = { requests: 50, reservePerRequestUsd: 0.10, maxUsd: 5, maxRelatedPerTheme: 150, maxRelatedPerLanguage: 3_000 } as const;
 type Language = 'en' | 'ar';
 export interface KeywordResponse { result: Record<string, unknown> | null; error: string | null; costUsd?: number }
 export type KeywordFetcher = (language: Language, keywords: string[], kind: 'expand' | 'volume') => Promise<KeywordResponse>;
@@ -32,47 +34,71 @@ export async function buildMarketSnapshot(fetchKeywords: KeywordFetcher, now = n
     if (cost != null) { costUsd += cost; reservedUsd += Math.max(0, cost - MARKET_BUDGET.reservePerRequestUsd); }
     return result;
   };
+  const notes: string[] = [];
+  const marketRow = (keyword: string, language: Language, info: Record<string, unknown> | undefined, readable: boolean): MarketKeyword => {
+    // Successful no-volume responses count as zero; failed requests remain unknown.
+    const competition = numeric(info?.competition_index);
+    return { keyword, language, searches: readable ? numeric(info?.search_volume) ?? 0 : null,
+      cpcUsd: numeric(info?.cpc), competition: competition != null && competition <= 100 ? competition : null };
+  };
   try {
     for (const language of ['en', 'ar'] as const) {
-      const requested = new Set(marketKeywords(language));
+      const seeds = new Set(marketKeywords(language));
+      // Related terms per theme, with the volume data the expansion already returned.
+      const related = new Map<string, Map<string, Record<string, unknown>>>();
       for (const theme of DEMAND_THEMES) {
-        const seeds = [...new Set(theme.keywords[language].map(normalize))];
-        for (let i = 0; i < seeds.length; i += 20) {
-          const response = await request(language, seeds.slice(i, i + 20), 'expand');
+        const themeSeeds = [...new Set(theme.keywords[language].map(normalize))];
+        const found = new Map<string, Record<string, unknown>>();
+        related.set(theme.key, found);
+        for (let i = 0; i < themeSeeds.length; i += 20) {
+          const response = await request(language, themeSeeds.slice(i, i + 20), 'expand');
           if (response.error) { errors.push(`${language}: ${theme.label} expansion unavailable`); break; }
           if (!Array.isArray(response.result?.items)) { errors.push(`${language}: ${theme.label} expansion response unavailable`); break; }
           for (const raw of response.result.items) {
-            const keyword = normalize(String(record(raw).keyword ?? ''));
+            const row = record(raw);
+            const keyword = normalize(String(row.keyword ?? ''));
             const matchText = keyword.replace(/[\u064b-\u065f\u0670]/g, '').replace(/[أإآ]/g, 'ا');
-            if (keyword && keyword.length <= 80 && keyword.split(' ').length <= 10 && theme.pattern.test(matchText) && classifyTheme(keyword) === theme.key) requested.add(keyword);
+            if (keyword && keyword.length <= 80 && keyword.split(' ').length <= 10 && theme.pattern.test(matchText) && classifyTheme(keyword) === theme.key && !found.has(keyword)) found.set(keyword, row);
           }
-          if (requested.size > MARKET_BUDGET.maxKeywords) throw new Error('Expanded keyword list exceeds 10,000 terms; totals withheld');
         }
       }
-      const list = [...requested];
-      for (let i = 0; i < list.length; i += 1000) {
-        const batch = list.slice(i, i + 1000);
+      const byVolume = (a: [string, Record<string, unknown>], b: [string, Record<string, unknown>]) =>
+        (numeric(b[1].search_volume) ?? -1) - (numeric(a[1].search_volume) ?? -1) || a[0].localeCompare(b[0]);
+      const known = new Map<string, Record<string, unknown>>();
+      let candidates: [string, Record<string, unknown>][] = [], dropped = 0;
+      for (const found of related.values()) {
+        const terms = [...found].sort(byVolume);
+        for (const [keyword, row] of terms) if (seeds.has(keyword) && numeric(row.search_volume) != null) known.set(keyword, row);
+        const extra = terms.filter(([keyword]) => !seeds.has(keyword));
+        dropped += Math.max(0, extra.length - MARKET_BUDGET.maxRelatedPerTheme);
+        candidates.push(...extra.slice(0, MARKET_BUDGET.maxRelatedPerTheme));
+      }
+      candidates = [...new Map(candidates)].sort(byVolume);
+      dropped += Math.max(0, candidates.length - MARKET_BUDGET.maxRelatedPerLanguage);
+      for (const [keyword, row] of candidates.slice(0, MARKET_BUDGET.maxRelatedPerLanguage)) known.set(keyword, row);
+      if (dropped) notes.push(`${language}: related terms capped at ${MARKET_BUDGET.maxRelatedPerTheme} per theme and ${MARKET_BUDGET.maxRelatedPerLanguage} per language, highest volume first (${dropped} lower-volume terms not stored)`);
+      // Expansion rows with a volume are stored as returned; only the rest need a volume request.
+      const list = [...new Set([...seeds, ...known.keys()])];
+      const pending = list.filter((keyword) => numeric(known.get(keyword)?.search_volume) == null);
+      for (const keyword of list) if (!pending.includes(keyword)) keywords.push(marketRow(keyword, language, known.get(keyword), true));
+      for (let i = 0; i < pending.length; i += 1000) {
+        const batch = pending.slice(i, i + 1000);
         const response = await request(language, batch, 'volume');
         const readable = !response.error && Array.isArray(response.result?.items);
         if (!readable) errors.push(`${language}: keyword volumes unavailable`);
         const items = readable ? (response.result!.items as unknown[]).map(record) : [];
         const found = new Map(items.map((row) => [normalize(String(row.keyword ?? '')), row]));
-        for (const keyword of batch) {
-          const info = found.get(keyword);
-          // Successful no-volume responses count as zero; failed requests remain unknown.
-          const competition = numeric(info?.competition_index);
-          keywords.push({ keyword, language, searches: readable ? numeric(info?.search_volume) ?? 0 : null,
-            cpcUsd: numeric(info?.cpc), competition: competition != null && competition <= 100 ? competition : null });
-        }
+        for (const keyword of batch) keywords.push(marketRow(keyword, language, found.get(keyword), readable));
       }
     }
   } catch (err) { errors.push(err instanceof Error ? err.message : 'Keyword refresh incomplete'); }
-  return { version: 2, fetchedAt: now.toISOString(), location: 2784, keywords, errors: [...new Set(errors)], requestCount, costUsd };
+  return { version: 2, fetchedAt: now.toISOString(), location: 2784, keywords, errors: [...new Set(errors)], ...(notes.length ? { notes } : {}), requestCount, costUsd };
 }
 
 export function parseMarketSnapshot(value: unknown): MarketSnapshot | null {
   const data = record(value);
   if (data.version !== 2 || data.location !== 2784 || typeof data.fetchedAt !== 'string' || !Number.isFinite(Date.parse(data.fetchedAt)) || !Array.isArray(data.keywords) || !Array.isArray(data.errors) || !data.errors.every((e) => typeof e === 'string')) return null;
+  if (data.notes !== undefined && (!Array.isArray(data.notes) || !data.notes.every((n) => typeof n === 'string'))) return null;
   if (!Number.isInteger(data.requestCount) || numeric(data.requestCount) == null || numeric(data.costUsd) == null) return null;
   const seen = new Set<string>();
   for (const item of data.keywords) {
