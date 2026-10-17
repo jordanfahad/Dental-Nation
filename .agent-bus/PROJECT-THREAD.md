@@ -126,6 +126,17 @@ P&L pathway block complete on all 24 capabilities, pending finance ticks.
 
 ## Open via the bus
 
+- DN Ortho (17 Oct): DN-024 QA'd DN-021's keywords/negatives (v2: 176
+  keywords, 338 shared + 280 cross negatives, 19 held with
+  recommendations). Owner decided: Al Wasl only, no Arabic now, Invisalign
+  by name, budgets not a gate. DN-025 builds the final paused import
+  package from those decisions.
+- DN-017 (reception section in the brief + WhatsApp lead alert, OFF):
+  pushed on codex/DN-017. Claude spot-checked: tsc clean, 255/255 tests on
+  the merge with main; the alert returns before any DB call while off.
+  Migration 0048 must be applied before the alert is ever switched on.
+  Awaiting owner OK to merge.
+
 - DN-019 MERGED 17 Oct (owner approved) after DN-022 QA (fix-first) and
   DN-023 fixes. Claude re-verified: tsc clean, 236/236 tests, no real
   staff name in the new fixtures. Benchmark ratings: no null writes
