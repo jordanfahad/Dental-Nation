@@ -18,6 +18,7 @@ export const ALERT_RULES = [
 
 /** The most anyone receives in a day. */
 export const ALERT_CAP = [
+  { kind: 'lead:whatsapp', who: 'Dr Luvi: lead alert (off until configured)', morning: 'Off - owner setup pending', evening: '-', max: 0 },
   { who: 'Mr Akbar', morning: 'Excluded until template approval', evening: '-', max: 0 },
   { who: 'Dr Luvi', morning: 'GBP daily plus performance template review (copied)', evening: 'Shoot schedule (copied), evenings before a shoot', max: 3 },
   { who: 'Ms Shadi', morning: 'GBP daily plus performance template review', evening: '-', max: 2 },

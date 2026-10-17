@@ -1,4 +1,5 @@
 import 'server-only';
+import { bookedFrom } from './status';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
 import { getWidgetEnquiries } from '@/lib/bookings/widgetEnquiries';
 
@@ -157,11 +158,6 @@ interface LeadRow {
   treatment_signal: string | null;
   is_qualified: boolean | null;
   booking_status: string | null;
-}
-
-function bookedFrom(status: string | null): boolean {
-  const s = (status ?? '').trim().toLowerCase();
-  return s === 'booked' || s === 'confirmed' || s === 'attended' || s === 'completed';
 }
 
 /** The website "Talk to Smile Advisor" hand-off to WhatsApp (case/spacing-loose). */

@@ -7,7 +7,31 @@ import { isBlockAppt, isTestAppt } from '@/lib/growth/attribution';
 import type { BillInput } from '@/lib/executive/acquisitionCore';
 import { readGbpPlan } from '@/lib/gbp/reader';
 import { addDays, type GbpPlan } from '@/lib/gbp/plan';
-import { benchmarks, buildPeriod, parseGrossRows, performanceWhy, type PerformanceBrief, type Signal, type SmilePerformance } from './core';
+import { benchmarks, buildPeriod, GROUPS, parseGrossRows, performanceWhy, type PerformanceBrief, type Signal, type SmilePerformance, type ReceptionData, type ReceptionWindow } from './core';
+import { sheetMapping } from '@/config/sheet-mapping';
+import { bookedFrom } from '@/lib/bookings/status';
+import { hasChannelEvidence, leadGroup, type LeadChannelFields } from '@/lib/lead-tracker/reporting';
+
+export async function readReception(today: string, db: AdminClient | null = getSupabaseAdmin()): Promise<ReceptionData> {
+  if (!db) throw new Error('Reception database unavailable');
+  const yesterday = addDays(today, -1);
+  const { data } = await selectAll(() => db.from('leads')
+    .select('inquiry_date,booking_status,channel_source,whatsapp_ref,raw_row,synced_at')
+    .eq('source_sheet', sheetMapping.leadTracker.label), 'id');
+  const rows = data as (LeadChannelFields & { inquiry_date: string | null; booking_status: string | null; synced_at: string | null })[];
+  const window = (from: string): ReceptionWindow => {
+    const selected = rows.filter((row) => row.inquiry_date && row.inquiry_date >= from && row.inquiry_date <= yesterday);
+    const byGroup = Object.fromEntries(GROUPS.map((group) => [group, 0])) as ReceptionWindow['byGroup'];
+    for (const row of selected) byGroup[leadGroup(row)]++;
+    return { from, to: yesterday, logged: selected.length, byGroup,
+      booked: selected.filter((row) => bookedFrom(row.booking_status)).length,
+      noSource: selected.filter((row) => !hasChannelEvidence(row)).length };
+  };
+  const syncs = rows.map((row) => row.synced_at).filter((value): value is string => !!value && Number.isFinite(Date.parse(value)));
+  return { yesterday: window(yesterday), mtd: window(`${yesterday.slice(0, 7)}-01`),
+    futureDated: rows.filter((row) => row.inquiry_date && row.inquiry_date > yesterday).length,
+    lastSyncedAt: syncs.sort((a, b) => Date.parse(b) - Date.parse(a))[0] ?? null };
+}
 
 export async function readPerformanceNote(db: AdminClient | null = getSupabaseAdmin()) {
   if (!db) throw new Error('Performance note unavailable');
@@ -25,7 +49,7 @@ export async function readPerformanceBrief(today: string, db: AdminClient | null
     const [all, wasl, tosun] = await Promise.all(['all', 'dn-alwasl', 'dr-tosun'].map((c) => getChannelPerformance({ from, to }, c as 'all' | 'dn-alwasl' | 'dr-tosun', db, { strict: true, excludeCancelledBills: true })));
     return { all, wasl, tosun };
   };
-  const [day, mtd, week, prior, gross, bills, note, gbp, social, companies, historical, appointments] = await Promise.all([
+  const [day, mtd, week, prior, gross, bills, note, gbp, social, companies, historical, appointments, reception] = await Promise.all([
     period(yesterday, yesterday), period(month, yesterday),
     getChannelPerformance({ from: addDays(yesterday, -6), to: yesterday }, 'all', db, { strict: true, excludeCancelledBills: true }),
     getChannelPerformance({ from: addDays(yesterday, -13), to: addDays(yesterday, -7) }, 'all', db, { strict: true, excludeCancelledBills: true }),
@@ -36,6 +60,7 @@ export async function readPerformanceBrief(today: string, db: AdminClient | null
     selectAll(() => db.from('sc_companies').select('members,updated_at'), 'id'),
     db.from('tasks').select('raw').eq('source', 'smileclub-team').eq('external_id', 'sc-team:g-crm-test').maybeSingle(),
     selectAll(() => db.from('practo_appointments_raw').select('appt_date,status,patient_name,data').gte('appt_date', month).lte('appt_date', yesterday), 'appt_key'),
+    readReception(today, db),
   ]);
   if (historical.error) throw new Error('Smile Club evidence read failed');
   const raw = parseGrossRows(gross.data as { data: Record<string, unknown> }[]);
@@ -69,6 +94,6 @@ export async function readPerformanceBrief(today: string, db: AdminClient | null
     benchmark[0].rating = { value: ours.rating, date: ours.observedAt.slice(0, 10), delta30: null };
   }
   return { today, yesterday: buildPeriod(yesterday, yesterday, day, raw, bb), mtd: buildPeriod(month, yesterday, mtd, raw, bb),
-    action: note.body, gbp, benchmark, smile,
+    action: note.body, gbp, benchmark, smile, reception,
     why: performanceWhy(week, prior, gbp, META_ADS_PAUSED_SINCE) };
 }

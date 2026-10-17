@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { runSync } from '@/lib/sync';
 import { runSmileClubAlerts } from '@/lib/smileclub/alerts';
+import { runLeadAlertsAfterSync } from '@/lib/lead-alerts/alerts';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // Pro allows up to ~300s; sync stays within budget.
@@ -24,6 +25,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
   const summary = await runSync('cron');
+  await runLeadAlertsAfterSync(summary).catch(() => console.info('lead:whatsapp: post-sync job unavailable'));
   // Smile Club emails — at most two per person a day: 09:00 morning briefing; 17:00 shoot schedule or evening update.
   await runSmileClubAlerts().catch(() => undefined);
   const httpStatus = summary.status === 'failed' ? 502 : 200;

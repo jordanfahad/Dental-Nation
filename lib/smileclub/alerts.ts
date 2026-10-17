@@ -139,6 +139,7 @@ async function dayLog(sb: Sb, today: string): Promise<DayLog> {
     // Fahad's two explicitly requested performance copies are separate from
     // his existing Smile Club morning/evening allowance.
     if (kind === 'am:gbp-daily' || kind === 'am:akbar-perf') continue;
+    if (kind === 'lead:whatsapp') continue;
     log.kinds.add(kind);
     const s = slotOf(kind);
     if (s && r.ok) for (const a of (r.recipients as string[] | null) ?? []) mark(log, s, a);

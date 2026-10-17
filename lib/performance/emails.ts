@@ -1,5 +1,5 @@
 import { GBP_PLAN_LINK, type GbpPlan, type MetricWindow } from '@/lib/gbp/plan';
-import type { PerformanceBrief, PerformancePeriod } from './core';
+import { buildReceptionSection, RECEPTION_NOTE, type PerformanceBrief, type PerformancePeriod } from './core';
 
 export type PerformanceKind = 'am:gbp-daily' | 'am:akbar-perf';
 export const PERFORMANCE_RECIPIENTS = {
@@ -68,6 +68,8 @@ export function buildAkbarPerformance(report: PerformanceBrief) {
   body += h('6. GBP') + '<p>Why: monitor calls, directions and new reviews by branch.</p>';
   body += table(['Branch', `Calls ${report.gbp.asOf}`, 'Directions', 'New reviews', 'Status'], report.gbp.branches.map((b) => [b.label, count(b.yesterday.calls), count(b.yesterday.directions), count(b.yesterday.reviews), b.connected ? b.status : `${b.status}: not connected yet`]));
   body += note('Unavailable GBP days are not zero. Reviews are currently active reviews by original creation date; removals can restate past counts.') + `<p><a href="${GBP_PLAN_LINK}">Open GBP plan</a></p>`;
+  body += h('7. Reception desk (In-House Lead Tracker)') + table(
+    ['Window', 'Logged', 'By channel group', 'Booked', 'No source', 'Future-dated', 'Last sync'], buildReceptionSection(report.reception)) + note(RECEPTION_NOTE);
   const rev = report.yesterday.total.revenue ?? 0;
   const amount = rev >= 1000 ? `${(rev / 1000).toFixed(1)}k` : count(rev);
   const flags = report.gbp.branches.filter((b) => b.status === 'Off track').length;
