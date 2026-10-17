@@ -126,6 +126,16 @@ P&L pathway block complete on all 24 capabilities, pending finance ticks.
 
 ## Open via the bus
 
+- DN-021 (17 Oct, draft mode): DN Ortho Search build S1-01/S2-01/S3-01
+  (keywords, negatives, RSAs, Ads Editor CSVs, all PAUSED) plus the data
+  standards SH-03 to SH-06, landing page brief for Seyed and launch batch
+  brief. Outputs stay git-ignored on Fahad's PC; Claude QAs from the xlsx
+  he shares. Landmine: fees and credit terms stay placeholders until Dr
+  Hasna and Jawad approve; nothing goes live before the pilot Go. Side
+  finding: the weekly UAE keyword cache has stored zero keywords since
+  7 Oct (expansion over 10,000 terms) while still spending about USD 1.5
+  a week; needs its own spec.
+
 - DN-006 and DN-007 closed 6 Oct: QA'd by Claude (tsc clean, 88/88 tests),
   merged and deployed. Marketing > Demand to desk is live; the UAE keyword
   cache (competitor_snapshots domain market:uae-dental) refreshes weekly.
