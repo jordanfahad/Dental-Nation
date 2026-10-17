@@ -138,7 +138,15 @@ export function benchmarks(rows: Signal[], asOf: string) {
       const before = latest && all.find((r) => r.clinic.toLowerCase() === latest.clinic.toLowerCase() && r.day === addDays(latest.day, -30));
       return { value: latest?.value ?? null, date: latest?.day ?? null, delta30: latest && before ? latest.value! - before.value! : null };
     };
-    return { label, followers: signal('instagram', 'followers'), reviews: signal('benchmark', 'review_count'), rating: signal('benchmark', 'rating') };
+    // Review count anchors the observation. Never carry older stars forward.
+    const latest = series('benchmark', 'review_count')[0];
+    const ratings = series('benchmark', 'rating').filter((r) =>
+      r.clinic.toLowerCase() === latest?.clinic.toLowerCase() && r.value! >= 1 && r.value! <= 5);
+    const current = latest && latest.value! > 0 ? ratings.find((r) => r.day === latest.day) : undefined;
+    const before = current && ratings.find((r) => r.day === addDays(current.day, -30));
+    const rating = { value: current?.value ?? null, date: current?.day ?? null,
+      delta30: current && before ? current.value! - before.value! : null };
+    return { label, followers: signal('instagram', 'followers'), reviews: signal('benchmark', 'review_count'), rating };
   });
 }
 export interface SmilePerformance {

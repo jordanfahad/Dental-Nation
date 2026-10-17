@@ -29,10 +29,18 @@ export async function storeBenchmarkObservations(db: AdminClient, groups: Branch
   const failed: string[] = [];
   let stored = 0;
   const save = async (clinic: string, integration: string, observation: { count: number; rating: number | null }) => {
-    const rows = [
-      { metric: 'review_count', metric_label: 'Google review count', value: observation.count },
-      { metric: 'rating', metric_label: 'Google rating', value: observation.rating },
-    ].map((metric) => ({ ...metric, clinic, channel: 'benchmark', integration, day, synced_at: at.toISOString() }));
+    const metrics = [{ metric: 'review_count', metric_label: 'Google review count', value: observation.count }];
+    const rating = observation.rating;
+    if (observation.count > 0 && rating != null && Number.isFinite(rating) && rating >= 1 && rating <= 5) {
+      metrics.push({ metric: 'rating', metric_label: 'Google rating', value: rating });
+    } else {
+      // value is NOT NULL. A same-day retry must also clear any earlier rating.
+      // Clear first: a failed delete must not publish a new count with stale stars.
+      const { error } = await db.from('social_insights').delete()
+        .eq('clinic', clinic).eq('channel', 'benchmark').eq('metric', 'rating').eq('day', day);
+      if (error) throw new Error('Benchmark rating removal failed');
+    }
+    const rows = metrics.map((metric) => ({ ...metric, clinic, channel: 'benchmark', integration, day, synced_at: at.toISOString() }));
     const { error } = await db.from('social_insights').upsert(rows, { onConflict: 'clinic,channel,metric,day' });
     if (error) throw new Error('Benchmark observation storage failed');
     stored += rows.length;

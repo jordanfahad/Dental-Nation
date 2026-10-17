@@ -11,7 +11,7 @@ export function comparisonInput(): Parameters<typeof buildClinicComparison>[0] {
   const lead = (Date: string, branch: string, tab = '') => ({ data: { Date, 'Clinic / Branch': branch, _source_tab: tab } });
   const bill = (bill_date: string, amount: number, center_name = 'Al Wasl', bill_status = '') => ({ bill_date, amount, data: { center_name, bill_status } });
   const report = (booked: number) => ({ totals: { ...growth().totals, booked } });
-  return { today: '2026-10-15', metrics,
+  return { today: '2026-10-15', metrics, bookingsAvailable: true,
     tracker: [lead('2026-09-30', 'DN Al Wasl'), lead('30/09/2026', 'Tosun Clinic'), lead('2026-09-30', 'AMC Branch'), lead('2026-09-30', 'Unknown'),
       lead('2026-10-01', 'TDC Al wasl 4 Jumeirah - Branch'), lead('2026-10-01', 'TDC Al wasl 4 Jumeirah - Branch'),
       lead('2026-10-14', '', 'DN Campaign Leads'), lead('2026-10-14', 'DR. TOSUN DENTAL CLINIC BRACH'),

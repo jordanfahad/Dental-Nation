@@ -9,7 +9,7 @@ import * as plan from '../lib/gbp/plan';
 import * as emails from '../lib/performance/emails';
 import { gbpFixture } from './fixtures/dn015';
 import * as comparison from '../lib/gbp/clinic-comparison';
-import { comparisonFixture } from './fixtures/dn019';
+import { comparisonFixture, comparisonInput } from './fixtures/dn019';
 
 function load<T>(file: string, deps: Record<string, unknown>): T {
   const code = ts.transpileModule(readFileSync(file, 'utf8'), { fileName: file, compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2021, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true } }).outputText;
@@ -62,6 +62,19 @@ test('GBP comparison renders all three rows with paired periods and unavailable 
   assert.equal((text.match(/MTD Last month/g) ?? []).length, 6);
   assert.match(text, /Al Maher.*Unavailable Unavailable Unavailable Unavailable/);
   assert.match(text, /250\.00 100\.25/); assert.match(text, /300\.25 200\.00/);
+});
+
+test('GBP comparison renders unavailable outcomes and names empty sources without fabricated zeroes', () => {
+  const component = load<{ GbpClinicTable: (props: { report: comparison.ClinicComparison | null }) => React.ReactNode }>('components/sections/opsreport/GbpClinicTable.tsx', {
+    '@/lib/gbp/clinic-comparison': comparison,
+  });
+  const report = comparison.buildClinicComparison({ ...comparisonInput(), tracker: [], bills: [], bookingsAvailable: false });
+  const text = textOf(component.GbpClinicTable({ report }));
+  assert.match(text, /No data in either reporting period:\s+Tracker leads, Growth bookings, Billing/);
+  assert.match(text, /Unassigned leads: MTD\s+Unavailable\s*, last month\s+Unavailable/);
+  assert.match(text, /Al Wasl.*Unavailable Unavailable Unavailable Unavailable Unavailable Unavailable/);
+  assert.match(text, /Dr Tosun.*Unavailable Unavailable Unavailable Unavailable Unavailable Unavailable/);
+  assert.match(text, /Al Maher.*Unavailable Unavailable Unavailable Unavailable Unavailable Unavailable/);
 });
 test('action note enforces authenticated owner access, length and exact text with failed-save feedback', async (t) => {
   const keys = ['AUTH_SESSION_SECRET', 'DASHBOARD_PASSWORD'];

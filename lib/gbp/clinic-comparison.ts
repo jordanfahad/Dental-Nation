@@ -29,9 +29,17 @@ export function coverageLabel(metric: CoveredMetric) {
 
 export function buildClinicComparison(input: {
   today: string; metrics: Signal[]; tracker: { data: Record<string, unknown> }[]; bills: BillInput[]; growth: ComparisonGrowth;
+  bookingsAvailable: boolean;
 }) {
   const periods = comparisonPeriods(input.today);
   const leads = parseGrossRows(input.tracker); // DN-018 mapper, header filtering and dates.
+  const inWindow = (day: string | null | undefined) => !!day && day >= periods.lastMonth.from && day <= periods.mtd.to;
+  const leadsAvailable = leads.rows.some((r) => inWindow(r.date));
+  // Cancelled invoices still establish feed presence, but never contribute AED.
+  const billingAvailable = input.bills.some((b) => inWindow(b.bill_date));
+  const missingSources = [!leadsAvailable ? 'Tracker leads' : null,
+    !input.bookingsAvailable ? 'Growth bookings' : null, !billingAvailable ? 'Billing' : null]
+    .filter((source): source is string => source !== null);
   const bills = input.bills.filter((b) => b.bill_date && String(b.data?.bill_status ?? '').trim().toUpperCase() !== 'CANCELLED');
   const branches = GMB_CLINICS.map((clinic) => {
     const period = (key: ComparisonPeriod) => {
@@ -41,17 +49,17 @@ export function buildClinicComparison(input: {
         calls: metricTotal(input.metrics, clinic.key, 'calls', from, to),
         directions: metricTotal(input.metrics, clinic.key, 'directions', from, to),
         websiteClicks: metricTotal(input.metrics, clinic.key, 'website_clicks', from, to),
-        leads: leads.rows.filter((r) => r.clinic === clinic.key && r.date >= from && r.date <= to).length,
-        bookings: clinic.key === 'al-maher' ? null : input.growth[key][clinic.key].totals.booked,
-        revenue: clinic.key === 'al-maher' ? null : Math.round(recorded.reduce((n, b) => n + (Number(b.amount) || 0), 0) * 100) / 100,
+        leads: leadsAvailable ? leads.rows.filter((r) => r.clinic === clinic.key && r.date >= from && r.date <= to).length : null,
+        bookings: clinic.key === 'al-maher' || !input.bookingsAvailable ? null : input.growth[key][clinic.key].totals.booked,
+        revenue: clinic.key === 'al-maher' || !billingAvailable ? null : Math.round(recorded.reduce((n, b) => n + (Number(b.amount) || 0), 0) * 100) / 100,
       };
     };
     const latestBill = clinic.key === 'al-maher' ? null : bills.filter((b) => b.bill_date! <= periods.mtd.to &&
       clinicOfCenter(String(b.data?.center_name ?? '')) === clinic.key).map((b) => b.bill_date!).sort().at(-1) ?? null;
     return { ...clinic, mtd: period('mtd'), lastMonth: period('lastMonth'), latestBill };
   });
-  const unassigned = (key: ComparisonPeriod) => leads.rows.filter((r) => !r.clinic && r.date >= periods[key].from && r.date <= periods[key].to).length;
+  const unassigned = (key: ComparisonPeriod) => leadsAvailable ? leads.rows.filter((r) => !r.clinic && r.date >= periods[key].from && r.date <= periods[key].to).length : null;
   return { today: input.today, periods, branches, unassigned: { mtd: unassigned('mtd'), lastMonth: unassigned('lastMonth') },
-    undated: leads.undated, headerEchoes: leads.headerEchoes };
+    undated: leads.undated, headerEchoes: leads.headerEchoes, missingSources };
 }
 export type ClinicComparison = ReturnType<typeof buildClinicComparison>;

@@ -20,9 +20,29 @@ const group = (domain: string, listings: BranchListing[]): BranchDemandGroup => 
 function database(tables: Record<string, Row[]> = {}, failedRead?: string, failedWrite?: string) {
   const read = fixtureDb(tables, failedRead);
   const conflicts: string[] = [];
+  const payloads: Row[][] = [];
+  const deletions: Row[] = [];
   const db = { from(table: string) {
-    return Object.assign(read.from(table), { async upsert(rows: Row[], options: { onConflict: string }) {
+    return Object.assign(read.from(table), { delete() {
+      const filters: Row = {};
+      const query = {
+        eq(key: string, value: unknown) { filters[key] = value; return query; },
+        then(resolve: (result: { error: object | null }) => void) {
+          deletions.push({ ...filters });
+          if (filters.clinic === failedWrite) return resolve({ error: {} });
+          const target = tables[table] ?? [];
+          for (let i = target.length - 1; i >= 0; i--) {
+            if (Object.entries(filters).every(([key, value]) => target[i][key] === value)) target.splice(i, 1);
+          }
+          resolve({ error: null });
+        },
+      };
+      return query;
+    }, async upsert(rows: Row[], options: { onConflict: string }) {
       conflicts.push(options.onConflict);
+      payloads.push(rows.map((row) => ({ ...row })));
+      // Match the supplied production schema: one null rejects the whole batch.
+      if (rows.some((r) => r.value == null)) return { error: { code: '23502' } };
       if (rows.some((r) => r.clinic === failedWrite)) return { error: {} };
       const target = tables[table] ??= [];
       for (const row of rows) {
@@ -32,7 +52,7 @@ function database(tables: Record<string, Row[]> = {}, failedRead?: string, faile
       return { error: null };
     } });
   } } as unknown as AdminClient;
-  return { db, tables, conflicts };
+  return { db, tables, conflicts, payloads, deletions };
 }
 function clearConfig(t: TestContext) {
   for (const key of [...GMB_SECRET_KEYS.map((s) => s.toUpperCase()), 'DATAFORSEO_LOGIN', 'DATAFORSEO_PASSWORD']) {
@@ -61,7 +81,8 @@ test('observations sum matched branches, weight ratings, use Dubai dates, and up
   assert.equal(benchmarks(rows, '2026-10-01')[1].rating.value, 4.4);
   assert.ok(store.conflicts.every((key) => key === 'clinic,channel,metric,day'));
   await storeBenchmarkObservations(store.db, [group('drjoydentalclinic.com', [listing(0, null)])], new Date('2026-10-01T05:00:00Z'));
-  assert.equal(rows.length, 4); assert.equal(benchmarks(rows, '2026-10-01')[1].rating.value, null);
+  assert.equal(rows.length, 3); assert.equal(benchmarks(rows, '2026-10-01')[1].rating.value, null);
+  assert.equal(rows.some((r) => r.clinic === 'dr-joy' && r.metric === 'rating'), false);
 });
 
 test('empty, unknown and incomplete listing sets do not manufacture observations', async (t) => {
@@ -108,7 +129,7 @@ test('benchmark displays stored values and dates, ignores GBP counters, and requ
   assert.equal(brief.benchmark[1].followers.value, null); assert.equal(brief.benchmark[2].followers.value, null);
 });
 
-test('reader preserves stored own history and uses the GBP snapshot only for absent metrics', async (t) => {
+test('reader preserves stored own history and uses the GBP snapshot only without a stored observation', async (t) => {
   clearConfig(t);
   const rows = ['2026-09-11', '2026-10-11'].flatMap((day, i) => [
     { clinic: 'dental-nation', channel: 'benchmark', metric: 'review_count', day, value: 70 + 10 * i },
@@ -118,9 +139,78 @@ test('reader preserves stored own history and uses the GBP snapshot only for abs
   assert.deepEqual(brief.benchmark[0].reviews, { value: 80, date: '2026-10-11', delta30: 10 });
   assert.equal(brief.benchmark[0].rating.value, 4.6);
   const fallback = await readPerformanceBrief('2026-10-12', fixtureDb({ social_insights: rows.filter((r) => r.metric === 'review_count') }), gbpFixture());
-  assert.equal(fallback.benchmark[0].reviews.value, 80); assert.equal(fallback.benchmark[0].rating.value, 5);
+  assert.equal(fallback.benchmark[0].reviews.value, 80); assert.equal(fallback.benchmark[0].rating.value, null);
   const empty = await readPerformanceBrief('2026-10-12', fixtureDb({}), gbpFixture());
   assert.equal(empty.benchmark[0].reviews.value, 1); assert.equal(empty.benchmark[0].reviews.delta30, null);
+  assert.equal(empty.benchmark[0].rating.value, 5);
+});
+
+test('zero and incomplete ratings store only numeric counts against a NOT NULL database', async (t) => {
+  clearConfig(t);
+  const store = database({ app_secrets: gmbSecrets(), gmb_reviews: [] });
+  const result = await storeBenchmarkObservations(store.db, [
+    group('drjoydentalclinic.com', [listing(0, null)]),
+    group('drmichaels.com', [listing(5, null)]),
+  ], new Date('2026-10-11T08:00:00Z'));
+  assert.deepEqual(result, { stored: 3, failed: [] });
+  assert.deepEqual(store.tables.social_insights.map((r) => [r.clinic, r.metric, r.value]), [
+    ['dr-joy', 'review_count', 0], ['dr-michaels', 'review_count', 5], ['dental-nation', 'review_count', 0],
+  ]);
+  assert.equal(store.payloads.length, 3);
+  assert.ok(store.payloads.every((rows) => rows.length === 1 && rows[0].metric === 'review_count'));
+  assert.ok(store.payloads.flat().every((r) => typeof r.value === 'number' && Number.isFinite(r.value)));
+});
+
+test('same-day missing rating clears only that clinic observation and deletion failures stay isolated', async (t) => {
+  clearConfig(t);
+  const store = database();
+  const groups = [group('drjoydentalclinic.com', [listing(10, 4.8)]), group('drmichaels.com', [listing(20, 5)])];
+  await storeBenchmarkObservations(store.db, groups, new Date('2026-10-10T08:00:00Z'));
+  await storeBenchmarkObservations(store.db, groups, new Date('2026-10-11T08:00:00Z'));
+  groups[0].listings = [listing(15, null)];
+  assert.deepEqual(await storeBenchmarkObservations(store.db, groups, new Date('2026-10-11T09:00:00Z')), { stored: 3, failed: [] });
+  assert.deepEqual(store.deletions, [{ clinic: 'dr-joy', channel: 'benchmark', metric: 'rating', day: '2026-10-11' }]);
+  const rows = store.tables.social_insights as unknown as Signal[];
+  assert.equal(rows.length, 7);
+  assert.equal(rows.find((r) => r.clinic === 'dr-joy' && r.metric === 'rating')?.day, '2026-10-10');
+  assert.equal(benchmarks(rows, '2026-10-11')[1].reviews.value, 15);
+  assert.equal(benchmarks(rows, '2026-10-11')[1].rating.value, null);
+  assert.equal(benchmarks(rows, '2026-10-11')[2].rating.value, 5);
+  const failed = database({}, undefined, 'dr-joy');
+  assert.deepEqual(await storeBenchmarkObservations(failed.db, groups), { stored: 2, failed: ['dr-joy'] });
+});
+
+test('stored zero reviews suppress snapshot stars and render an unavailable email rating', async (t) => {
+  clearConfig(t);
+  const rows = [{ clinic: 'dental-nation', channel: 'benchmark', metric: 'review_count', day: '2026-10-11', value: 0 }];
+  const brief = await readPerformanceBrief('2026-10-12', fixtureDb({ social_insights: rows }), gbpFixture());
+  assert.deepEqual(brief.benchmark[0].reviews, { value: 0, date: '2026-10-11', delta30: null });
+  assert.deepEqual(brief.benchmark[0].rating, { value: null, date: null, delta30: null });
+  const html = buildAkbarPerformance(brief).html;
+  const section = html.slice(html.indexOf('4. Benchmark (estimate)'), html.indexOf('5. Smile Club performance'));
+  const ownRow = section.match(/<tr><td[^>]*>Dental Nation \(Al Wasl profile\)<\/td>[\s\S]*?<\/tr>/)?.[0];
+  assert.ok(ownRow);
+  assert.match(ownRow, /0 \(2026-10-11\)/);
+  assert.match(ownRow, /no public signal stored<\/td><\/tr>$/);
+  assert.doesNotMatch(ownRow, /0\.0|5\.0|★|☆/);
+});
+
+test('ratings use only the latest count day and exact same-profile 30-day endpoints; followers stay independent', () => {
+  const row = (day: string, metric: string, value: number, clinic = 'dr-joy'): Signal => ({ clinic, channel: 'benchmark', day, metric, value });
+  const rows = [row('2026-10-01', 'rating', 4.8), row('2026-10-11', 'review_count', 200),
+    row('2026-09-11', 'review_count', 150), row('2026-09-11', 'rating', 4),
+    { ...row('2026-10-10', 'followers', 60), channel: 'instagram' },
+    { ...row('2026-09-10', 'followers', 50), channel: 'instagram' }];
+  let result = benchmarks(rows, '2026-10-11')[1];
+  assert.equal(result.rating.value, null); assert.equal(result.rating.delta30, null);
+  assert.deepEqual(result.followers, { value: 60, date: '2026-10-10', delta30: 10 });
+  rows.push(row('2026-10-11', 'rating', 4.5, 'DR-JOY'));
+  result = benchmarks(rows, '2026-10-11')[1];
+  assert.deepEqual(result.rating, { value: 4.5, date: '2026-10-11', delta30: 0.5 });
+  assert.equal(result.reviews.delta30, 50);
+  assert.equal(benchmarks(rows.filter((r) => !(r.metric === 'rating' && r.day === '2026-09-11')), '2026-10-11')[1].rating.delta30, null);
+  assert.equal(benchmarks(rows.map((r) => r.metric === 'rating' && r.day === '2026-09-11' ? { ...r, clinic: 'drjoydentalclinic.com' } : r), '2026-10-11')[1].rating.delta30, null);
+  assert.equal(benchmarks([row('2026-10-11', 'rating', 5)], '2026-10-11')[1].rating.value, null);
 });
 
 /** Run the real weekly callback with a cache double and mocked public responses. */

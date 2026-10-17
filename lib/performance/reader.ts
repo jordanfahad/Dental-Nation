@@ -64,9 +64,9 @@ export async function readPerformanceBrief(today: string, db: AdminClient | null
   const ours = gbp.branches.find((b) => b.key === 'dental-nation')?.reputation;
   // Current reconciled reviews are an observed snapshot, not a retrospective
   // public counter. Never manufacture a 30-day count delta from review dates.
-  if (ours?.observedAt) {
-    if (benchmark[0].reviews.value == null) benchmark[0].reviews = { value: ours.count, date: ours.observedAt.slice(0, 10), delta30: null };
-    if (benchmark[0].rating.value == null) benchmark[0].rating = { value: ours.rating, date: ours.observedAt.slice(0, 10), delta30: null };
+  if (ours?.observedAt && benchmark[0].reviews.date == null) {
+    benchmark[0].reviews = { value: ours.count, date: ours.observedAt.slice(0, 10), delta30: null };
+    benchmark[0].rating = { value: ours.rating, date: ours.observedAt.slice(0, 10), delta30: null };
   }
   return { today, yesterday: buildPeriod(yesterday, yesterday, day, raw, bb), mtd: buildPeriod(month, yesterday, mtd, raw, bb),
     action: note.body, gbp, benchmark, smile,
