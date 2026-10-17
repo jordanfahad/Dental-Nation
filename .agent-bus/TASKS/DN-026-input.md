@@ -1,4 +1,4 @@
-# DN-023 input: Smile Club scripts v2 (17 Oct), Arabic with English source
+# DN-026 input: Smile Club scripts v2 (17 Oct), Arabic with English source
 
 Line IDs are stable: <dentist-key>-<n>. The English line with the same ID is the meaning to preserve.
 
