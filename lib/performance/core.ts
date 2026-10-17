@@ -58,6 +58,25 @@ export interface FunnelRow { clinic: string; group: string; gross: number | null
 export interface PatientSplit { clinic: string; total: number | null; new: number | null; existing: number | null; unclassified: number | null; note: string }
 export interface PerformancePeriod { from: string; to: string; rows: FunnelRow[]; patients: PatientSplit[]; total: FunnelRow; notes: string[] }
 
+export interface ReceptionWindow {
+  from: string; to: string; logged: number; byGroup: Record<PerfGroup, number>; booked: number; noSource: number;
+}
+export interface ReceptionData {
+  yesterday: ReceptionWindow; mtd: ReceptionWindow;
+  /** Whole-tracker diagnostics, repeated in both window rows. */
+  futureDated: number; lastSyncedAt: string | null;
+}
+export const RECEPTION_NOTE = 'The tracker is entered by hand by the desk, so counts can lag the day. Future-dated and last sync describe the whole tracker.';
+export function buildReceptionSection(data: ReceptionData): (string | number)[][] {
+  const sync = data.lastSyncedAt && Number.isFinite(Date.parse(data.lastSyncedAt))
+    ? `${new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Dubai', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(data.lastSyncedAt))} Dubai`
+    : 'Unavailable';
+  return ([['Yesterday', data.yesterday], ['MTD', data.mtd]] as const).map(([label, window]) => [
+    `${label} (${window.from === window.to ? window.to : `${window.from} to ${window.to}`})`, window.logged,
+    GROUPS.map((group) => `${group}: ${window.byGroup[group]}`).join('; '), window.booked, window.noSource, data.futureDated, sync,
+  ]);
+}
+
 export function patientSplits(bills: BillInput[], from: string, to: string): PatientSplit[] {
   const clean = bills.filter((b) => b.bill_date && String(b.data?.bill_status ?? '').toUpperCase() !== 'CANCELLED');
   const acquisition = computeNewPatientAcquisition({ bills: clean, appts: [], widgetPhones: new Set(), from, to, spend: null, clinic: 'dental-nation' });
@@ -156,7 +175,7 @@ export interface SmilePerformance {
 }
 export interface PerformanceBrief {
   today: string; yesterday: PerformancePeriod; mtd: PerformancePeriod; gbp: GbpPlan; action: string;
-  why: string[]; benchmark: ReturnType<typeof benchmarks>; smile: SmilePerformance;
+  why: string[]; benchmark: ReturnType<typeof benchmarks>; smile: SmilePerformance; reception: ReceptionData;
 }
 export function performanceWhy(current: GrowthReport, prior: GrowthReport, gbp: GbpPlan, metaPausedSince: string | null): string[] {
   const spend = (r: GrowthReport) => r.channels.filter((c) => c.group === 'paid').reduce<number | null>((n, c) => c.spend == null ? n : (n ?? 0) + c.spend, null);

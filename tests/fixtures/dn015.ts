@@ -1,7 +1,7 @@
 import { CHANNELS } from '../../config/growth-channels';
 import type { GrowthReport } from '../../lib/growth/channelPerformance';
 import { addDays, buildGbpPlan, type RawLogRow } from '../../lib/gbp/plan';
-import { benchmarks, buildPeriod, parseGrossRows, type PerformanceBrief } from '../../lib/performance/core';
+import { benchmarks, buildPeriod, GROUPS, parseGrossRows, type PerformanceBrief, type ReceptionWindow } from '../../lib/performance/core';
 
 export const logRow = (overrides: Record<string, unknown> = {}, row_index = 2): RawLogRow => ({ row_index, data: {
   Date: '2026-10-11', Branch: 'Al Wasl', 'Plan day': '1', Activity: 'Check opening hours', Status: 'Done',
@@ -29,7 +29,10 @@ export function briefFixture(): PerformanceBrief {
   const report = growth();
   const p = buildPeriod('2026-10-11', '2026-10-11', { all: report, wasl: report, tosun: growth(0, 0) }, parseGrossRows(Array.from({ length: 65 }, () => ({ data: { Date: '2026-10-11', 'Clinic / Branch': 'Al Wasl', 'Source Type': 'Paid', 'Inquiry Platform': 'Google' } }))), []);
   const period = { enrolments: null, messages: null, replies: null, bookings: 3, shows: 2 };
+  const reception: ReceptionWindow = { from: '2026-10-11', to: '2026-10-11', logged: 0,
+    byGroup: Object.fromEntries(GROUPS.map((g) => [g, 0])) as ReceptionWindow['byGroup'], booked: 0, noSource: 0 };
   return { today: '2026-10-12', yesterday: p, mtd: { ...p, from: '2026-10-01' }, gbp: gbpFixture(), action: '',
+    reception: { yesterday: reception, mtd: { ...reception, from: '2026-10-01' }, futureDated: 0, lastSyncedAt: null },
     why: ['Net enquiries: 41 versus 30 in the prior 7 days.', 'No-shows: 3 versus 2.', 'Recorded paid spend: AED 700 versus AED 600.'],
     benchmark: benchmarks([], '2026-10-11'), smile: { members: 12, membersAsOf: '2026-10-11', verifiedHistoricalMembers: 0, verifiedAt: '2026-09-25', yesterday: period, mtd: period, notes: ['Dated messages and replies not stored.'] } };
 }
