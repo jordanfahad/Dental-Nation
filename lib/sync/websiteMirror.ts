@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import type { sheets_v4 } from 'googleapis';
 import type { AdminClient } from '@/lib/supabase/server';
 import { sheetMapping } from '@/config/sheet-mapping';
-import { WEBSITE_BACKFILL_FROM, WEBSITE_ENQUIRIES_TAB, WEBSITE_SUMMARY_TAB, WEBSITE_HEADERS } from '@/config/website-enquiries';
+import { WEBSITE_BACKFILL_FROM, WEBSITE_ENQUIRIES_TAB, WEBSITE_SUMMARY_TAB, WEBSITE_HEADERS, WEBSITE_ORPHAN_STATUS as ORPHAN_STATUS } from '@/config/website-enquiries';
 import { getWebsiteEnquiries } from '@/lib/growth/channelPerformance';
 import { websiteIdentity, type WebsiteEnquiry } from '@/lib/growth/websiteEnquiries';
 import { emptyWebsiteReview, type WebsiteReviewDay, type WebsiteReviewSnapshot } from '@/lib/growth/websiteReview';
@@ -14,28 +14,43 @@ import { dayFromSheet, sheetDay, mirrorInitialization, summaryInitialization } f
 
 export interface WebsiteMirrorResult {
   ok: boolean; appended: number; refreshed: number; summaryTab: boolean; reviewRead: boolean; skipped?: boolean; error?: string;
+  /** Mirrored rows no longer in the website population: kept, marked, never deleted. */
+  orphaned?: number;
+  /** Rows without a WEB- Lead ID or a valid date (e.g. typed by hand): ignored. */
+  ignoredRows?: number;
 }
 const s = (value: unknown) => String(value ?? '').trim();
+/** Header positions the sync relies on: machine columns A:J and the review columns K, P, Q. */
+const CHECKED_HEADERS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 16];
 const machineCells = (row: WebsiteEnquiry, id: string) => [id, sheetDay(row.date), row.time, row.name, row.phone, row.branch, row.service, row.source, row.status, row.billed ?? ''];
-const identityFromCells = (row: unknown[]) => websiteIdentity({ p9: phone9(s(row[4])), date: dayFromSheet(row[1]), time: s(row[2]), name: s(row[3]), branch: s(row[5]), service: s(row[6]) });
+const identityFromCells = (row: unknown[]) => websiteIdentity({ p9: phone9(s(row[4])), date: dayFromSheet(row[1]), name: s(row[3]), branch: s(row[5]), service: s(row[6]) });
+const isMirrorRow = (row: unknown[]) => /^WEB-\d+$/.test(s(row[0])) && !!dayFromSheet(row[1]);
+const teamCells = (row: unknown[]) => JSON.stringify(Array.from({ length: 9 }, (_, i) => s(row[10 + i])));
 
-export function validateWebsiteGrid(grid: unknown[][]): void {
-  if (WEBSITE_HEADERS.some((header, i) => grid[0]?.[i] !== header)) throw new Error('Website mirror headers changed; no cells written');
+export function validateWebsiteGrid(grid: unknown[][]): { ignoredRows: number } {
+  if (CHECKED_HEADERS.some((i) => grid[0]?.[i] !== WEBSITE_HEADERS[i])) throw new Error('Website mirror headers changed; no cells written');
   const ids = new Set<string>();
+  let ignoredRows = 0;
   for (const row of grid.slice(1)) {
     if (row.every((c) => !s(c))) continue;
-    if (!/^WEB-\d+$/.test(s(row[0])) || !dayFromSheet(row[1]) || ids.has(s(row[0]))) throw new Error('Website mirror has an invalid or duplicate row; no cells written');
+    if (!isMirrorRow(row)) { ignoredRows++; continue; }
+    if (ids.has(s(row[0]))) throw new Error('Website mirror has a duplicate Lead ID; no cells written');
     ids.add(s(row[0]));
   }
+  return { ignoredRows };
 }
 
-/** Row positions come from this run's read. Existing rows only receive A:J. */
+/** Row positions come from this run's read. Only machine cells (A:J) that
+ * actually differ are written, so most runs write nothing. A mirrored row that
+ * drops out of the population is never deleted: only its status cell (I) is
+ * set to ORPHAN_STATUS, and it is excluded from the counts.
+ */
 export function planWebsiteMirror(rows: WebsiteEnquiry[], grid: unknown[][]) {
-  validateWebsiteGrid(grid);
+  const { ignoredRows } = validateWebsiteGrid(grid);
   let maxId = maxMirrorId(grid, 'WEB-');
   const existing = new Map<string, number[]>();
   grid.slice(1).forEach((row, index) => {
-    if (!s(row[0])) return;
+    if (!isMirrorRow(row)) return;
     const key = identityFromCells(row);
     existing.set(key, [...(existing.get(key) ?? []), index + 1]);
   });
@@ -43,25 +58,37 @@ export function planWebsiteMirror(rows: WebsiteEnquiry[], grid: unknown[][]) {
   const append: (string | number)[][] = [];
   for (const row of rows) {
     const index = existing.get(websiteIdentity(row))?.shift();
-    if (index != null) updates.push({ range: `${quoteTab(WEBSITE_ENQUIRIES_TAB)}!A${index + 1}:J${index + 1}`, values: [machineCells(row, s(grid[index][0]))] });
-    else append.push(machineCells(row, `WEB-${String(++maxId).padStart(4, '0')}`));
+    if (index == null) { append.push(machineCells(row, `WEB-${String(++maxId).padStart(4, '0')}`)); continue; }
+    const desired = machineCells(row, s(grid[index][0]));
+    if (desired.some((value, column) => s(grid[index][column]) !== s(value))) {
+      updates.push({ range: `${quoteTab(WEBSITE_ENQUIRIES_TAB)}!A${index + 1}:J${index + 1}`, values: [desired] });
+    }
   }
-  if ([...existing.values()].some((indices) => indices.length)) throw new Error('Website population changed; retained team rows need reconciliation');
-  return { updates, append };
+  const orphanRows = [...existing.values()].flat();
+  for (const index of orphanRows) {
+    if (s(grid[index][8]) !== ORPHAN_STATUS) updates.push({ range: `${quoteTab(WEBSITE_ENQUIRIES_TAB)}!I${index + 1}`, values: [[ORPHAN_STATUS]] });
+  }
+  return { updates, append, orphaned: orphanRows.length, ignoredRows };
 }
 
-export function websiteReviewDays(grid: unknown[][]): WebsiteReviewDay[] {
+/** Aggregate review counts per enquiry day, for current website rows only. */
+export function websiteReviewDays(grid: unknown[][], current: Set<string>): WebsiteReviewDay[] {
   validateWebsiteGrid(grid);
   const days = new Map<string, WebsiteReviewDay>();
+  const counted = new Set<string>();
   for (const row of grid.slice(1)) {
-    if (!s(row[0])) continue;
+    if (!isMirrorRow(row)) continue;
+    const identity = identityFromCells(row);
+    if (!current.has(identity) || counted.has(identity) || s(row[8]) === ORPHAN_STATUS) continue;
+    counted.add(identity);
     const date = dayFromSheet(row[1]);
     const day = days.get(date) ?? { date, ...emptyWebsiteReview() };
+    const status = s(row[8]).toLowerCase();
     day.gross++;
     if (s(row[10]).toLowerCase() === 'yes') day.actual++;
     if (!s(row[10])) day.notYetReviewed++;
-    if (s(row[15]).toLowerCase() === 'booked' || ['booked', 'attended'].includes(s(row[8]).toLowerCase())) day.booked++;
-    if (s(row[16]).toLowerCase() === 'converted' || s(row[8]).toLowerCase() === 'billed') day.converted++;
+    if (s(row[15]).toLowerCase() === 'booked' || ['booked', 'attended', 'billed'].includes(status)) day.booked++;
+    if (s(row[16]).toLowerCase() === 'converted' || status === 'billed') day.converted++;
     days.set(date, day);
   }
   return [...days.values()].sort((a, b) => a.date.localeCompare(b.date));
@@ -73,8 +100,8 @@ function mirrorError(error: unknown): string {
   // Provider errors can echo row contents or credentials. Only our fixed messages leave this boundary.
   const safe = [
     'Website mirror headers changed; no cells written',
-    'Website mirror has an invalid or duplicate row; no cells written',
-    'Website population changed; retained team rows need reconciliation',
+    'Website mirror has a duplicate Lead ID; no cells written',
+    'Website mirror rows moved during sync; review not saved',
     'Website mirror readback incomplete',
     'Website mirror lease unavailable',
     'Website review storage unavailable',
@@ -109,7 +136,21 @@ export async function syncWebsiteMirror(db: AdminClient, dependencies: {
     await ensureMirrorTab(sheets, spreadsheetId, tabs, WEBSITE_ENQUIRIES_TAB, mirrorInitialization);
     const range = `${quoteTab(WEBSITE_ENQUIRIES_TAB)}!A:S`;
     const read = async () => (await sheets.spreadsheets.values.get({ spreadsheetId, range, valueRenderOption: 'UNFORMATTED_VALUE' })).data.values ?? [];
-    const plan = planWebsiteMirror(rows, await read());
+    const before = await read();
+    const plan = planWebsiteMirror(rows, before);
+    result.orphaned = plan.orphaned;
+    result.ignoredRows = plan.ignoredRows;
+    if (plan.updates.length) {
+      // Updates address rows by position. Re-check the Lead IDs at those
+      // positions right before writing; if the tab was sorted or rows were
+      // inserted since our read, write nothing (the next run re-plans).
+      const ids = (await sheets.spreadsheets.values.get({ spreadsheetId, range: `${quoteTab(WEBSITE_ENQUIRIES_TAB)}!A:A`, valueRenderOption: 'UNFORMATTED_VALUE' })).data.values ?? [];
+      const shifted = plan.updates.some((update) => {
+        const index = Number(update.range.match(/!\w(\d+)/)![1]) - 1;
+        return s(ids[index]?.[0]) !== s(before[index]?.[0]);
+      });
+      if (shifted) throw new Error('Website mirror rows moved during sync; review not saved');
+    }
     for (let i = 0; i < plan.updates.length; i += 500) {
       const data = plan.updates.slice(i, i + 500);
       await sheets.spreadsheets.values.batchUpdate({ spreadsheetId, requestBody: { valueInputOption: 'RAW', data } });
@@ -121,14 +162,19 @@ export async function syncWebsiteMirror(db: AdminClient, dependencies: {
       result.appended += values.length;
     }
     // Read the team's current cells, not an old pre-write copy.
-    const grid = await read();
+    const grid = plan.updates.length || plan.append.length ? await read() : before;
     const verified = planWebsiteMirror(rows, grid);
-    const incomplete = verified.updates.some((update) => {
-      const rowIndex = Number(update.range.match(/!A(\d+):/)![1]) - 1;
-      return update.values[0].some((value, column) => s(grid[rowIndex][column]) !== s(value));
-    });
-    if (verified.append.length || incomplete) throw new Error('Website mirror readback incomplete');
-    const days = websiteReviewDays(grid);
+    if (verified.append.length || verified.updates.length) throw new Error('Website mirror readback incomplete');
+    // Rows were addressed by position: if the tab was sorted while we wrote,
+    // team cells (K:S) would now sit next to a different Lead ID. Check every
+    // row we wrote kept its own team cells.
+    if (plan.updates.length) {
+      const teamBefore = new Map(before.slice(1).filter(isMirrorRow).map((row) => [s(row[0]), teamCells(row)]));
+      const touched = new Set(plan.updates.map((update) => s(before[Number(update.range.match(/!\w(\d+)/)![1]) - 1]?.[0])));
+      const moved = grid.slice(1).filter(isMirrorRow).some((row) => touched.has(s(row[0])) && teamBefore.has(s(row[0])) && teamBefore.get(s(row[0])) !== teamCells(row));
+      if (moved) throw new Error('Website mirror rows moved during sync; review not saved');
+    }
+    const days = websiteReviewDays(grid, new Set(rows.map((row) => websiteIdentity(row))));
     await save({ available: true, synced_at: now.toISOString(), days });
     result.reviewRead = true;
     await ensureMirrorTab(sheets, spreadsheetId, tabs, WEBSITE_SUMMARY_TAB, summaryInitialization);

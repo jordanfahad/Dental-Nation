@@ -58,7 +58,7 @@ function EvidenceBar({ tagged, inferred }: { tagged: number; inferred: number })
 }
 
 /* One channel row of the P&L table. */
-function ChannelRow({ p, traceQs, review }: { p: ChannelPerf; traceQs: string; review?: GrowthReport['websiteReview'] }) {
+function ChannelRow({ p, traceQs, review, clinicScoped = false }: { p: ChannelPerf; traceQs: string; review?: GrowthReport['websiteReview']; clinicScoped?: boolean }) {
   const muted = p.untracked || (p.booked === 0 && p.enquiries === 0 && p.revenue === 0);
   return (
     <tr className={`border-t border-line/70 ${muted ? 'opacity-60' : ''}`}>
@@ -71,7 +71,7 @@ function ChannelRow({ p, traceQs, review }: { p: ChannelPerf; traceQs: string; r
           {p.label}
         </Link>
         <span className="mt-0.5 block max-w-[230px] text-[10.5px] leading-snug text-ink-faint">{p.detail}</span>
-        {p.key === 'website' ? <span className="mt-1 block max-w-[270px] text-[11px] text-ink-soft">{websiteReviewLine(review ?? null, p)}</span> : null}
+        {p.key === 'website' ? <span className="mt-1 block max-w-[270px] text-[11px] text-ink-soft">{websiteReviewLine(review ?? null, p, clinicScoped)}</span> : null}
         {p.untracked ? (
           <span className="mt-1 inline-block rounded-full border border-dashed border-watch/50 px-2 py-0.5 text-[10px] font-medium text-watch">
             not tracked yet
@@ -413,7 +413,7 @@ async function ChannelTraceView({ channelKey, range, clinic }: { channelKey: str
       <div className="px-5 pb-5 pt-3">
         {channelKey === 'website' && performance ? (
           <p className="mb-3 text-[12px] text-ink-soft">
-            {websiteReviewLine(performance.websiteReview ?? null, performance.channels.find((c) => c.key === 'website')!)}
+            {websiteReviewLine(performance.websiteReview ?? null, performance.channels.find((c) => c.key === 'website'), clinic !== 'all')}
           </p>
         ) : null}
         <p className="mb-3 text-[12px] text-ink-soft">
@@ -689,7 +689,7 @@ export async function GrowthPlatform({ range, gchan, gclinic }: { range?: { from
                         ? <PaidSocialRows key={p.key} p={p} split={report.metaSplit} traceQs={traceQs} mktQs={mktQs} />
                         : p.key === 'ai-chat'
                           ? <AiChatRows key={p.key} p={p} split={report.organicSplit} />
-                          : <ChannelRow key={p.key} p={p} traceQs={traceQs} review={report.websiteReview} />,
+                          : <ChannelRow key={p.key} p={p} traceQs={traceQs} review={report.websiteReview} clinicScoped={clinic !== 'all'} />,
                   )}
                 </tbody>
               );

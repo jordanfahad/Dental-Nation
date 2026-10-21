@@ -476,7 +476,7 @@ const computeChannelPerformance = cache(async (
         if (enquirySeen.has(p9)) return;
         enquirySeen.add(p9);
       }
-      if (channel === 'website') return; // counted exclusively by the shared stable selector below
+      if (channel === 'website') return; // counted exclusively by the shared selector above
       at(channel).enquiries += 1;
       const mo = monthOf(day);
       if (mo) mo.enquiries += 1;
@@ -486,15 +486,20 @@ const computeChannelPerformance = cache(async (
     // clinic, so they render on All and DN views and stay empty on Dr Tosun's.
     let trackerLeadRows = 0;
     if (dnAssets) {
-      // A lane tag = ArabyAds = the Affiliates channel (commission partner, not our Meta spend).
-      for (const w of widgetRows) if (inRange(w.date, from, to)) countEnquiry(w.p9, widgetEnquiryChannel(w), w.date);
-      for (const l of leadRows) if (inRange(l.date, from, to)) { trackerLeadRows += 1; countEnquiry(l.p9, l.channel, l.date); }
-      for (const c of crmRows) if (c.source === 'aiAgent' && inRange(c.date, from, to)) countEnquiry(c.p9, 'ai-concierge', c.date);
+      // Website first, from the one shared selector (the same population as the
+      // Lead Tracker mirror). Its phones are reserved for the window, so a person
+      // who enquired via the website is never counted again in another channel,
+      // whatever order the rows were stored in.
       for (const row of selectWebsiteEnquiries(widgetRows, leadRows, { from, to })) {
+        if (row.p9) enquirySeen.add(row.p9);
         at('website').enquiries += 1;
         const month = monthOf(row.date);
         if (month) month.enquiries += 1;
       }
+      // A lane tag = ArabyAds = the Affiliates channel (commission partner, not our Meta spend).
+      for (const w of widgetRows) if (inRange(w.date, from, to)) countEnquiry(w.p9, widgetEnquiryChannel(w), w.date);
+      for (const l of leadRows) if (inRange(l.date, from, to)) { trackerLeadRows += 1; countEnquiry(l.p9, l.channel, l.date); }
+      for (const c of crmRows) if (c.source === 'aiAgent' && inRange(c.date, from, to)) countEnquiry(c.p9, 'ai-concierge', c.date);
     }
 
     // Appointments booked / showed / cancelled / no-show.
@@ -955,7 +960,8 @@ const computeChannelPerformance = cache(async (
 
     return {
       source: booked + totals.enquiries > 0 ? 'live' : 'empty',
-      websiteReview: dnAssets ? await readWebsiteReview(db, { from: from ?? undefined, to: to ?? undefined }, at('website').enquiries) : null,
+      // Team review is stored across all branches, so it is shown on the All view only.
+      websiteReview: clinic === 'all' ? await readWebsiteReview(db, { from: from ?? undefined, to: to ?? undefined }, at('website').enquiries) : null,
       from, to, channels, totals,
       byMonth: [...byMonth.values()].sort((x, y) => x.month.localeCompare(y.month)),
       apptFeedRows: appts.length,

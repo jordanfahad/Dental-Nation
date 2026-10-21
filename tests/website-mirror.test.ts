@@ -7,7 +7,7 @@ import { readWebsiteReview, websiteReviewLine, type WebsiteReviewSnapshot } from
 import { selectWebsiteEnquiries, type WebsiteEnquiry } from '../lib/growth/websiteEnquiries';
 import { planWebsiteMirror, syncWebsiteMirror, websiteReviewDays } from '../lib/sync/websiteMirror';
 import { dayFromSheet, sheetDay, websiteSummaryRows } from '../lib/sync/websiteMirrorLayout';
-import { WEBSITE_ENQUIRIES_TAB as MIRROR, WEBSITE_SUMMARY_TAB as SUMMARY, WEBSITE_HEADERS, WEBSITE_VALIDITY } from '../config/website-enquiries';
+import { WEBSITE_ENQUIRIES_TAB as MIRROR, WEBSITE_SUMMARY_TAB as SUMMARY, WEBSITE_HEADERS, WEBSITE_VALIDITY, WEBSITE_ORPHAN_STATUS } from '../config/website-enquiries';
 import { sheetMapping } from '../config/sheet-mapping';
 import { SheetsAdapter } from '../lib/sync/adapters/sheets-adapter';
 import { normalizeLeads } from '../lib/sync/normalize';
@@ -29,7 +29,7 @@ const candidates = (): WebsiteEnquiry[] => selectWebsiteEnquiries([
 
 /** Complete mutable Sheets double. It rejects any write outside the two new
  * tabs, and rejects updates to team columns. Nothing creates real clients. */
-function harness(initial: unknown[][] = [], fail?: 'permission' | 'appendAfterCommit' | 'readback' | 'storage' | 'ignoredRefresh') {
+function harness(initial: unknown[][] = [], fail?: 'permission' | 'appendAfterCommit' | 'readback' | 'storage' | 'ignoredRefresh' | 'sortDuringWrite' | 'sortBeforeWrite') {
   const grids: Record<string, unknown[][]> = { Existing: [['untouched']], ...(initial.length ? { [MIRROR]: structuredClone(initial) } : {}) };
   const tabs = Object.keys(grids).map((title, sheetId) => ({ properties: { title, sheetId } }));
   const requests: sheets_v4.Schema$Request[] = [];
@@ -60,6 +60,9 @@ function harness(initial: unknown[][] = [], fail?: 'permission' | 'appendAfterCo
     },
     values: {
       async get({ range }: { range: string }) {
+        // A teammate sorts the tab between our full read and our pre-write ID check.
+        if (fail === 'sortBeforeWrite' && range.endsWith('!A:A')) { const [, first, second, ...rest] = grids[MIRROR]; grids[MIRROR] = [grids[MIRROR][0], second, first, ...rest]; }
+        if (range.endsWith('!A:A')) return { data: { values: structuredClone(grids[titleOf(range)]).map((row) => [row[0]]) } };
         reads++;
         if (fail === 'readback' && reads > 1) throw new Error('Synthetic readback unavailable');
         return { data: { values: structuredClone(grids[titleOf(range)]) } };
@@ -67,13 +70,17 @@ function harness(initial: unknown[][] = [], fail?: 'permission' | 'appendAfterCo
       async batchUpdate({ requestBody }: { requestBody: { valueInputOption: string; data: { range: string; values: unknown[][] }[] } }) {
         if (fail === 'permission') throw { response: { status: 403 } };
         if (fail === 'ignoredRefresh') return { data: {} };
+        // A teammate sorts the tab between our read and our write.
+        if (fail === 'sortDuringWrite') { const [, first, second, ...rest] = grids[MIRROR]; grids[MIRROR] = [grids[MIRROR][0], second, first, ...rest]; }
         assert.equal(requestBody.valueInputOption, 'RAW');
         for (const update of requestBody.data) {
           check(titleOf(update.range));
-          const bounds = update.range.match(/!A(\d+):J(\d+)$/)!;
-          assert.ok(bounds, 'Only machine A:J may be updated');
-          const row = grids[MIRROR][Number(bounds[1]) - 1];
-          update.values[0].forEach((v, i) => { row[i] = v; });
+          const machine = update.range.match(/!A(\d+):J(\d+)$/);
+          const status = update.range.match(/!I(\d+)$/);
+          assert.ok(machine || status, 'Only machine cells A:J may be updated');
+          const row = grids[MIRROR][Number((machine ?? status)![1]) - 1];
+          if (machine) update.values[0].forEach((v, i) => { row[i] = v; });
+          else row[8] = update.values[0][0];
         }
         return { data: {} };
       },
@@ -201,9 +208,16 @@ test('readback verifies refreshed machine values before publishing team totals',
 test('canonical branch fallback, AM/PM minutes and source detail preserve known data without guessing', () => {
   const rows = selectWebsiteEnquiries([], [
     { p9: phone(1), date: '2026-10-01', channel: 'website', text: '', data: { ...tracker(1, '2026-10-01').raw_row, 'Clinic / Branch': '', _source_tab: 'TDC Campaign Leads', Time: '1:05 PM', Source: 'Website offer form' } },
-    { p9: phone(1), date: '2026-10-01', channel: 'website', text: '', data: { ...tracker(1, '2026-10-01').raw_row, 'Clinic / Branch': 'unknown address', Time: '1:05 AM', Source: 'Website incomplete booking' } },
+    { p9: phone(2), date: '2026-10-01', channel: 'website', text: '', data: { ...tracker(2, '2026-10-01').raw_row, 'Clinic / Branch': 'unknown address', Time: '1:05 AM', Source: 'Website incomplete booking' } },
   ]);
   assert.deepEqual(rows.map((r) => [r.time, r.branch, r.source]), [['01:05', 'Unassigned', 'incomplete booking'], ['13:05', 'Al Wasl', 'offer form']]);
+  // One phone, one day: several website rows are one enquiry, with the earliest known time.
+  const same = selectWebsiteEnquiries([], [
+    { p9: phone(3), date: '2026-10-02', channel: 'website', text: '', data: { ...tracker(3, '2026-10-02').raw_row } },
+    { p9: phone(3), date: '2026-10-02', channel: 'website', text: '', data: { ...tracker(3, '2026-10-02').raw_row, Time: '4:30 PM' } },
+    { p9: phone(3), date: '2026-10-02', channel: 'website', text: '', data: { ...tracker(3, '2026-10-02').raw_row, Time: '9:15 AM' } },
+  ]);
+  assert.deepEqual(same.map((r) => [r.date, r.time, r.key]), [['2026-10-02', '09:15', `${phone(3).slice(-9)}|2026-10-02#0`]]);
 });
 
 test('machine tab creation installs the exact dropdowns and never touches existing tabs', async () => {
@@ -234,13 +248,20 @@ test('summary formulas point to the declared date, team and dashboard columns wi
   for (const col of ['L', 'M', 'N']) assert.ok(r[10].includes(`$${col}$2:$${col}<>""`));
   assert.match(r[11], /\$P\$2:\$P="Booked"/);
   assert.match(r[11], /\$I\$2:\$I="attended"/);
+  assert.match(r[11], /\$I\$2:\$I="billed"/); // a billed enquiry was also booked
   assert.match(r[12], /\$I\$2:\$I="attended"/);
+  assert.match(r[12], /\$I\$2:\$I="billed"/); // and attended
+  for (const formula of r.slice(1, 15)) assert.ok(formula.includes(`$I$2:$I<>"no longer counted as website"`));
   assert.match(r[13], /\$Q\$2:\$Q="Converted"/);
   assert.match(r[13], /\$I\$2:\$I="billed"/);
   for (const i of [10, 11, 13]) assert.match(r[i], />0\)\)$/);
   assert.match(r[14], /IF\('Website Enquiries \(auto\)'!\$R\$2:\$R<>"",IFERROR\(1\*/);
   assert.match(r[14], /\$J\$2:\$J/);
-  assert.deepEqual(r.slice(15), ['=IFERROR(C5/B5,0)', '=IFERROR(L5/C5,0)', '=IFERROR(N5/C5,0)']);
+  assert.equal(r[15], '=IFERROR(C5/B5,0)');
+  // Booked / actual and Converted / actual count only Actual rows in the numerator.
+  for (const i of [16, 17]) { assert.match(r[i], /^=IFERROR\(SUMPRODUCT\(/); assert.ok(r[i].includes('$K$2:$K="Yes"')); assert.ok(r[i].endsWith('/C5,0)')); }
+  assert.ok(r[16].includes('$P$2:$P="Booked"'));
+  assert.ok(r[17].includes('$Q$2:$Q="Converted"'));
   assert.ok(!rows[8][1].includes('$F$2:$F'));
   assert.equal(dayFromSheet(sheetDay('2026-10-21')), '2026-10-21');
 });
@@ -268,8 +289,10 @@ test('team readback counts OR outcomes once and returns unavailable on stale, mi
   const db = (overrides = {}) => fixtureDb({ website_review_snapshot: [{ id: 'website', ...snapshot, ...overrides }] });
   const range = { from: '2026-10-01', to: '2026-10-21' };
   const review = await readWebsiteReview(db(), range, 2, now.getTime());
-  assert.deepEqual(review, { gross: 2, actual: 1, notYetReviewed: 1, booked: 1, converted: 2 });
-  assert.equal(websiteReviewLine(review, { enquiries: 2, booked: 1, treated: 1 }), 'Gross 2 · Actual 1 · Not yet reviewed 1 · Booked 1 · Converted 2');
+  assert.deepEqual(review, { gross: 2, actual: 1, notYetReviewed: 1, booked: 2, converted: 2 }); // billed implies booked
+  assert.equal(websiteReviewLine(review, { enquiries: 2, booked: 1, treated: 1 }), 'Gross 2 · Actual 1 · Not yet reviewed 1 · Booked 2 · Converted 2');
+  assert.match(websiteReviewLine(review, { enquiries: 2, booked: 1, treated: 1 }, true), /Gross 2 · Booked 1 · Converted 1 · team review on the All clinics view/);
+  assert.match(websiteReviewLine(null, undefined), /Website figures unavailable · team review unavailable/);
   assert.match(websiteReviewLine(null, { enquiries: 9, booked: 4, treated: 3 }), /Gross 9 · Booked 4 · Converted 3 · team review unavailable/);
   for (const overrides of [{ available: false }, { synced_at: 'invalid' }, { synced_at: '2026-10-20T00:00:00Z' }, { days: null }]) assert.equal(await readWebsiteReview(db(overrides), range, 2, now.getTime()), null);
   assert.equal(await readWebsiteReview(db(), range, 3, now.getTime()), null);
@@ -290,21 +313,98 @@ test('Growth appointment verdict and file billing joins supply statuses; no widg
   assert.deepEqual(rows.map((r) => [r.status, r.billed]), [['booked', null], ['attended', null], ['billed', 250], ['', null]]);
 });
 
-test('phoneless rows stay separate and invalid headers or orphaned team rows fail before writes', () => {
-  const rows = candidates().map((r) => ({ ...r, p9: '', phone: '', name: 'Fixture same', date: '2026-10-01', time: '', branch: 'Unassigned' }));
+test('phoneless rows stay separate; invalid headers and duplicate IDs fail before writes; orphans are marked, not fatal', () => {
+  const rows = selectWebsiteEnquiries([], [1, 2].map((i) => ({ p9: '', date: '2026-10-01', channel: 'website', text: '', data: { ...tracker(i, '2026-10-01').raw_row, 'Patient Name': 'Fixture same', 'Contact Number': '' } })));
+  assert.equal(rows.length, 2);
   const grid = [[...WEBSITE_HEADERS], ...planWebsiteMirror(rows, [[...WEBSITE_HEADERS]]).append];
   assert.equal(planWebsiteMirror(rows, grid).append.length, 0);
-  assert.equal(websiteReviewDays(grid)[0].gross, 2);
+  const current = new Set(rows.map((r) => r.key.replace(/#\d+$/, '')));
+  assert.equal(websiteReviewDays(grid, current)[0].gross, 1); // identical phoneless rows share one identity
   assert.throws(() => planWebsiteMirror(rows, [['Changed']]), /headers changed/);
-  assert.throws(() => planWebsiteMirror([], grid), /population changed/);
-  assert.throws(() => planWebsiteMirror(rows, [grid[0], grid[1], grid[1]]), /duplicate/);
+  assert.throws(() => planWebsiteMirror(rows, [grid[0], grid[1], grid[1]]), /duplicate Lead ID/);
+  const orphanPlan = planWebsiteMirror([], grid);
+  assert.equal(orphanPlan.orphaned, 2);
+  assert.deepEqual(orphanPlan.updates.map((u) => u.values[0]), [[WEBSITE_ORPHAN_STATUS], [WEBSITE_ORPHAN_STATUS]]);
+  assert.ok(orphanPlan.updates.every((u) => /!I\d+$/.test(u.range)));
+});
+
+test('routine tracker edits never stop the mirror: orphans are kept and marked, times can be filled in, hand-typed rows are ignored', async () => {
+  const h = harness();
+  const base = candidates();
+  assert.equal((await h.run(base)).appended, 2);
+  h.grids[MIRROR][1][10] = 'Yes'; h.grids[MIRROR][2][10] = 'Spam';
+  // The desk fills in a time for enquiry 1 and reclassifies enquiry 2 away from website.
+  const edited = [{ ...base[0], time: '14:05' }];
+  const result = await h.run(edited);
+  assert.equal(result.ok, true);
+  assert.equal(result.appended, 0);
+  assert.equal(result.orphaned, 1);
+  assert.equal(h.grids[MIRROR][1][2], '14:05');
+  assert.equal(h.grids[MIRROR][2][8], WEBSITE_ORPHAN_STATUS);
+  assert.deepEqual([h.grids[MIRROR][1][10], h.grids[MIRROR][2][10]], ['Yes', 'Spam']); // team cells untouched
+  assert.deepEqual(h.snapshot()!.days.map((d) => d.gross), [1]); // orphan excluded from counts
+  // A teammate types a row by hand at the bottom: it is ignored, not fatal.
+  h.grids[MIRROR].push(['', 45000, '', 'Hand typed', '', '', '', '', '', '', 'Yes']);
+  const again = await h.run(edited);
+  assert.equal(again.ok, true);
+  assert.equal(again.ignoredRows, 1);
+  assert.equal(again.refreshed, 0); // nothing changed, nothing written
+  // The enquiry comes back as website: it is restored in place, not duplicated.
+  const back = await h.run([{ ...base[0], time: '14:05' }, base[1]]);
+  assert.equal(back.appended, 0);
+  assert.equal(h.grids[MIRROR][2][8], '');
+});
+
+test('a sort just before the write is caught before anything is written; a sort mid-write never publishes a review', async () => {
+  const h = harness([], 'sortBeforeWrite');
+  assert.equal((await h.run()).ok, true); // first run only appends
+  h.grids[MIRROR][1][10] = 'Yes'; h.grids[MIRROR][2][10] = 'Spam';
+  const changed = candidates(); changed[0].status = 'booked';
+  const result = await h.run(changed);
+  assert.equal(result.ok, false);
+  assert.equal(result.error, 'Website mirror rows moved during sync; review not saved');
+  assert.equal(h.snapshot()?.available, false);
+  // Nothing was written: each Lead ID still sits next to its own team cells.
+  const byId = Object.fromEntries(h.grids[MIRROR].slice(1).map((row) => [row[0], [row[8], row[10]]]));
+  assert.deepEqual(byId, { 'WEB-0001': ['', 'Yes'], 'WEB-0002': ['', 'Spam'] });
+
+  const mid = harness([], 'sortDuringWrite');
+  await mid.run();
+  mid.grids[MIRROR][1][10] = 'Yes'; mid.grids[MIRROR][2][10] = 'Spam';
+  const midResult = await mid.run(changed);
+  assert.equal(midResult.ok, false);
+  assert.match(midResult.error!, /rows moved during sync|duplicate Lead ID/);
+  assert.equal(mid.snapshot()?.available, false);
+});
+
+test('no cross-channel double counting, independent of row order; tagged same-day evidence wins', async () => {
+  const whatsapp = (i: number, date: string) => tracker(i, date, { 'Source Type': 'Organic leads', 'Inquiry Platform': 'WhatsApp' });
+  const range = { from: '2026-10-01', to: '2026-10-21' };
+  const counts = async (leads: Record<string, unknown>[], raw_zavis: Record<string, unknown>[] = []) => {
+    const g = await getChannelPerformance(range, 'all', fixtureDb({ leads, raw_zavis }), { strict: true });
+    const by = Object.fromEntries(g.channels.filter((c) => c.enquiries > 0).map((c) => [c.key, c.enquiries]));
+    return { by, total: g.totals.enquiries };
+  };
+  const forward = await counts([whatsapp(1, '2026-10-03'), tracker(1, '2026-10-10')]);
+  const backward = await counts([tracker(1, '2026-10-10'), whatsapp(1, '2026-10-03')]);
+  assert.deepEqual(forward, backward);
+  assert.deepEqual(forward, { by: { website: 1 }, total: 1 });
+  // A Google-tagged widget click and the desk's "Website" row on the same day are one paid-search enquiry.
+  const tagged = await counts([tracker(2, '2026-10-05')], [widget(2, '2026-10-05T13:38:21', { Source: 'google / fixture' })]);
+  assert.deepEqual(tagged, { by: { 'paid-search': 1 }, total: 1 });
+  // A widget website booking and the desk's tracker row for it, same day: one website enquiry.
+  const both = await counts([tracker(3, '2026-10-06')], [widget(3, '2026-10-06T09:00:00')]);
+  assert.deepEqual(both, { by: { website: 1 }, total: 1 });
 });
 
 test('scheduled sync contains an isolated website result after silver leads, and both website surfaces render feedback', () => {
   const sync = readFileSync('lib/sync/index.ts', 'utf8');
   assert.ok(sync.indexOf('await syncWebsiteMirror(supabase)') > sync.indexOf("await safeUpsert(supabase, 'leads'"));
-  assert.ok(sync.includes("sheetsFailed.push('Website mirror')"));
+  // A companion-tab problem is a data gap only: it never marks the sync partial or raises the banner.
+  assert.ok(!sync.includes("sheetsFailed.push('Website mirror')"));
+  assert.ok(sync.includes('detail: `Website mirror: ${websiteMirror.error'));
   const ui = readFileSync('components/sections/growth/GrowthPlatform.tsx', 'utf8');
-  assert.ok(ui.includes('websiteReviewLine(review ?? null, p)'));
+  assert.ok(ui.includes('websiteReviewLine(review ?? null, p, clinicScoped)'));
+  assert.ok(!ui.includes("find((c) => c.key === 'website')!"));
   assert.ok(ui.includes('websiteReviewLine(performance.websiteReview ?? null'));
 });

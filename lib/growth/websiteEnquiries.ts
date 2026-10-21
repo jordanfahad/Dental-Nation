@@ -1,6 +1,5 @@
 import { canonicalBranch } from '@/lib/lead-tracker/branch';
 import { GMB_CLINICS } from '@/config/gmb-clinics';
-import { minuteKey } from '@/lib/sync/mirrorHelpers';
 
 export interface EnquiryRow {
   p9: string;
@@ -26,32 +25,54 @@ function enquiryTime(data: Record<string, unknown>): string {
 }
 export const widgetEnquiryChannel = (row: WidgetEnquiry) => row.hasLane ? 'affiliate' : row.paidSearch ? 'paid-search' : 'website';
 
-/** Also reconstructible from the machine-owned sheet cells; no hidden PII key. */
-export function websiteIdentity(row: Pick<WebsiteEnquiry, 'p9' | 'date' | 'time' | 'name' | 'branch' | 'service'>): string {
-  const minute = minuteKey(`${row.date}T${row.time || '00:00'}`, '');
-  return row.p9 ? `${row.p9}|${minute}` : JSON.stringify([minute, row.name, row.branch, row.service]);
+/** Also reconstructible from the machine-owned sheet cells; no hidden PII key.
+ * Day grain: one enquiry per phone per day, so a desk filling in or correcting
+ * the Time cell never changes a row's identity. Phoneless rows key on their
+ * day and visible fields (plus an occurrence suffix added by the selector).
+ */
+export function websiteIdentity(row: Pick<WebsiteEnquiry, 'p9' | 'date' | 'name' | 'branch' | 'service'>): string {
+  return row.p9 ? `${row.p9}|${row.date}` : JSON.stringify([row.date, row.name, row.branch, row.service]);
 }
+
+interface Candidate { enquiry: WebsiteEnquiry; widget: boolean }
+const byPreference = (a: Candidate, b: Candidate) =>
+  Number(b.widget) - Number(a.widget) // widget evidence first
+  || Number(!a.enquiry.time) - Number(!b.enquiry.time) // rows with a known time first
+  || a.enquiry.time.localeCompare(b.enquiry.time)
+  || a.enquiry.name.localeCompare(b.enquiry.name)
+  || a.enquiry.service.localeCompare(b.enquiry.service)
+  || a.enquiry.branch.localeCompare(b.enquiry.branch);
 
 /** The only website population selector. Source classification is supplied by
  * Growth's existing attribution preparation, never inferred again here.
- * Phone + minute is range-independent, unlike the old in-window phone grain.
- * Phoneless enquiries remain separate, with an occurrence suffix for readback.
+ * Deterministic and range-independent: whether a phone has a website enquiry
+ * on a day depends only on that day's rows, never on database row order or on
+ * the selected date range, so the sheet and the dashboard always agree.
+ * - A same-day campaign-tagged widget row (ArabyAds lane or Google click)
+ *   outranks a website label: that enquiry belongs to the tagged channel.
+ * - Several website rows for one phone on one day are one enquiry.
+ * - Phoneless enquiries remain separate, with an occurrence suffix for readback.
  */
 export function selectWebsiteEnquiries(
   widgetRows: WidgetEnquiry[], leadRows: TrackerEnquiry[],
   range: { from?: string | null; to?: string | null } = {},
 ): WebsiteEnquiry[] {
-  const seen = new Set<string>();
-  const occurrences = new Map<string, number>();
-  const selected: WebsiteEnquiry[] = [];
+  const taggedDays = new Set<string>();
+  const groups = new Map<string, Candidate[]>();
+  const phoneless: Candidate[] = [];
   for (const [kind, rows] of [['widget', widgetRows], ['tracker', leadRows]] as const) {
     for (const row of rows) {
       if (!row.date || (range.from && row.date < range.from) || (range.to && row.date > range.to)) continue;
-      const d = row.data;
       const channel = kind === 'widget' ? widgetEnquiryChannel(row as WidgetEnquiry) : (row as TrackerEnquiry).channel;
+      if (kind === 'widget' && channel !== 'website') {
+        if (row.p9) taggedDays.add(`${row.p9}|${row.date}`);
+        continue;
+      }
+      if (channel !== 'website') continue;
+      const d = row.data;
       const branchKey = canonicalBranch(pick(d, 'Clinic / Branch', 'Clinic', 'Clinic Name', 'Center'), d['_source_tab']);
       const sourceText = pick(d, 'Source', 'Source Type');
-      const candidate: WebsiteEnquiry = {
+      const enquiry: WebsiteEnquiry = {
         key: '', p9: row.p9, date: row.date, time: enquiryTime(d),
         name: pick(d, 'Full Name', 'Patient Name'), phone: pick(d, 'Phone Number', 'Contact Number'),
         branch: GMB_CLINICS.find((b) => b.key === branchKey)?.label ?? 'Unassigned',
@@ -59,15 +80,29 @@ export function selectWebsiteEnquiries(
         source: kind === 'widget' ? 'booking widget' : /incomplete/i.test(sourceText) ? 'incomplete booking' : /offer.*form/i.test(sourceText) ? 'offer form' : 'lead tracker: website',
         status: '', billed: null,
       };
-      const key = websiteIdentity(candidate);
-      if (row.p9 && seen.has(key)) continue;
-      if (row.p9) seen.add(key); // earlier widget evidence wins across channels
-      if (channel !== 'website') continue;
-      const occurrence = occurrences.get(key) ?? 0;
-      occurrences.set(key, occurrence + 1);
-      candidate.key = `${key}#${occurrence}`;
-      selected.push(candidate);
+      const candidate = { enquiry, widget: kind === 'widget' };
+      if (!row.p9) { phoneless.push(candidate); continue; }
+      const key = websiteIdentity(enquiry);
+      groups.set(key, [...(groups.get(key) ?? []), candidate]);
     }
   }
-  return selected.sort((a, b) => `${a.date}T${a.time}`.localeCompare(`${b.date}T${b.time}`));
+  const selected: WebsiteEnquiry[] = [];
+  for (const [key, candidates] of groups) {
+    if (taggedDays.has(key)) continue;
+    candidates.sort(byPreference);
+    const chosen = { ...candidates[0].enquiry };
+    // The earliest known time of the day, whichever row carried it.
+    chosen.time = candidates.map((c) => c.enquiry.time).filter(Boolean).sort()[0] ?? '';
+    chosen.key = `${key}#0`;
+    selected.push(chosen);
+  }
+  phoneless.sort(byPreference);
+  const occurrences = new Map<string, number>();
+  for (const { enquiry } of phoneless) {
+    const key = websiteIdentity(enquiry);
+    const occurrence = occurrences.get(key) ?? 0;
+    occurrences.set(key, occurrence + 1);
+    selected.push({ ...enquiry, key: `${key}#${occurrence}` });
+  }
+  return selected.sort((a, b) => `${a.date}T${a.time}|${a.key}`.localeCompare(`${b.date}T${b.time}|${b.key}`));
 }

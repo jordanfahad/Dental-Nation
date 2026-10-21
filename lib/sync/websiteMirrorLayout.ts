@@ -1,5 +1,5 @@
 import type { sheets_v4 } from 'googleapis';
-import { WEBSITE_HEADERS, WEBSITE_ENQUIRIES_TAB, WEBSITE_VALIDITY, WEBSITE_OUTCOMES, WEBSITE_CONVERSIONS } from '@/config/website-enquiries';
+import { WEBSITE_HEADERS, WEBSITE_ENQUIRIES_TAB, WEBSITE_VALIDITY, WEBSITE_OUTCOMES, WEBSITE_CONVERSIONS, WEBSITE_ORPHAN_STATUS } from '@/config/website-enquiries';
 import { GMB_CLINICS } from '@/config/gmb-clinics';
 import { quoteTab } from './mirrorHelpers';
 
@@ -33,22 +33,26 @@ export function websiteSummaryRows(): string[][] {
   const rows = [
     ['Website enquiries'],
     ['From', '=DATE(YEAR(TODAY()),MONTH(TODAY()),1)', 'To', '=TODAY()'],
-    ['Actual = Yes only. Not yet reviewed is separate. Outcomes are cumulative since enquiry; dates filter enquiry date. Revenue uses team Revenue when filled, otherwise dashboard billing.'],
+    ['Actual = Yes only. Not yet reviewed is separate. Outcomes are cumulative since enquiry; dates filter enquiry date. A billed enquiry also counts as booked and attended. Rates are among Actual enquiries. Rows marked "no longer counted as website" are excluded. Revenue uses team Revenue when filled, otherwise dashboard billing.'],
     ['Branch', 'Gross enquiries', 'Actual enquiries', 'Not yet reviewed', 'Spam', 'Vendor', 'Job', 'Duplicate', 'Existing patient admin', 'Wrong number', 'Contacted', 'Booked', 'Attended', 'Converted', 'Revenue AED', 'Actual / gross', 'Booked / actual', 'Converted / actual'],
   ];
   [...GMB_CLINICS.map((b) => b.label), 'Unassigned', 'Total'].forEach((label, i) => {
     const r = i + 5;
-    const criteria = [`--(${col('A')}<>"")`, `--(${col('B')}>=$B$2)`, `--(${col('B')}<=$D$2)`, ...(label === 'Total' ? [] : [`--(${col('F')}=$A${r})`])];
-    const count = (...extra: string[]) => `=SUMPRODUCT(${[...criteria, ...extra].join(',')})`;
+    const criteria = [`--(${col('A')}<>"")`, `--(${col('B')}>=$B$2)`, `--(${col('B')}<=$D$2)`, `--(${col('I')}<>"${WEBSITE_ORPHAN_STATUS}")`, ...(label === 'Total' ? [] : [`--(${col('F')}=$A${r})`])];
+    const count = (...extra: string[]) => `SUMPRODUCT(${[...criteria, ...extra].join(',')})`;
+    const actual = `--(${col('K')}="Yes")`;
+    // A billed enquiry was also booked and attended.
+    const booked = `--(((${col('P')}="Booked")+(${col('I')}="booked")+(${col('I')}="attended")+(${col('I')}="billed"))>0)`;
+    const attended = `--(((${col('I')}="attended")+(${col('I')}="billed"))>0)`;
+    const converted = `--(((${col('Q')}="Converted")+(${col('I')}="billed"))>0)`;
     rows.push([
-      label, count(), count(`--(${col('K')}="Yes")`), count(`--(${col('K')}="")`),
-      ...WEBSITE_VALIDITY.slice(1).map((value) => count(`--(${col('K')}="${value}")`)),
-      count(`--(((${col('L')}<>"")+(${col('M')}<>"")+(${col('N')}<>""))>0)`),
-      count(`--(((${col('P')}="Booked")+(${col('I')}="booked")+(${col('I')}="attended"))>0)`),
-      count(`--(${col('I')}="attended")`),
-      count(`--(((${col('Q')}="Converted")+(${col('I')}="billed"))>0)`),
-      count(`IF(${col('R')}<>"",IFERROR(1*${col('R')},0),IFERROR(1*${col('J')},0))`),
-      `=IFERROR(C${r}/B${r},0)`, `=IFERROR(L${r}/C${r},0)`, `=IFERROR(N${r}/C${r},0)`,
+      label, `=${count()}`, `=${count(actual)}`, `=${count(`--(${col('K')}="")`)}`,
+      ...WEBSITE_VALIDITY.slice(1).map((value) => `=${count(`--(${col('K')}="${value}")`)}`),
+      `=${count(`--(((${col('L')}<>"")+(${col('M')}<>"")+(${col('N')}<>""))>0)`)}`,
+      `=${count(booked)}`, `=${count(attended)}`, `=${count(converted)}`,
+      `=${count(`IF(${col('R')}<>"",IFERROR(1*${col('R')},0),IFERROR(1*${col('J')},0))`)}`,
+      // Rates are among Actual (validated) enquiries only, so they stay within 0-100%.
+      `=IFERROR(C${r}/B${r},0)`, `=IFERROR(${count(actual, booked)}/C${r},0)`, `=IFERROR(${count(actual, converted)}/C${r},0)`,
     ]);
   });
   return rows;

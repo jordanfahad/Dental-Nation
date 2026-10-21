@@ -29,8 +29,12 @@ export async function readWebsiteReview(
   } catch { return null; }
 }
 
-export function websiteReviewLine(review: WebsiteReviewCounts | null, fallback: { enquiries: number; booked: number; treated: number }): string {
-  return review
-    ? `Gross ${review.gross} · Actual ${review.actual} · Not yet reviewed ${review.notYetReviewed} · Booked ${review.booked} · Converted ${review.converted}`
-    : `Gross ${fallback.enquiries} · Booked ${fallback.booked} · Converted ${fallback.treated} · team review unavailable`;
+/** `clinicScoped`: the team review covers all branches, so a clinic-filtered
+ * view points to the All view instead of mixing branches. */
+export function websiteReviewLine(
+  review: WebsiteReviewCounts | null, fallback: { enquiries: number; booked: number; treated: number } | undefined, clinicScoped = false,
+): string {
+  if (review && !clinicScoped) return `Gross ${review.gross} · Actual ${review.actual} · Not yet reviewed ${review.notYetReviewed} · Booked ${review.booked} · Converted ${review.converted}`;
+  const base = fallback ? `Gross ${fallback.enquiries} · Booked ${fallback.booked} · Converted ${fallback.treated}` : 'Website figures unavailable';
+  return `${base} · ${clinicScoped ? 'team review on the All clinics view' : 'team review unavailable'}`;
 }
