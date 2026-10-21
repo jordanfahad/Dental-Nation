@@ -27,6 +27,7 @@ import { getSiteSizeReport } from '@/lib/analytics/site-size';
 import { sendWatchedTabAlerts } from '@/lib/ops/tabAlerts';
 import { syncOpsForms } from './adapters/ops-forms-adapter';
 import { syncLeadMirror } from './leadMirror';
+import { syncWebsiteMirror } from './websiteMirror';
 import {
   normalizePerformance,
   normalizeBlockers,
@@ -645,6 +646,16 @@ export async function runSync(trigger: SyncTrigger): Promise<SyncSummary> {
   const channelStatus = deriveChannelStatus(perf);
   if (channelStatus.length > 0) {
     await supabase.from('channel_status').upsert(channelStatus, { onConflict: 'channel' });
+  }
+
+  // Website companion tabs use the just-upserted lead snapshot. Their verdicts
+  // stay outside the tracker population and cannot feed back as fresh leads.
+  const websiteMirror = await syncWebsiteMirror(supabase);
+  if (websiteMirror.ok) {
+    sheetsOk.push(websiteMirror.skipped ? 'Website mirror: another sync is running' : `Website mirror: ${websiteMirror.appended} appended, ${websiteMirror.refreshed} refreshed; team review synced`);
+  } else {
+    sheetsFailed.push('Website mirror');
+    dataGaps.push({ area: 'tracking', detail: websiteMirror.error ?? 'Website mirror sync unavailable', owner: 'Data/Analytics' });
   }
 
   // ----- Gold: a snapshot per distinct perf date (most recent ~60) -----

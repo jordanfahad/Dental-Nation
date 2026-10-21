@@ -1,6 +1,9 @@
 import { selectAll } from '../supabase/selectAll';
 import 'server-only';
 import { cache } from 'react';
+import { selectWebsiteEnquiries, widgetEnquiryChannel, type WidgetEnquiry, type TrackerEnquiry, type WebsiteEnquiry } from './websiteEnquiries';
+import { isWebsiteMirrorTab } from '@/config/website-enquiries';
+import { readWebsiteReview, type WebsiteReviewCounts } from './websiteReview';
 import { modelPhoneBookings, websitePaidInputs, type PhoneModel } from './phonePath';
 import { getSupabaseAdmin, type AdminClient } from '@/lib/supabase/server';
 import { parseArabySource } from '@/lib/arabyads/report';
@@ -116,6 +119,7 @@ export interface GrowthFunnelTotals {
 }
 
 export interface GrowthReport {
+  websiteReview?: WebsiteReviewCounts | null;
   source: 'live' | 'empty';
   from: string | null;
   to: string | null;
@@ -237,7 +241,7 @@ const readAttributionInputs = cache(async (db: AdminClient) => {
   /* ─── Build the waterfall's evidence lookups (all-time, not range-scoped) ── */
 
   const widgetByPhone = new Map<string, { hasLane: boolean; paidSearch: boolean }>();
-  const widgetRows: { p9: string; date: string | null; hasLane: boolean; paidSearch: boolean }[] = [];
+  const widgetRows: WidgetEnquiry[] = [];
   for (const r of (zavisRes.data as { data: Record<string, unknown> }[] | null) ?? []) {
     const d = r.data ?? {};
     if (!('Full Name' in d) || isTestWidgetRow(d)) continue;
@@ -250,7 +254,7 @@ const readAttributionInputs = cache(async (db: AdminClient) => {
     // format changes. Either marks Paid Search.
     const paidSearch = !hasLane && (/^\s*google\s*\//i.test(src) || /gclid|utm_source\s*[=:]\s*google/i.test(src));
     const date = S(d['Timestamp']).slice(0, 10) || S(d['Date']).slice(0, 10) || null;
-    widgetRows.push({ p9, date, hasLane, paidSearch });
+    widgetRows.push({ p9, date, hasLane, paidSearch, data: d });
     if (!p9) continue;
     const prev = widgetByPhone.get(p9);
     // A campaign tag anywhere on the phone's history wins (paid trace beats none).
@@ -261,9 +265,10 @@ const readAttributionInputs = cache(async (db: AdminClient) => {
 
   const leadChannelByPhone = new Map<string, string>();
   const leadTextByPhone = new Map<string, string>();
-  const leadRows: { p9: string; date: string | null; channel: string; text: string }[] = [];
+  const leadRows: TrackerEnquiry[] = [];
   for (const r of (leadRes.data as { inquiry_date: string | null; raw_row: Record<string, unknown> }[] | null) ?? []) {
     const d = r.raw_row ?? {};
+    if (isWebsiteMirrorTab(d['_source_tab']) || /^WEB-\d+$/i.test(S(d['Lead ID']))) continue;
     const name = S(d['Patient Name']);
     // Skip header echoes / placeholder rows the sheet sync lets through.
     if (!name && !S(d['Contact Number'])) continue;
@@ -274,7 +279,7 @@ const readAttributionInputs = cache(async (db: AdminClient) => {
     const text = `${S(d['Notes / Remarks'])} ${S(d['Follow-up Remarks'])} ${S(d['Follow up Remarks'])} ${S(d['Source Type'])} ${S(d['Preferred Channel'])}`.toLowerCase();
     const channel =
       tagHit(text) ?? leadTrackerChannel(S(d['Source Type']), S(d['Inquiry Platform']), S(d['Preferred Channel']));
-    leadRows.push({ p9, date: r.inquiry_date, channel, text });
+    leadRows.push({ p9, date: r.inquiry_date, channel, text, data: d });
     if (p9) {
       if (!leadChannelByPhone.has(p9)) leadChannelByPhone.set(p9, channel);
       leadTextByPhone.set(p9, `${leadTextByPhone.get(p9) ?? ''} ${text}`.trim());
@@ -353,6 +358,48 @@ export async function getFirstAppointmentChannels(
   return new Map([...patientChannel].map(([file, verdict]) => [file, verdict.channel]));
 }
 
+/** Mirror rows with the same appointment verdicts and patient-file billing join
+ * as Growth. Outcomes are cumulative from each enquiry day, not guesses from
+ * widget status. A bill is assigned once to the latest eligible enquiry.
+ */
+export async function getWebsiteEnquiries(
+  db: AdminClient, range: { from?: string; to?: string } = {},
+): Promise<WebsiteEnquiry[]> {
+  const [{ widgetRows, leadRows, appts, apptVerdicts, patientChannel }, bills] = await Promise.all([
+    readAttributionInputs(db),
+    selectAll(() => db.from('practo_bills_raw').select('bill_date, amount, data'), 'bill_key'),
+  ]);
+  const rows = selectWebsiteEnquiries(widgetRows, leadRows, range);
+  const byPhone = new Map<string, WebsiteEnquiry[]>();
+  for (const row of rows) if (row.p9) byPhone.set(row.p9, [...(byPhone.get(row.p9) ?? []), row]);
+  const latest = (p9: string, day: string) => byPhone.get(p9)?.filter((r) => r.date <= day).at(-1);
+  const phonesByFile = new Map<string, Set<string>>();
+  for (const appt of appts) {
+    if (appt.facts.isTest) continue;
+    if (appt.facts.mrNo && appt.facts.p9) {
+      const phones = phonesByFile.get(appt.facts.mrNo) ?? new Set<string>();
+      phones.add(appt.facts.p9);
+      phonesByFile.set(appt.facts.mrNo, phones);
+    }
+    if (!appt.date || (range.to && appt.date > range.to) || apptVerdicts.get(appt)?.channel !== 'website') continue;
+    const row = latest(appt.facts.p9, appt.date);
+    if (!row) continue;
+    if (appt.status === 'arrived' || appt.status === 'completed') row.status = 'attended';
+    else if (!row.status) row.status = 'booked'; // Growth's booked population includes cancelled/no-show appointments
+  }
+  for (const bill of (bills.data ?? []) as { bill_date: string | null; amount: number | null; data: Record<string, unknown> }[]) {
+    const file = S(bill.data?.mr_no);
+    if (!bill.bill_date || (range.to && bill.bill_date > range.to) || patientChannel.get(file)?.channel !== 'website') continue;
+    const phones = phonesByFile.get(file);
+    if (phones?.size !== 1) continue; // ambiguous identity is not guessed
+    const row = latest([...phones][0], bill.bill_date);
+    if (!row) continue;
+    row.status = 'billed';
+    row.billed = (row.billed ?? 0) + (Number(bill.amount) || 0);
+  }
+  return rows;
+}
+
 /** Clinics the channel report can scope to (AMC has no feed — handled in UI). */
 export type GrowthPerfClinic = 'all' | 'dn-alwasl' | 'dr-tosun';
 
@@ -429,6 +476,7 @@ const computeChannelPerformance = cache(async (
         if (enquirySeen.has(p9)) return;
         enquirySeen.add(p9);
       }
+      if (channel === 'website') return; // counted exclusively by the shared stable selector below
       at(channel).enquiries += 1;
       const mo = monthOf(day);
       if (mo) mo.enquiries += 1;
@@ -439,9 +487,14 @@ const computeChannelPerformance = cache(async (
     let trackerLeadRows = 0;
     if (dnAssets) {
       // A lane tag = ArabyAds = the Affiliates channel (commission partner, not our Meta spend).
-      for (const w of widgetRows) if (inRange(w.date, from, to)) countEnquiry(w.p9, w.hasLane ? 'affiliate' : w.paidSearch ? 'paid-search' : 'website', w.date);
+      for (const w of widgetRows) if (inRange(w.date, from, to)) countEnquiry(w.p9, widgetEnquiryChannel(w), w.date);
       for (const l of leadRows) if (inRange(l.date, from, to)) { trackerLeadRows += 1; countEnquiry(l.p9, l.channel, l.date); }
       for (const c of crmRows) if (c.source === 'aiAgent' && inRange(c.date, from, to)) countEnquiry(c.p9, 'ai-concierge', c.date);
+      for (const row of selectWebsiteEnquiries(widgetRows, leadRows, { from, to })) {
+        at('website').enquiries += 1;
+        const month = monthOf(row.date);
+        if (month) month.enquiries += 1;
+      }
     }
 
     // Appointments booked / showed / cancelled / no-show.
@@ -902,6 +955,7 @@ const computeChannelPerformance = cache(async (
 
     return {
       source: booked + totals.enquiries > 0 ? 'live' : 'empty',
+      websiteReview: dnAssets ? await readWebsiteReview(db, { from: from ?? undefined, to: to ?? undefined }, at('website').enquiries) : null,
       from, to, channels, totals,
       byMonth: [...byMonth.values()].sort((x, y) => x.month.localeCompare(y.month)),
       apptFeedRows: appts.length,

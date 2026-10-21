@@ -5,6 +5,7 @@ import { getSheetsWriteClient } from '@/lib/sync/google-auth';
 import { ARABY_LEADS_SHEET, ALL_LEAD_INFO_GID } from '@/config/arabyads-leads';
 import { ARABY_LANES } from '@/lib/arabyads/report';
 import { getLeadVerdictsByPhone } from '@/lib/arabyads/leadStatus';
+import { mirrorPhone as phone9, maxMirrorId, ensureMirrorTab } from './mirrorHelpers';
 
 /**
  * Lead mirror — every lead that lands in the widget workbook's form tabs
@@ -40,10 +41,6 @@ export interface LeadMirrorResult {
 }
 
 const s = (v: unknown) => String(v ?? '').trim();
-const phone9 = (v: string): string => {
-  const d = v.replace(/\D/g, '');
-  return d.length >= 9 ? d.slice(-9) : d;
-};
 const isTest = (name: string, email: string): boolean =>
   /test|sagar|zavis/i.test(name) || /zavis|test/i.test(email);
 
@@ -51,13 +48,6 @@ const isTest = (name: string, email: string): boolean =>
 function laneService(laneKey: string | null, fallback: string): string {
   const lane = laneKey ? ARABY_LANES.find((l) => l.key === laneKey) : null;
   return lane ? `${lane.laneCode} - ${lane.label}` : fallback;
-}
-
-/** Minute-resolution key so the sheet's own rows and ours line up. */
-function minuteKey(iso: string | null, raw: string): string {
-  if (iso) return iso.slice(0, 16);
-  const ms = Date.parse(raw);
-  return Number.isNaN(ms) ? raw.slice(0, 16) : new Date(ms).toISOString().slice(0, 16);
 }
 
 interface Candidate {
@@ -103,14 +93,12 @@ export async function syncLeadMirror(supabase: AdminClient, _readOnly?: sheets_v
     // as the fallback for phoneless rows) is the correct grain, and it cannot
     // break on formatting.
     const seen = new Set<string>();
-    let maxId = 1000; // sheet starts at DN-1001
+    let maxId = maxMirrorId(grid, 'DN-', 1000); // sheet starts at DN-1001
     const identityKey = (phone: string, name: string): string => {
       const p = phone9(phone);
       return p ? `p:${p}` : `n:${name.trim().toLowerCase()}`;
     };
     for (const row of grid) {
-      const idM = s(row[0]).match(/^DN-(\d+)$/i);
-      if (idM) maxId = Math.max(maxId, Number(idM[1]));
       const k = identityKey(s(row[3]), s(row[2]));
       if (k !== 'n:') seen.add(k);
     }
@@ -311,12 +299,7 @@ async function finishMirror(
   //      table extends itself as leads and verdicts arrive. ──
   try {
     const SUMMARY = 'Lead Summary';
-    if (!allSheets.some((sh) => (sh.properties?.title ?? '').toLowerCase() === SUMMARY.toLowerCase())) {
-      await sheets.spreadsheets.batchUpdate({
-        spreadsheetId: ARABY_LEADS_SHEET.spreadsheetId,
-        requestBody: { requests: [{ addSheet: { properties: { title: SUMMARY } } }] },
-      });
-    }
+    await ensureMirrorTab(sheets, ARABY_LEADS_SHEET.spreadsheetId, allSheets, SUMMARY);
     const lane = (kw: string) => {
       const hit = `--ISNUMBER(SEARCH("${kw}",${quoted}!$F$2:$F))`;
       return {

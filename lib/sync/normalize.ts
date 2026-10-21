@@ -163,6 +163,7 @@ export function normalizeLeads(
   const conversionHeader = source.columns['booking_status'];
 
   for (const raw of rows) {
+    if (source.excludeTabs?.some((tab) => tab.toLowerCase() === raw.tabTitle?.trim().toLowerCase())) continue;
     const patientName = patientHeader ? (raw.data[patientHeader] ?? '').trim() : '';
     const contact = contactHeader ? (raw.data[contactHeader] ?? '').trim() : '';
 
@@ -201,7 +202,7 @@ export function normalizeLeads(
     const lead: NormalizedLead = {
       id: stableId(source, raw, [raw.tabTitle ?? '', String(obj.inquiry_date ?? ''), contact]),
       source_sheet: source.label,
-      raw_row: raw.data,
+      raw_row: { ...raw.data, _source_tab: raw.tabTitle ?? '' },
       ...(obj as Omit<NormalizedLead, 'id' | 'source_sheet' | 'raw_row'>),
     } as NormalizedLead;
 
