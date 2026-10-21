@@ -439,3 +439,22 @@ test('team review gross equals the dashboard when identical phoneless enquiries 
   const growth = await getChannelPerformance({ from: '2026-10-01', to: '2026-10-21' }, 'all', db, { strict: true });
   assert.equal(h.snapshot()!.days.reduce((n, d) => n + d.gross, 0), growth.channels.find((c) => c.key === 'website')!.enquiries);
 });
+
+test('a website enquiry from a phone tagged outside the window is credited to the tagged channel, never dropped', async () => {
+  const counts = async (leads: Record<string, unknown>[], raw_zavis: Record<string, unknown>[], range: { from?: string; to?: string }) => {
+    const db = fixtureDb({ leads, raw_zavis });
+    const g = await getChannelPerformance(range, 'all', db, { strict: true });
+    const sheet = await getWebsiteEnquiries(db, range);
+    return { by: Object.fromEntries(g.channels.filter((c) => c.enquiries > 0).map((c) => [c.key, c.enquiries])), total: g.totals.enquiries, sheet: sheet.length };
+  };
+  const oct = { from: '2026-10-01', to: '2026-10-21' };
+  // Google-tagged widget booking in July (US timestamp), website enquiry logged by the desk in October.
+  assert.deepEqual(await counts([tracker(1, '2026-10-12')], [widget(1, '07/14/2026, 13:38:21', { Source: 'google / fixture' })], oct), { by: { 'paid-search': 1 }, total: 1, sheet: 0 });
+  // ArabyAds lane tag after the window: the earlier website enquiry still counts once, as affiliate.
+  assert.deepEqual(await counts([tracker(2, '2026-10-05')], [widget(2, '2026-10-15T10:00:00', { Source: 'ArabyAds / dental_nation_scan (PID:[PID], SUB:[SUB_ID])' })], { from: '2026-10-01', to: '2026-10-10' }), { by: { affiliate: 1 }, total: 1, sheet: 0 });
+  // Website and WhatsApp rows in the window, tag before it: one person, credited to the tag.
+  assert.deepEqual(await counts([tracker(3, '2026-10-06'), tracker(3, '2026-10-04', { 'Source Type': 'Organic leads', 'Inquiry Platform': 'WhatsApp' })], [widget(3, '07/01/2026, 09:00:00', { Source: 'google / fixture' })], oct), { by: { 'paid-search': 1 }, total: 1, sheet: 0 });
+  // Totals never fall below the number of distinct people across all channels in the window.
+  const untagged = await counts([tracker(4, '2026-10-06')], [], oct);
+  assert.deepEqual(untagged, { by: { website: 1 }, total: 1, sheet: 1 });
+});

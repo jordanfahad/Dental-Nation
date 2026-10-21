@@ -41,6 +41,45 @@ export function websiteIdentity(row: Pick<WebsiteEnquiry, 'p9' | 'date' | 'name'
 }
 
 interface Candidate { enquiry: WebsiteEnquiry; widget: boolean }
+
+const inWindow = (day: string | null, range: { from?: string | null; to?: string | null }) =>
+  !!day && !(range.from && day < range.from) && !(range.to && day > range.to);
+
+/** The campaign channel of every phone with a tagged widget row (ArabyAds lane
+ * = affiliate, Google click = paid-search), over the whole widget history, as
+ * attribution rule R3 uses for bookings. Deterministic: the earliest tagged day
+ * wins, then affiliate before paid-search. */
+export function taggedChannelByPhone(widgetRows: WidgetEnquiry[]): Map<string, 'affiliate' | 'paid-search'> {
+  const best = new Map<string, { day: string; channel: 'affiliate' | 'paid-search' }>();
+  for (const row of widgetRows) {
+    const channel = widgetEnquiryChannel(row);
+    if (!row.p9 || channel === 'website') continue;
+    const day = isoDay(row.date ?? '');
+    const prev = best.get(row.p9);
+    if (!prev || day < prev.day || (day === prev.day && channel < prev.channel)) best.set(row.p9, { day, channel: channel as 'affiliate' | 'paid-search' });
+  }
+  return new Map([...best].map(([p9, v]) => [p9, v.channel]));
+}
+
+/** Website-labelled enquiries in the window from phones with a campaign tag:
+ * they are not website enquiries, so Growth credits them to the tagged channel
+ * (one per phone per window, dated on its earliest day in the window) instead
+ * of dropping them. Same range rule as every other channel. */
+export function taggedWebsiteEnquirers(
+  widgetRows: WidgetEnquiry[], leadRows: TrackerEnquiry[], range: { from?: string | null; to?: string | null } = {},
+): { p9: string; date: string; channel: 'affiliate' | 'paid-search' }[] {
+  const tagged = taggedChannelByPhone(widgetRows);
+  const earliest = new Map<string, string>();
+  const consider = (p9: string, date: string | null) => {
+    const channel = p9 ? tagged.get(p9) : undefined;
+    if (!channel || !inWindow(date, range)) return;
+    const day = isoDay(date!);
+    if (!earliest.has(p9) || day < earliest.get(p9)!) earliest.set(p9, day);
+  };
+  for (const row of widgetRows) if (widgetEnquiryChannel(row) === 'website') consider(row.p9, row.date);
+  for (const row of leadRows) if (row.channel === 'website') consider(row.p9, row.date);
+  return [...earliest].sort(([a, x], [b, y]) => x.localeCompare(y) || a.localeCompare(b)).map(([p9, date]) => ({ p9, date, channel: tagged.get(p9)! }));
+}
 const byPreference = (a: Candidate, b: Candidate) =>
   Number(b.widget) - Number(a.widget) // widget evidence first
   || Number(!a.enquiry.time) - Number(!b.enquiry.time) // rows with a known time first
@@ -52,8 +91,9 @@ const byPreference = (a: Candidate, b: Candidate) =>
 /** The only website population selector. Source classification is supplied by
  * Growth's existing attribution preparation, never inferred again here.
  * Deterministic and range-independent: whether a phone has a website enquiry
- * on a day depends only on that day's rows, never on database row order or on
- * the selected date range, so the sheet and the dashboard always agree.
+ * on a day depends only on that day's rows and the phone's campaign-tag
+ * history, never on database row order or on the selected date range, so the
+ * sheet and the dashboard always agree.
  * - A phone with a campaign-tagged widget row (ArabyAds lane or Google click)
  *   at any time is never a website enquiry, exactly as the attribution
  *   waterfall (R3) credits that person's bookings to the tagged channel.
@@ -67,20 +107,19 @@ export function selectWebsiteEnquiries(
   widgetRows: WidgetEnquiry[], leadRows: TrackerEnquiry[],
   range: { from?: string | null; to?: string | null } = {},
 ): WebsiteEnquiry[] {
-  const taggedPhones = new Set<string>();
-  for (const row of widgetRows) if (row.p9 && widgetEnquiryChannel(row) !== 'website') taggedPhones.add(row.p9);
+  const taggedPhones = taggedChannelByPhone(widgetRows);
   const groups = new Map<string, Candidate[]>();
   const phoneless: Candidate[] = [];
   for (const [kind, rows] of [['widget', widgetRows], ['tracker', leadRows]] as const) {
     for (const row of rows) {
-      if (!row.date || (range.from && row.date < range.from) || (range.to && row.date > range.to)) continue;
+      if (!inWindow(row.date, range)) continue;
       const channel = kind === 'widget' ? widgetEnquiryChannel(row as WidgetEnquiry) : (row as TrackerEnquiry).channel;
       if (channel !== 'website' || (row.p9 && taggedPhones.has(row.p9))) continue;
       const d = row.data;
       const branchKey = canonicalBranch(pick(d, 'Clinic / Branch', 'Clinic', 'Clinic Name', 'Center'), d['_source_tab']);
       const sourceText = pick(d, 'Source', 'Source Type');
       const enquiry: WebsiteEnquiry = {
-        key: '', p9: row.p9, date: isoDay(row.date), time: enquiryTime(d),
+        key: '', p9: row.p9, date: isoDay(row.date ?? ''), time: enquiryTime(d),
         name: pick(d, 'Full Name', 'Patient Name'), phone: pick(d, 'Phone Number', 'Contact Number'),
         branch: GMB_CLINICS.find((b) => b.key === branchKey)?.label ?? 'Unassigned',
         service: pick(d, 'Service / Lane requested', 'Service', 'Treatment', 'Campaign / Offer Name'),

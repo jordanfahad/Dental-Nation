@@ -1,7 +1,7 @@
 import { selectAll } from '../supabase/selectAll';
 import 'server-only';
 import { cache } from 'react';
-import { selectWebsiteEnquiries, widgetEnquiryChannel, type WidgetEnquiry, type TrackerEnquiry, type WebsiteEnquiry } from './websiteEnquiries';
+import { selectWebsiteEnquiries, taggedWebsiteEnquirers, widgetEnquiryChannel, type WidgetEnquiry, type TrackerEnquiry, type WebsiteEnquiry } from './websiteEnquiries';
 import { isWebsiteMirrorTab } from '@/config/website-enquiries';
 import { readWebsiteReview, type WebsiteReviewCounts } from './websiteReview';
 import { modelPhoneBookings, websitePaidInputs, type PhoneModel } from './phonePath';
@@ -495,6 +495,15 @@ const computeChannelPerformance = cache(async (
       for (const row of selectWebsiteEnquiries(widgetRows, leadRows, { from, to })) {
         if (row.p9) enquirySeen.add(row.p9);
         at('website').enquiries += 1;
+        const month = monthOf(row.date);
+        if (month) month.enquiries += 1;
+      }
+      // Website-labelled enquiries from campaign-tagged phones belong to the tagged
+      // channel (rule R3, as for their bookings): credited once per person, never dropped.
+      for (const row of taggedWebsiteEnquirers(widgetRows, leadRows, { from, to })) {
+        if (enquirySeen.has(row.p9)) continue;
+        enquirySeen.add(row.p9);
+        at(row.channel).enquiries += 1;
         const month = monthOf(row.date);
         if (month) month.enquiries += 1;
       }
