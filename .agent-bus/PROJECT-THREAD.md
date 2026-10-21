@@ -126,6 +126,27 @@ P&L pathway block complete on all 24 capabilities, pending finance ticks.
 
 ## Open via the bus
 
+- DN-029 SHIPPED 21 Oct (merge 1c77d73, deploy dpl_DdBDZEmp, live on
+  reports.dentalnation.com). Website enquiries mirror to the Inhouse Lead
+  Tracker tabs "Website Enquiries (auto)" and "Website Summary"; team review
+  read back to lane_e.website_review_snapshot (migration 0049 applied, lease
+  functions as single-statement SQL). First production sync 19:47 UTC: 2
+  website enquiries mirrored (12 and 15 Oct), snapshot available. QA: own
+  review + two adversarial multi-agent reviews + final gate; all confirmed
+  findings fixed (cross-channel double count, drift halting the mirror,
+  billed not counted as booked, sync banner, sort race, tagged phones).
+  Landmines: website = one enquiry per phone per day; a campaign-tagged phone
+  (any time) is never website and its website-labelled enquiries go to the
+  tagged channel; mirrored rows are never deleted, only marked "no longer
+  counted as website".
+- OPEN (needs spec): Growth's dated ranges have never included booking-widget
+  enquiries, because widget Timestamps are US format ("08/09/2026, ...") and
+  the range check compares ISO strings. Fixing it changes historical Growth
+  numbers (Feb to Aug), so it needs an owner decision.
+- OPEN (owner): every website enquiry feed is stale: widget last row 9 Aug,
+  offer forms 1 Sep, incomplete bookings 30 Jul. Check with Zavis/Seyed
+  whether website forms still deliver, or whether the feed sheet changed.
+
 - DN Ortho (17 Oct): DN-024 QA'd DN-021's keywords/negatives (v2: 176
   keywords, 338 shared + 280 cross negatives, 19 held with
   recommendations). Owner decided: Al Wasl only, no Arabic now, Invisalign
