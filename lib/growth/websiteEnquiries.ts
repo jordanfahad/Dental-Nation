@@ -23,6 +23,12 @@ function enquiryTime(data: Record<string, unknown>): string {
   if (match[3]) hour = hour % 12 + (match[3].toUpperCase() === 'PM' ? 12 : 0);
   return hour < 24 && Number(match[2]) < 60 ? `${String(hour).padStart(2, '0')}:${match[2]}` : '';
 }
+/** The booking widget writes US timestamps ("08/09/2026, 13:38:21"); trackers use ISO
+ * days. Grouping and tag matching need one calendar, so both become YYYY-MM-DD. */
+export function isoDay(day: string): string {
+  const us = day.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  return us ? `${us[3]}-${us[1].padStart(2, '0')}-${us[2].padStart(2, '0')}` : day.slice(0, 10);
+}
 export const widgetEnquiryChannel = (row: WidgetEnquiry) => row.hasLane ? 'affiliate' : row.paidSearch ? 'paid-search' : 'website';
 
 /** Also reconstructible from the machine-owned sheet cells; no hidden PII key.
@@ -48,8 +54,12 @@ const byPreference = (a: Candidate, b: Candidate) =>
  * Deterministic and range-independent: whether a phone has a website enquiry
  * on a day depends only on that day's rows, never on database row order or on
  * the selected date range, so the sheet and the dashboard always agree.
- * - A same-day campaign-tagged widget row (ArabyAds lane or Google click)
- *   outranks a website label: that enquiry belongs to the tagged channel.
+ * - A phone with a campaign-tagged widget row (ArabyAds lane or Google click)
+ *   at any time is never a website enquiry, exactly as the attribution
+ *   waterfall (R3) credits that person's bookings to the tagged channel.
+ * - The range filter uses the stored day exactly as Growth's other channels
+ *   do; grouping uses the ISO day, so a widget booking and the desk's tracker
+ *   row for it on the same day are one enquiry.
  * - Several website rows for one phone on one day are one enquiry.
  * - Phoneless enquiries remain separate, with an occurrence suffix for readback.
  */
@@ -57,23 +67,20 @@ export function selectWebsiteEnquiries(
   widgetRows: WidgetEnquiry[], leadRows: TrackerEnquiry[],
   range: { from?: string | null; to?: string | null } = {},
 ): WebsiteEnquiry[] {
-  const taggedDays = new Set<string>();
+  const taggedPhones = new Set<string>();
+  for (const row of widgetRows) if (row.p9 && widgetEnquiryChannel(row) !== 'website') taggedPhones.add(row.p9);
   const groups = new Map<string, Candidate[]>();
   const phoneless: Candidate[] = [];
   for (const [kind, rows] of [['widget', widgetRows], ['tracker', leadRows]] as const) {
     for (const row of rows) {
       if (!row.date || (range.from && row.date < range.from) || (range.to && row.date > range.to)) continue;
       const channel = kind === 'widget' ? widgetEnquiryChannel(row as WidgetEnquiry) : (row as TrackerEnquiry).channel;
-      if (kind === 'widget' && channel !== 'website') {
-        if (row.p9) taggedDays.add(`${row.p9}|${row.date}`);
-        continue;
-      }
-      if (channel !== 'website') continue;
+      if (channel !== 'website' || (row.p9 && taggedPhones.has(row.p9))) continue;
       const d = row.data;
       const branchKey = canonicalBranch(pick(d, 'Clinic / Branch', 'Clinic', 'Clinic Name', 'Center'), d['_source_tab']);
       const sourceText = pick(d, 'Source', 'Source Type');
       const enquiry: WebsiteEnquiry = {
-        key: '', p9: row.p9, date: row.date, time: enquiryTime(d),
+        key: '', p9: row.p9, date: isoDay(row.date), time: enquiryTime(d),
         name: pick(d, 'Full Name', 'Patient Name'), phone: pick(d, 'Phone Number', 'Contact Number'),
         branch: GMB_CLINICS.find((b) => b.key === branchKey)?.label ?? 'Unassigned',
         service: pick(d, 'Service / Lane requested', 'Service', 'Treatment', 'Campaign / Offer Name'),
@@ -88,7 +95,6 @@ export function selectWebsiteEnquiries(
   }
   const selected: WebsiteEnquiry[] = [];
   for (const [key, candidates] of groups) {
-    if (taggedDays.has(key)) continue;
     candidates.sort(byPreference);
     const chosen = { ...candidates[0].enquiry };
     // The earliest known time of the day, whichever row carried it.

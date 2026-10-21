@@ -252,6 +252,7 @@ test('summary formulas point to the declared date, team and dashboard columns wi
   assert.match(r[12], /\$I\$2:\$I="attended"/);
   assert.match(r[12], /\$I\$2:\$I="billed"/); // and attended
   for (const formula of r.slice(1, 15)) assert.ok(formula.includes(`$I$2:$I<>"no longer counted as website"`));
+  for (const formula of r.slice(1, 15)) assert.ok(formula.includes(`LEFT('${MIRROR}'!$A$2:$A,4)="WEB-"`)); // same population rule as the sync
   assert.match(r[13], /\$Q\$2:\$Q="Converted"/);
   assert.match(r[13], /\$I\$2:\$I="billed"/);
   for (const i of [10, 11, 13]) assert.match(r[i], />0\)\)$/);
@@ -318,8 +319,9 @@ test('phoneless rows stay separate; invalid headers and duplicate IDs fail befor
   assert.equal(rows.length, 2);
   const grid = [[...WEBSITE_HEADERS], ...planWebsiteMirror(rows, [[...WEBSITE_HEADERS]]).append];
   assert.equal(planWebsiteMirror(rows, grid).append.length, 0);
-  const current = new Set(rows.map((r) => r.key.replace(/#\d+$/, '')));
-  assert.equal(websiteReviewDays(grid, current)[0].gross, 1); // identical phoneless rows share one identity
+  const current = new Map<string, number>();
+  for (const r of rows) { const k = r.key.replace(/#\d+$/, ''); current.set(k, (current.get(k) ?? 0) + 1); }
+  assert.equal(websiteReviewDays(grid, current)[0].gross, 2); // identical phoneless enquiries both count, like the dashboard
   assert.throws(() => planWebsiteMirror(rows, [['Changed']]), /headers changed/);
   assert.throws(() => planWebsiteMirror(rows, [grid[0], grid[1], grid[1]]), /duplicate Lead ID/);
   const orphanPlan = planWebsiteMirror([], grid);
@@ -407,4 +409,33 @@ test('scheduled sync contains an isolated website result after silver leads, and
   assert.ok(ui.includes('websiteReviewLine(review ?? null, p, clinicScoped)'));
   assert.ok(!ui.includes("find((c) => c.key === 'website')!"));
   assert.ok(ui.includes('websiteReviewLine(performance.websiteReview ?? null'));
+});
+
+test('production US widget timestamps group with ISO tracker days in all-time views; any campaign tag wins', async () => {
+  const counts = async (leads: Record<string, unknown>[], raw_zavis: Record<string, unknown>[], range = {}) => {
+    const g = await getChannelPerformance(range, 'all', fixtureDb({ leads, raw_zavis }), { strict: true });
+    return { by: Object.fromEntries(g.channels.filter((c) => c.enquiries > 0).map((c) => [c.key, c.enquiries])), total: g.totals.enquiries };
+  };
+  // A plain widget booking (US timestamp) and the desk's tracker row for it on the same day: one website enquiry.
+  assert.deepEqual(await counts([tracker(1, '2026-08-05')], [widget(1, '08/05/2026, 13:38:21')]), { by: { website: 1 }, total: 1 });
+  // A Google-tagged widget click (US timestamp) and the desk's website row: paid search, as the waterfall credits bookings.
+  assert.deepEqual(await counts([tracker(2, '2026-08-05')], [widget(2, '08/05/2026, 13:38:21', { Source: 'google / fixture' })]), { by: { 'paid-search': 1 }, total: 1 });
+  // A tag on a different day still wins (R3: a campaign tag anywhere on the phone's history).
+  assert.deepEqual(await counts([tracker(3, '2026-10-12')], [widget(3, '2026-10-05T13:38:21', { Source: 'google / fixture' })], { from: '2026-10-01', to: '2026-10-21' }), { by: { 'paid-search': 1 }, total: 1 });
+  // An untagged widget row stored before a tagged one must not swallow the tagged enquiry.
+  assert.deepEqual(await counts([], [widget(4, '2026-10-05T10:00:00'), widget(4, '2026-10-05T10:05:00', { Source: 'google / fixture' })], { from: '2026-10-01', to: '2026-10-21' }), { by: { 'paid-search': 1 }, total: 1 });
+  // The selector reports ISO days for widget rows.
+  const rows = selectWebsiteEnquiries([{ p9: phone(5).slice(-9), date: '08/09/2026', hasLane: false, paidSearch: false, data: widget(5, '08/09/2026, 13:38:21').data }], []);
+  assert.deepEqual(rows.map((r) => [r.date, r.time]), [['2026-08-09', '13:38']]);
+});
+
+test('team review gross equals the dashboard when identical phoneless enquiries exist', async () => {
+  const leads = [1, 2].map((i) => tracker(i, '2026-10-05', { 'Patient Name': 'Fixture same', 'Contact Number': '' }));
+  const db = fixtureDb({ leads });
+  const rows = await getWebsiteEnquiries(db, { from: '2026-10-01', to: '2026-10-21' });
+  assert.equal(rows.length, 2);
+  const h = harness();
+  assert.equal((await h.run(rows)).ok, true);
+  const growth = await getChannelPerformance({ from: '2026-10-01', to: '2026-10-21' }, 'all', db, { strict: true });
+  assert.equal(h.snapshot()!.days.reduce((n, d) => n + d.gross, 0), growth.channels.find((c) => c.key === 'website')!.enquiries);
 });

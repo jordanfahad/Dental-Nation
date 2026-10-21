@@ -46,7 +46,7 @@ export function ExecKpiBand({ report }: { report: ExecutiveReport }) {
       spark: leadsSpark,
       sparkColor: TOKENS.accent,
       hint: kpis.enquiriesUnique
-        ? `unique people · lead tracker, website and AI agent, each person once${kpis.costPerLead != null ? ` · AED ${Math.round(kpis.costPerLead)} of ad spend per enquiry` : ''}`
+        ? `people, deduped by phone · lead tracker, website and AI agent; a website enquirer counts once per day${kpis.costPerLead != null ? ` · AED ${Math.round(kpis.costPerLead)} of ad spend per enquiry` : ''}`
         : 'lead-tracker rows (not yet deduped)',
       gapDetail: 'enquiries come through Dental Nation Al Wasl channels',
       gapOwner: ownerFor('attribution'),

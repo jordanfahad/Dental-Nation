@@ -553,7 +553,7 @@ export async function GrowthPlatform({ range, gchan, gclinic }: { range?: { from
     {
       label: 'Enquiries',
       value: int(t.enquiries),
-      hint: `measured only; website uses phone + minute, other channels dedupe by phone across widget + tracker + AI agent${psEstEnq > 0 ? ` · the Paid Search row adds ≈${int(psEstEnq)} Markov-modelled phone enquiries not counted here` : ''}`,
+      hint: `measured only; website counts one enquiry per phone per day (matching the Lead Tracker's Website tab), other channels dedupe by phone across widget + tracker + AI agent${psEstEnq > 0 ? ` · the Paid Search row adds ≈${int(psEstEnq)} Markov-modelled phone enquiries not counted here` : ''}`,
     },
     { label: 'Booked (Practo)', value: int(t.booked), hint: 'appointments in window' },
     { label: 'Show-up rate', value: pct(t.showRate), hint: 'arrived ÷ decided appointments' },

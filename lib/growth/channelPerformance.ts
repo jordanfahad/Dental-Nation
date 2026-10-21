@@ -472,11 +472,13 @@ const computeChannelPerformance = cache(async (
       return byMonth.get(m) ?? byMonth.set(m, { month: m, enquiries: 0, booked: 0, showed: 0 }).get(m)!;
     };
     const countEnquiry = (p9: string, channel: string, day: string | null) => {
+      // Website is counted only by the shared selector above, which also reserves its phones.
+      // Returning first means a row the selector rejected never reserves a phone here.
+      if (channel === 'website') return;
       if (p9) {
         if (enquirySeen.has(p9)) return;
         enquirySeen.add(p9);
       }
-      if (channel === 'website') return; // counted exclusively by the shared selector above
       at(channel).enquiries += 1;
       const mo = monthOf(day);
       if (mo) mo.enquiries += 1;

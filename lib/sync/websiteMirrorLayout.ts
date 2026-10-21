@@ -38,7 +38,7 @@ export function websiteSummaryRows(): string[][] {
   ];
   [...GMB_CLINICS.map((b) => b.label), 'Unassigned', 'Total'].forEach((label, i) => {
     const r = i + 5;
-    const criteria = [`--(${col('A')}<>"")`, `--(${col('B')}>=$B$2)`, `--(${col('B')}<=$D$2)`, `--(${col('I')}<>"${WEBSITE_ORPHAN_STATUS}")`, ...(label === 'Total' ? [] : [`--(${col('F')}=$A${r})`])];
+    const criteria = [`--(LEFT(${col('A')},4)="WEB-")`, `--(${col('B')}>=$B$2)`, `--(${col('B')}<=$D$2)`, `--(${col('I')}<>"${WEBSITE_ORPHAN_STATUS}")`, ...(label === 'Total' ? [] : [`--(${col('F')}=$A${r})`])];
     const count = (...extra: string[]) => `SUMPRODUCT(${[...criteria, ...extra].join(',')})`;
     const actual = `--(${col('K')}="Yes")`;
     // A billed enquiry was also booked and attended.

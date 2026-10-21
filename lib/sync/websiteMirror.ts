@@ -71,16 +71,19 @@ export function planWebsiteMirror(rows: WebsiteEnquiry[], grid: unknown[][]) {
   return { updates, append, orphaned: orphanRows.length, ignoredRows };
 }
 
-/** Aggregate review counts per enquiry day, for current website rows only. */
-export function websiteReviewDays(grid: unknown[][], current: Set<string>): WebsiteReviewDay[] {
+/** Aggregate review counts per enquiry day, for current website rows only.
+ * `current` holds how many current enquiries share each identity (identical
+ * phoneless enquiries are separate), so gross always equals the selector. */
+export function websiteReviewDays(grid: unknown[][], current: Map<string, number>): WebsiteReviewDay[] {
   validateWebsiteGrid(grid);
   const days = new Map<string, WebsiteReviewDay>();
-  const counted = new Set<string>();
+  const allowance = new Map(current);
   for (const row of grid.slice(1)) {
-    if (!isMirrorRow(row)) continue;
+    if (!isMirrorRow(row) || s(row[8]) === ORPHAN_STATUS) continue;
     const identity = identityFromCells(row);
-    if (!current.has(identity) || counted.has(identity) || s(row[8]) === ORPHAN_STATUS) continue;
-    counted.add(identity);
+    const left = allowance.get(identity) ?? 0;
+    if (left <= 0) continue;
+    allowance.set(identity, left - 1);
     const date = dayFromSheet(row[1]);
     const day = days.get(date) ?? { date, ...emptyWebsiteReview() };
     const status = s(row[8]).toLowerCase();
@@ -174,7 +177,9 @@ export async function syncWebsiteMirror(db: AdminClient, dependencies: {
       const moved = grid.slice(1).filter(isMirrorRow).some((row) => touched.has(s(row[0])) && teamBefore.has(s(row[0])) && teamBefore.get(s(row[0])) !== teamCells(row));
       if (moved) throw new Error('Website mirror rows moved during sync; review not saved');
     }
-    const days = websiteReviewDays(grid, new Set(rows.map((row) => websiteIdentity(row))));
+    const current = new Map<string, number>();
+    for (const row of rows) current.set(websiteIdentity(row), (current.get(websiteIdentity(row)) ?? 0) + 1);
+    const days = websiteReviewDays(grid, current);
     await save({ available: true, synced_at: now.toISOString(), days });
     result.reviewRead = true;
     await ensureMirrorTab(sheets, spreadsheetId, tabs, WEBSITE_SUMMARY_TAB, summaryInitialization);
