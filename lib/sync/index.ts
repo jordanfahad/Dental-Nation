@@ -27,6 +27,7 @@ import { getSiteSizeReport } from '@/lib/analytics/site-size';
 import { sendWatchedTabAlerts } from '@/lib/ops/tabAlerts';
 import { syncOpsForms } from './adapters/ops-forms-adapter';
 import { syncLeadMirror } from './leadMirror';
+import { syncWebsiteMirror } from './websiteMirror';
 import {
   normalizePerformance,
   normalizeBlockers,
@@ -645,6 +646,22 @@ export async function runSync(trigger: SyncTrigger): Promise<SyncSummary> {
   const channelStatus = deriveChannelStatus(perf);
   if (channelStatus.length > 0) {
     await supabase.from('channel_status').upsert(channelStatus, { onConflict: 'channel' });
+  }
+
+  // Website companion tabs use the just-upserted lead snapshot. Their verdicts
+  // stay outside the tracker population and cannot feed back as fresh leads.
+  // Like the ArabyAds lead mirror, a companion-tab problem is a data gap, not a
+  // failed source: it must not turn every sync "partial" or raise the site banner.
+  const websiteMirror = await syncWebsiteMirror(supabase);
+  if (websiteMirror.ok) {
+    const bits: string[] = [];
+    if (websiteMirror.appended > 0) bits.push(`${websiteMirror.appended} appended`);
+    if (websiteMirror.refreshed > 0) bits.push(`${websiteMirror.refreshed} refreshed`);
+    if (websiteMirror.orphaned) bits.push(`${websiteMirror.orphaned} no longer website (kept, marked)`);
+    if (websiteMirror.ignoredRows) bits.push(`${websiteMirror.ignoredRows} rows without a WEB- Lead ID ignored`);
+    if (bits.length > 0) sheetsOk.push(`Website mirror — ${bits.join(', ')}; team review synced`);
+  } else {
+    dataGaps.push({ area: 'tracking', detail: `Website mirror: ${websiteMirror.error ?? 'Website mirror sync unavailable'}`, owner: 'Data/Analytics' });
   }
 
   // ----- Gold: a snapshot per distinct perf date (most recent ~60) -----

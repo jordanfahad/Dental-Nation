@@ -154,13 +154,15 @@ export class SheetsAdapter implements SourceAdapter {
 
   /** Multi-tab read: each tab is read, header-detected, parsed, then concat. */
   private async fetchTabs(tabs: string[]): Promise<FetchResult> {
+    const allowed = (title: string) => !this.source.excludeTabs?.some((t) => t.toLowerCase() === title.trim().toLowerCase());
+    tabs = tabs.filter(allowed);
     const warnings: string[] = [];
     const rows: RawRow[] = [];
     let list = tabs;
     let others: string[] = [];
     if (this.source.discoverTabs) {
       try {
-        const all = await this.tabTitles();
+        const all = (await this.tabTitles()).filter(allowed);
         const missing = tabs.filter((t) => !all.includes(t));
         if (missing.length) warnings.push(`tabs not found (renamed?): ${missing.join(', ')}`);
         list = tabs.filter((t) => all.includes(t));

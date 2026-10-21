@@ -335,7 +335,7 @@ export async function BoardReport({
         {/* Demand funnel */}
         <Section eyebrow="Demand" title="Enquiry → booking → revenue">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-            <Funnel label="Enquiries" value={int(k.leadsGenerated)} note={k.enquiriesUnique ? 'unique people' : 'lead tracker'} />
+            <Funnel label="Enquiries" value={int(k.leadsGenerated)} note={k.enquiriesUnique ? 'people, deduped by phone' : 'lead tracker'} />
             <Funnel label="Appointments" value={int(k.appointmentsBooked)} note="Practo" />
             <Funnel label="Attended" value={int(k.appointmentsCompleted)} note={pct(k.completionRate)} />
             <Funnel label="New patients" value={a.notMeasurable ? '—' : int(a.billedNewPatients)} note="Al Wasl · first bill" />

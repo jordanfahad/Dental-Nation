@@ -45,6 +45,8 @@ export interface SourceMapping {
    * newly added branch tabs keep syncing without a code change.
    */
   discoverTabs?: boolean;
+  /** Machine-owned companion tabs must never become lead sources. */
+  excludeTabs?: readonly string[];
   /** Not synced (kept for reference). */
   disabled?: boolean;
   headerRow: number;
@@ -112,6 +114,7 @@ export const sheetMapping: Record<string, SourceMapping> = {
       'DN - AL MAHER Br ⭐',
     ],
     discoverTabs: true,
+    excludeTabs: ['Website Enquiries (auto)', 'Website Summary'],
     headerRow: 1,
     target: 'leads',
     rawTable: 'raw_lead_tracker',
