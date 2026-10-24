@@ -14,7 +14,6 @@ import { buildMetaLeadsDigest, metaSectionHtml, type MetaLeadsDigest } from '@/l
 import { CONTENTOS_LEADS, contentosFlags, contentosStatsHtml, fetchContentos, type ContentosLeads } from '@/lib/ops/contentosLeads';
 import { REVIEW_TARGET, loadBriefingFile, loadReleased, notesFor, shootNotesFor, updatesFor, type Released } from '@/lib/smileclub/briefingNotes';
 import { OWNER_LABEL, TEAM_TASKS, TOTAL_WEIGHT, TRACKER_SOURCE, type Person, type TeamTask } from '@/lib/smileclub/team';
-import { runPerformanceAlerts } from '@/lib/performance/alerts';
 
 /**
  * Smile Club email alerts — at most TWO emails per person per day (26 Sep).
@@ -45,7 +44,7 @@ import { runPerformanceAlerts } from '@/lib/performance/alerts';
  * that must not sit in this public repo), then the work defaults below.
  */
 
-type Who = 'fahad' | 'akbar' | 'luvi' | 'gautam' | 'shadi' | 'mj' | 'mohan';
+export type Who = 'fahad' | 'akbar' | 'luvi' | 'gautam' | 'shadi' | 'mj' | 'mohan';
 
 const DEFAULTS: Record<Who, string> = {
   fahad: 'fa.siddiqui@dentalnation.com',
@@ -56,7 +55,7 @@ const DEFAULTS: Record<Who, string> = {
   shadi: 'sh.gheitasi@dentalnation.com',
   mohan: '', // personal address kept out of this public repo — stored in lane_e.app_secrets (sc_email_mohan)
 };
-const NAME: Record<Who, string> = { fahad: 'Fahad', akbar: 'Mr Akbar', luvi: 'Dr Luvi', gautam: 'Gautam', shadi: 'Ms Shadi', mj: 'MJ', mohan: 'Mohan' };
+export const NAME: Record<Who, string> = { fahad: 'Fahad', akbar: 'Mr Akbar', luvi: 'Dr Luvi', gautam: 'Gautam', shadi: 'Ms Shadi', mj: 'MJ', mohan: 'Mohan' };
 
 /** Addresses stored in the database (loaded once per run). */
 let STORED: Record<string, string> = {};
@@ -88,10 +87,19 @@ const REVIEW_READERS: Who[] = ['akbar', 'luvi', 'gautam', 'shadi', 'fahad'];
 const YMK_READERS: Who[] = ['akbar', 'luvi', 'gautam', 'mohan', 'fahad'];
 // Owner's decision (12 Oct 2026): no Smile Club emails to Mr Akbar or Ms Shadi, and
 // Dr Luvi receives only the shoot schedule (copied on MJ's evening email).
-const MORNING: Who[] = ['gautam', 'mohan', 'fahad'];
+// Owner's decision (24 Oct 2026): Gautam gets the consolidated Smile Club daily
+// email (am:sc-daily, lib/alerts/registry.ts) instead of a personal briefing.
+const MORNING: Who[] = ['mohan', 'fahad'];
 const EVENING: Who[] = ['fahad', 'gautam', 'mohan'];
 const SHOOT_CC: Who[] = ['luvi', 'gautam', 'fahad', 'mohan'];
 const MAX_PER_DAY = 2;
+/**
+ * The four daily 09:00 emails sent by /api/cron/alerts (lib/alerts/registry.ts)
+ * have their own once-a-day claim. They and their preview copies never count
+ * toward, or block, the Smile Club briefings below.
+ */
+const DAILY_ALERT_KINDS: readonly string[] = ['am:sc-daily', 'am:ortho-daily', 'am:gbp-daily', 'am:akbar-perf'];
+const separateFromCap = (kind: string) => DAILY_ALERT_KINDS.includes(kind) || kind.startsWith('preview:');
 
 const LINK = 'https://reports.dentalnation.com/?tab=smileclub';
 const RED = '#a04a38';
@@ -136,9 +144,7 @@ async function dayLog(sb: Sb, today: string): Promise<DayLog> {
   const log: DayLog = { kinds: new Set(), slot: { am: new Set(), pm: new Set() }, count: new Map() };
   for (const r of data ?? []) {
     const kind = r.kind as string;
-    // Fahad's two explicitly requested performance copies are separate from
-    // his existing Smile Club morning/evening allowance.
-    if (kind === 'am:gbp-daily' || kind === 'am:akbar-perf') continue;
+    if (separateFromCap(kind)) continue;
     if (kind === 'lead:whatsapp') continue;
     log.kinds.add(kind);
     const s = slotOf(kind);
@@ -692,21 +698,13 @@ export async function runSmileClubAlerts(): Promise<string[]> {
   // A failed read also sends nothing, so the pause can never be skipped by an error.
   const pause = await sb.from('app_secrets').select('value').eq('key', 'alerts_paused').maybeSingle();
   if (pause.error || String(pause.data?.value ?? '').trim().toLowerCase() === 'true') return ['paused by owner'];
-  const emailConfigOk = await loadStoredEmails(sb);
+  await loadStoredEmails(sb);
   const now = new Date();
   const today = dubai(now);
   const hour = dubaiHour(now);
   const out: string[] = [];
-  if (hour >= 9 && hour < 11) {
-    if (emailConfigOk) out.push(...await runPerformanceAlerts(sb, emailOf, now));
-    else {
-      for (const kind of ['am:gbp-daily', 'am:akbar-perf']) {
-        await logSent(sb, kind, today, { ok: false, recipients: [], note: 'Email configuration read failed; nothing sent' });
-        out.push(`${kind}: email configuration read failed`);
-      }
-    }
-    await runMorning(sb, today, out);
-  }
+  // The GBP and performance emails moved to /api/cron/alerts (24 Oct 2026); only the briefings run here.
+  if (hour >= 9 && hour < 11) await runMorning(sb, today, out);
   if (hour >= 17 && hour < 22) await runEvening(sb, today, out);
   return out;
 }

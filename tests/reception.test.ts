@@ -2,7 +2,8 @@ import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import { readReception, readPerformanceBrief } from '../lib/performance/reader';
 import { buildReceptionSection, GROUPS } from '../lib/performance/core';
-import { buildAkbarPerformance, PERFORMANCE_RECIPIENTS } from '../lib/performance/emails';
+import { buildAkbarPerformance } from '../lib/performance/emails';
+import { DAILY_ALERTS } from '../lib/alerts/registry';
 import { bookedFrom } from '../lib/bookings/status';
 import { hasChannelEvidence } from '../lib/lead-tracker/reporting';
 import { fixtureDb } from './fixtures/dn015-db';
@@ -47,7 +48,7 @@ test('no-source means absent channel evidence, not simply an unclassified group'
   assert.equal(hasChannelEvidence(syntheticLead('synthetic-ref', { whatsapp_ref: 'N/A' })), true); // Any nonempty reference is explicit per DN-017.
 });
 
-test('Akbar section 7 is last, counts only, with data note and unchanged review routing, cap and subject', async () => {
+test('Akbar section 7 is last, counts only, with data note and unchanged subject; live routing is the alerts registry', async () => {
   const report = briefFixture(); const before = buildAkbarPerformance(report);
   report.reception = await readReception('2026-10-12', fixtureDb({ leads: receptionLeads() }));
   const mail = buildAkbarPerformance(report);
@@ -59,6 +60,8 @@ test('Akbar section 7 is last, counts only, with data note and unchanged review 
   assert.match(mail.html, /12 Oct 2026, 09:30 Dubai/);
   assert.doesNotMatch(mail.html + mail.subject, /\u2014/);
   for (const row of receptionLeads()) assert.ok(!mail.html.includes(row.id));
-  assert.deepEqual(PERFORMANCE_RECIPIENTS['am:akbar-perf'], { to: 'fahad', cc: ['luvi', 'shadi'], max: 1 });
+  // The legacy review copy is no longer sent; owner approval of 24 Oct 2026 routes the daily performance email to Mr Akbar.
+  const live = DAILY_ALERTS.find((a) => a.kind === 'am:akbar-perf')!;
+  assert.deepEqual([live.to, live.cc], [['akbar', 'shadi'], ['fahad']]);
   assert.match(mail.subject, /^\[Template review\] Daily performance - Mon 12 Oct/);
 });

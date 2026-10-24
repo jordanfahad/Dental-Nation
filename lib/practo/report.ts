@@ -74,7 +74,8 @@ const empty = (configured: boolean): PractoSummary => ({
   byClinic: [],
 });
 
-function topMix(map: Map<string, number>, limit = 8): MixRow[] {
+/** Bar rule of the Revenue view mixes (also used by lib/alerts/orthoDaily.ts so its figures match the bars). */
+export function topMix(map: Map<string, number>, limit = 8): MixRow[] {
   const rows = [...map.entries()]
     .map(([label, value]) => ({ label, value: Math.round(value) }))
     .filter((r) => r.value > 0)

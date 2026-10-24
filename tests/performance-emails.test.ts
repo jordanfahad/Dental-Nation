@@ -1,6 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
-import { buildAkbarPerformance, buildGbpDaily, PERFORMANCE_RECIPIENTS } from '../lib/performance/emails';
+import { buildAkbarPerformance, buildGbpDaily } from '../lib/performance/emails';
+import { DAILY_ALERTS } from '../lib/alerts/registry';
 import { benchmarks, buildPeriod, groupOf, parseGrossRows, patientSplits, performanceWhy } from '../lib/performance/core';
 import { buildGbpPlan } from '../lib/gbp/plan';
 import { ALERT_CAP } from '../lib/smileclub/alertRules';
@@ -66,7 +67,9 @@ test('Akbar performance email has synthetic figures, labelled gross/net and hone
   assert.ok(!mail.html.includes('Team task calendar')); assert.ok(!mail.html.includes('logged activities'));
   report.action = 'Keep priorities A & B\nReview <next> week.';
   assert.ok(buildAkbarPerformance(report).html.includes('Keep priorities A &amp; B\nReview &lt;next&gt; week.'));
-  assert.deepEqual(PERFORMANCE_RECIPIENTS['am:akbar-perf'], { to: 'fahad', cc: ['luvi', 'shadi'], max: 1 });
+  // Legacy builder text is unchanged, but it is no longer sent: the live email (lib/alerts) goes to Mr Akbar and Ms Shadi.
+  const live = DAILY_ALERTS.find((a) => a.kind === 'am:akbar-perf')!;
+  assert.deepEqual([live.to, live.cc], [['akbar', 'shadi'], ['fahad']]);
   assert.match(mail.subject, /^\[Template review\]/);
   assert.match(mail.html, /Mr Akbar is excluded until Fahad explicitly approves the template/);
   assert.match(mail.html, /To Fahad; copied to Dr Luvi and Ms Shadi/);
@@ -81,14 +84,26 @@ test('GBP email caps activities at five per branch, includes metrics and skips g
   const empty = buildGbpPlan({ rows: [], metrics: [], reviews: [], connected: [], asOf: '2026-10-11', syncedAt: null });
   assert.equal(buildGbpDaily(empty, '2026-10-12'), null);
   empty.branches[0].status = 'Off track'; assert.ok(buildGbpDaily(empty, '2026-10-12'));
-  assert.deepEqual(PERFORMANCE_RECIPIENTS['am:gbp-daily'], { to: 'shadi', cc: ['fahad', 'luvi'], max: 1 });
+  const live = DAILY_ALERTS.find((a) => a.kind === 'am:gbp-daily')!;
+  assert.deepEqual([live.to, live.cc], [['akbar', 'shadi', 'luvi'], ['fahad']]);
 });
 
-test('review cap excludes Akbar and adds one review copy for Luvi and Shadi', () => {
-  assert.equal(ALERT_CAP.find((r) => r.who === 'Mr Akbar')?.max, 0);
-  assert.equal(ALERT_CAP.find((r) => r.who === 'Ms Shadi')?.max, 2);
-  assert.deepEqual(ALERT_CAP.find((r) => r.who === 'Dr Luvi'), { who: 'Dr Luvi', morning: 'GBP daily plus performance template review (copied)', evening: 'Shoot schedule (copied), evenings before a shoot', max: 3 });
-  assert.equal(ALERT_CAP.find((r) => r.who === 'Fahad')?.max, 4);
+test('cap table describes the four daily emails: Mr Akbar included, one of each kind per person', () => {
+  assert.deepEqual(ALERT_CAP.find((r) => r.who === 'Mr Akbar'), { who: 'Mr Akbar', morning: 'GBP daily and performance daily', evening: '-', max: 2 });
+  assert.equal(ALERT_CAP.find((r) => r.who === 'Ms Shadi')?.max, 4);
+  assert.deepEqual(ALERT_CAP.find((r) => r.who === 'Dr Luvi'), { who: 'Dr Luvi', morning: 'Smile Club, DN Ortho and GBP daily', evening: 'Shoot schedule (copied), evenings before a shoot', max: 4 });
+  assert.equal(ALERT_CAP.find((r) => r.who === 'Gautam')?.morning, 'Smile Club daily');
+  assert.equal(ALERT_CAP.find((r) => r.who === 'MJ')?.max, 3);
+  assert.equal(ALERT_CAP.find((r) => r.who === 'Fahad')?.max, 6);
+  // Morning counts match the registry: each person's daily emails, plus Mohan's and Fahad's briefing.
+  for (const row of ALERT_CAP) {
+    if ('kind' in row) continue;
+    const id = ({ 'Mr Akbar': 'akbar', 'Dr Luvi': 'luvi', 'Ms Shadi': 'shadi', Gautam: 'gautam', Mohan: 'mohan', Fahad: 'fahad', MJ: 'mj' } as const)[row.who];
+    const daily = DAILY_ALERTS.filter((a) => [...a.to, ...a.cc].includes(id)).length;
+    const briefing = id === 'mohan' || id === 'fahad' ? 1 : 0;
+    const evening = row.evening === '-' ? 0 : 1;
+    assert.equal(row.max, daily + briefing + evening, row.who);
+  }
 });
 
 test('gross rows retain duplicates and ambiguous branches are not guessed', () => {

@@ -12,7 +12,7 @@
  * patient data; unknowns are marked "baseline pending", never invented.
  */
 
-import { Fragment, createContext, useContext, useState } from 'react';
+import { Fragment, createContext, useContext, useEffect, useState } from 'react';
 import { CLINIC_CLOSED, COORDINATOR, DAYS, FILMED, HOURS, NOT_FILMING, SHOOT_CHANGES, SHOOT_PLAN, SLOT_STATUS, WARDROBE, dentistById, hoursOn, nextClinicDays, shootLoad } from '@/lib/smileclub/shoots';
 import { YMK, YMK_ITEMS, fmtYmkDay } from '@/lib/smileclub/ymk';
 import { ALERT_CAP, ALERT_RULES, PREVIEWS } from '@/lib/smileclub/alertRules';
@@ -4306,8 +4306,18 @@ const SUBS: { id: Sub; label: string }[] = [
 
 const SUB_LABELS: Record<string, string> = Object.fromEntries(SUBS.map((s) => [s.id, s.label]));
 
-export function SmileClubOptimization({ tracker }: { tracker?: TrackerState } = {}) {
-  const [sub, setSub] = useState<Sub>('segments');
+export function SmileClubOptimization({ tracker, initial }: { tracker?: TrackerState; initial?: 'team' | 'scripts' } = {}) {
+  const [sub, setSub] = useState<Sub>(initial ?? 'segments');
+  // A link that opens a panel (?sc=team) may also name an anchor inside it
+  // (#corp-pipeline); the anchor only exists once that panel has rendered.
+  useEffect(() => {
+    if (!initial) return;
+    let id = '';
+    try { id = decodeURIComponent(window.location.hash.slice(1)); } catch { return; }
+    if (!id) return;
+    const t = setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 200);
+    return () => clearTimeout(t);
+  }, [initial]);
   const [trk, setTrk] = useState<TrackerState>(tracker ?? EMPTY_TRACKER);
   // The return trail: cross-reference jumps remember their origin so the
   // reader (Mr Akbar) can follow any thread and come straight back.

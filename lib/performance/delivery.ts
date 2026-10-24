@@ -19,7 +19,11 @@ export function performanceAlreadySent(rows: { kind: string; ok: boolean; recipi
     (kind !== 'am:akbar-perf' && row.kind !== 'am:akbar-perf' &&
       (row.recipients ?? []).some((address) => address.toLowerCase() === primary.toLowerCase()))));
 }
-/** Injectable runner: synthetic tests exercise the same time, skip and cap logic as cron. */
+/**
+ * Injectable runner for the pre-24 Oct performance emails. No cron calls it any
+ * more: am:gbp-daily and am:akbar-perf are sent by /api/cron/alerts
+ * (lib/alerts/registry.ts and lib/alerts/delivery.ts).
+ */
 export async function deliverPerformance(now: Date, deps: DeliveryDependencies): Promise<string[]> {
   const hour = Number(new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Dubai', hour: '2-digit', hour12: false }).format(now));
   if (hour < 9 || hour >= 11) return [];
@@ -32,10 +36,10 @@ export async function deliverPerformance(now: Date, deps: DeliveryDependencies):
       const to = deps.address(target.to)?.trim();
       const cc = target.cc.map((who) => deps.address(who)?.trim());
       const recipients = [to, ...cc];
-      const excluded = deps.address('akbar')?.trim().toLowerCase();
+      // Mr Akbar is no longer excluded: owner approval of 24 Oct 2026 for the
+      // GBP and performance emails (now sent by lib/alerts, see below).
       if (!deps.configured || recipients.some((address) => !address) ||
-          new Set(recipients.map((address) => address?.toLowerCase())).size !== recipients.length ||
-          (excluded && recipients.some((address) => address?.toLowerCase() === excluded))) {
+          new Set(recipients.map((address) => address?.toLowerCase())).size !== recipients.length) {
         await deps.log(kind, today, false, [], 'Not sent: transport or distinct permitted recipient addresses unavailable');
         out.push(`${kind}: configuration unavailable`); continue;
       }

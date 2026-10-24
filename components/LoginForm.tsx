@@ -1,10 +1,18 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useActionState, useEffect, useState } from 'react';
 import { login } from '@/app/login/actions';
 
 export function LoginForm({ from }: { from: string }) {
   const [state, formAction, pending] = useActionState(login, undefined);
+  // The browser never sends a link's #anchor to the server, so `from` lacks it;
+  // the browser keeps it across the redirect to this page. Keep a plain anchor
+  // (e.g. #corp-pipeline) so the reader lands where the link pointed.
+  const [hash, setHash] = useState('');
+  useEffect(() => {
+    const h = window.location.hash;
+    if (/^#[\w-]+$/.test(h)) setHash(h);
+  }, []);
 
   return (
     <form action={formAction} className="w-full max-w-sm">
@@ -15,7 +23,7 @@ export function LoginForm({ from }: { from: string }) {
           Team sign-in. If you were given a report link, open that link directly — no password is needed.
         </p>
 
-        <input type="hidden" name="from" value={from} />
+        <input type="hidden" name="from" value={from.includes('#') ? from : from + hash} />
         <label className="mt-5 block text-[12px] font-medium text-ink-soft" htmlFor="password">
           Password
         </label>

@@ -53,9 +53,10 @@ test('empty GBP skips the GBP email but still sends the review brief; transport 
   await deliverPerformance(new Date('2026-10-12T05:15:00Z'), uncertain.deps);
   assert.equal(attempts, 2);
 });
-test('legacy Smile Club audiences and shoot schedule remain unchanged by performance review', () => {
+test('Smile Club audiences: Gautam moved to the Smile Club daily email (24 Oct); old performance path no longer sends', () => {
   const source = readFileSync('lib/smileclub/alerts.ts', 'utf8');
-  assert.match(source, /const MORNING: Who\[\] = \['gautam', 'mohan', 'fahad'\]/);
+  assert.match(source, /const MORNING: Who\[\] = \['mohan', 'fahad'\]/);
+  assert.doesNotMatch(source, /runPerformanceAlerts|deliverPerformance|buildAkbarPerformance|lib\/performance\/(alerts|delivery|emails)/);
   assert.match(source, /const EVENING: Who\[\] = \['fahad', 'gautam', 'mohan'\]/);
   assert.match(source, /const SHOOT_CC: Who\[\] = \['luvi', 'gautam', 'fahad', 'mohan'\]/);
   const page = readFileSync('app/(app)/page.tsx', 'utf8');
@@ -64,13 +65,12 @@ test('legacy Smile Club audiences and shoot schedule remain unchanged by perform
   assert.match(action, /user\?\.role !== 'admin'/); assert.match(action, /body.length > 6000/);
 });
 
-test('review stays restricted tomorrow and in future; missing, duplicate or excluded addresses fail closed', async () => {
+test('legacy runner: Mr Akbar is no longer blocked (24 Oct approval); missing or duplicate addresses fail closed', async () => {
   for (const utc of ['2026-10-14T05:00:00Z', '2026-12-01T05:00:00Z']) {
     const x = dependencies();
     await deliverPerformance(new Date(utc), x.deps);
     const review = x.sent.find((mail) => mail.subject.startsWith('[Template review]'))!;
     assert.deepEqual([...review.to, ...review.cc], ['fahad@example.invalid', 'luvi@example.invalid', 'shadi@example.invalid']);
-    assert.ok(x.sent.every((mail) => ![...mail.to, ...mail.cc].includes('akbar@example.invalid')));
   }
   for (const missing of ['fahad', 'luvi', 'shadi']) {
     const x = dependencies(); x.deps.address = (who) => who === missing ? null : `${who}@example.invalid`;
@@ -79,12 +79,17 @@ test('review stays restricted tomorrow and in future; missing, duplicate or excl
     assert.ok(!x.claims.has('am:gbp-daily:2026-10-14'));
     assert.ok(!x.sent.some((mail) => mail.subject.startsWith('[Template review]')));
   }
-  for (const wrong of ['FAHAD@example.invalid', ' AKBAR@example.invalid ']) {
+  for (const wrong of ['FAHAD@example.invalid', ' SHADI@example.invalid ']) {
     const x = dependencies(); x.deps.address = (who) => who === 'luvi' ? wrong : `${who}@example.invalid`;
     await deliverPerformance(new Date('2026-10-14T05:00:00Z'), x.deps);
     assert.equal(x.sent.length, 0);
     assert.ok(!x.claims.has('am:gbp-daily:2026-10-14'));
   }
+  // Mr Akbar's address among the recipients no longer blocks the send.
+  const akbar = dependencies(); akbar.deps.address = (who) => who === 'luvi' ? ' AKBAR@example.invalid ' : `${who}@example.invalid`;
+  await deliverPerformance(new Date('2026-10-14T05:00:00Z'), akbar.deps);
+  assert.equal(akbar.sent.length, 2);
+  assert.ok(akbar.sent.every((mail) => mail.cc.includes('AKBAR@example.invalid')));
 });
 
 test('review can coexist with other morning emails but cannot be repeated; GBP retains its own cap', () => {

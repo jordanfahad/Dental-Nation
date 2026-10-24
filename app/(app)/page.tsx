@@ -82,6 +82,7 @@ export default async function DashboardPage({
     comp?: string;
     clinic?: string;
     bpclinic?: string;
+    sc?: string;
   }>;
 }) {
   const sp = await searchParams;
@@ -137,7 +138,7 @@ export default async function DashboardPage({
           navigation so the skeleton shows immediately instead of the shell
           hanging on the tab's data. */}
       <Suspense
-        key={`${tab}|${sp.tab ?? ''}|${sp.from ?? ''}|${sp.to ?? ''}|${sp.preset ?? ''}|${sp.compare ?? ''}|${sp.mtab ?? ''}|${sp.mscope ?? ''}|${sp.mgrp ?? ''}|${sp.mchan ?? ''}|${sp.mcamp ?? ''}|${sp.gcamp ?? ''}|${sp.btab ?? ''}|${sp.ptab ?? ''}|${sp.gtab ?? ''}|${sp.gchan ?? ''}|${sp.gclinic ?? ''}|${sp.mpipe ?? ''}|${sp.rdate ?? ''}|${sp.rcad ?? ''}|${sp.rcmp ?? ''}|${sp.otab ?? ''}|${sp.dtab ?? ''}|${sp.comp ?? ''}|${sp.ccamp ?? ''}|${clinic}|${sp.bpclinic ?? ''}|${sp.gbpbranch ?? ''}`}
+        key={`${tab}|${sp.tab ?? ''}|${sp.from ?? ''}|${sp.to ?? ''}|${sp.preset ?? ''}|${sp.compare ?? ''}|${sp.mtab ?? ''}|${sp.mscope ?? ''}|${sp.mgrp ?? ''}|${sp.mchan ?? ''}|${sp.mcamp ?? ''}|${sp.gcamp ?? ''}|${sp.btab ?? ''}|${sp.ptab ?? ''}|${sp.gtab ?? ''}|${sp.gchan ?? ''}|${sp.gclinic ?? ''}|${sp.mpipe ?? ''}|${sp.rdate ?? ''}|${sp.rcad ?? ''}|${sp.rcmp ?? ''}|${sp.otab ?? ''}|${sp.dtab ?? ''}|${sp.comp ?? ''}|${sp.ccamp ?? ''}|${clinic}|${sp.bpclinic ?? ''}|${sp.gbpbranch ?? ''}|${sp.sc ?? ''}`}
         fallback={<TabSkeleton />}
       >
         {tab === 'executive' ? <ExecutiveDashboard query={query} gclinic={sp.gclinic} /> : null}
@@ -157,7 +158,7 @@ export default async function DashboardPage({
         {/* Grantable per-user window onto the Smile Club plan (primary home:
             /impact#smileclub). resolveTabInSet already limits `tab` to the
             viewer's effective set, so membership alone gates it. */}
-        {tab === 'smileclub' ? <SmileClubPlan /> : null}
+        {tab === 'smileclub' ? <SmileClubPlan initial={sp.sc === 'team' || sp.sc === 'scripts' ? sp.sc : undefined} /> : null}
         {/* Group Revenue + Board Report are grantable per-user: resolveTabInSet
             already restricts `tab` to the viewer's effective set, so membership
             alone gates them (no extra isAdmin check). Status + Users stay hard

@@ -181,7 +181,8 @@ test('migration is additive, service-role only, with transactional history seedi
 test('lead kind is excluded from Smile Club caps and lists; shoot-only audiences remain unchanged', () => {
   const source = readFileSync('lib/smileclub/alerts.ts', 'utf8');
   assert.match(source, /if \(kind === 'lead:whatsapp'\) continue;/);
-  assert.match(source, /const MORNING: Who\[\] = \['gautam', 'mohan', 'fahad'\]/);
+  // Gautam left the morning briefings on 24 Oct: he gets the Smile Club daily email instead.
+  assert.match(source, /const MORNING: Who\[\] = \['mohan', 'fahad'\]/);
   assert.match(source, /const EVENING: Who\[\] = \['fahad', 'gautam', 'mohan'\]/);
   assert.match(source, /const SHOOT_CC: Who\[\] = \['luvi', 'gautam', 'fahad', 'mohan'\]/);
   assert.match(readFileSync('lib/smileclub/tracker.ts', 'utf8'), /\.neq\('kind', 'lead:whatsapp'\)/);
