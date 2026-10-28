@@ -9,7 +9,7 @@ import { getAdSpendForRange, getAdFeedFreshness } from '@/lib/marketing/report';
 import { getWidgetEnquiries } from '@/lib/bookings/widgetEnquiries';
 import { getNewPatientAcquisition } from './acquisition';
 import { getChannelPerformance, type GrowthPerfClinic } from '@/lib/growth/channelPerformance';
-import type { ClinicFilterKey } from '@/config/clinics';
+import { growthKeyOfClinic, type ClinicFilterKey } from '@/config/clinics';
 import type { ExecKpis, ExecMonthPoint, ExecutiveReport } from './types';
 
 /**
@@ -37,8 +37,7 @@ export interface ExecQuery {
 
 /** The Growth Platform lens for a page clinic lens; the Executive page and its
  *  Growth Platform card both use it so they read the same cached report. */
-export const growthClinicOf = (c: ClinicFilterKey = 'all'): GrowthPerfClinic =>
-  c === 'dental-nation' ? 'dn-alwasl' : c === 'dr-tosun' ? 'dr-tosun' : 'all';
+export const growthClinicOf = (c: ClinicFilterKey = 'all'): GrowthPerfClinic => growthKeyOfClinic(c);
 
 export async function getExecutiveReport(query: ExecQuery = {}): Promise<ExecutiveReport> {
   // Acquisition sources (ad spend, leads, GA4, booking widget) are SHARED across

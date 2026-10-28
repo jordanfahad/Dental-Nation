@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { getAppointmentAnalytics, type NamedAmount } from '@/lib/practo/appointmentAnalytics';
+import type { ClinicFilterKey } from '@/config/clinics';
 import { Card, SectionHeader } from '@/components/ui/Card';
 import { DataGapInline } from '@/components/ui/DataGap';
 import { KpiBand, type KpiItem } from '@/components/charts/KpiBand';
@@ -26,7 +27,7 @@ function hourLabel(h: number | null): string | null {
  * feed), a Revenue Overview and per-provider performance (Practo bills). Driven
  * by the header date-range control.
  */
-export async function AppointmentAnalytics({ range }: { range?: { from?: string; to?: string } }) {
+export async function AppointmentAnalytics({ range }: { range?: { from?: string; to?: string; clinic?: ClinicFilterKey } }) {
   const a = await getAppointmentAnalytics(range ?? {});
   const period = `${dubaiDateLabel(a.from)} → ${dubaiDateLabel(a.to)}`;
 

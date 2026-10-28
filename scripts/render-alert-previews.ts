@@ -49,6 +49,7 @@ async function main() {
       all: { yesterday: { enquiries: 2, booked: 4, showed: 3 }, mtd: { enquiries: 38, booked: 61, showed: 47 } },
       'dn-alwasl': { yesterday: { enquiries: 1, booked: 2, showed: 2 }, mtd: { enquiries: 22, booked: 36, showed: 28 } },
       'dr-tosun': { yesterday: { enquiries: 1, booked: 2, showed: 1 }, mtd: { enquiries: 16, booked: 25, showed: 19 } },
+      amc: { yesterday: { enquiries: 0, booked: 1, showed: 1 }, mtd: { enquiries: 0, booked: 6, showed: 4 } },
     },
     companies: {
       byStage: { target: 11, contacted: 8, meeting: 4, proposal: 3, signed: 2, launched: 1, lost: 2 },
@@ -115,6 +116,7 @@ async function main() {
     clinics: {
       'dental-nation': { yesterday: { booked: 9, showed: 7, billed: 18450 }, mtd: { booked: 148, showed: 121, billed: 402300 } },
       'dr-tosun': { yesterday: { booked: 6, showed: 5, billed: 12900 }, mtd: { booked: 97, showed: 82, billed: 268750 } },
+      'al-maher': { yesterday: { booked: 0, showed: 0, billed: 0 }, mtd: { booked: 0, showed: 0, billed: 0 } },
       group: { yesterday: { booked: 15, showed: 12, billed: 31350 }, mtd: { booked: 245, showed: 203, billed: 671050 } },
     },
     adSpendMtd: 9840,

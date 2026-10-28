@@ -31,15 +31,16 @@
  *    page's branded rule over its top 250 queries; null after 8 seconds.
  *  - Instagram: getSocialReport for the month to date, as the Social tab.
  *
- * Al Maher has no patient system feed and enquiries are tracked for all
- * clinics together, so neither is split by clinic.
+ * Enquiries are tracked for all clinics together, so they are not split by
+ * clinic. Al Maher's bookings and bills are in Practo from 22 Oct 2026
+ * (AL_MAHER_PRACTO_FROM); earlier dates have none.
  *
  * readPerformanceDaily is read-only and never throws for one missing source:
  * a source that cannot be read becomes null and renders "not yet".
  * buildPerformanceDaily is pure.
  */
 import type { AdminClient } from '@/lib/supabase/server';
-import type { ClinicFilterKey } from '@/config/clinics';
+import { AL_MAHER_PRACTO_FROM, type ClinicFilterKey } from '@/config/clinics';
 import { CHANNELS } from '@/config/growth-channels';
 import { COMPETITORS, OWN } from '@/config/competitors';
 import { getChannelPerformance, type GrowthPerfClinic, type GrowthReport } from '@/lib/growth/channelPerformance';
@@ -151,6 +152,7 @@ const channelName = (key: string) => MOVER_NAMES[key] ?? CHANNEL_NAMES[key] ?? C
 export const CLINIC_ROWS: { key: ExecClinic; name: string }[] = [
   { key: 'dental-nation', name: 'Dental Nation Al Wasl' },
   { key: 'dr-tosun', name: 'Dr. Tosun Dental Clinic' },
+  { key: 'al-maher', name: 'Al Maher Medical Centre' },
 ];
 
 /**
@@ -245,14 +247,15 @@ export async function readPerformanceDaily(db: AdminClient, today: string): Prom
   });
 
   const [
-    allY, allM, all7, allP7, waslY, waslM, tosunY, tosunM,
-    billedAllY, billedAllM, billedWaslY, billedWaslM, billedTosunY, billedTosunM,
+    allY, allM, all7, allP7, waslY, waslM, tosunY, tosunM, maherY, maherM,
+    billedAllY, billedAllM, billedWaslY, billedWaslM, billedTosunY, billedTosunM, billedMaherY, billedMaherM,
     adSpendMtd, orthoBillingMtd, smileClubMembers, reviews, brandSearches, brandedShare, instagram,
   ] = await Promise.all([
     growth(p.yesterday, 'all'), growth(p.mtd, 'all'), growth(p.last7, 'all'), growth(p.prior7, 'all'),
     growth(p.yesterday, 'dn-alwasl'), growth(p.mtd, 'dn-alwasl'), growth(p.yesterday, 'dr-tosun'), growth(p.mtd, 'dr-tosun'),
+    growth(p.yesterday, 'amc'), growth(p.mtd, 'amc'),
     billed(p.yesterday, 'all'), billed(p.mtd, 'all'), billed(p.yesterday, 'dental-nation'), billed(p.mtd, 'dental-nation'),
-    billed(p.yesterday, 'dr-tosun'), billed(p.mtd, 'dr-tosun'),
+    billed(p.yesterday, 'dr-tosun'), billed(p.mtd, 'dr-tosun'), billed(p.yesterday, 'al-maher'), billed(p.mtd, 'al-maher'),
     safe(async () => {
       const s = await getAdSpendForRange(p.mtd.from, p.mtd.to, db);
       return s.rows > 0 ? s.total : null;
@@ -287,6 +290,7 @@ export async function readPerformanceDaily(db: AdminClient, today: string): Prom
     clinics: {
       'dental-nation': { yesterday: figures(waslY, billedWaslY), mtd: figures(waslM, billedWaslM) },
       'dr-tosun': { yesterday: figures(tosunY, billedTosunY), mtd: figures(tosunM, billedTosunM) },
+      'al-maher': { yesterday: figures(maherY, billedMaherY), mtd: figures(maherM, billedMaherM) },
       group: { yesterday: figures(allY, billedAllY), mtd: figures(allM, billedAllM) },
     },
     adSpendMtd,
@@ -343,9 +347,9 @@ export function buildPerformanceDaily(
   };
   const clinicRows = CLINIC_ROWS.map((c) => {
     const f = data.clinics[c.key];
+    if (!f) return [text(c.name), NOT_YET, NOT_YET, NOT_YET, NOT_YET, NOT_YET, NOT_YET, ''];
     return clinicRow(text(c.name), f.yesterday, f.mtd, executiveLink(p.yesterday, c.key), executiveLink(p.mtd, c.key));
   });
-  clinicRows.push([text('Al Maher Medical Centre'), NOT_YET, NOT_YET, NOT_YET, NOT_YET, NOT_YET, NOT_YET, '']);
   clinicRows.push(clinicRow(bold('Group'), group.yesterday, group.mtd, exY, exM));
   const byClinic = table(['Clinic', 'Booked yday', 'Showed yday', 'Billed yday (AED)', 'Booked MTD', 'Showed MTD', 'Billed MTD (AED)', ''], clinicRows, [1, 2, 3, 4, 5, 6]);
 
@@ -407,7 +411,7 @@ export function buildPerformanceDaily(
   const body = [
     h2('Group at a glance'), glance,
     h2('By clinic'), byClinic,
-    note('Enquiries are tracked for all clinics together, so they appear only in the channel table. Al Maher has no patient system feed yet.'),
+    note(`Enquiries are tracked for all clinics together, so they appear only in the channel table.${p.mtd.from < AL_MAHER_PRACTO_FROM ? ` Al Maher's bookings and bills are in Practo from ${dayLabel(AL_MAHER_PRACTO_FROM)}.` : ''}`),
     h2('Digital marketing by channel (all clinics)'), byChannel,
     note('Numbers open the Growth channel table for the same dates; "Patients" opens the list of patients behind each channel.'),
     estimated ? note('Paid search enquiries and bookings are measured. Its cost per enquiry is the Growth figure marked ≈, which also counts modelled phone enquiries.') : '',

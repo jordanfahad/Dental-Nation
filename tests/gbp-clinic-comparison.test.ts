@@ -68,7 +68,7 @@ test('first-day, year-boundary and leap-year windows never relabel the previous 
 test('comparison reader uses stored feeds and actual Growth periods, paginates, and fails closed', async (t) => {
   t.mock.method(globalThis, 'fetch', async () => { throw new Error('Unexpected network call'); });
   const growth = load<typeof import('../lib/growth/channelPerformance')>('lib/growth/channelPerformance.ts', {
-    '@/config/clinics': { ...clinics, clinicOfDoctor: (name: string) => name === 'Dr Test Synthetic' ? 'dr-tosun' : 'dental-nation' },
+    '@/config/clinics': { ...clinics, clinicOfAppointment: (_center: string, name: string) => name === 'Dr Test Synthetic' ? 'dr-tosun' : 'dental-nation' },
   });
   const reader = load<typeof import('../lib/gbp/clinic-comparison-reader')>('lib/gbp/clinic-comparison-reader.ts', {
     '@/lib/growth/channelPerformance': growth,

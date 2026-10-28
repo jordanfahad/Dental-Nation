@@ -2,7 +2,7 @@ import { selectAll } from '../supabase/selectAll';
 import 'server-only';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
 import { parseArabySource } from '@/lib/arabyads/report';
-import { clinicOfDoctor } from '@/config/clinics';
+import { clinicOfAppointment, clinicOfGrowthKey, type GrowthClinicKey } from '@/config/clinics';
 import {
   classifyAppointment,
   isBlockAppt,
@@ -54,7 +54,7 @@ const inRange = (day: string | null | undefined, from: string | null, to: string
 export async function getChannelTrace(
   channelKey: string,
   range: { from?: string; to?: string } = {},
-  clinic: 'all' | 'dn-alwasl' | 'dr-tosun' = 'all',
+  clinic: GrowthClinicKey = 'all',
   options: { patientKeys?: readonly string[]; uniquePatients?: boolean } = {},
 ): Promise<ChannelTraceResult> {
   const empty: ChannelTraceResult = { channelKey, total: 0, truncated: false, patients: [] };
@@ -65,7 +65,7 @@ export async function getChannelTrace(
 
   try {
     const [apptRes, zavisRes, leadRes, crmRes, existRes, practoPtRes, billRes] = await Promise.all([
-      selectAll(() => db.from('practo_appointments_raw').select('appt_date, status, mr_no, doctor, patient_name, patient_phone, data'), "appt_key"),
+      selectAll(() => db.from('practo_appointments_raw').select('appt_date, status, mr_no, doctor, center_name, patient_name, patient_phone, data'), "appt_key"),
       selectAll(() => db.from('raw_zavis').select('data'), "id"),
       selectAll(() => db.from('leads').select('inquiry_date, raw_row'), "id"),
       selectAll(() => db.from('crm_appointments').select('patient_phone, source, is_test'), "appointment_id"),
@@ -138,7 +138,7 @@ export async function getChannelTrace(
 
     const filesByPhone = new Map<string, Set<string>>();
     const apptRows = (apptRes.data as {
-      appt_date: string | null; status: string | null; mr_no: string | null; doctor: string | null;
+      appt_date: string | null; status: string | null; mr_no: string | null; doctor: string | null; center_name: string | null;
       patient_name: string | null; patient_phone: string | null; data: Record<string, unknown>;
     }[] | null) ?? [];
     for (const a of apptRows) {
@@ -155,11 +155,12 @@ export async function getChannelTrace(
 
     /* ── Classify every in-window appointment; keep this channel's ── */
 
+    const scope = clinicOfGrowthKey(clinic);
     const out: TracedPatient[] = [];
     for (const a of apptRows) {
       if (!inRange(a.appt_date, from, to)) continue;
-      // Clinic scope mirrors channelPerformance: appointments split by doctor.
-      if (clinic !== 'all' && (clinicOfDoctor(S(a.doctor)) === 'dr-tosun') !== (clinic === 'dr-tosun')) continue;
+      // Clinic scope mirrors channelPerformance: appointments split by Practo center.
+      if (scope != null && clinicOfAppointment(a.center_name, a.doctor) !== scope) continue;
       const freeText = `${S(a.data?.['remarks'])} ${S(a.data?.['complaint'])}`.toLowerCase();
       const facts: ApptFacts = {
         mrNo: S(a.mr_no),

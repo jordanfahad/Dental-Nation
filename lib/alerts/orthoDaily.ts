@@ -15,7 +15,8 @@
  *    DN Ortho campaign. "Not live" until a row in the range has spend or
  *    impressions.
  *  - Ortho enquiries and appointments per orthodontist: not yet (no source
- *    the dashboard can prove). Al Maher has no Practo feed: not yet.
+ *    the dashboard can prove). Al Maher is in Practo from 22 Oct 2026, but
+ *    with no conducting doctor on its charge lines: not yet.
  *  - Checklist: config/ortho-checklist.ts (project plan, edited by hand).
  */
 import type { AdminClient } from '@/lib/supabase/server';
@@ -194,6 +195,7 @@ export function buildOrthoDaily(
     const href = practoRevenueLink(d.clinic, mtd);
     return [text(d.name), text(d.clinicLabel), num(d.billedMtd, href), NOT_YET, d.billedMtd == null ? '' : proof(href)];
   });
+  // Al Maher is in Practo from 22 Oct 2026, but its charge lines carry no conducting doctor yet.
   doctorRows.push([text('Dr Suzanna Almaali'), text('Al Maher Medical Centre'), NOT_YET, NOT_YET, '']);
 
   const googleRow = g == null
@@ -246,7 +248,7 @@ export function buildOrthoDaily(
     subtitle: `${dayLabel(yesterday.from)} (yesterday) and ${rangeLabel(mtd.from, mtd.to)} (month to date)`,
     body,
     landing: { href: billingLink, label: 'Open the orthodontist billing report' },
-    sources: 'Sources: Practo bills (every 15 min), Google Ads (every 15 min), project plan. Al Maher is not connected yet.',
+    sources: 'Sources: Practo bills (every 15 min; Al Maher from 22 Oct 2026), Google Ads (every 15 min), project plan.',
     recipients: opts.recipients ?? ORTHO_DAILY_RECIPIENTS,
     preview: opts.preview,
   }));

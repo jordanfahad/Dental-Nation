@@ -18,6 +18,7 @@ function sample(): SmileClubDailyData {
       all: { yesterday: { enquiries: 3, booked: 5, showed: 2 }, mtd: { enquiries: 38, booked: 61, showed: 47 } },
       'dn-alwasl': { yesterday: { enquiries: 3, booked: 7, showed: 1 }, mtd: { enquiries: 38, booked: 36, showed: 28 } },
       'dr-tosun': { yesterday: { enquiries: 0, booked: 9, showed: 1 }, mtd: { enquiries: 0, booked: 25, showed: 19 } },
+      amc: { yesterday: { enquiries: 0, booked: 17, showed: 1 }, mtd: { enquiries: 0, booked: 31, showed: 29 } },
     },
     companies: { byStage: { target: 11, contacted: 8, meeting: 4, proposal: 13, signed: 12, launched: 1, lost: 6 }, members: 14 },
     shootChanges: [{ iso: '2026-10-23', label: 'Fri 23 Oct (Fahad)', text: 'Synthetic shoot moved \u2013 new date to confirm \u2014 waiting for the dentist' }],
@@ -74,6 +75,9 @@ test('every figure links to reports.dentalnation.com with the right tab, dates a
   assertGrowth(html, '9', Y, 'dr-tosun');
   assertGrowth(html, '25', MTD, 'dr-tosun');
   assertGrowth(html, '19', MTD, 'dr-tosun');
+  assertGrowth(html, '17', Y, 'amc');
+  assertGrowth(html, '31', MTD, 'amc');
+  assertGrowth(html, '29', MTD, 'amc');
   // Companies by stage, in the dashboard's stage order.
   for (const v of ['11', '8', '4', '13', '12', '1', '6']) assertSmileClub(html, v, 'team', '#corp-pipeline');
   const stageOrder = ['Target', 'Contacted', 'Meeting held', 'Proposal sent', 'Trial signed', 'Staff launched', 'Not now'].map((s) => html.indexOf(`>${s}</td>`));
@@ -85,13 +89,11 @@ test('every figure links to reports.dentalnation.com with the right tab, dates a
   // Every link, including Proof links and the landing button, stays on the dashboard.
   for (const a of anchors(html)) assert.ok(a.href.startsWith('https://reports.dentalnation.com/'), a.href);
   assert.ok(anchors(html).some((a) => a.href === 'https://reports.dentalnation.com/?tab=smileclub' && a.text.startsWith('Open the Smile Club report')));
-  // Al Maher has no feed: never linked.
-  assert.match(html, /Al Maher Medical Centre<\/td>(<td[^>]*><span style="color:#6B7280">not yet<\/span><\/td>){3}<td[^>]*><\/td>/);
 });
 
 test('nulls render "not yet" without a link and never as zero', () => {
   const data: SmileClubDailyData = {
-    growth: { all: { yesterday: null, mtd: null }, 'dn-alwasl': { yesterday: null, mtd: null }, 'dr-tosun': { yesterday: null, mtd: null } },
+    growth: { all: { yesterday: null, mtd: null }, 'dn-alwasl': { yesterday: null, mtd: null }, 'dr-tosun': { yesterday: null, mtd: null }, amc: { yesterday: null, mtd: null } },
     companies: null, shootChanges: [], scriptsWaiting: null, tasksDueToday: null,
   };
   const { subject, html } = buildSmileClubDaily(data, TODAY);

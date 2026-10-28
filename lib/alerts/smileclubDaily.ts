@@ -41,7 +41,7 @@ export interface PartnershipPeriods { yesterday: PartnershipWindow | null; mtd: 
 export type SmileClubPerson = 'gautam' | 'mj' | 'luvi' | 'shadi';
 
 export interface SmileClubDailyData {
-  /** Growth "Partnerships (Smile Club)" row per clinic view (gclinic=all, dn-alwasl, dr-tosun). */
+  /** Growth "Partnerships (Smile Club)" row per clinic view (gclinic=all, dn-alwasl, dr-tosun, amc). */
   growth: Record<GrowthPerfClinic, PartnershipPeriods>;
   /** Gautam's company list (lane_e.sc_companies); null = could not be read. */
   companies: {
@@ -137,7 +137,7 @@ interface TaskRow { name: string | null; owner: string | null; status: string | 
 
 export async function readSmileClubDaily(db: AdminClient, today: string): Promise<SmileClubDailyData> {
   const p = periods(today);
-  const clinics: GrowthPerfClinic[] = ['all', 'dn-alwasl', 'dr-tosun'];
+  const clinics: GrowthPerfClinic[] = ['all', 'dn-alwasl', 'dr-tosun', 'amc'];
   const [growthRows, corp, reviews, tasks] = await Promise.all([
     Promise.all(clinics.flatMap((c) => [safe(() => partnership(db, p.yesterday, c)), safe(() => partnership(db, p.mtd, c))])),
     safe(() => loadCorp(db)),
@@ -201,8 +201,9 @@ export function buildSmileClubDaily(data: SmileClubDailyData, today: string, opt
     { label: 'Members, all companies', value: data.companies?.members ?? null, href: SMILE_CLUB_COMPANIES, sub: `Target ${MEMBERS_TARGET} · company-reported` },
   ]);
 
-  const clinicRow = (name: string, c: 'dn-alwasl' | 'dr-tosun') => {
+  const clinicRow = (name: string, c: Exclude<GrowthPerfClinic, 'all'>) => {
     const g = data.growth[c];
+    if (!g) return [text(name), NOT_YET, NOT_YET, NOT_YET, ''];
     const y = growthLink(p.yesterday, c), m = growthLink(p.mtd, c);
     return [text(name), num(g.yesterday?.booked ?? null, y), num(g.mtd?.booked ?? null, m), num(g.mtd?.showed ?? null, m),
       g.mtd ? proof(m) : g.yesterday ? proof(y) : ''];
@@ -210,7 +211,7 @@ export function buildSmileClubDaily(data: SmileClubDailyData, today: string, opt
   const byClinic = table(['Clinic', 'Booked yesterday', 'Booked month to date', 'Showed month to date', ''], [
     clinicRow('Dental Nation Al Wasl', 'dn-alwasl'),
     clinicRow('Dr. Tosun Dental Clinic', 'dr-tosun'),
-    [text('Al Maher Medical Centre'), NOT_YET, NOT_YET, NOT_YET, ''],
+    clinicRow('Al Maher Medical Centre', 'amc'),
   ], [1, 2, 3]);
 
   const companies = table(['Stage', 'Companies', ''], STAGES.map((s) => data.companies

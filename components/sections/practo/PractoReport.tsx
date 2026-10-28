@@ -49,7 +49,7 @@ export async function PractoReport({
     <div className="space-y-4">
       <PractoSubNav active={active} />
       {active === 'appointments' ? (
-        <AppointmentAnalytics range={{ from: range?.from, to: range?.to }} />
+        <AppointmentAnalytics range={{ from: range?.from, to: range?.to, clinic: range?.clinic }} />
       ) : (
         <PractoRevenue range={range} />
       )}

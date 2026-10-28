@@ -6,7 +6,7 @@ import { AiChatRows } from './AiChatRows';
 import { FunnelGroupFilter, type GroupFunnel } from './FunnelGroupFilter';
 import { GrowthClinicFilter } from './GrowthClinicFilter';
 import { PdfButton } from './PdfButton';
-import { resolveGrowthClinic, type GrowthClinicKey } from '@/config/clinics';
+import { AL_MAHER_PRACTO_FROM, resolveGrowthClinic, type GrowthClinicKey } from '@/config/clinics';
 import { getChannelPerformance, type ChannelPerf, type GrowthReport } from '@/lib/growth/channelPerformance';
 import { websiteReviewLine } from '@/lib/growth/websiteReview';
 import { getChannelTrace } from '@/lib/growth/channelTrace';
@@ -360,13 +360,13 @@ function TraceTable({ patients, reasonFor }: { patients: TracedRow[]; reasonFor?
 async function ChannelTraceView({ channelKey, range, clinic }: { channelKey: string; range?: { from?: string; to?: string }; clinic: GrowthClinicKey }) {
   const def = CHANNEL_BY_KEY.get(channelKey);
   const [trace, performance] = await Promise.all([
-    getChannelTrace(channelKey, range ?? {}, clinic === 'amc' ? 'all' : clinic),
-    ['paid-search', 'website'].includes(channelKey) ? getChannelPerformance(range, clinic === 'amc' ? 'all' : clinic) : Promise.resolve(null),
+    getChannelTrace(channelKey, range ?? {}, clinic),
+    ['paid-search', 'website'].includes(channelKey) ? getChannelPerformance(range, clinic) : Promise.resolve(null),
   ]);
   // Phone-path channels (Google Ads, Business Profile, website) reach the desk by call or WhatsApp with no
   // source on the booking, so their patients sit in the untraced desk pool; show that pool here.
   const pool = PHONE_PATH_CHANNELS.includes(channelKey)
-    ? await getChannelTrace('direct-walkin', range ?? {}, channelKey === 'paid-search' && clinic !== 'dr-tosun' ? 'dn-alwasl' : clinic === 'amc' ? 'all' : clinic,
+    ? await getChannelTrace('direct-walkin', range ?? {}, channelKey === 'paid-search' && (clinic === 'all' || clinic === 'dn-alwasl') ? 'dn-alwasl' : clinic,
       channelKey === 'paid-search' ? { patientKeys: performance?.mvmSelection?.poolKeys ?? [], uniquePatients: true } : {})
     : null;
   // Paid search: split the no-source desk patients into the ones the model credits to Google Ads and the rest.
@@ -514,24 +514,24 @@ export async function GrowthPlatform({ range, gchan, gclinic }: { range?: { from
     return <ChannelTraceView channelKey={gchan} range={range} clinic={clinic} />;
   }
 
-  // AMC has no channel feed at all — no PMS sync, no site, and no paid ads
-  // (campaigns ran only for Dental Nation Al Wasl). Say that instead of
-  // rendering a page of hollow zeros.
-  if (clinic === 'amc') {
+  // AMC (Al Maher) is in Practo only from AL_MAHER_PRACTO_FROM, with no site
+  // and no paid ads (campaigns ran only for Dental Nation Al Wasl). For a
+  // period that ends before then, say so instead of rendering hollow zeros.
+  if (clinic === 'amc' && range?.to && range.to < AL_MAHER_PRACTO_FROM) {
     return (
       <div className="space-y-4">
         <GrowthClinicFilter active={clinic} />
         <Card>
-          <SectionHeader tag="G" eyebrow="⭐ Growth Platform — the Dental Nation star" title="AMC — channel tracking not connected" />
+          <SectionHeader tag="G" eyebrow="⭐ Growth Platform — the Dental Nation star" title="AMC — no Practo data for this period" />
           <div className="px-5 pb-5 pt-3">
             <p className="max-w-[640px] text-[12.5px] leading-relaxed text-ink-soft">
-              AMC (Al Maher Medical Centre) has no channel data source yet — its PMS isn&apos;t synced, it doesn&apos;t
-              share the Dental Nation website, and <span className="font-medium text-ink">no paid campaigns ran for
-              AMC</span> (Google Ads and Meta ran only for Dental Nation Al Wasl). Its revenue lives in the{' '}
+              AMC (Al Maher Medical Centre) appointments and bills are in Practo from {AL_MAHER_PRACTO_FROM}; this
+              period ends before that. <span className="font-medium text-ink">No paid campaigns ran for
+              AMC</span> (Google Ads and Meta ran only for Dental Nation Al Wasl). Its earlier revenue lives in the{' '}
               <Link href="?tab=group&gtab=al-maher" className="font-medium text-accent hover:underline">
                 Group Revenue → AMC
               </Link>{' '}
-              view (gross billed, ≈99.8% insurance). Connecting its PMS feed is what lights this view up.
+              view (gross billed, ≈99.8% insurance).
             </p>
           </div>
         </Card>

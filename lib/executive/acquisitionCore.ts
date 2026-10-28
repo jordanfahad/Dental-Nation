@@ -35,8 +35,10 @@ export interface NewPatientAcquisition {
   cpaWebsite: number | null; // spend ÷ website-sourced new patients
   revenuePerNewPatient: number | null;
   roas: number | null; // new-patient revenue ÷ spend (all new patients, not ad-attributed)
-  /** True when the selected clinic is Dr Tosun: new patients can't be measured there yet. */
+  /** True when the selected clinic is Dr Tosun or Al Maher: new patients can't be measured there yet. */
   notMeasurable: boolean;
+  /** Why, in plain words, when notMeasurable is true for a reason other than Dr Tosun's renumbering. */
+  notMeasurableWhy?: string;
   /** Dr Tosun DN-series files billed in the window, left out of new patients. */
   tosunFilesBilled: number;
 }
@@ -97,7 +99,10 @@ export function computeNewPatientAcquisition(input: {
     const mr = String(d.mr_no ?? '').trim();
     if (!mr || !isNewMr(mr) || !b.bill_date) continue;
     if (String(d.bill_status ?? '').toUpperCase() === 'CANCELLED') continue;
-    if (clinicOfCenter(String(d.center_name ?? '')) === 'dr-tosun' || isTosunSeries(mr)) {
+    const billClinic = clinicOfCenter(String(d.center_name ?? ''));
+    // Al Maher bills are not Al Wasl acquisition: no Dental Nation ads ran for it.
+    if (billClinic === 'al-maher') continue;
+    if (billClinic === 'dr-tosun' || isTosunSeries(mr)) {
       const prevT = firstTosunBill.get(mr);
       if (!prevT || b.bill_date < prevT) firstTosunBill.set(mr, b.bill_date);
       if (inRange(b.bill_date, from, to)) tosunInWindow.add(mr);
@@ -121,6 +126,10 @@ export function computeNewPatientAcquisition(input: {
   const billedInWindow = new Set<string>([...tosunInWindow, ...windowRevenue.keys()]);
   const tosunFilesBilled = [...billedInWindow].filter(isTosunFile).length;
   if (clinic === 'dr-tosun') return { ...emptyAcquisition, notMeasurable: true, tosunFilesBilled };
+  if (clinic === 'al-maher') {
+    return { ...emptyAcquisition, notMeasurable: true,
+      notMeasurableWhy: 'Al Maher joined Practo on 22 Oct 2026 and no Dental Nation ads ran for it, so new-patient acquisition is not measured there' };
+  }
 
   const newFiles = [...firstBill.entries()]
     .filter(([mr, first]) => !isTosunFile(mr) && inRange(first, from, to))

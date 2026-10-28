@@ -1,6 +1,7 @@
 import { selectAll } from '../supabase/selectAll';
 import 'server-only';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
+import { clinicOfAppointment, clinicOfCenter, clinicOfDoctor, type ClinicFilterKey } from '@/config/clinics';
 
 /**
  * Appointment Analytics model for the Practo Insta sub-tab. Reproduces the
@@ -150,6 +151,7 @@ const empty = (from: string, to: string): AppointmentAnalytics => ({
 });
 
 interface BillData {
+  center_name?: unknown;
   net_amount?: unknown;
   patient_amount?: unknown;
   finalized_date?: unknown;
@@ -158,7 +160,7 @@ interface BillData {
   charges?: { amount?: unknown; conducting_doctor?: unknown; posted_date?: unknown }[];
 }
 
-export async function getAppointmentAnalytics(range: { from?: string; to?: string } = {}): Promise<AppointmentAnalytics> {
+export async function getAppointmentAnalytics(range: { from?: string; to?: string; clinic?: ClinicFilterKey } = {}): Promise<AppointmentAnalytics> {
   const to = range.to || iso(new Date());
   const from = range.from || iso(new Date(Date.now() - 29 * 86400_000));
   const db = getSupabaseAdmin();
@@ -173,7 +175,7 @@ export async function getAppointmentAnalytics(range: { from?: string; to?: strin
     const [pa, za, b] = await Promise.all([
       selectAll(() => db
         .from('practo_appointments_raw')
-        .select('status, appt_time, duration_minutes, mr_no, patient_phone, patient_name, doctor, department')
+        .select('status, appt_time, duration_minutes, mr_no, patient_phone, patient_name, doctor, department, center_name')
         .gte('appt_date', from)
         .lte('appt_date', to), "appt_key"),
       selectAll(() => db
@@ -188,10 +190,21 @@ export async function getAppointmentAnalytics(range: { from?: string; to?: strin
     return empty(from, to);
   }
 
+  // Clinic lens, with the same rules as Executive and Growth: Practo
+  // appointments and bills by center, CRM appointments by doctor. The Practo
+  // vs CRM choice below is made on the unscoped feed, so a clinic with no
+  // rows reads as empty instead of switching to the other source.
+  const clinic = range.clinic ?? 'all';
+  const usePracto = practoRows.length > 0;
+  if (clinic !== 'all') {
+    practoRows = practoRows.filter((r) => clinicOfAppointment(r.center_name as string | null, r.doctor as string | null) === clinic);
+    zavisRows = zavisRows.filter((r) => clinicOfDoctor(r.professional_name as string | null) === clinic);
+    bills = bills.filter((r) => clinicOfCenter(String(r.data?.center_name ?? '')) === clinic);
+  }
+
   // Prefer the Practo Insta appointment book when present (authoritative — it
   // reconciles with the clinic's Practo screen); otherwise fall back to the
   // ZAVIS CRM feed so the tab still works before/without a Practo sync.
-  const usePracto = practoRows.length > 0;
   const apptSource: 'practo' | 'zavis' = usePracto ? 'practo' : 'zavis';
   const norm: NormAppt[] = usePracto
     ? practoRows.map((r) => ({

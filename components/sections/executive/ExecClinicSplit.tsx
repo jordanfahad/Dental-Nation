@@ -34,7 +34,7 @@ export function ExecClinicSplit({ report }: { report: ExecutiveReport }) {
       <SectionHeader
         tag="X-clinic"
         eyebrow="Executive dashboard · clinic comparison"
-        title="Dental Nation vs Dr Tosun Dental Clinic"
+        title="Clinic comparison"
       />
       <div className="px-5 pb-5 pt-3">
         <div className="grid gap-6 lg:grid-cols-2">

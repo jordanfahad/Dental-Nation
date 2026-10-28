@@ -49,6 +49,7 @@ function sample(): PerformanceDailyData {
     clinics: {
       'dental-nation': { yesterday: { booked: 9, showed: 7, billed: 18450 }, mtd: { booked: 148, showed: 121, billed: 402300 } },
       'dr-tosun': { yesterday: { booked: 16, showed: 14, billed: 12900 }, mtd: { booked: 97, showed: 82, billed: 268750 } },
+      'al-maher': { yesterday: { booked: 33, showed: 31, billed: 1950 }, mtd: { booked: 43, showed: 39, billed: 6420 } },
       group: { yesterday: { booked: 25, showed: 21, billed: 31350 }, mtd: { booked: 245, showed: 203, billed: 671050 } },
     },
     adSpendMtd: 11040,
@@ -63,7 +64,7 @@ function sample(): PerformanceDailyData {
 const NULL_CLINIC = { yesterday: { booked: null, showed: null, billed: null }, mtd: { booked: null, showed: null, billed: null } };
 const empty = (): PerformanceDailyData => ({
   growth: { yesterday: null, mtd: null, last7: null, prior7: null },
-  clinics: { 'dental-nation': NULL_CLINIC, 'dr-tosun': NULL_CLINIC, group: NULL_CLINIC },
+  clinics: { 'dental-nation': NULL_CLINIC, 'dr-tosun': NULL_CLINIC, 'al-maher': NULL_CLINIC, group: NULL_CLINIC },
   adSpendMtd: null, orthoBillingMtd: null, smileClubMembers: null, reviews: null, brandSearches: null, brandedShare: null,
   instagram: { followers: null, reachMtd: null },
 });
@@ -84,8 +85,8 @@ function assertLinks(html: string, value: string, params: Record<string, string>
   }
 }
 const growth = (r: { from: string; to: string }) => ({ tab: 'group', gtab: 'growth', gclinic: 'all', preset: 'custom', ...r });
-const exec = (r: { from: string; to: string }, clinic?: 'dental-nation' | 'dr-tosun') => clinic
-  ? { tab: 'executive', gclinic: clinic === 'dental-nation' ? 'dn-alwasl' : 'dr-tosun', clinic, preset: 'custom', ...r }
+const exec = (r: { from: string; to: string }, clinic?: 'dental-nation' | 'dr-tosun' | 'al-maher') => clinic
+  ? { tab: 'executive', gclinic: clinic === 'dental-nation' ? 'dn-alwasl' : clinic === 'al-maher' ? 'amc' : 'dr-tosun', clinic, preset: 'custom', ...r }
   : { tab: 'executive', gclinic: 'all', preset: 'custom', ...r };
 
 test('subject: day, enquiries yesterday and billed yesterday', () => {
@@ -110,6 +111,7 @@ test('every figure links to reports.dentalnation.com with the right tab, dates a
   // By clinic: yesterday and month to date per Executive clinic lens; group without a clinic.
   for (const [v, r] of [['9', Y], ['7', Y], ['18,450', Y], ['148', MTD], ['121', MTD], ['402,300', MTD]] as const) assertLinks(html, v, exec(r, 'dental-nation'));
   for (const [v, r] of [['16', Y], ['14', Y], ['12,900', Y], ['97', MTD], ['82', MTD], ['268,750', MTD]] as const) assertLinks(html, v, exec(r, 'dr-tosun'));
+  for (const [v, r] of [['33', Y], ['31', Y], ['1,950', Y], ['43', MTD], ['39', MTD], ['6,420', MTD]] as const) assertLinks(html, v, exec(r, 'al-maher'));
   assertLinks(html, '21', exec(Y));
   assertLinks(html, '203', exec(MTD));
   // Channels: numbers open the Growth table for the same dates.
@@ -157,10 +159,9 @@ test('every figure links to reports.dentalnation.com with the right tab, dates a
   for (const c of cells) assert.match(c, /^(<a href="[^"]*"[^>]*>[^<]+<\/a>|<span style="color:#6B7280">not yet<\/span>|-|)$/, c);
   // Outside links, only dates, times and label counts carry digits.
   const outside = decode(html.replace(/<a [^>]*>[\s\S]*?<\/a>/g, ' ').replace(/<[^>]*>/g, ' ')).match(/\d[\d,.]*%?/g) ?? [];
-  const allowed = new Set(['9', '23', '1', '3', '20', '250', '24', '7', '15', '2', '09', '00']);
+  const allowed = new Set(['9', '23', '1', '3', '20', '250', '24', '7', '15', '2', '09', '00', '22']); // 22: Al Maher's Practo start date
   assert.deepEqual([...new Set(outside)].filter((t) => !allowed.has(t)), []);
-  // Al Maher has no feed: never linked.
-  assert.match(html, /Al Maher Medical Centre<\/td>(<td[^>]*><span style="color:#6B7280">not yet<\/span><\/td>){6}<td[^>]*><\/td>/);
+  assert.match(html, /Al Maher&#39;s bookings and bills are in Practo from Thu 22 Oct\./);
   assert.match(html, /Paid search enquiries and bookings are measured\./);
 });
 
@@ -179,7 +180,7 @@ test('nulls render "not yet" without a link and never as zero', () => {
   partial.clinics['dr-tosun'].yesterday.billed = null;
   partial.instagram.reachMtd = null;
   const p = buildPerformanceDaily(partial, TODAY).html;
-  assert.equal((p.match(/>not yet</g) ?? []).length, 6 + 1 + 1); // Al Maher row, Dr Tosun billed yesterday, Instagram reach
+  assert.equal((p.match(/>not yet</g) ?? []).length, 1 + 1); // Dr Tosun billed yesterday, Instagram reach
   assert.match(p, />12,480<\/a> \/ <span style="color:#6B7280">not yet<\/span>/);
 });
 

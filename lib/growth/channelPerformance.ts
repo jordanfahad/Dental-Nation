@@ -7,7 +7,7 @@ import { readWebsiteReview, type WebsiteReviewCounts } from './websiteReview';
 import { modelPhoneBookings, websitePaidInputs, type PhoneModel } from './phonePath';
 import { getSupabaseAdmin, type AdminClient } from '@/lib/supabase/server';
 import { parseArabySource } from '@/lib/arabyads/report';
-import { clinicOfCenter, clinicOfDoctor } from '@/config/clinics';
+import { AL_MAHER_PRACTO_FROM, clinicOfAppointment, clinicOfCenter, clinicOfGrowthKey, type GrowthClinicKey } from '@/config/clinics';
 import { META_ADS_PAUSED_SINCE } from '@/config/meta';
 import {
   CHANNELS,
@@ -230,7 +230,7 @@ function isTestWidgetRow(d: Record<string, unknown>): boolean {
  * silently reclassify every acquired patient as Direct / Walk-in. */
 const readAttributionInputs = cache(async (db: AdminClient) => {
   const [apptRes, zavisRes, leadRes, crmRes, existRes, practoPtRes] = await Promise.all([
-    selectAll(() => db.from('practo_appointments_raw').select('appt_date, status, mr_no, patient_phone, patient_name, doctor, data'), 'appt_key'),
+    selectAll(() => db.from('practo_appointments_raw').select('appt_date, status, mr_no, patient_phone, patient_name, doctor, center_name, data'), 'appt_key'),
     selectAll(() => db.from('raw_zavis').select('data'), 'id'),
     selectAll(() => db.from('leads').select('inquiry_date, raw_row'), 'id'),
     selectAll(() => db.from('crm_appointments').select('patient_phone, source, is_test, timeslot'), 'appointment_id'),
@@ -308,10 +308,10 @@ const readAttributionInputs = cache(async (db: AdminClient) => {
 
   /* ─── Prepare appointments + the family-link map ─────────────────────── */
 
-  interface ApptRow { date: string | null; status: string; doctor: string; facts: ApptFacts }
+  interface ApptRow { date: string | null; status: string; doctor: string; center: string; facts: ApptFacts }
   const appts: ApptRow[] = [];
   const filesByPhone = new Map<string, Set<string>>();
-  for (const r of (apptRes.data as { appt_date: string | null; status: string | null; mr_no: string | null; patient_phone: string | null; patient_name: string | null; doctor: string | null; data: Record<string, unknown> }[] | null) ?? []) {
+  for (const r of (apptRes.data as { appt_date: string | null; status: string | null; mr_no: string | null; patient_phone: string | null; patient_name: string | null; doctor: string | null; center_name: string | null; data: Record<string, unknown> }[] | null) ?? []) {
     const d = r.data ?? {};
     const freeText = `${S(d['remarks'])} ${S(d['complaint'])}`.toLowerCase();
     const facts: ApptFacts = {
@@ -321,7 +321,7 @@ const readAttributionInputs = cache(async (db: AdminClient) => {
       freeText,
       isTest: isTestAppt(`${freeText} ${S(r.patient_name)}`) || isBlockAppt(S(r.patient_name)),
     };
-    appts.push({ date: r.appt_date, status: S(r.status).toLowerCase(), doctor: S(r.doctor), facts });
+    appts.push({ date: r.appt_date, status: S(r.status).toLowerCase(), doctor: S(r.doctor), center: S(r.center_name), facts });
     if (facts.p9 && facts.mrNo && !facts.isTest) {
       (filesByPhone.get(facts.p9) ?? filesByPhone.set(facts.p9, new Set()).get(facts.p9)!).add(facts.mrNo);
     }
@@ -400,8 +400,8 @@ export async function getWebsiteEnquiries(
   return rows;
 }
 
-/** Clinics the channel report can scope to (AMC has no feed — handled in UI). */
-export type GrowthPerfClinic = 'all' | 'dn-alwasl' | 'dr-tosun';
+/** Clinics the channel report can scope to (AMC only has Practo rows from AL_MAHER_PRACTO_FROM). */
+export type GrowthPerfClinic = GrowthClinicKey;
 
 export async function getChannelPerformance(
   range: { from?: string; to?: string } = {},
@@ -429,10 +429,11 @@ const computeChannelPerformance = cache(async (
   }
   // Spend, reach, GA4 and the phone path are Dental Nation Al Wasl properties
   // (the ads and the site). They render on All and DN views;
-  // never on Dr Tosun's.
-  const dnAssets = clinic !== 'dr-tosun';
-  const apptInClinic = (doctor: string): boolean =>
-    clinic === 'all' || (clinicOfDoctor(doctor) === 'dr-tosun' ? clinic === 'dr-tosun' : clinic === 'dn-alwasl');
+  // never on Dr Tosun's or AMC's.
+  const dnAssets = clinic === 'all' || clinic === 'dn-alwasl';
+  const scope = clinicOfGrowthKey(clinic);
+  const apptInClinic = (a: { center: string; doctor: string }): boolean =>
+    scope == null || clinicOfAppointment(a.center, a.doctor) === scope;
 
   try {
     const [attribution, billRes, metaRes, gadsRes, ga4Res, gmbRes, ctRes, metaPlatRes, sourceRes] =
@@ -521,7 +522,7 @@ const computeChannelPerformance = cache(async (
     // the pool followed the view instead, narrowing to DN would change its
     // per-patient economics and the DN Paid ≈ figures could exceed the
     // All-clinics ones — an incoherence, since DN is a subset of All.
-    const isDnAppt = (doctor: string) => clinicOfDoctor(doctor) !== 'dr-tosun';
+    const isDnAppt = (a: { center: string; doctor: string }) => clinicOfAppointment(a.center, a.doctor) === 'dental-nation';
     const dnDwBooked = new Set<string>();
     let dnDwShowed = 0;
     // Per-patient candidate info for the DETERMINISTIC MTA-MVM selection:
@@ -536,7 +537,7 @@ const computeChannelPerformance = cache(async (
       const v = apptVerdicts.get(a);
       if (!v) continue;
       const pid = a.facts.mrNo || (a.facts.p9 ? `p:${a.facts.p9}` : '');
-      if (v.channel === 'direct-walkin' && isDnAppt(a.doctor)) {
+      if (v.channel === 'direct-walkin' && isDnAppt(a)) {
         if (pid) dnDwBooked.add(pid);
         const showedNow = a.status === 'arrived' || a.status === 'completed';
         if (showedNow) dnDwShowed += 1;
@@ -549,7 +550,7 @@ const computeChannelPerformance = cache(async (
           }
         }
       }
-      if (!apptInClinic(a.doctor)) continue;
+      if (!apptInClinic(a)) continue;
       const p = at(v.channel);
       p.booked += 1;
       const mo = monthOf(a.date);
@@ -589,7 +590,8 @@ const computeChannelPerformance = cache(async (
       // The daily performance brief reports non-cancelled billing, like the
       // Executive acquisition rule. Leave the existing dashboard lens intact.
       if (excludeCancelledBills && S(b.data?.bill_status).toUpperCase() === 'CANCELLED') continue;
-      const isDnBill = clinicOfCenter(S(b.data?.['center_name'])) !== 'dr-tosun';
+      const billClinic = clinicOfCenter(S(b.data?.['center_name']));
+      const isDnBill = billClinic === 'dental-nation';
       const mr = S(b.data?.['mr_no']);
       const amount = b.amount != null ? Number(b.amount) || 0 : 0;
       const v = mr ? patientChannel.get(mr) : undefined;
@@ -606,7 +608,7 @@ const computeChannelPerformance = cache(async (
           }
         }
       }
-      if (clinic !== 'all' && isDnBill !== (clinic === 'dn-alwasl')) continue;
+      if (scope != null && billClinic !== scope) continue;
       if (!channel) {
         unattributedRevenue += amount;
         if (mr) unattributedFiles.add(mr);
@@ -654,6 +656,9 @@ const computeChannelPerformance = cache(async (
       notes.push(
         'Paid ads ran only for Dental Nation Al Wasl — spend, ad reach, GA4 visibility and the phone-path estimates are not attributed to this clinic. Enquiry surfaces (website, desk, WhatsApp) are shared and can’t be clinic-split, so this view shows the Practo funnel and its own Business Profile reach.',
       );
+      if (clinic === 'amc' && (!from || from < AL_MAHER_PRACTO_FROM)) {
+        notes.push(`Al Maher's appointments and bills are in Practo from ${AL_MAHER_PRACTO_FROM}. Earlier dates have no Al Maher Practo rows, so this view starts then; Al Maher's earlier revenue is in Group Revenue → AMC.`);
+      }
     }
 
     // Google Business Profile — reach from Google's own counters. These are
@@ -663,8 +668,7 @@ const computeChannelPerformance = cache(async (
     {
       const allSocial = (gmbRes.data as { clinic: string; channel: string; metric: string; day: string | null; value: number | null }[] | null) ?? [];
       const gmbRows = allSocial.filter((r) => r.channel === 'gmb' &&
-        (clinic === 'all' ? ['dental-nation', 'dr-tosun', 'al-maher'].includes(r.clinic) :
-          r.clinic === (clinic === 'dr-tosun' ? 'dr-tosun' : 'dental-nation')));
+        (scope == null ? ['dental-nation', 'dr-tosun', 'al-maher'].includes(r.clinic) : r.clinic === scope));
 
       // Social Organic reach — Instagram/Facebook daily reach from the social
       // sync, plus profile views and the latest follower count as context.

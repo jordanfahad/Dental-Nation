@@ -3,6 +3,7 @@
  * CRM tab UI actually consumes. Every computed metric is honest: null (never a
  * fabricated 0) when its source row is absent.
  */
+import type { ClinicFilterKey } from '@/config/clinics';
 
 /** A {label, value} breakdown row used across source / department / doctor mixes. */
 export interface CrmMixRow {
@@ -125,6 +126,6 @@ export interface CrmReport {
 export interface CrmRange {
   from?: string;
   to?: string;
-  /** Clinic filter: undefined/'all' = both; else scope appointments to one clinic. */
-  clinic?: 'all' | 'dental-nation' | 'dr-tosun';
+  /** Clinic filter: undefined/'all' = every clinic; else scope appointments to one clinic. */
+  clinic?: ClinicFilterKey;
 }

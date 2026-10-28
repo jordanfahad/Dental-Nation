@@ -1,7 +1,7 @@
 import 'server-only';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
 import { selectAll } from '@/lib/supabase/selectAll';
-import { CLINICS, clinicOfDoctor } from '@/config/clinics';
+import { CRM_CLINICS, clinicOfDoctor } from '@/config/clinics';
 import type {
   ClinicApptCounts,
   CrmAppointmentStats,
@@ -94,7 +94,7 @@ const BOOKED_STATUSES = new Set(['booked', 'confirmed']);
 /** Appointment counts per clinic (derived from the conducting doctor). */
 function computeClinicSplit(rows: AppointmentRow[]): ClinicApptCounts[] {
   const acc = new Map<string, { total: number; booked: number; completed: number }>();
-  for (const c of CLINICS) acc.set(c.key, { total: 0, booked: 0, completed: 0 });
+  for (const c of CRM_CLINICS) acc.set(c.key, { total: 0, booked: 0, completed: 0 });
   for (const r of rows) {
     const key = clinicOfDoctor(r.professional_name);
     const a = acc.get(key)!;
@@ -103,7 +103,7 @@ function computeClinicSplit(rows: AppointmentRow[]): ClinicApptCounts[] {
     if (BOOKED_STATUSES.has(s)) a.booked += 1;
     if (s === 'completed') a.completed += 1;
   }
-  return CLINICS.map((c) => ({ clinic: c.key, label: c.label, ...acc.get(c.key)! }));
+  return CRM_CLINICS.map((c) => ({ clinic: c.key, label: c.label, ...acc.get(c.key)! }));
 }
 
 /** Sort a label→count map into a descending {label,value} array, top N. */

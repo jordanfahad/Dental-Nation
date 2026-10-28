@@ -23,7 +23,7 @@ export function ExecAcquisition({ report }: { report: ExecutiveReport }) {
       label: 'New patients · Al Wasl',
       value: a.billedNewPatients > 0 ? fmtInt(a.billedNewPatients) : null,
       hint: 'first billed visit in this period · any source',
-      gapDetail: a.notMeasurable ? tosunGap : 'no new patients billed in this period',
+      gapDetail: a.notMeasurable ? a.notMeasurableWhy ?? tosunGap : 'no new patients billed in this period',
       gapOwner,
     },
     {
@@ -31,7 +31,7 @@ export function ExecAcquisition({ report }: { report: ExecutiveReport }) {
       value: a.cpaAll != null ? aed(a.cpaAll) : null,
       goodWhenUp: false,
       hint: 'all ad spend ÷ all new patients (not only those from ads)',
-      gapDetail: a.notMeasurable ? tosunGap : 'needs spend + new patients',
+      gapDetail: a.notMeasurable ? a.notMeasurableWhy ?? tosunGap : 'needs spend + new patients',
       gapOwner: ownerFor('spend'),
     },
     {
@@ -39,21 +39,21 @@ export function ExecAcquisition({ report }: { report: ExecutiveReport }) {
       value: a.cpaWebsite != null ? aed(a.cpaWebsite) : null,
       goodWhenUp: false,
       hint: `${fmtInt(a.websiteNewPatients)} booked through the website`,
-      gapDetail: a.notMeasurable ? tosunGap : 'no website-booked new patients yet',
+      gapDetail: a.notMeasurable ? a.notMeasurableWhy ?? tosunGap : 'no website-booked new patients yet',
       gapOwner: ownerFor('spend'),
     },
     {
       label: 'New-patient revenue',
       value: a.newPatientRevenue > 0 ? fmtAedCompact(a.newPatientRevenue) : null,
       hint: a.revenuePerNewPatient != null ? `${aed(a.revenuePerNewPatient)} per new patient, billed in this period` : 'billed in this period',
-      gapDetail: a.notMeasurable ? tosunGap : 'no new-patient bills in this period',
+      gapDetail: a.notMeasurable ? a.notMeasurableWhy ?? tosunGap : 'no new-patient bills in this period',
       gapOwner,
     },
     {
       label: 'New-patient revenue ÷ ad spend',
       value: a.roas != null ? `${a.roas.toFixed(1)}×` : null,
       hint: 'all new patients, not only those from ads',
-      gapDetail: a.notMeasurable ? tosunGap : 'needs spend + new-patient revenue',
+      gapDetail: a.notMeasurable ? a.notMeasurableWhy ?? tosunGap : 'needs spend + new-patient revenue',
       gapOwner: ownerFor('spend'),
     },
   ];
