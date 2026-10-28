@@ -249,3 +249,29 @@ test('backfill date validation rejects rollover, malformed and future dates', ()
   for (const value of ['2026-02-30', 'tomorrow', '2026-1-1', '2027-01-01', null, 1]) assert.equal(validGmbBackfillDate(value, '2026-10-12'), false);
   assert.equal(validGmbBackfillDate('2026-01-01', '2026-10-12'), true);
 });
+
+test('reportedThrough and coverage: pending days are left out of totals, not counted as 0', async () => {
+  const { buildGmbReport, reportedThrough } = await import('../lib/social/gmb-report');
+  const row = (clinic: string, metric: string, day: string, value: number) => ({ clinic, metric, day, value });
+  const rows = [
+    // Map views reported through the 24th; calls only through the 23rd; the
+    // 24th onwards store placeholder zeros for calls (Google's reporting lag).
+    row('dental-nation', 'map_views_mobile', '2026-10-23', 10), row('dental-nation', 'map_views_mobile', '2026-10-24', 8),
+    row('dental-nation', 'calls', '2026-10-22', 2), row('dental-nation', 'calls', '2026-10-23', 3),
+    row('dental-nation', 'calls', '2026-10-24', 0), row('dental-nation', 'calls', '2026-10-25', 0),
+    row('dr-tosun', 'calls', '2026-10-23', 1), row('dr-tosun', 'calls', '2026-10-24', 0),
+    row('x-not-connected', 'calls', '2026-10-25', 9),
+  ];
+  const connected = ['dental-nation', 'dr-tosun'] as const;
+  const through = reportedThrough(rows, [...connected]);
+  assert.deepEqual(through, { calls: '2026-10-23', directions: null, websiteClicks: null, mapViews: '2026-10-24' });
+  // Without coverage the placeholder zeros count (the old behaviour).
+  assert.equal(buildGmbReport(rows, [...connected], 'all').calls, 6);
+  // With coverage, days past each metric's reported-through day are pending.
+  const report = buildGmbReport(rows, [...connected], 'all', { through, to: '2026-10-25' });
+  assert.equal(report.calls, 6); // 22nd + 23rd; the zero 24th/25th are pending, and would not change the total anyway
+  assert.deepEqual(report.pending, { calls: '2026-10-23', directions: null, websiteClicks: null, mapViews: '2026-10-24' });
+  // A window that ends on reported days has nothing pending.
+  const settled = buildGmbReport(rows.filter((r) => r.day <= '2026-10-23'), [...connected], 'all', { through, to: '2026-10-23' });
+  assert.deepEqual(settled.pending, { calls: null, directions: null, websiteClicks: null, mapViews: null });
+});

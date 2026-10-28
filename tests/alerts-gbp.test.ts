@@ -111,7 +111,7 @@ test('every figure links to the Social tab with the right clinic and dates', () 
   assert.match(att.replace(/<[^>]*>/g, ''), /Reply needed: 1 written review at Dr\. Tosun Dental Clinic has no reply yet/);
   assert.doesNotMatch(att, /No data:/);
   // Note, landing button, and every link stays on the dashboard.
-  assert.match(html, /Latest day Google has reported: <b>Tue 20 Oct<\/b>\. Reviews are as of 09:00 today\./);
+  assert.match(html, /Latest day Google has reported every measure: <b>Tue 20 Oct<\/b>\. Reviews are as of 09:00 today\./);
   for (const a of anchors(html)) assert.ok(a.href.startsWith(REPORTS), a.href);
   assert.ok(anchors(html).some((a) => a.href === `${REPORTS}?tab=social&bpclinic=all` && a.text.startsWith('Open the Business Profile report')));
   assert.match(html, /To Mr Akbar, Ms Shadi and Dr Luvi; copied to Fahad\./);
@@ -146,7 +146,7 @@ test('nulls render "not yet" without a link and never as zero', () => {
   const { html } = buildGbpDaily(none, TODAY);
   // Note + 4 tiles + 3 x 4 latest + 3 x 4 month to date + 3 x 4 reviews.
   assert.equal((html.match(/>not yet</g) ?? []).length, 41);
-  assert.match(html, /Latest day Google has reported: <span[^>]*>not yet<\/span>\./);
+  assert.match(html, /Latest day Google has reported every measure: <span[^>]*>not yet<\/span>\./);
   assert.match(html, />Latest reported day: not yet<\/h2>/);
   assert.match(html, />Month to date: not yet<\/h2>/);
   assert.match(html, />At a glance \(all connected clinics\)<\/h2>/);
@@ -184,7 +184,7 @@ test('latest reported day: last day with map views above zero per connected bran
     { clinic: 'dental-nation', metric: 'map_views_desktop', day: '2026-10-21', value: 0 },
     { clinic: 'dental-nation', metric: 'map_views_mobile', day: '2026-10-21', value: 5 },
     { clinic: 'dental-nation', metric: 'map_views_mobile', day: '2026-10-22', value: 0 },
-    { clinic: 'dental-nation', metric: 'calls', day: '2026-10-23', value: 4 }, // calls alone do not count
+    { clinic: 'dental-nation', metric: 'calls', day: '2026-10-23', value: 4 }, // calls reported later than map views
     { clinic: 'dr-tosun', metric: 'map_views_desktop', day: '2026-10-20', value: 3 },
     { clinic: 'dr-tosun', metric: 'map_views_mobile', day: '2026-10-21', value: null },
     { clinic: 'dr-tosun', metric: 'map_views_mobile', day: '2026-10-24', value: 9 }, // after the window

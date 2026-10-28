@@ -96,18 +96,21 @@ export function metricWindow(metrics: GmbMetricRow[], reviews: ReviewRow[], clin
     coverage: `${covered}/${days} call days`, latestDay: rows.map((r) => r.day).sort().at(-1) ?? null };
 }
 
-export function buildGbpPlan(input: { rows: RawLogRow[]; metrics: GmbMetricRow[]; reviews: ReviewRow[]; connected: GmbClinicKey[]; asOf: string; syncedAt: string | null }) {
+export function buildGbpPlan(input: { rows: RawLogRow[]; metrics: GmbMetricRow[]; reviews: ReviewRow[]; connected: GmbClinicKey[]; asOf: string;
+  /** Latest day Google has reported every metric (the sync stores unreported days as 0); metric windows end here. Defaults to asOf. */
+  metricsAsOf?: string; syncedAt: string | null }) {
   const parsed = parseDailyLog(input.rows);
   const progress = planProgress(parsed.entries, input.asOf);
+  const mAsOf = input.metricsAsOf && input.metricsAsOf < input.asOf ? input.metricsAsOf : input.asOf;
   const branches = GMB_CLINICS.map((c) => {
     const connected = input.connected.includes(c.key);
-    const window = (from: string, to = input.asOf) => metricWindow(input.metrics, input.reviews, c.key, connected, from, to);
+    const window = (from: string, to = mAsOf) => metricWindow(input.metrics, input.reviews, c.key, connected, from, to);
     const p = planProgress(parsed.entries, input.asOf, c.key);
     const baseline = progress.start ? window(addDays(progress.start, -28), addDays(progress.start, -1)) : null;
-    const last7 = window(addDays(input.asOf, -6));
-    const last28 = window(addDays(input.asOf, -27));
-    const yesterday = window(input.asOf);
-    const prior7 = window(addDays(input.asOf, -13), addDays(input.asOf, -7));
+    const last7 = window(addDays(mAsOf, -6));
+    const last28 = window(addDays(mAsOf, -27));
+    const yesterday = window(mAsOf);
+    const prior7 = window(addDays(mAsOf, -13), addDays(mAsOf, -7));
     const change = rateChange(last7.calls, 7, baseline?.calls ?? null, 28);
     const activeReviews = input.reviews.filter((r) => r.clinic === c.key);
     const reviewSync = activeReviews.map((r) => r.syncedAt).sort().at(-1) ?? null;
@@ -118,7 +121,7 @@ export function buildGbpPlan(input: { rows: RawLogRow[]; metrics: GmbMetricRow[]
       trend: rateChange(last7.calls, 7, prior7.calls, 7), status: trackStatus(p.coverage, change),
       activities: parsed.entries.filter((e) => e.clinic === c.key && e.date === input.asOf) };
   });
-  return { ...parsed, progress, branches, asOf: input.asOf, syncedAt: input.syncedAt,
+  return { ...parsed, progress, branches, asOf: input.asOf, metricsAsOf: mAsOf, syncedAt: input.syncedAt,
     hasNew: branches.some((b) => b.activities.length > 0 || [b.yesterday.calls, b.yesterday.directions, b.yesterday.websiteClicks, b.yesterday.mapViews, b.yesterday.reviews].some((n) => n != null && n > 0)) };
 }
 export type GbpPlan = ReturnType<typeof buildGbpPlan>;

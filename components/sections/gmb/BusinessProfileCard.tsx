@@ -22,11 +22,18 @@ export function BusinessProfileCard({ report }: { report: BusinessProfileReport 
           {report.active === 'all' ? <p>Totals include available data from connected branches.</p> : null}
         </div>
         <KpiBand items={[
-          { label: 'Phone calls', value: report.calls },
-          { label: 'Direction requests', value: report.directions },
-          { label: 'Website clicks', value: report.websiteClicks },
-          { label: 'Map views', value: report.mapViews },
-        ].map((m) => ({ label: m.label, value: m.value == null ? '—' : Math.round(m.value).toLocaleString('en-US'), hint: 'total in period' }))} />
+          { label: 'Phone calls', value: report.calls, pending: report.pending.calls },
+          { label: 'Direction requests', value: report.directions, pending: report.pending.directions },
+          { label: 'Website clicks', value: report.websiteClicks, pending: report.pending.websiteClicks },
+          { label: 'Map views', value: report.mapViews, pending: report.pending.mapViews },
+        ].map((m) => ({ label: m.label, value: m.value == null ? '—' : Math.round(m.value).toLocaleString('en-US'),
+          hint: m.pending ? `reported through ${m.pending}; later days pending` : 'total in period' }))} />
+        {Object.values(report.pending).some(Boolean) ? (
+          <p className="text-[11px] leading-snug text-watch">
+            Google reports calls, directions and clicks 2 to 3 days late. Days it has not reported yet are left out of
+            these totals instead of counting as 0.
+          </p>
+        ) : null}
         {report.trend.length ? <div>
           <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-ink-faint">Map views over time</p>
           <TrendChart data={report.trend} series={series} leftFormat="int" />

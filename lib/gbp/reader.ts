@@ -3,7 +3,7 @@ import { getSupabaseAdmin, type AdminClient } from '@/lib/supabase/server';
 import { selectAll } from '@/lib/supabase/selectAll';
 import { resolveGmbConfig } from '@/config/gmb';
 import { addDays, buildGbpPlan, dubaiDay, parseDailyLog, type RawLogRow, type ReviewRow } from './plan';
-import type { GmbMetricRow } from '@/lib/social/gmb-report';
+import { GMB_METRIC_KEYS, reportedThrough, type GmbMetricRow } from '@/lib/social/gmb-report';
 
 /** Stored data only. Throws on failed reads so a briefing cannot turn failures into zeroes. */
 export async function readGbpPlan(asOf = addDays(dubaiDay(), -1), db: AdminClient | null = getSupabaseAdmin()) {
@@ -26,6 +26,13 @@ export async function readGbpPlan(asOf = addDays(dubaiDay(), -1), db: AdminClien
     const clinic = config?.locations.find((l) => l.path === r.location_path)?.clinic;
     if (clinic) rr.push({ clinic, date: dubaiDay(new Date(r.create_time)), rating: Number(r.rating), syncedAt: r.synced_at });
   }
+  // Google reports calls, directions and clicks 2 to 3 days after map views,
+  // and the sync stores an unreported day as 0. Metric windows end on the
+  // latest day every metric has been reported, so a pending day never reads
+  // as a real zero.
+  const connected = config?.locations.map((l) => l.clinic) ?? [];
+  const through = reportedThrough(metrics.data as GmbMetricRow[], connected);
+  const metricsAsOf = GMB_METRIC_KEYS.map((k) => through[k]).filter((d): d is string => d != null).sort()[0];
   return buildGbpPlan({ rows, metrics: metrics.data as GmbMetricRow[], reviews: rr,
-    connected: config?.locations.map((l) => l.clinic) ?? [], asOf, syncedAt: sync.data?.synced_at ?? null });
+    connected, asOf, metricsAsOf, syncedAt: sync.data?.synced_at ?? null });
 }

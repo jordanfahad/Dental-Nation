@@ -3,7 +3,7 @@ import { getSupabaseAdmin, type AdminClient } from '@/lib/supabase/server';
 import { selectAll } from '@/lib/supabase/selectAll';
 import { resolveGmbConfig } from '@/config/gmb';
 import type { GmbClinicFilter } from '@/config/gmb-clinics';
-import { buildGmbReport, type BusinessProfileReport } from './gmb-report';
+import { buildGmbReport, reportedThrough, type BusinessProfileReport, type GmbMetricRow, type GmbReportedThrough } from './gmb-report';
 
 /**
  * Organic social + Google Business Profile signals for the Social tab, read from
@@ -77,6 +77,26 @@ interface Row {
 const titleCase = (s: string) =>
   s.replace(/[_-]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
+/**
+ * Each Business Profile metric's last reported day (see reportedThrough), read
+ * from the last 30 days up to now so a window ending yesterday can tell a
+ * placeholder 0 from a real one. Null when the window ended long ago (every
+ * day is reported) or the read fails (the card then sums what is stored).
+ */
+async function gmbReportedThrough(db: AdminClient, connected: Parameters<typeof reportedThrough>[1], to: string): Promise<GmbReportedThrough | null> {
+  if (!to) return null;
+  const since = new Date(Date.parse(`${to}T12:00:00Z`) - 30 * 86_400_000).toISOString().slice(0, 10);
+  const today = new Date(Date.now() + 4 * 3_600_000).toISOString().slice(0, 10);
+  if (since > today) return null;
+  try {
+    const { data } = await selectAll(() => db.from('social_insights').select('clinic, metric, day, value')
+      .eq('channel', 'gmb').gte('day', since).gt('value', 0), ['clinic', 'metric', 'day']);
+    return data ? reportedThrough(data as GmbMetricRow[], connected) : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function getSocialReport(opts: { from: string; to: string; clinic?: string; gmbClinic?: GmbClinicFilter }, db: AdminClient | null = getSupabaseAdmin()): Promise<SocialReport> {
   const { from, to } = opts;
   const config = await resolveGmbConfig(db);
@@ -103,7 +123,8 @@ export async function getSocialReport(opts: { from: string; to: string; clinic?:
     return empty;
   }
   if (rows.length === 0) return empty;
-  const gmb = buildGmbReport(rows.filter((r) => r.channel === 'gmb'), connected, opts.gmbClinic);
+  const through = await gmbReportedThrough(db, connected, to);
+  const gmb = buildGmbReport(rows.filter((r) => r.channel === 'gmb'), connected, opts.gmbClinic, through && to ? { through, to } : undefined);
 
   // channel → metric → rows
   const byChannel = new Map<string, Map<string, Row[]>>();

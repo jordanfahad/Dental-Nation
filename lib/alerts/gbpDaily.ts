@@ -20,9 +20,13 @@
  *   written review with no reply (lib/analytics/gmb-reviews.ts); new reviews
  *   are counted by the Dubai day of their create time (lib/gbp/reader.ts).
  *
- * Google stores a day it has not processed yet as 0, so the latest reported
- * day D is the latest day with map views above zero, per connected branch,
- * then the earliest of those, so every branch has data for D.
+ * Google stores a day it has not processed yet as 0, and sends a day's calls,
+ * directions and website clicks about a day after its map views. So the
+ * latest reported day D is the latest day for which EVERY metric has been
+ * reported (each metric's last day with a group total above zero), capped at
+ * the earliest per-branch latest map-view day so every branch has data for D.
+ * Before 25 Oct 2026 D used map views alone, which read "0 calls" for days
+ * whose calls Google had not sent yet.
  *
  * readGbpDaily is read-only and never throws for one missing source: a source
  * that cannot be read becomes null and renders "not yet". buildGbpDaily is pure.
@@ -31,7 +35,7 @@ import type { AdminClient } from '@/lib/supabase/server';
 import { selectAll } from '@/lib/supabase/selectAll';
 import { resolveGmbConfig } from '@/config/gmb';
 import { GMB_CLINICS, type GmbClinicKey } from '@/config/gmb-clinics';
-import { buildGmbReport, type GmbMetricRow } from '@/lib/social/gmb-report';
+import { buildGmbReport, GMB_METRIC_KEYS, reportedThrough, type GmbMetricRow } from '@/lib/social/gmb-report';
 import { dubaiDay } from '@/lib/gbp/plan';
 import { addDaysIso, periods, socialLink, type Range } from '@/lib/alerts/links';
 import {
@@ -102,13 +106,16 @@ export const reviewsCutoff = (today: string) => Date.parse(`${today}T05:00:00Z`)
 
 /**
  * Each connected branch's latest day (within from..to) with map views above
- * zero, and D = the earliest of those. Branches with no such day are left out
- * of D and reported as having no data.
+ * zero, and D = the latest day every metric has been reported (see the file
+ * note), capped at the earliest of the branch days so every branch has data
+ * for D. Branches with no map-view day are left out of D and reported as
+ * having no data.
  */
 export function latestReportedDay(rows: GmbMetricRow[], connected: GmbClinicKey[], from: string, to: string) {
+  const inWindow = rows.filter((r) => r.day >= from && r.day <= to);
   const views = new Map<string, number>();
-  for (const r of rows) {
-    if (!MAP_VIEWS.includes(r.metric) || r.value == null || r.day < from || r.day > to) continue;
+  for (const r of inWindow) {
+    if (!MAP_VIEWS.includes(r.metric) || r.value == null) continue;
     const k = `${r.clinic}|${r.day}`;
     views.set(k, (views.get(k) ?? 0) + Number(r.value));
   }
@@ -123,8 +130,13 @@ export function latestReportedDay(rows: GmbMetricRow[], connected: GmbClinicKey[
     }
     perBranch[key] = latest;
   }
-  const days = Object.values(perBranch).filter((d): d is string => d != null).sort();
-  return { perBranch, latestDay: days[0] ?? null };
+  const branchDays = Object.values(perBranch).filter((d): d is string => d != null).sort();
+  const through = reportedThrough(inWindow, connected);
+  // A metric with no reported day at all in the window cannot anchor D (its
+  // feed has delivered nothing); the metrics that have reported pull D back.
+  const metricDays = GMB_METRIC_KEYS.map((k) => through[k]).filter((d): d is string => d != null);
+  const latestDay = branchDays.length ? [branchDays[0], ...metricDays].sort()[0] : null;
+  return { perBranch, latestDay };
 }
 
 /** The Social tab's Business Profile card for one window: per branch and all clinics. */
@@ -238,7 +250,7 @@ export function buildGbpDaily(data: GbpDailyData, today: string, opts: { preview
   const dLabel = D ? dayLabel(D) : null;
   const name = (k: GmbClinicKey) => GBP_CLINIC_NAMES[k];
 
-  const freshness = banner(`${bold('Note:')} ${text('Google reports calls, directions and clicks 2 to 3 days late, and can still revise the last few days. Latest day Google has reported:')} ${dLabel ? bold(dLabel) : NOT_YET}. ${text('Reviews are as of 09:00 today.')}`);
+  const freshness = banner(`${bold('Note:')} ${text('Google reports calls, directions and clicks 2 to 3 days late, and can still revise the last few days. Latest day Google has reported every measure:')} ${dLabel ? bold(dLabel) : NOT_YET}. ${text('Reviews are as of 09:00 today.')}`);
 
   /** "Tue 13 Oct: 14" linked to the same weekday a week earlier. */
   const weekEarlier = (v: number | null | undefined) => {
