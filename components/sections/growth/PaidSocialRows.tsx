@@ -66,7 +66,8 @@ export function PaidSocialRows({ p, split, traceQs, mktQs = '' }: { p: ChannelPe
           {p.spend != null ? (
             <>
               <span className="text-[12px] font-medium tabular-nums text-ink">{aedShort(p.spend)}</span>
-              <span className="block text-[10px] leading-snug text-ink-faint">campaigns paused since late Apr</span>
+              {p.lastDelivery ? <span className="block text-[10px] leading-snug text-ink-faint">no delivery after {p.lastDelivery}</span> : null}
+              {p.spendThrough ? <span className="block text-[10px] leading-snug text-watch">spend synced to {p.spendThrough}</span> : null}
               <span className="block text-[10px] leading-snug text-ink-soft">
                 {p.costPerEnquiry != null ? `enquiry ${aed(p.costPerEnquiry)}` : ''}
                 {p.costPerBooked != null ? ` · booking ${aed(p.costPerBooked)}` : ''}
@@ -102,9 +103,8 @@ export function PaidSocialRows({ p, split, traceQs, mktQs = '' }: { p: ChannelPe
           ) : (
             <tr className="bg-panel/30">
               <td colSpan={8} className="py-1.5 pl-7 pr-3 text-[10.5px] leading-snug text-watch">
-                No Instagram-vs-Facebook delivery split: Meta campaigns have been paused since late April, so there is
-                no recent delivery to break down (historical split would need a fresh API token — not worth chasing
-                while ads are off). Campaign types below are read from the historical campaign names.
+                No Instagram-vs-Facebook delivery split for this period: the Meta platform breakdown has no rows in
+                these dates. Campaign types below are read from the campaign names.
               </td>
             </tr>
           )}

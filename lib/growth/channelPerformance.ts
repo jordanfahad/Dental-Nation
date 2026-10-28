@@ -8,7 +8,6 @@ import { modelPhoneBookings, websitePaidInputs, type PhoneModel } from './phoneP
 import { getSupabaseAdmin, type AdminClient } from '@/lib/supabase/server';
 import { parseArabySource } from '@/lib/arabyads/report';
 import { AL_MAHER_PRACTO_FROM, clinicOfAppointment, clinicOfCenter, clinicOfGrowthKey, type GrowthClinicKey } from '@/config/clinics';
-import { META_ADS_PAUSED_SINCE } from '@/config/meta';
 import {
   CHANNELS,
   aiEngineOf,
@@ -99,8 +98,10 @@ export interface ChannelPerf extends ChannelDef {
   inferredBooked: number;
   // Economics (paid channels only; null elsewhere or when spend is unknown).
   spend: number | null;
-  /** Latest date the spend feed actually covers, when it falls short of `to`. */
+  /** Latest date the spend feed actually covers, when it falls short of `to` and the feed has not been checked since. */
   spendThrough: string | null;
+  /** Last day with ad delivery, when it falls short of `to` but the sync has checked the account since: the spend is complete. */
+  lastDelivery: string | null;
   costPerEnquiry: number | null; // spend ÷ net enquiries (CPL)
   costPerBooked: number | null; // spend ÷ net bookings
   costPerShowed: number | null; // spend ÷ net shows
@@ -209,7 +210,7 @@ function emptyReport(from: string | null, to: string | null): GrowthReport {
     channels: CHANNELS.map((c) => ({
       ...c, impressions: null, reachNote: null, enquiries: 0, booked: 0, bookedPatients: 0, showed: 0, cancelled: 0,
       noshow: 0, treated: 0, revenue: 0, taggedBooked: 0, inferredBooked: 0, spend: null,
-      spendThrough: null, costPerEnquiry: null, costPerBooked: null, costPerShowed: null, costPerPatient: null, roas: null,
+      spendThrough: null, lastDelivery: null, costPerEnquiry: null, costPerBooked: null, costPerShowed: null, costPerPatient: null, roas: null,
     })),
     totals: emptyTotals, byMonth: [], apptFeedRows: 0, confidence: { tagged: 0, inferred: 0, defaulted: 0 },
     ga4: null, unattributedRevenue: 0, unattributedPatients: 0, phonePath: null,
@@ -436,7 +437,7 @@ const computeChannelPerformance = cache(async (
     scope == null || clinicOfAppointment(a.center, a.doctor) === scope;
 
   try {
-    const [attribution, billRes, metaRes, gadsRes, ga4Res, gmbRes, ctRes, metaPlatRes, sourceRes] =
+    const [attribution, billRes, metaRes, gadsRes, ga4Res, gmbRes, ctRes, metaPlatRes, sourceRes, syncLogRes] =
       await Promise.all([
         readAttributionInputs(db),
         selectAll(() => db.from('practo_bills_raw').select('bill_date, amount, data'), "bill_key"),
@@ -447,6 +448,9 @@ const computeChannelPerformance = cache(async (
         selectAll(() => db.from('google_ads_click_types').select('date, click_type, clicks, campaign_name'), "key"),
         selectAll(() => db.from('meta_platform_insights_raw').select('date, platform, spend, impressions, leads'), "key"),
         selectAll(() => db.from('ga4_lead_events_source').select('day,event_name,source_medium,campaign,event_count'), ['day', 'event_name', 'source_medium', 'campaign']).catch(() => ({ data: null, error: true })),
+        // Recent sync runs: when an ad feed was last read successfully (the sync runs every 15 minutes).
+        Promise.resolve(db.from('ingestion_log').select('finished_at, sheets_ok').order('finished_at', { ascending: false }).limit(24))
+          .catch(() => ({ data: null })),
       ]);
 
     if (strict && (ga4Res.error || sourceRes.error)) throw new Error('Growth source read failed');
@@ -458,7 +462,7 @@ const computeChannelPerformance = cache(async (
       CHANNELS.map((c) => [c.key, {
         ...c, impressions: null, reachNote: null, enquiries: 0, booked: 0, bookedPatients: 0, showed: 0, cancelled: 0,
         noshow: 0, treated: 0, revenue: 0, taggedBooked: 0, inferredBooked: 0, spend: null,
-        spendThrough: null, costPerEnquiry: null, costPerBooked: null, costPerShowed: null, costPerPatient: null, roas: null,
+        spendThrough: null, lastDelivery: null, costPerEnquiry: null, costPerBooked: null, costPerShowed: null, costPerPatient: null, roas: null,
       }]),
     );
     const at = (key: string): ChannelPerf => perf.get(key) ?? perf.get('direct-walkin')!;
@@ -623,7 +627,13 @@ const computeChannelPerformance = cache(async (
     /* ─── Paid spend + visibility, with feed-coverage honesty ────────────── */
 
     const notes: string[] = [];
-    const sumSpend = (rows: { date: string | null; spend: number | null; impressions: number | null }[] | null, key: string, label: string) => {
+    // The Dubai day of the latest sync run that read this ad feed successfully.
+    const syncRuns = ((syncLogRes as { data: { finished_at: string | null; sheets_ok: string[] | null }[] | null }).data) ?? [];
+    const checkedOn = (feed: string): string | null => {
+      const run = syncRuns.find((r) => r.finished_at && (r.sheets_ok ?? []).some((x) => x.startsWith(feed)));
+      return run?.finished_at ? new Date(Date.parse(run.finished_at) + 4 * 3600_000).toISOString().slice(0, 10) : null;
+    };
+    const sumSpend = (rows: { date: string | null; spend: number | null; impressions: number | null }[] | null, key: string, label: string, feed: string) => {
       let spend = 0, impressions = 0, maxDate = '';
       let any = false;
       for (const r of rows ?? []) {
@@ -637,21 +647,22 @@ const computeChannelPerformance = cache(async (
       p.impressions = any ? Math.round(impressions) : null;
       p.spend = any ? Math.round(spend) : null;
       if (maxDate && to && maxDate < to) {
-        p.spendThrough = maxDate;
-        notes.push(`${label} spend/impressions are synced only through ${maxDate} — economics beyond that date are understated.`);
+        // The sync stores only days with delivery. If it has read the account
+        // since the window ended, the days after maxDate had no delivery.
+        const checked = checkedOn(feed);
+        if (checked && checked >= to) {
+          p.lastDelivery = maxDate;
+          notes.push(`${label} shows no ad delivery after ${maxDate} (the account was checked on ${checked}), so the ${label} spend shown is complete.`);
+        } else {
+          p.spendThrough = maxDate;
+          notes.push(`${label} spend/impressions are synced only through ${maxDate} — economics beyond that date are understated.`);
+        }
       }
       if (!any && (from || to)) notes.push(`No ${label} spend rows fall in this window.`);
     };
     if (dnAssets) {
-      sumSpend((gadsRes.data as never[]) ?? null, 'paid-search', 'Google Ads');
-      sumSpend((metaRes.data as never[]) ?? null, 'paid-social', 'Meta');
-      // Meta campaigns are paused (business decision) — the feed ending in
-      // April is complete, so replace the generic "understated" warning with
-      // the true story.
-      if (META_ADS_PAUSED_SINCE) {
-        const ix = notes.findIndex((n) => n.startsWith('Meta spend/impressions are synced only through'));
-        if (ix >= 0) notes[ix] = `Meta campaigns have been paused since ${META_ADS_PAUSED_SINCE} — the Meta spend shown is complete (not a stale feed). Lead-form enquiries after that date are organic residue, not paid delivery.`;
-      }
+      sumSpend((gadsRes.data as never[]) ?? null, 'paid-search', 'Google Ads', 'Google Ads (insights)');
+      sumSpend((metaRes.data as never[]) ?? null, 'paid-social', 'Meta', 'Meta Ads (insights)');
     } else {
       notes.push(
         'Paid ads ran only for Dental Nation Al Wasl — spend, ad reach, GA4 visibility and the phone-path estimates are not attributed to this clinic. Enquiry surfaces (website, desk, WhatsApp) are shared and can’t be clinic-split, so this view shows the Practo funnel and its own Business Profile reach.',

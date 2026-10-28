@@ -268,7 +268,8 @@ export default async function GrowthReportPage({
                         </>
                       )}
                     </span>
-                    {c.spendThrough ? <span className="block" style={{ color: AMBER }}>spend complete to {c.spendThrough} (Meta paused)</span> : null}
+                    {c.spendThrough ? <span className="block" style={{ color: AMBER }}>spend synced to {c.spendThrough}</span> : null}
+                    {c.lastDelivery ? <span className="block">no delivery after {c.lastDelivery}</span> : null}
                   </>
                 ) : (
                   '—'

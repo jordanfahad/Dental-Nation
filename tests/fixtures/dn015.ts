@@ -12,7 +12,7 @@ export function growth(enquiries = 41, revenue = 23400): GrowthReport {
     channels: CHANNELS.map((c, i) => ({ ...c, impressions: null, reachNote: null, enquiries: i ? 0 : enquiries,
       booked: i ? 0 : 12, bookedPatients: i ? 0 : 10, showed: i ? 0 : 9, cancelled: 0, noshow: i ? 0 : 3,
       treated: i ? 0 : 8, revenue: i ? 0 : revenue, taggedBooked: 0, inferredBooked: 0,
-      spend: i ? null : 700, spendThrough: null, costPerEnquiry: null, costPerBooked: null, costPerShowed: null, costPerPatient: null, roas: null })),
+      spend: i ? null : 700, spendThrough: null, lastDelivery: null, costPerEnquiry: null, costPerBooked: null, costPerShowed: null, costPerPatient: null, roas: null })),
     totals: { enquiries, booked: 12, showed: 9, treated: 8, revenue, showRate: .75, treatRate: .8 }, byMonth: [], apptFeedRows: 12,
     confidence: { tagged: 12, inferred: 0, defaulted: 0 }, ga4: null, unattributedPatients: 0, unattributedRevenue: 0,
     phonePath: null, organicSplit: null, metaSplit: null, trackerLeadRows: 65, mvmSelection: null, notes: [],

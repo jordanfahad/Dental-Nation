@@ -361,3 +361,31 @@ test('read: clinic and channel figures from the Growth reader, spend, members an
   assert.match(html, />151<\/a>/); // ad spend tile, rounded to the dirham
   assert.match(html, />9<\/a> of 24/);
 });
+
+test('Growth: Practo appointments by centre (Al Maher its own clinic); spend complete after the last delivery once the sync has checked', async () => {
+  const { getChannelPerformance } = await import('../lib/growth/channelPerformance');
+  const appt = (k: string, center: string, doctor: string) => ({ appt_key: k, appt_date: '2026-10-22', mr_no: `DN-SYN-${k}`, status: 'Arrived',
+    doctor, center_name: center, patient_name: null, patient_phone: null, data: {} });
+  const tables: Rows = {
+    practo_appointments_raw: [
+      appt('a1', 'Al Maher Centre', 'Dr. Synthetic One'),
+      appt('a2', 'DENTAL NATION GENERAL DENTAL CLINIC L.L.C S.O.C', 'Dr. Synthetic Two'),
+      // A doctor outside the Dr Tosun list, at the Dr Tosun centre: the centre decides.
+      appt('a3', 'DR TOSUN DENTAL CLINIC L.L.C', 'Dr. Synthetic Three'),
+    ],
+    meta_insights_raw: [{ key: 'm1', date: '2026-10-05', spend: 100, impressions: 10, clicks: 1, leads: 0, campaign_name: 'Synthetic M' }],
+    google_ads_insights_raw: [{ key: 'g1', date: '2026-10-23', spend: 5, impressions: 1 }],
+    ingestion_log: [{ finished_at: '2026-10-24T03:00:00Z', sheets_ok: ['Meta Ads (insights) — 1 rows', 'Google Ads (insights) — 1 rows'] }],
+  };
+  const [all, wasl, tosun, amc] = await Promise.all((['all', 'dn-alwasl', 'dr-tosun', 'amc'] as const).map((c) => getChannelPerformance(MTD, c, fakeDb(tables))));
+  assert.deepEqual([all, wasl, tosun, amc].map((r) => r.totals.booked), [3, 1, 1, 1]);
+  assert.ok(amc.notes.some((n) => n.includes("Al Maher's appointments and bills are in Practo from 2026-10-22")));
+  const meta = all.channels.find((c) => c.key === 'paid-social')!;
+  assert.deepEqual([meta.spend, meta.lastDelivery, meta.spendThrough], [100, '2026-10-05', null]);
+  assert.ok(all.notes.some((n) => n.startsWith('Meta shows no ad delivery after 2026-10-05')));
+  assert.ok(!all.notes.some((n) => /paused since/.test(n)));
+  // No successful Meta read since the window ended: the feed may be stale, so say so.
+  const stale = await getChannelPerformance(MTD, 'all', fakeDb({ ...tables, ingestion_log: [{ finished_at: '2026-10-10T03:00:00Z', sheets_ok: ['Meta Ads (insights) — 1 rows'] }] }));
+  const m2 = stale.channels.find((c) => c.key === 'paid-social')!;
+  assert.deepEqual([m2.lastDelivery, m2.spendThrough], [null, '2026-10-05']);
+});

@@ -37,12 +37,12 @@ export function isMetaConfigured(): boolean {
  *  WhatsApp / messaging conversations + standard lead events. Best-effort until
  *  the live actions[] shape is confirmed via the probe. */
 /**
- * Meta campaigns are PAUSED (Jordan, 29 Jul): no ads have run since late
- * April, so the spend feed ending 2026-04-27 is COMPLETE, not stale. Surfaces
- * must read "paused", never "broken feed". Flip to null if/when ads resume
- * (at which point the access token will likely need renewing too).
+ * Manual Meta pause date, or null. Meta ran from 3 Sep 2026 after the April
+ * to August pause, so this is null: the Growth view now reads whether Meta
+ * delivered from the spend rows and the sync log (lastDelivery), not from a
+ * fixed date. Only the retired performance brief still reads it.
  */
-export const META_ADS_PAUSED_SINCE: string | null = '2026-04-27';
+export const META_ADS_PAUSED_SINCE: string | null = null;
 
 export const META_LEAD_ACTION_TYPES = [
   'lead',
