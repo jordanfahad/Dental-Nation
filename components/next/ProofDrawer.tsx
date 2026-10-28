@@ -31,19 +31,39 @@ const EMAIL_PINNED =
   'This is the view the morning email links for this figure, pinned to the same dates and clinic.';
 const LIVE_EMAIL = 'This is the view the morning email links for this figure. The view is live, not pinned to dates.';
 
-/** Closing line under "Open the detail view", per metric - never promise more than the link does. */
-const PROOF_FOOTNOTES: Record<MetricId, string> = {
+const NEAREST = 'The nearest detail view; this figure is not in the morning email.';
+
+/**
+ * Closing line under "Open the detail view", per metric - never promise more
+ * than the link does. Partial on purpose (MetricId is open-ended), so the
+ * line renders only when an entry exists; every figure the four preview pages
+ * show has one.
+ */
+const PROOF_FOOTNOTES: Partial<Record<MetricId, string>> = {
   M01: EMAIL_PINNED,
   M03: EMAIL_PINNED,
   M04: EMAIL_PINNED,
+  M05: 'The Growth view this figure is read from, pinned to the same dates and clinic lens; the morning email does not show missed appointments.',
   M06: EMAIL_PINNED,
   M07: EMAIL_PINNED,
   M08: 'The nearest detail view for this figure; the morning email does not show a group cost per enquiry.',
+  M11: 'The Social & Local view behind this figure, pinned to the same window of reported days; the morning email shows the latest reported day, not this month-to-date total.',
   M15: LIVE_EMAIL,
   M16: LIVE_EMAIL,
   M18: 'This view is live, not pinned to dates; when a single clinic has reviews waiting, the morning email links that clinic\u2019s view instead.',
   M19: 'The company-pipeline evidence behind this figure; the morning email links the Smile Club impact page instead.',
-  M25: 'The nearest detail view; this figure is not in the morning email.',
+  M20: EMAIL_PINNED,
+  M21: EMAIL_PINNED,
+  M22: EMAIL_PINNED,
+  M23: NEAREST,
+  M24: NEAREST,
+  M25: NEAREST,
+  M28: 'This is the view the morning email links for this figure, pinned to the sample\u2019s own reported dates; when no sample is readable the link opens the live view instead.',
+  M29: EMAIL_PINNED,
+  M30: EMAIL_PINNED,
+  M31: EMAIL_PINNED,
+  M32: EMAIL_PINNED,
+  M34: 'This is the view the morning email links for this figure; the email and the panel count the same assignments per reviewer. The view is live, not pinned to dates.',
 };
 
 export function ProofDrawer() {
@@ -113,7 +133,9 @@ export function ProofDrawer() {
           >
             Open the detail view
           </a>
-          <p className="mb-0 mt-3 text-[11px] text-[#627277]">{PROOF_FOOTNOTES[proof.id]}</p>
+          {PROOF_FOOTNOTES[proof.id] ? (
+            <p className="mb-0 mt-3 text-[11px] text-[#627277]">{PROOF_FOOTNOTES[proof.id]}</p>
+          ) : null}
         </div>
       ) : null}
     </dialog>

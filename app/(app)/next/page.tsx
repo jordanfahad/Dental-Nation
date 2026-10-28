@@ -8,9 +8,9 @@ import { ProofDrawer } from '@/components/next/ProofDrawer';
 
 /**
  * DN-032 preview: the new leadership Overview with a proof drawer, on live
- * figures, at /next. Reachable only by people who have the link - it is in no
- * nav, tab list or menu, and the password gate (middleware.ts) covers it like
- * every other route. Every figure comes from the same readers as the 09:00
+ * figures, at /next. Linked from the preview's own nav (PreviewShell);
+ * nothing outside the /next preview links here, and the password gate
+ * (middleware.ts) covers it like every other route. Every figure comes from the same readers as the 09:00
  * emails (lib/overview/read.ts), so this page can never disagree with them.
  * ?clinic=all|dental-nation|dr-tosun|al-maher only moves the clinic lens.
  */
@@ -30,7 +30,7 @@ export default async function NextPreviewPage({
   const clinic = resolveClinic(typeof params.clinic === 'string' ? params.clinic : undefined);
   const data = await readOverview(getSupabaseAdmin(), dubaiDay());
   return (
-    <PreviewShell>
+    <PreviewShell active="Overview">
       <OverviewView data={data} clinic={clinic} />
       <ProofDrawer />
     </PreviewShell>

@@ -1,12 +1,23 @@
 /**
  * Shell of the /next DN-032 preview (mockups 01 and 06): the preview strip,
- * the navy brand header with the six-item navigation, and the footer. Only
- * Overview is a real page; the other five items are <details> buttons that
- * reveal a "coming after approval" note, so nothing links to a 404. Server
- * component, no JavaScript needed.
+ * the navy brand header with the six-item navigation, and the footer.
+ * Overview, Channels, Clinics and Programmes are real pages and link to each
+ * other; each page passes `active` so the nav highlights it. Reports and
+ * Admin are <details> buttons that reveal a "coming after approval" note, so
+ * nothing links to a 404. Server component, no JavaScript needed.
  */
 
-const COMING_SOON = ['Channels', 'Clinics', 'Programmes', 'Reports', 'Admin'];
+export type PreviewSection = 'Overview' | 'Channels' | 'Clinics' | 'Programmes';
+
+/** The four real pages of the preview, in nav order. */
+const SECTIONS: { name: PreviewSection; href: string }[] = [
+  { name: 'Overview', href: '/next' },
+  { name: 'Channels', href: '/next/channels' },
+  { name: 'Clinics', href: '/next/clinics' },
+  { name: 'Programmes', href: '/next/programmes' },
+];
+
+const COMING_SOON = ['Reports', 'Admin'];
 
 function ComingSoonItem({ name, dark }: { name: string; dark?: boolean }) {
   // The popover is anchored to the nav (the nearest positioned ancestor), not
@@ -28,21 +39,21 @@ function ComingSoonItem({ name, dark }: { name: string; dark?: boolean }) {
           dark ? 'inset-x-0' : 'left-0 w-56'
         }`}
       >
-        <strong className="text-dn-navy">{name}</strong> is coming after approval. In this preview only the Overview is a
-        real page.
+        <strong className="text-dn-navy">{name}</strong> is coming after approval. In this preview the Overview, Channels,
+        Clinics and Programmes pages are real.
       </div>
     </details>
   );
 }
 
-export function PreviewShell({ children }: { children: React.ReactNode }) {
+export function PreviewShell({ children, active = 'Overview' }: { children: React.ReactNode; active?: PreviewSection }) {
   return (
     <div className="min-h-screen bg-dn-off font-sans text-sm text-dn-ink">
       <div className="flex justify-between gap-3 bg-dn-mint px-4 py-2 text-[11px] text-dn-navy sm:px-7 sm:text-xs">
         <span>
           <strong>NEW DESIGN PREVIEW</strong> · live figures · people without this link still see the current dashboard
         </span>
-        <span className="hidden sm:inline">DN-032 · Overview only</span>
+        <span className="hidden sm:inline">DN-032 · Reports and Admin come after approval</span>
       </div>
       <header className="bg-dn-navy px-4 text-white sm:px-8">
         <div className="flex h-[60px] items-center justify-between sm:h-[68px]">
@@ -53,23 +64,53 @@ export function PreviewShell({ children }: { children: React.ReactNode }) {
           <span className="hidden text-xs text-[#d9e6eb] sm:inline">Leadership workspace · New design preview</span>
         </div>
         <nav className="relative hidden gap-7 sm:flex" aria-label="Main navigation">
-          <a className="border-b-[3px] border-dn-mint pb-[15px] pt-3 font-semibold text-white no-underline" href="/next" aria-current="page">
-            Overview
-          </a>
+          {SECTIONS.map((s) =>
+            s.name === active ? (
+              <a
+                key={s.name}
+                className="border-b-[3px] border-dn-mint pb-[15px] pt-3 font-semibold text-white no-underline"
+                href={s.href}
+                aria-current="page"
+              >
+                {s.name}
+              </a>
+            ) : (
+              <a
+                key={s.name}
+                className="border-b-[3px] border-transparent pb-[15px] pt-3 font-medium text-[#e2eaf0] no-underline"
+                href={s.href}
+              >
+                {s.name}
+              </a>
+            ),
+          )}
           {COMING_SOON.map((name) => (
             <ComingSoonItem key={name} name={name} />
           ))}
         </nav>
         <details className="pb-3 sm:hidden">
-          <summary className="cursor-pointer py-1 text-xs font-semibold">Navigate · Overview</summary>
+          <summary className="cursor-pointer py-1 text-xs font-semibold">Navigate · {active}</summary>
           <nav className="relative mt-2 grid grid-cols-3 gap-1.5" aria-label="Mobile navigation">
-            <a
-              className="rounded border border-dn-mint bg-dn-mint px-2 py-2 text-center text-[11px] font-semibold text-dn-navy no-underline"
-              href="/next"
-              aria-current="page"
-            >
-              Overview
-            </a>
+            {SECTIONS.map((s) =>
+              s.name === active ? (
+                <a
+                  key={s.name}
+                  className="rounded border border-dn-mint bg-dn-mint px-2 py-2 text-center text-[11px] font-semibold text-dn-navy no-underline"
+                  href={s.href}
+                  aria-current="page"
+                >
+                  {s.name}
+                </a>
+              ) : (
+                <a
+                  key={s.name}
+                  className="rounded border border-[#547089] px-2 py-2 text-center text-[11px] font-medium text-white no-underline"
+                  href={s.href}
+                >
+                  {s.name}
+                </a>
+              ),
+            )}
             {COMING_SOON.map((name) => (
               <ComingSoonItem key={name} name={name} dark />
             ))}

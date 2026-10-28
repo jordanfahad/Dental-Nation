@@ -91,6 +91,12 @@ test('every figure renders with its M-id and the registry covers them all', () =
   assert.match(populated, /people without this link still see the current dashboard/);
   assert.match(populated, /coming after approval/);
   for (const nav of ['Overview', 'Channels', 'Clinics', 'Programmes', 'Reports', 'Admin']) assert.ok(populated.includes(`>${nav}<`), nav);
+  // The shell nav links the four real pages and marks the Overview current (desktop and phone).
+  for (const href of ['/next/channels', '/next/clinics', '/next/programmes']) {
+    assert.ok(populated.includes(`href="${href}"`), `nav link ${href} missing`);
+  }
+  assert.equal(populated.split('href="/next" aria-current="page"').length - 1, 2, 'active nav highlight missing');
+  assert.match(populated, /Navigate · Overview/);
   assert.match(populated, /How is the group doing\?/);
   assert.match(populated, /Definition version 1 · Click a number for its proof/);
 });
