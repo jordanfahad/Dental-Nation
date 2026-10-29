@@ -3,7 +3,7 @@
  * the navy brand header with the six-item navigation, and the footer.
  * Overview, Channels, Clinics and Programmes are real pages and link to each
  * other; each page passes `active` so the nav highlights it. Reports and
- * Admin are <details> buttons that reveal a "coming after approval" note, so
+ * Admin are <details> buttons that point to the detailed dashboard, so
  * nothing links to a 404. Server component, no JavaScript needed.
  */
 
@@ -39,8 +39,8 @@ function ComingSoonItem({ name, dark }: { name: string; dark?: boolean }) {
           dark ? 'inset-x-0' : 'left-0 w-56'
         }`}
       >
-        <strong className="text-dn-navy">{name}</strong> is coming after approval. In this preview the Overview, Channels,
-        Clinics and Programmes pages are real.
+        <strong className="text-dn-navy">{name}</strong> is still in the detailed dashboard.{' '}
+        <a className="font-semibold text-dn-navy underline" href="/?tab=executive">Open the detailed dashboard</a>
       </div>
     </details>
   );
@@ -51,9 +51,9 @@ export function PreviewShell({ children, active = 'Overview' }: { children: Reac
     <div className="min-h-screen bg-dn-off font-sans text-sm text-dn-ink">
       <div className="flex justify-between gap-3 bg-dn-mint px-4 py-2 text-[11px] text-dn-navy sm:px-7 sm:text-xs">
         <span>
-          <strong>NEW DESIGN PREVIEW</strong> · live figures · people without this link still see the current dashboard
+          <strong>NEW DESIGN</strong> · live figures · click any number for its proof
         </span>
-        <span className="hidden sm:inline">DN-032 · Reports and Admin come after approval</span>
+        <a className="font-semibold text-dn-navy underline" href="/?tab=executive">Detailed dashboard</a>
       </div>
       <header className="bg-dn-navy px-4 text-white sm:px-8">
         <div className="flex h-[60px] items-center justify-between sm:h-[68px]">
@@ -61,7 +61,7 @@ export function PreviewShell({ children, active = 'Overview' }: { children: Reac
             <span className="grid h-[34px] w-[34px] place-items-center rounded-[10px] bg-dn-mint text-[15px] text-dn-navy">DN</span>
             Dental Nation
           </a>
-          <span className="hidden text-xs text-[#d9e6eb] sm:inline">Leadership workspace · New design preview</span>
+          <a className="text-xs text-[#d9e6eb] underline" href="/?tab=executive">Detailed dashboard</a>
         </div>
         <nav className="relative hidden gap-7 sm:flex" aria-label="Main navigation">
           {SECTIONS.map((s) =>

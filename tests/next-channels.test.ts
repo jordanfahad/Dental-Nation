@@ -128,7 +128,7 @@ test('every figure renders with its M-id and the registry covers them all', () =
     '100', '40', '80', '25', '60', '21', '18', '42', '41%', '5,000', '90,000']) {
     assert.ok(populated.includes(`>${s}<`), `value ${s} missing`);
   }
-  assert.match(populated, /NEW DESIGN PREVIEW/);
+  assert.match(populated, /NEW DESIGN/);
   assert.match(populated, /Which channels are bringing people in\?/);
   assert.match(populated, /Marketing workspace/);
   assert.match(populated, /Month to yesterday · 1 to 27 Oct 2026/);

@@ -86,10 +86,10 @@ test('every figure renders with its M-id and the registry covers them all', () =
     '170', '140', 'AED 78,000', '87', '68', 'AED 42,000', 'AED 1,500', '24', '183', '4.80']) {
     assert.ok(populated.includes(`>${s}<`), `value ${s} missing`);
   }
-  assert.match(populated, /NEW DESIGN PREVIEW/);
+  assert.match(populated, /NEW DESIGN/);
   assert.match(populated, /live figures/);
-  assert.match(populated, /people without this link still see the current dashboard/);
-  assert.match(populated, /coming after approval/);
+  assert.match(populated, /href="\/\?tab=executive"/);
+  assert.match(populated, /is still in the detailed dashboard/);
   for (const nav of ['Overview', 'Channels', 'Clinics', 'Programmes', 'Reports', 'Admin']) assert.ok(populated.includes(`>${nav}<`), nav);
   // The shell nav links the four real pages and marks the Overview current (desktop and phone).
   for (const href of ['/next/channels', '/next/clinics', '/next/programmes']) {

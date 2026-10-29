@@ -73,7 +73,7 @@ test('every figure renders with its M-id and the registry covers them all', () =
     '260', '210', 'AED 121,500', '10', '5', '4']) {
     assert.ok(populated.includes(`>${s}<`), `value ${s} missing`);
   }
-  assert.match(populated, /NEW DESIGN PREVIEW/);
+  assert.match(populated, /NEW DESIGN/);
   assert.match(populated, /How are the clinics performing\?/);
   assert.match(populated, /Follow up missed visits/);
   assert.match(populated, /Appointments and operating billing/);

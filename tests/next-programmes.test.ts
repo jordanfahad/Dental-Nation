@@ -107,7 +107,7 @@ test('every figure renders with its M-id and the registry covers them all', () =
   }
   assert.ok(populated.includes(esc('"value":"6"')), 'M34 drawer value missing');
   assert.match(populated, /review assignments/);
-  assert.match(populated, /NEW DESIGN PREVIEW/);
+  assert.match(populated, /NEW DESIGN/);
   assert.match(populated, /Is the work turning into results\?/);
   assert.match(populated, /Programme outcomes stay separate from campaign activity/);
   assert.match(populated, /Plans, scripts and follow-up work/);

@@ -1,4 +1,5 @@
 import { Suspense } from 'react';
+import { redirect } from 'next/navigation';
 import { getRangeReport } from '@/lib/report';
 import { lastFullMonth } from '@/lib/analytics/demandToDesk';
 import { TABS, effectiveVisibleTabs, resolveTabInSet } from '@/components/tabs';
@@ -86,6 +87,16 @@ export default async function DashboardPage({
   }>;
 }) {
   const sp = await searchParams;
+  // The bare address opens the new leadership Overview (DN-032 design, made the
+  // default on 29 Oct 2026). Every ?tab= link, including every proof link in
+  // the 09:00 emails, still opens the detailed dashboard below. Reception, and
+  // anyone without the Executive tab, keeps their usual landing tab.
+  if (Object.keys(sp).length === 0) {
+    const who = await currentUser();
+    if (who?.role !== 'receptionist' && effectiveVisibleTabs(who?.role ?? null, who?.extraTabs, who?.removedTabs).includes('executive')) {
+      redirect('/next');
+    }
+  }
   const defaultDemandRange = sp.tab === 'marketing' && sp.mtab === 'demand' && !sp.from && !sp.to && !sp.preset ? lastFullMonth() : undefined;
   // Lightweight SHELL read: range control + sync footer only. It skips the live
   // GA4 fetch (the shell never shows GA4) so the header, tab bar and footer paint
