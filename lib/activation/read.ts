@@ -274,14 +274,19 @@ const gmbSums = (rows: GmbRow[]): GmbWindowSums => ({
   videos: nullableSum(rows.map((r) => r.videos)),
 });
 
-/** Pure: latest snapshot per clinic (on or before the window end) and window sums. */
-export function summariseGmb(rows: GmbRow[], p: { yesterday: Range; mtd: Range }): GmbSection {
+/**
+ * Pure: latest snapshot per clinic (on or before `latestThrough`, by default
+ * the window end) and window sums. The reader passes today when the window
+ * ends yesterday, so the front office's entries for today show as the latest
+ * copy instead of waiting a day.
+ */
+export function summariseGmb(rows: GmbRow[], p: { yesterday: Range; mtd: Range }, latestThrough: string = p.mtd.to): GmbSection {
   const latest = per(ACTIVATION_CLINICS, () => null as GmbSnapshot | null);
   const yesterday = per(ACTIVATION_CLINICS, () => null as GmbSnapshot | null);
   const window = per(ACTIVATION_CLINICS, () => gmbSums([]));
   const inWindow = rows.filter((r) => inRange(r.snapshot_day, p.mtd) && (ACTIVATION_CLINICS as string[]).includes(r.clinic));
   for (const c of ACTIVATION_CLINICS) {
-    const mine = rows.filter((r) => r.clinic === c && r.snapshot_day <= p.mtd.to).sort((a, b) => b.snapshot_day.localeCompare(a.snapshot_day));
+    const mine = rows.filter((r) => r.clinic === c && r.snapshot_day <= latestThrough).sort((a, b) => b.snapshot_day.localeCompare(a.snapshot_day));
     latest[c] = mine[0] ? snap(mine[0]) : null;
     const y = mine.find((r) => r.snapshot_day === p.yesterday.to);
     yesterday[c] = y ? snap(y) : null;
@@ -361,6 +366,8 @@ export function summariseAmc(rows: AmcRow[], p: { yesterday: Range; mtd: Range }
  */
 export async function readClinicActivation(db: AdminClient, today: string, range?: Range): Promise<ClinicActivation> {
   const p = range ? periodsFor(range) : periods(today);
+  // A window ending yesterday (the default) also shows today's front-office copy as the latest.
+  const gmbLatestThrough = p.mtd.to >= periods(today).yesterday.to ? today : p.mtd.to;
   const { yesterday, mtd } = p;
 
   const practo = (r: Range, clinic: ClinicFilterKey) => safe(async () => {
@@ -384,8 +391,8 @@ export async function readClinicActivation(db: AdminClient, today: string, range
     safe(async () => {
       const { data } = await selectAll(() => db.from('gmb_frontoffice_daily')
         .select('snapshot_day,clinic,fo_name,reviews_today,reviews_individual,reviews_total,photos,videos,month_title,synced_at')
-        .lte('snapshot_day', mtd.to), ['snapshot_day', 'clinic']);
-      return summariseGmb(data as GmbRow[], p);
+        .lte('snapshot_day', gmbLatestThrough), ['snapshot_day', 'clinic']);
+      return summariseGmb(data as GmbRow[], p, gmbLatestThrough);
     }),
     safe(async () => {
       const { data } = await selectAll(() => db.from('amc_daily_report')
