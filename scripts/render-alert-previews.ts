@@ -1,5 +1,5 @@
 /**
- * Renders the four daily 09:00 alert emails (lib/alerts/registry.ts) from
+ * Renders the daily 09:00 alert emails (the four live ones and the gated Clinic Activation email) (lib/alerts/registry.ts) from
  * synthetic fixture data, as preview copies, so the layout can be checked
  * against the approved templates without a database, network or email.
  *
@@ -19,7 +19,7 @@ for (const k of Object.keys(process.env)) {
   if (/SUPABASE|GOOGLE|GMB|META|SMTP|RESEND|SENDGRID|MAIL|PRACTO|SEARCH_CONSOLE|CRON_SECRET/i.test(k)) delete process.env[k];
 }
 
-type Kind = 'am:sc-daily' | 'am:ortho-daily' | 'am:gbp-daily' | 'am:akbar-perf';
+type Kind = import('../lib/alerts/registry').DailyAlertKind;
 
 async function main() {
   const [outArg, todayArg] = process.argv.slice(2);
@@ -128,11 +128,68 @@ async function main() {
     instagram: { followers: 12480, reachMtd: 96300 },
   };
 
+  /* ── 5 Clinic Activation (synthetic figures, built with the reader's own pure counters) ── */
+  const { countLeads, countSmileClub, summariseAmc, summariseGmb } = await import('../lib/activation/read');
+  const { periods, addDaysIso } = await import('../lib/alerts/links');
+  type ClinicActivation = import('../lib/activation/read').ClinicActivation;
+  type LeadRow = import('../lib/activation/read').LeadRow;
+  const P = periods(today);
+  const y = P.yesterday.to;
+  const dayBefore = addDaysIso(y, -1);
+  const leadRow = (tab: string, date: string, platform: string, clinic: string | null, booked = false): LeadRow => ({
+    inquiry_date: date, booking_status: booked ? 'booked' : null, channel_source: platform, clinic, whatsapp_ref: null,
+    raw_row: { _source_tab: tab, 'Inquiry Platform': platform },
+  });
+  const leadRows: LeadRow[] = [
+    ...Array.from({ length: 5 }, (_, i) => leadRow('DN Campaign Leads  ❤', y, i < 3 ? 'Instagram' : 'WhatsApp', 'DN Al Wasl', i === 0)),
+    ...Array.from({ length: 4 }, (_, i) => leadRow('TDC Campaign Leads', y, i < 2 ? 'Facebook' : 'Telephone', 'Tosun Clinic', i === 1)),
+    ...Array.from({ length: 2 }, () => leadRow('AMC Campaign Leads  ❤', y, 'WhatsApp', 'AMC Branch')),
+    leadRow('Leads', y, 'Walk in', 'Somewhere else'),
+    ...Array.from({ length: 40 }, (_, i) => leadRow('DN Campaign Leads  ❤', `${y.slice(0, 7)}-${String(1 + (i % Math.max(1, Number(y.slice(8)) - 1))).padStart(2, '0')}`, ['Instagram', 'WhatsApp', 'Facebook', 'Google'][i % 4], ['DN Al Wasl', 'Tosun Clinic', 'AMC Branch'][i % 3], i % 5 === 0)),
+  ];
+  const sc = (date: string, clinic: string, follow: string, conversion: string) =>
+    ({ data: { _source_tab: 'Smile Club', Date: `${date.slice(8)}.${date.slice(5, 7)}.${date.slice(0, 4)}`, 'Clinic / Branch': clinic, 'Follow up Remarks': follow, Conversion: conversion } });
+  const smileRows = [
+    sc(y, 'DN Al Wasl', 'called', 'CONVERTED'), sc(y, 'Tosun Clinic', '', ''), sc(dayBefore, 'DN Al Wasl', 'no answer', ''),
+    sc(dayBefore, 'AMC Branch', 'called', 'booked'), sc(`${y.slice(0, 7)}-01`, 'Tosun Clinic', 'called', ''),
+  ];
+  const gmb = (day: string, clinic: string, fo: string, today: number, total: number, photos: number, videos: number | null) => ({
+    snapshot_day: day, clinic, fo_name: fo, reviews_today: today, reviews_individual: null, reviews_total: total, photos, videos,
+    month_title: 'Google My Business', synced_at: `${day}T10:00:00Z`,
+  });
+  // Al Maher has no copy yet, so the preview shows "Daily copies start 29 Oct 2026".
+  const gmbRows = [
+    gmb(y, 'dental-nation', 'Asha', 3, 618, 4, 1), gmb(dayBefore, 'dental-nation', 'Asha', 2, 615, 2, null),
+    gmb(y, 'dr-tosun', 'Rina', 1, 349, 2, 0),
+  ];
+  const amcRow = (date: string, invoiced: string, appts: number) => ({
+    report_date: date, total_appointments: appts, consulted: appts - 1, invoiced: appts - 1, non_invoiced: 1, cancelled: 1,
+    patients_old: appts - 2, patients_new: 2, invoice_amount_total: invoiced, insurance_total: '2757.71', copay_total: '306.38',
+    cash_total: '0', card_total: '889.50', advance_total: null, balance_total: null, invoice_count: appts - 1, doctors: {}, prepared_by: null,
+  });
+  const activation: ClinicActivation = {
+    today, yesterday: P.yesterday, window: P.mtd,
+    leads: countLeads(leadRows, P),
+    smileClub: countSmileClub(smileRows, P),
+    gmb: summariseGmb(gmbRows, P),
+    revenue: {
+      practo: { source: 'practo', byClinic: {
+        all: { yesterday: 14320, window: 402180 },
+        'dental-nation': { yesterday: 7240, window: 241900 },
+        'dr-tosun': { yesterday: 4339, window: 148600 },
+        'al-maher': { yesterday: 2741, window: 11680 },
+      } },
+      amc: summariseAmc([amcRow(y, '3914.12', 9), amcRow(dayBefore, '2210.00', 7)], P),
+    },
+    ortho,
+  };
+
   const fixtures: Record<Kind, unknown> = {
     'am:sc-daily': smileClub,
     'am:ortho-daily': ortho,
     'am:gbp-daily': gbp,
     'am:akbar-perf': performance,
+    'am:clinic-activation': activation,
   };
 
   mkdirSync(outDir, { recursive: true });

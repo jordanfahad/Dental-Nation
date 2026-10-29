@@ -2,7 +2,7 @@
  * One displayed number on the /next Overview (DN-032 mockups 01 and 05).
  * Server component: it renders a <button> whose data-proof attribute carries
  * the plain strings the ProofDrawer (the one client component) shows when the
- * figure is clicked. A null value renders "Unavailable", never 0.
+ * figure is clicked. A null value renders "Unavailable" (or "Not yet"), never 0.
  */
 import type { MetricId } from '@/lib/metrics/registry';
 import type { ProofPayload } from './ProofDrawer';
@@ -11,6 +11,8 @@ const int = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
 const two = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export const UNAVAILABLE = 'Unavailable';
+/** A figure the source cannot give yet for a known reason (the DN Ortho "not yet" rule); never 0. */
+export const NOT_YET_LABEL = 'Not yet';
 
 /** "620" / "Unavailable". */
 export const fmtCount = (n: number | null) => (n == null ? UNAVAILABLE : int.format(n));
@@ -46,7 +48,7 @@ export function Figure({
   align?: 'start' | 'end';
 }) {
   const payload: ProofPayload = { id, value: display, dates, scope, url, ...(note ? { note } : {}) };
-  const unavailable = display === UNAVAILABLE;
+  const unavailable = display === UNAVAILABLE || display === NOT_YET_LABEL;
   return (
     <button
       type="button"

@@ -85,3 +85,9 @@ export const SMILE_CLUB_SCRIPTS = smileClubLink('scripts');
 export const IMPACT_SMILE_CLUB = `${REPORTS}impact#smileclub`;
 export const digitalLink = (r?: Range) => reportUrl({ tab: 'digital', ...(r ? dated(r) : {}) });
 export const COMPETITORS_LINK = reportUrl({ tab: 'digital', dtab: 'competitors' });
+
+/** Sections of the Clinic Activation page (/next/activation), each an anchor. */
+export type ActivationSection = 'leads' | 'smile-club' | 'gbp' | 'revenue' | 'ortho';
+/** The Clinic Activation page pinned to these dates (from/to), optionally at one section. */
+export const activationLink = (r: Range, section?: ActivationSection) =>
+  `${REPORTS}next/activation?${new URLSearchParams({ from: r.from, to: r.to }).toString()}${section ? `#${section}` : ''}`;

@@ -99,7 +99,8 @@ test('cap table describes the four daily emails: Mr Akbar included, one of each 
   for (const row of ALERT_CAP) {
     if ('kind' in row) continue;
     const id = ({ 'Mr Akbar': 'akbar', 'Dr Luvi': 'luvi', 'Ms Shadi': 'shadi', Gautam: 'gautam', Mohan: 'mohan', Fahad: 'fahad', MJ: 'mj' } as const)[row.who];
-    const daily = DAILY_ALERTS.filter((a) => [...a.to, ...a.cc].includes(id)).length;
+    // Only the emails switched on; the gated Clinic Activation email (liveFrom null) reaches no one but Fahad's preview.
+    const daily = DAILY_ALERTS.filter((a) => a.liveFrom !== null && [...a.to, ...a.cc].includes(id)).length;
     const briefing = id === 'mohan' || id === 'fahad' ? 1 : 0;
     const evening = row.evening === '-' ? 0 : 1;
     assert.equal(row.max, daily + briefing + evening, row.who);

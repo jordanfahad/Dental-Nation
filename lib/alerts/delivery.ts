@@ -1,5 +1,5 @@
 /**
- * Delivery rules for the four daily 09:00 alert emails (lib/alerts/registry.ts).
+ * Delivery rules for the daily 09:00 alert emails (lib/alerts/registry.ts).
  * Pure apart from the injected dependencies, so tests exercise the same time,
  * preview, claim and failure logic as the cron with no network.
  *
@@ -7,12 +7,14 @@
  *    a pending preview request is kept until the pause is lifted.
  *  - Preview: a request row (PREVIEW_KEY) is consumed atomically; only the run
  *    that deleted it emails every preview, to Fahad only, subject "[Preview] ".
- *  - Live: only 09:00 to 10:59 Dubai and only from LIVE_FROM. Each kind is
+ *  - Live: only 09:00 to 10:59 Dubai, only from LIVE_FROM, and only for a kind
+ *    switched on for the day (sendsLiveOn: a kind whose liveFrom is null, such
+ *    as the gated Clinic Activation email, is never read, claimed or sent). Each kind is
  *    claimed before sending and the claim is kept even when the transport fails
  *    or is uncertain: at most one email per kind per day, no automatic retry.
  *  - One failing email never stops the others.
  */
-import { LIVE_FROM, PREVIEW_TO, SEND_HOURS, nextSendDay, previewNote, recipientsLine, type AlertEmail, type BuildOpts, type DailyAlert, type Who } from './registry';
+import { LIVE_FROM, PREVIEW_TO, SEND_HOURS, nextSendDay, previewNote, recipientsLine, sendsLiveOn, type AlertEmail, type BuildOpts, type DailyAlert, type Who } from './registry';
 
 export interface Mail { to: string[]; cc: string[]; subject: string; html: string }
 
@@ -96,6 +98,8 @@ async function failBeforeClaim(deps: DailyAlertDeps, kind: string, today: string
 async function live(today: string, deps: DailyAlertDeps, out: string[]) {
   for (const alert of deps.alerts) {
     const { kind } = alert;
+    // A kind not switched on for today is skipped before anything else: no read, no claim, no log.
+    if (!sendsLiveOn(alert, today)) continue;
     // Checked first; a failed check is never followed by a log write. The audit
     // row is keyed (kind, day), so any failure before this run holds the claim
     // re-checks the claim before logging (failBeforeClaim): an overlapping run

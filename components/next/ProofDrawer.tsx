@@ -33,10 +33,17 @@ const LIVE_EMAIL = 'This is the view the morning email links for this figure. Th
 
 const NEAREST = 'The nearest detail view; this figure is not in the morning email.';
 
+/* Clinic Activation (/next/activation) figures. */
+const TRACKER_NEAREST =
+  'The nearest detail view: Growth enquiries for the same dates and clinic. This figure is counted from the lead tracker, so the totals can differ.';
+const FRONT_OFFICE =
+  'Google\u2019s own figures, for comparison: the front office entries have no other view on the dashboard.';
+const AMC_SHEET = 'The source sheet itself: the dashboard has no other view of the AMC daily reports.';
+
 /**
  * Closing line under "Open the detail view", per metric - never promise more
  * than the link does. Partial on purpose (MetricId is open-ended), so the
- * line renders only when an entry exists; every figure the four preview pages
+ * line renders only when an entry exists; every figure the preview pages
  * show has one.
  */
 const PROOF_FOOTNOTES: Partial<Record<MetricId, string>> = {
@@ -64,6 +71,29 @@ const PROOF_FOOTNOTES: Partial<Record<MetricId, string>> = {
   M31: EMAIL_PINNED,
   M32: EMAIL_PINNED,
   M34: 'This is the view the morning email links for this figure; the email and the panel count the same assignments per reviewer. The view is live, not pinned to dates.',
+  M26: 'Revenue by conducting doctor, the view the DN Ortho email uses, pinned to the same dates and clinic.',
+  A01: TRACKER_NEAREST,
+  A02: TRACKER_NEAREST,
+  A03: TRACKER_NEAREST,
+  A04: TRACKER_NEAREST,
+  A05: TRACKER_NEAREST,
+  A06: TRACKER_NEAREST,
+  A07: FRONT_OFFICE,
+  A08: FRONT_OFFICE,
+  A09: FRONT_OFFICE,
+  A10: FRONT_OFFICE,
+  A11: FRONT_OFFICE,
+  A12: 'The Executive view the morning performance email links, pinned to the same dates; its group total also includes Al Maher\u2019s Practo bills.',
+  A13: AMC_SHEET,
+  A14: AMC_SHEET,
+  A15: AMC_SHEET,
+  A16: AMC_SHEET,
+  A17: AMC_SHEET,
+  A18: AMC_SHEET,
+  A19: AMC_SHEET,
+  A20: AMC_SHEET,
+  A21: AMC_SHEET,
+  A22: AMC_SHEET,
 };
 
 export function ProofDrawer() {

@@ -25,7 +25,13 @@ export type KnownMetricId =
  * which cover only its own eleven figures) still type-checks as sections add
  * figures; the registry itself stays exhaustive over KnownMetricId.
  */
-export type MetricId = `M${string}`;
+export type MetricId = `M${string}` | `A${string}`;
+
+/** The Clinic Activation report's own figures (/next/activation), kept apart from M01 to M35. */
+export type ActivationMetricId =
+  | 'A01' | 'A02' | 'A03' | 'A04' | 'A05' | 'A06' | 'A07' | 'A08' | 'A09' | 'A10'
+  | 'A11' | 'A12' | 'A13' | 'A14' | 'A15' | 'A16' | 'A17' | 'A18' | 'A19' | 'A20'
+  | 'A21' | 'A22';
 
 export type MetricUnit =
   | 'count'
@@ -365,11 +371,158 @@ const REGISTRY = {
   },
 } satisfies Record<KnownMetricId, MetricDef>;
 
-/** Every defined measure; indexing with an unknown M-id gives undefined at runtime. */
-export const METRICS: Record<MetricId, MetricDef> = REGISTRY;
+const amc = (id: ActivationMetricId, name: string, what: string, unit: MetricUnit): MetricDef => ({
+  id,
+  name,
+  definition: `${what} on Al Maher's daily report for each selected Dubai day, added over the days that have a report; a day with no report tab is listed as missing and counts as nothing rather than 0, and this sheet is a different source from Practo.`,
+  unit,
+  source: 'Dr Luvi\u2019s Revenue AMC sheet (one Report tab per day), stored by the dashboard sync.',
+  definitionVersion: 1,
+});
+
+/**
+ * Clinic Activation (Dr Luvi's daily report) figures, definition version 1.
+ * Read by lib/activation/read.ts; shown on /next/activation and in the
+ * Clinic Activation 09:00 email.
+ */
+const ACTIVATION_REGISTRY = {
+  A01: {
+    id: 'A01',
+    name: 'Lead tracker leads',
+    definition:
+      'Rows on the lead tabs of the Inhouse Lead Tracker whose enquiry date falls inside the selected Dubai days, counted by the clinic the row names (or the clinic its tab belongs to); the Smile Club, GMB and website tabs are left out, and a row is a record, not a unique person.',
+    unit: 'count',
+    source: 'Inhouse Lead Tracker lead tabs, as the dashboard sync stores them.',
+    definitionVersion: 1,
+  },
+  A02: {
+    id: 'A02',
+    name: 'Leads converted',
+    definition:
+      'Of the lead tracker leads (A01) with an enquiry date inside the selected Dubai days, the ones whose Conversion column says booked or converted, counted against the enquiry date, not the day of the booking.',
+    unit: 'count',
+    source: 'Inhouse Lead Tracker lead tabs, Conversion column.',
+    definitionVersion: 1,
+  },
+  A03: {
+    id: 'A03',
+    name: 'Leads by platform',
+    definition:
+      'The lead tracker leads (A01) in the selected Dubai days counted by the Inquiry Platform the front office entered, with unknown labels grouped as Other platform and blanks shown as Not recorded.',
+    unit: 'count',
+    source: 'Inhouse Lead Tracker lead tabs, Inquiry Platform column.',
+    definitionVersion: 1,
+  },
+  A04: {
+    id: 'A04',
+    name: 'Smile Club enquiries',
+    definition:
+      'Rows on the Smile Club tab of the Inhouse Lead Tracker dated inside the selected Dubai days, counted by the clinic the row names; rows with no readable date are left out.',
+    unit: 'count',
+    source: 'Inhouse Lead Tracker, Smile Club tab.',
+    definitionVersion: 1,
+  },
+  A05: {
+    id: 'A05',
+    name: 'Smile Club enquiries followed up',
+    definition:
+      'Of the Smile Club enquiries (A04) in the selected Dubai days, the ones with any follow-up remark entered on the Smile Club tab.',
+    unit: 'count',
+    source: 'Inhouse Lead Tracker, Smile Club tab, follow-up columns.',
+    definitionVersion: 1,
+  },
+  A06: {
+    id: 'A06',
+    name: 'Smile Club enquiries converted',
+    definition:
+      'Of the Smile Club enquiries (A04) in the selected Dubai days, the ones whose Conversion column says booked or converted, counted against the enquiry date.',
+    unit: 'count',
+    source: 'Inhouse Lead Tracker, Smile Club tab, Conversion column.',
+    definitionVersion: 1,
+  },
+  A07: {
+    id: 'A07',
+    name: 'Google reviews today (front office)',
+    definition:
+      'The Google reviews the front office entered as received today on the lead tracker GMB tab, as copied once a day by the dashboard, for one clinic on its latest copy, or added over the copied days in the selected Dubai days; it is what the front office typed, not Google\u2019s own count.',
+    unit: 'count',
+    source: 'Inhouse Lead Tracker GMB tab, copied daily from 29 Oct 2026.',
+    definitionVersion: 1,
+  },
+  A08: {
+    id: 'A08',
+    name: 'Google reviews total (front office)',
+    definition:
+      'The total Google reviews the front office entered for one clinic on the lead tracker GMB tab, on the latest daily copy on or before the last selected Dubai day; it is what the front office typed, so it can differ from Google\u2019s own count.',
+    unit: 'count',
+    source: 'Inhouse Lead Tracker GMB tab, copied daily from 29 Oct 2026.',
+    definitionVersion: 1,
+  },
+  A09: {
+    id: 'A09',
+    name: 'Photos posted (front office)',
+    definition:
+      'The photos the front office entered on the lead tracker GMB tab for one clinic, on its latest daily copy, or added over the copied days in the selected Dubai days.',
+    unit: 'count',
+    source: 'Inhouse Lead Tracker GMB tab, copied daily from 29 Oct 2026.',
+    definitionVersion: 1,
+  },
+  A10: {
+    id: 'A10',
+    name: 'Videos posted (front office)',
+    definition:
+      'The videos the front office entered on the lead tracker GMB tab for one clinic, on its latest daily copy, or added over the copied days in the selected Dubai days.',
+    unit: 'count',
+    source: 'Inhouse Lead Tracker GMB tab, copied daily from 29 Oct 2026.',
+    definitionVersion: 1,
+  },
+  A11: {
+    id: 'A11',
+    name: 'Days with a front office copy',
+    definition:
+      'The selected Dubai days on which the dashboard holds a daily copy of the lead tracker GMB tab for the clinic; days before the first copy on 29 Oct 2026 have none.',
+    unit: 'count',
+    source: 'Daily copies of the Inhouse Lead Tracker GMB tab stored by the dashboard.',
+    definitionVersion: 1,
+  },
+  A12: {
+    id: 'A12',
+    name: 'Practo billed, Al Wasl and Dr Tosun',
+    definition:
+      'Billed revenue (M06) for Al Wasl added to billed revenue for Dr Tosun over the same selected Dubai days; Al Maher is left out because its revenue in this report comes from its own daily sheet, and the total is unavailable when either clinic is.',
+    unit: 'AED',
+    source: 'Practo bills, read by the same summary the Executive view and the morning performance email use.',
+    definitionVersion: 1,
+  },
+  A13: amc('A13', 'AMC invoiced amount', 'The total invoice amount in AED', 'AED'),
+  A14: amc('A14', 'AMC insurance amount', 'The AED billed to insurance', 'AED'),
+  A15: amc('A15', 'AMC co-payment', 'The AED patients paid as co-payment', 'AED'),
+  A16: amc('A16', 'AMC cash', 'The AED taken in cash', 'AED'),
+  A17: amc('A17', 'AMC card', 'The AED taken by card', 'AED'),
+  A18: amc('A18', 'AMC appointments', 'The total appointments', 'count'),
+  A19: amc('A19', 'AMC cancelled appointments', 'The cancelled appointments', 'count'),
+  A20: amc('A20', 'AMC new patients', 'The patients marked new', 'count'),
+  A21: amc('A21', 'AMC returning patients', 'The patients marked old (returning)', 'count'),
+  A22: {
+    id: 'A22',
+    name: 'AMC days reported',
+    definition:
+      'The selected Dubai days that have a Report tab on Al Maher\u2019s daily sheet; the days without one are listed as missing, never filled in.',
+    unit: 'count',
+    source: 'Dr Luvi\u2019s Revenue AMC sheet (one Report tab per day), stored by the dashboard sync.',
+    definitionVersion: 1,
+  },
+} satisfies Record<ActivationMetricId, MetricDef>;
+
+/** Every defined measure; indexing with an unknown id gives undefined at runtime. */
+export const METRICS: Record<MetricId, MetricDef> = { ...REGISTRY, ...ACTIVATION_REGISTRY };
 
 /** Typed lookup; the id doubles as the chip under every figure. */
-export const metricDef = (id: KnownMetricId): MetricDef => REGISTRY[id];
+export const metricDef = (id: KnownMetricId | ActivationMetricId): MetricDef =>
+  (REGISTRY as Record<string, MetricDef>)[id] ?? (ACTIVATION_REGISTRY as Record<string, MetricDef>)[id];
+
+/** The Clinic Activation report's own measures, in id order. */
+export const ACTIVATION_METRIC_IDS = Object.keys(ACTIVATION_REGISTRY) as ActivationMetricId[];
 
 /**
  * The figures the Overview preview page shows (its chips, asserted by
@@ -380,5 +533,5 @@ export const METRIC_IDS: KnownMetricId[] = [
   'M01', 'M03', 'M04', 'M06', 'M07', 'M08', 'M15', 'M16', 'M18', 'M19', 'M25',
 ];
 
-/** Every registered measure, in id order. */
+/** Every DN-032 measure (M01 to M35), in id order; ACTIVATION_METRIC_IDS lists the A-ids. */
 export const ALL_METRIC_IDS = Object.keys(REGISTRY) as KnownMetricId[];

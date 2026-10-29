@@ -1,7 +1,7 @@
 /**
  * Shell of the /next DN-032 preview (mockups 01 and 06): the preview strip,
  * the navy brand header with the six-item navigation, and the footer.
- * Overview, Channels, Clinics and Programmes are real pages and link to each
+ * Overview, Channels, Clinics, Programmes and Clinic Activation are real pages and link to each
  * other; each page passes `active` so the nav highlights it. Reports and
  * Admin are <details> buttons that point to the detailed dashboard, so
  * nothing links to a 404. The page links carry the current date range
@@ -9,14 +9,15 @@
  * JavaScript needed.
  */
 
-export type PreviewSection = 'Overview' | 'Channels' | 'Clinics' | 'Programmes';
+export type PreviewSection = 'Overview' | 'Channels' | 'Clinics' | 'Programmes' | 'Clinic Activation';
 
-/** The four real pages of the preview, in nav order. */
+/** The real pages of the preview, in nav order. */
 const SECTIONS: { name: PreviewSection; href: string }[] = [
   { name: 'Overview', href: '/next' },
   { name: 'Channels', href: '/next/channels' },
   { name: 'Clinics', href: '/next/clinics' },
   { name: 'Programmes', href: '/next/programmes' },
+  { name: 'Clinic Activation', href: '/next/activation' },
 ];
 
 const COMING_SOON = ['Reports', 'Admin'];
@@ -74,7 +75,7 @@ export function PreviewShell({
           </a>
           <a className="text-xs text-[#d9e6eb] underline" href="/?tab=executive">Detailed dashboard</a>
         </div>
-        <nav className="relative hidden gap-7 sm:flex" aria-label="Main navigation">
+        <nav className="relative hidden gap-4 whitespace-nowrap sm:flex lg:gap-7" aria-label="Main navigation">
           {sections.map((s) =>
             s.name === active ? (
               <a

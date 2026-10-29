@@ -94,11 +94,11 @@ const EVENING: Who[] = ['fahad', 'gautam', 'mohan'];
 const SHOOT_CC: Who[] = ['luvi', 'gautam', 'fahad', 'mohan'];
 const MAX_PER_DAY = 2;
 /**
- * The four daily 09:00 emails sent by /api/cron/alerts (lib/alerts/registry.ts)
+ * The daily 09:00 emails sent by /api/cron/alerts (lib/alerts/registry.ts)
  * have their own once-a-day claim. They and their preview copies never count
  * toward, or block, the Smile Club briefings below.
  */
-const DAILY_ALERT_KINDS: readonly string[] = ['am:sc-daily', 'am:ortho-daily', 'am:gbp-daily', 'am:akbar-perf'];
+const DAILY_ALERT_KINDS: readonly string[] = ['am:sc-daily', 'am:ortho-daily', 'am:gbp-daily', 'am:akbar-perf', 'am:clinic-activation'];
 const separateFromCap = (kind: string) => DAILY_ALERT_KINDS.includes(kind) || kind.startsWith('preview:');
 
 const LINK = 'https://reports.dentalnation.com/?tab=smileclub';
