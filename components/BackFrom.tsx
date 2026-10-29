@@ -38,8 +38,14 @@ function labelFor(u: URL): string {
   return parts.join(' › ');
 }
 
+/** The new leadership pages (/next, made the home page on 29 Oct 2026). */
+const NEXT_PAGES: Record<string, string> = {
+  '/next': 'Overview', '/next/channels': 'Channels', '/next/clinics': 'Clinics', '/next/programmes': 'Programmes',
+};
+
 export function BackFrom() {
   const [label, setLabel] = useState<string | null>(null);
+  const [fromNext, setFromNext] = useState(false);
 
   useEffect(() => {
     try {
@@ -50,6 +56,13 @@ export function BackFrom() {
       // Same view (reload / self-link): nothing to go back to.
       const here = new URL(window.location.href);
       if (from.pathname === here.pathname && from.search === here.search) return;
+      // A proof link on the new leadership pages: offer a clear way back there.
+      const next = NEXT_PAGES[from.pathname.replace(/\/$/, '') || '/'];
+      if (next) {
+        setFromNext(true);
+        setLabel(next);
+        return;
+      }
       // Only dashboard views get a labelled return (share/login pages don't).
       if (from.pathname !== '/' && !from.pathname.startsWith('/impact')) return;
       setLabel(from.pathname.startsWith('/impact') ? 'Growth Projects' : labelFor(from));
@@ -59,6 +72,21 @@ export function BackFrom() {
   }, []);
 
   if (!label) return null;
+  if (fromNext) {
+    // Arrived from a number on the new pages: a full-width bar, hard to miss.
+    return (
+      <div className="no-print fixed inset-x-0 bottom-0 z-50 flex items-center justify-between gap-3 bg-dn-navy px-4 py-2.5 text-[13px] text-white shadow-lg md:px-8">
+        <span className="min-w-0">You opened this detail view from the new {label} page.</span>
+        <button
+          type="button"
+          onClick={() => window.history.back()}
+          className="flex-none rounded-md bg-dn-mint px-3 py-1.5 text-[13px] font-semibold text-dn-navy hover:bg-white"
+        >
+          <span aria-hidden>←</span> Back to {label}
+        </button>
+      </div>
+    );
+  }
   return (
     <button
       type="button"
