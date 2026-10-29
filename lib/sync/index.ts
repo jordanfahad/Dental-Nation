@@ -28,6 +28,8 @@ import { sendWatchedTabAlerts } from '@/lib/ops/tabAlerts';
 import { syncOpsForms } from './adapters/ops-forms-adapter';
 import { syncLeadMirror } from './leadMirror';
 import { syncWebsiteMirror } from './websiteMirror';
+import { syncGmbFrontOffice } from './adapters/gmb-frontoffice-adapter';
+import { syncAmcDailyReports } from './adapters/amc-report-adapter';
 import {
   normalizePerformance,
   normalizeBlockers,
@@ -227,6 +229,50 @@ export async function runSync(trigger: SyncTrigger): Promise<SyncSummary> {
         owner: 'Data/Analytics',
       });
     }
+  }
+
+  // ----- Clinic Activation sources (Dr Luvi's daily report). Both are
+  // best-effort and never abort the sync. Until migration 0051 is applied the
+  // tables do not exist: that is a data gap, not a failed source, so it cannot
+  // turn every sync "partial".
+  // GMB tab of the Inhouse Lead Tracker: a "today" sheet the front office
+  // overwrites, snapshotted per Dubai day and clinic (latest sync of the day wins).
+  try {
+    const g = await syncGmbFrontOffice(supabase, sheets);
+    if (g.ok) {
+      sheetsOk.push(`GMB front-office tab — ${g.stored} branch rows for ${g.day}`);
+      rowsIngested += g.stored;
+    } else if (g.missingTable) {
+      dataGaps.push({ area: 'tracking', detail: 'GMB front-office tab not stored: table gmb_frontoffice_daily missing (apply migration 0051)', owner: 'Data/Analytics' });
+    } else {
+      sheetsFailed.push('GMB front-office tab');
+      dataGaps.push({ area: 'tracking', detail: `GMB front-office tab failed: ${g.error ?? 'unknown'}`, owner: 'Data/Analytics' });
+    }
+    for (const w of g.warnings) dataGaps.push({ area: 'tracking', detail: `GMB front-office tab: ${w}`, owner: 'Operations' });
+  } catch (err) {
+    sheetsFailed.push('GMB front-office tab');
+    dataGaps.push({ area: 'tracking', detail: `GMB front-office tab failed: ${(err as Error).message}`, owner: 'Data/Analytics' });
+  }
+
+  // Revenue AMC: one "Report dd.mm.yyyy" tab per day → amc_daily_report.
+  // A tab that cannot be parsed is a data gap and never blocks the others.
+  try {
+    const a = await syncAmcDailyReports(supabase, sheets);
+    if (a.ok) {
+      sheetsOk.push(`Revenue AMC — ${a.stored} daily reports from ${a.tabs} tabs`);
+      rowsIngested += a.stored;
+    } else if (a.missingTable) {
+      dataGaps.push({ area: 'clinic', detail: 'Revenue AMC not stored: table amc_daily_report missing (apply migration 0051)', owner: 'Data/Analytics' });
+    } else {
+      sheetsFailed.push('Revenue AMC');
+      dataGaps.push({ area: 'clinic', detail: `Revenue AMC failed: ${a.error ?? 'unknown'}`, owner: 'Data/Analytics' });
+    }
+    const shown = a.gaps.slice(0, 20);
+    for (const g of shown) dataGaps.push({ area: 'clinic', detail: `Revenue AMC: ${g}`, owner: 'Operations' });
+    if (a.gaps.length > shown.length) dataGaps.push({ area: 'clinic', detail: `Revenue AMC: ${a.gaps.length - shown.length} more tab issue(s) not listed`, owner: 'Operations' });
+  } catch (err) {
+    sheetsFailed.push('Revenue AMC');
+    dataGaps.push({ area: 'clinic', detail: `Revenue AMC failed: ${(err as Error).message}`, owner: 'Data/Analytics' });
   }
 
   // ----- GA4 (website analytics) — a decoupled single-row current summary.

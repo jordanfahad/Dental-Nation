@@ -87,6 +87,44 @@ const asDate = (v: string): string | null => {
 
 export const sharedTransforms = { truthy, lower, trimmed, asDate };
 
+// ---- Clinic Activation sources (Dr Luvi's daily report, Oct 2026) ---------
+// Not header-row sources, so they are not SourceMappings: each has its own
+// parser (lib/sync/adapters/gmb-frontoffice-adapter.ts, amc-report-adapter.ts).
+
+/** Inhouse Lead Tracker tab the front office overwrites daily (reviews, posts). */
+export const GMB_FRONTOFFICE_TAB = 'GMB';
+/** Inhouse Lead Tracker tab of Smile Club enquiries (synced with the lead tabs). */
+export const SMILE_CLUB_TAB = 'Smile Club';
+
+export const activationSources = {
+  gmbFrontOffice: {
+    key: 'gmbFrontOffice',
+    label: 'Inhouse Lead Tracker — GMB tab',
+    spreadsheetId: '1FKg7-uh2kGU5ULK9WL71FCkLLljQ6dZkIDdJreIgiKA',
+    tab: GMB_FRONTOFFICE_TAB,
+    /** Row 3 headers (rows 1-2 are a merged title and merged group headers). */
+    columns: {
+      branch: 'Branch Name',
+      foName: 'FO Name',
+      reviewsToday: 'Google Reviews today',
+      reviewsIndividual: 'Google Reviews (Individual)',
+      reviewsTotal: 'Google Reviews total',
+      photos: 'Photos',
+      videos: 'Videos',
+    },
+    table: 'gmb_frontoffice_daily',
+  },
+  amcRevenue: {
+    key: 'amcRevenue',
+    label: 'Revenue AMC (daily reports)',
+    /** Dr Luvi's sheet, shared "anyone with the link"; read by ID. */
+    spreadsheetId: '1Jx-K8r6U9vLyyyJJYHJYwZVPsrXMJ6-RODVIVKtL26M',
+    /** One tab per day: "Report 28.10.2026". */
+    tabPattern: /^\s*report\s+(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{2,4})\s*$/i,
+    table: 'amc_daily_report',
+  },
+} as const;
+
 export const sheetMapping: Record<string, SourceMapping> = {
   gbpDailyLog: {
     key: 'gbpDailyLog', label: 'GBP Daily log',
@@ -114,7 +152,9 @@ export const sheetMapping: Record<string, SourceMapping> = {
       'DN - AL MAHER Br ⭐',
     ],
     discoverTabs: true,
-    excludeTabs: ['Website Enquiries (auto)', 'Website Summary'],
+    // GMB is the front office's daily reviews/posts sheet (synced separately into
+    // gmb_frontoffice_daily), never leads.
+    excludeTabs: ['Website Enquiries (auto)', 'Website Summary', GMB_FRONTOFFICE_TAB],
     headerRow: 1,
     target: 'leads',
     rawTable: 'raw_lead_tracker',

@@ -100,7 +100,7 @@ const LEAD_FIELDS: (keyof NormalizedLead)[] = [
  * throw). Distinct from the M/D/YYYY paid-perf parser — this sheet is human-
  * entered day-first.
  */
-function asLeadDate(v: unknown): string | null {
+export function asLeadDate(v: unknown): string | null {
   const s = String(v ?? '').trim();
   if (!s) return null;
   if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
@@ -115,7 +115,7 @@ function asLeadDate(v: unknown): string | null {
 }
 
 /** Normalise an Inquiry Platform value to a canonical channel label. */
-function normalizeLeadChannel(v: string): string | null {
+export function normalizeLeadChannel(v: string): string | null {
   const s = (v ?? '').trim();
   if (!s) return null;
   const lc = s.toLowerCase();
@@ -129,7 +129,7 @@ function normalizeLeadChannel(v: string): string | null {
 }
 
 /** A Conversion cell that indicates a booking/conversion. */
-function conversionIsBooked(v: string): boolean {
+export function conversionIsBooked(v: string): boolean {
   return /\b(booked|converted|convert|yes)\b/i.test(String(v ?? ''));
 }
 
