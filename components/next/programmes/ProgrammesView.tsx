@@ -14,10 +14,12 @@
  *  - partnership activity (M20, M21, M22) carries the proxy warning: it does
  *    not prove paid membership, and shared enquiries are never split by clinic.
  */
-import { dayLabel, rangeLabel } from '@/lib/alerts/shell';
+import { dayLabel } from '@/lib/alerts/shell';
 import { metricDef } from '@/lib/metrics/registry';
 import type { ProgrammesData } from '@/lib/overview/programmes';
+import { periodDates, rangeOfData, type ViewRange } from '@/lib/overview/range';
 import { Figure, UNAVAILABLE, fmtAed, fmtCount } from '../Figure';
+import { DateRangeControl } from '../DateRangeControl';
 
 const withYear = (label: string, iso: string) => `${label} ${iso.slice(0, 4)}`;
 
@@ -61,8 +63,10 @@ function MetricLine({ label, children }: { label: string; children: React.ReactN
   );
 }
 
-export function ProgrammesView({ data }: { data: ProgrammesData }) {
-  const mtdDates = withYear(rangeLabel(data.mtd.from, data.mtd.to), data.mtd.to);
+export function ProgrammesView({ data, range }: { data: ProgrammesData; range?: ViewRange }) {
+  // The range the data was read for; without one it is the default month to yesterday.
+  const r = range ?? rangeOfData(data.mtd, data.today);
+  const mtdDates = periodDates(r);
   const { ortho, smileClub, delivery } = data;
 
   const campaignUnavailableNote = ortho.read
@@ -82,9 +86,7 @@ export function ProgrammesView({ data }: { data: ProgrammesData }) {
 
       <div className="my-4 flex flex-col justify-between gap-2 sm:flex-row sm:items-center sm:gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-md border border-dn-line bg-white px-2.5 py-1.5 text-xs text-dn-navy">
-            Month to yesterday · {mtdDates}
-          </span>
+          <DateRangeControl range={r} path="/next/programmes" />
           <span className="rounded-md border border-dn-line bg-white px-2.5 py-1.5 text-xs text-dn-navy">All connected clinics</span>
         </div>
         <span className="text-xs text-[#617075]">Dubai time · Live figures, opened {withYear(dayLabel(data.today), data.today)}</span>

@@ -40,6 +40,23 @@ export function periods(today: string) {
   };
 }
 
+/**
+ * The same window shape as periods(), for a chosen range of Dubai days (the
+ * /next leadership pages' date control): mtd is the range itself, yesterday
+ * is its last day, last7 the 7 days ending on that day and prior7 the 7
+ * before. For the default range (1st of yesterday's month to yesterday) this
+ * equals periods(today) exactly.
+ */
+export function periodsFor(range: Range): ReturnType<typeof periods> {
+  const y = range.to;
+  return {
+    yesterday: { from: y, to: y },
+    mtd: { from: range.from, to: y },
+    last7: { from: addDaysIso(y, -6), to: y },
+    prior7: { from: addDaysIso(y, -13), to: addDaysIso(y, -7) },
+  };
+}
+
 export type GrowthClinic = GrowthClinicKey;
 export type ExecClinic = 'dental-nation' | 'dr-tosun' | 'al-maher';
 export type GbpClinic = 'all' | 'dental-nation' | 'dr-tosun' | 'al-maher';

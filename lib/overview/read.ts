@@ -24,7 +24,7 @@ import {
 } from '@/lib/alerts/performanceDaily';
 import { readGbpDaily, unansweredTotal } from '@/lib/alerts/gbpDaily';
 import {
-  SMILE_CLUB_COMPANIES, executiveLink, growthLink, marketingLink, periods, practoRevenueLink,
+  SMILE_CLUB_COMPANIES, executiveLink, growthLink, marketingLink, periods, periodsFor, practoRevenueLink,
   socialLink, type ExecClinic, type Range,
 } from '@/lib/alerts/links';
 import { AL_MAHER_PRACTO_FROM } from '@/config/clinics';
@@ -87,8 +87,10 @@ const namedMovers = (m: { up: Mover | null; down: Mover | null }) =>
   ({ up: named(m.up), down: named(m.down), min: MOVER_MIN });
 
 /** Pure projection of the email readers' data into the Overview shape. */
-export function buildOverview(perf: PerformanceDailyData, awaitingReply: number | null, today: string): OverviewData {
-  const p = periods(today);
+export function buildOverview(
+  perf: PerformanceDailyData, awaitingReply: number | null, today: string, range?: Range,
+): OverviewData {
+  const p = range ? periodsFor(range) : periods(today);
   const g = perf.growth;
 
   const spendMtd = perf.adSpendMtd;
@@ -161,14 +163,19 @@ export function emptyPerformance(): PerformanceDailyData {
   };
 }
 
-/** Read everything the Overview shows, through the email readers; never throws. */
-export async function readOverview(db: AdminClient | null, today: string): Promise<OverviewData> {
-  if (!db) return buildOverview(emptyPerformance(), null, today);
+/**
+ * Read everything the Overview shows, through the email readers; never throws.
+ * `range` (optional, the page's date control) replaces month to yesterday;
+ * the windows are then periodsFor(range). Reviews and replies stay live.
+ */
+export async function readOverview(db: AdminClient | null, today: string, range?: Range): Promise<OverviewData> {
+  if (!db) return buildOverview(emptyPerformance(), null, today, range);
+  const p = range ? periodsFor(range) : periods(today);
   const [perf, awaitingReply] = await Promise.all([
-    readPerformanceDaily(db, today).catch(() => emptyPerformance()),
+    readPerformanceDaily(db, today, p).catch(() => emptyPerformance()),
     (async () => {
       try { return unansweredTotal(await readGbpDaily(db, today)); } catch { return null; }
     })(),
   ]);
-  return buildOverview(perf, awaitingReply, today);
+  return buildOverview(perf, awaitingReply, today, range);
 }

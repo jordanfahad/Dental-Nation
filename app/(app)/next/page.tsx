@@ -2,6 +2,7 @@ import { getSupabaseAdmin } from '@/lib/supabase/server';
 import { dubaiDay } from '@/lib/gbp/plan';
 import { resolveClinic } from '@/config/clinics';
 import { readOverview } from '@/lib/overview/read';
+import { parseRange, rangeParams } from '@/lib/overview/range';
 import { PreviewShell } from '@/components/next/PreviewShell';
 import { OverviewView } from '@/components/next/OverviewView';
 import { ProofDrawer } from '@/components/next/ProofDrawer';
@@ -13,6 +14,8 @@ import { ProofDrawer } from '@/components/next/ProofDrawer';
  * (middleware.ts) covers it like every other route. Every figure comes from the same readers as the 09:00
  * emails (lib/overview/read.ts), so this page can never disagree with them.
  * ?clinic=all|dental-nation|dr-tosun|al-maher only moves the clinic lens.
+ * ?from=&to= (YYYY-MM-DD) or ?preset= picks the dates (lib/overview/range.ts);
+ * nothing given means month to yesterday.
  */
 export const dynamic = 'force-dynamic';
 // The read fans out over the same sources as the 09:00 email (Growth windows,
@@ -23,15 +26,17 @@ export const maxDuration = 120;
 export default async function NextPreviewPage({
   searchParams,
 }: {
-  searchParams: Promise<{ clinic?: string | string[] }>;
+  searchParams: Promise<{ clinic?: string | string[]; from?: string | string[]; to?: string | string[]; preset?: string | string[] }>;
 }) {
   const params = await searchParams;
   // A repeated ?clinic= arrives as an array; anything but a known single value means 'all'.
   const clinic = resolveClinic(typeof params.clinic === 'string' ? params.clinic : undefined);
-  const data = await readOverview(getSupabaseAdmin(), dubaiDay());
+  const today = dubaiDay();
+  const range = parseRange(params, today);
+  const data = await readOverview(getSupabaseAdmin(), today, range);
   return (
-    <PreviewShell active="Overview">
-      <OverviewView data={data} clinic={clinic} />
+    <PreviewShell active="Overview" rangeParams={rangeParams(range)}>
+      <OverviewView data={data} clinic={clinic} range={range} />
       <ProofDrawer />
     </PreviewShell>
   );

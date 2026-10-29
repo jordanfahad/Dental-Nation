@@ -27,7 +27,7 @@ import { CHANNEL_NAMES, readPerformanceDaily, type PerformanceDailyData } from '
 import { GBP_CLINIC_NAMES, readGbpDaily, type GbpDailyData } from '@/lib/alerts/gbpDaily';
 import { CHANNELS } from '@/config/growth-channels';
 import {
-  digitalLink, growthLink, growthPatientsLink, marketingLink, periods, socialLink, type Range,
+  digitalLink, growthLink, growthPatientsLink, marketingLink, periods, periodsFor, socialLink, type Range,
 } from '@/lib/alerts/links';
 import { emptyPerformance } from './read';
 
@@ -88,8 +88,8 @@ const sumOf = (vals: (number | null | undefined)[]) => {
 };
 
 /** Pure projection of the email readers' data into the Channels shape. */
-export function buildChannels(perf: PerformanceDailyData, gbp: GbpDailyData | null, today: string): ChannelsData {
-  const p = periods(today);
+export function buildChannels(perf: PerformanceDailyData, gbp: GbpDailyData | null, today: string, range?: Range): ChannelsData {
+  const p = range ? periodsFor(range) : periods(today);
   const g = perf.growth.mtd;
 
   const rows: ChannelRow[] | null = g
@@ -148,12 +148,17 @@ export function buildChannels(perf: PerformanceDailyData, gbp: GbpDailyData | nu
   };
 }
 
-/** Read everything the Channels page shows, through the email readers; never throws. */
-export async function readChannels(db: AdminClient | null, today: string): Promise<ChannelsData> {
-  if (!db) return buildChannels(emptyPerformance(), null, today);
+/**
+ * Read everything the Channels page shows, through the email readers; never throws.
+ * `range` (optional, the page's date control) replaces month to yesterday;
+ * Google profile calls keep their own month to the latest reported day.
+ */
+export async function readChannels(db: AdminClient | null, today: string, range?: Range): Promise<ChannelsData> {
+  if (!db) return buildChannels(emptyPerformance(), null, today, range);
+  const p = range ? periodsFor(range) : periods(today);
   const [perf, gbp] = await Promise.all([
-    readPerformanceDaily(db, today).catch(() => emptyPerformance()),
+    readPerformanceDaily(db, today, p).catch(() => emptyPerformance()),
     readGbpDaily(db, today).catch(() => null),
   ]);
-  return buildChannels(perf, gbp, today);
+  return buildChannels(perf, gbp, today, range);
 }

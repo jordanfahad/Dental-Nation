@@ -31,7 +31,7 @@ import type { AdminClient } from '@/lib/supabase/server';
 import { ORTHO_GOOGLE_CAMPAIGN, readOrthoDaily, type OrthoDailyData } from '@/lib/alerts/orthoDaily';
 import { readSmileClubDaily, type SmileClubDailyData } from '@/lib/alerts/smileclubDaily';
 import {
-  SMILE_CLUB_COMPANIES, SMILE_CLUB_SCRIPTS, executiveLink, growthLink, marketingLink, periods,
+  SMILE_CLUB_COMPANIES, SMILE_CLUB_SCRIPTS, executiveLink, growthLink, marketingLink, periods, periodsFor,
   practoRevenueLink, reportUrl, type Range,
 } from '@/lib/alerts/links';
 
@@ -81,8 +81,10 @@ export interface ProgrammesData {
 export const CONTENT_CALENDAR_LINK = reportUrl({ tab: 'marketing', mtab: 'calendar' });
 
 /** Pure projection of the two email readers' data into the Programmes shape. */
-export function buildProgrammes(google: OrthoCampaign, smile: SmileClubDailyData | null, today: string): ProgrammesData {
-  const p = periods(today);
+export function buildProgrammes(
+  google: OrthoCampaign, smile: SmileClubDailyData | null, today: string, range?: Range,
+): ProgrammesData {
+  const p = range ? periodsFor(range) : periods(today);
   // The DN Ortho email's rule: the campaign has figures only once a day in the
   // range reports spend or impressions; before that it is "not live", never 0.
   const live = google != null && google.mtd.activeDays > 0;
@@ -119,12 +121,17 @@ export function buildProgrammes(google: OrthoCampaign, smile: SmileClubDailyData
   };
 }
 
-/** Read everything the Programmes page shows, through the email readers; never throws. */
-export async function readProgrammes(db: AdminClient | null, today: string): Promise<ProgrammesData> {
-  if (!db) return buildProgrammes(null, null, today);
+/**
+ * Read everything the Programmes page shows, through the email readers; never throws.
+ * `range` (optional, the page's date control) replaces month to yesterday;
+ * members and scripts waiting stay live.
+ */
+export async function readProgrammes(db: AdminClient | null, today: string, range?: Range): Promise<ProgrammesData> {
+  if (!db) return buildProgrammes(null, null, today, range);
+  const p = range ? periodsFor(range) : periods(today);
   const [ortho, smile] = await Promise.all([
-    readOrthoDaily(db, today).catch(() => null),
-    readSmileClubDaily(db, today).catch((): SmileClubDailyData | null => null),
+    readOrthoDaily(db, today, p).catch(() => null),
+    readSmileClubDaily(db, today, p).catch((): SmileClubDailyData | null => null),
   ]);
-  return buildProgrammes(ortho?.googleSearch ?? null, smile, today);
+  return buildProgrammes(ortho?.googleSearch ?? null, smile, today, range);
 }

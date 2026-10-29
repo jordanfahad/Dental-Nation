@@ -6,8 +6,10 @@ import { METRICS } from '../lib/metrics/registry';
 import { buildChannels, type ChannelsData } from '../lib/overview/channels';
 import { emptyPerformance } from '../lib/overview/read';
 import {
-  digitalLink, growthLink, growthPatientsLink, marketingLink, periods, socialLink,
+  digitalLink, growthLink, growthPatientsLink, marketingLink, periods, periodsFor, socialLink,
 } from '../lib/alerts/links';
+import { parseRange, rangeParams, type ViewRange } from '../lib/overview/range';
+import { assertDatedUrls } from './fixtures/next-range';
 import type { GbpBranchData, GbpDailyData, GbpMetricSet } from '../lib/alerts/gbpDaily';
 import type { PerfChannel, PerformanceDailyData } from '../lib/alerts/performanceDaily';
 
@@ -86,7 +88,7 @@ function gbpPartial(): GbpDailyData {
 }
 
 /** Render PreviewShell + ChannelsView in a plain-React subprocess (the suite itself runs react-server). */
-function render(cases: { data: ChannelsData }[]): string[] {
+function render(cases: { data: ChannelsData; range?: ViewRange; rangeParams?: Record<string, string> }[]): string[] {
   const script = `
     const React = require('react');
     const { renderToStaticMarkup } = require('react-dom/server');
@@ -94,7 +96,8 @@ function render(cases: { data: ChannelsData }[]): string[] {
     const { PreviewShell } = require('./components/next/PreviewShell.tsx');
     const cases = JSON.parse(process.env.CHANNELS_CASES);
     process.stdout.write(JSON.stringify(cases.map((c) => renderToStaticMarkup(
-      React.createElement(PreviewShell, { active: 'Channels' }, React.createElement(ChannelsView, { data: c.data }))
+      React.createElement(PreviewShell, { active: 'Channels', rangeParams: c.rangeParams },
+        React.createElement(ChannelsView, { data: c.data, range: c.range }))
     ))));
   `;
   const result = spawnSync(process.execPath, ['--import', 'tsx', '-e', script], {
@@ -205,4 +208,50 @@ test('an all-null read renders Unavailable everywhere and never a bare 0, undefi
   assert.ok(allNull.includes(esc('"id":"M28","value":"Unavailable"')), 'null-share M28 payload missing');
   assert.ok(allNull.includes(esc('"dates":"Awaiting a readable Search Console sample"')), 'neutral M28 dates label missing');
   assert.ok(allNull.includes(esc('"value":"Unavailable"')));
+});
+
+/* ── date range ── */
+
+const CUSTOM = parseRange({ from: '2026-09-15', to: '2026-10-10' }, TODAY);
+const DEFAULT = parseRange({}, TODAY);
+/** The email reader reads the branded share for the range, through Search Console's latest day inside it. */
+function customSample(): PerformanceDailyData {
+  return { ...sample(), brandedShare: { percent: 41, from: CUSTOM.from, to: '2026-10-08' } };
+}
+const [custom, defaultExplicit] = render([
+  { data: buildChannels(customSample(), gbpSample(), TODAY, CUSTOM), range: CUSTOM, rangeParams: rangeParams(CUSTOM) },
+  { data: buildChannels(sample(), gbpSample(), TODAY, DEFAULT), range: DEFAULT, rangeParams: rangeParams(DEFAULT) },
+]);
+
+test('the default range renders exactly as the page did before the date control', () => {
+  assert.equal(defaultExplicit, populated);
+  assert.match(populated, /href="\/next\/channels\?preset=thismonth" aria-current="true"/);
+  assert.doesNotMatch(populated, /own reporting month|selected dates/);
+});
+
+test('a custom range renders its own dates and every proof URL carries them', () => {
+  assert.equal(periodsFor(CUSTOM).mtd.from, '2026-09-15');
+  assert.match(custom, /Selected dates · 15 Sept? to 10 Oct 2026/);
+  assert.doesNotMatch(custom, /Month to yesterday|1 to 27 Oct 2026/);
+  assert.match(custom, /largest channel by enquiries in these dates/);
+  // Every dated proof is the range, except Google profile calls (Google's own month to its
+  // reported day) and the branded share (its own available-through day inside the range).
+  const gbpUrl = socialLink('all', { from: '2026-10-01', to: '2026-10-23' });
+  const shareUrl = digitalLink({ from: CUSTOM.from, to: '2026-10-08' });
+  assertDatedUrls(custom, [CUSTOM], (u) => u.href === gbpUrl || u.href === shareUrl);
+  hasProofUrl(custom, growthLink(CUSTOM));
+  hasProofUrl(custom, marketingLink('overview', CUSTOM, { mchan: 'performance' }));
+  hasProofUrl(custom, socialLink('all', CUSTOM));                  // Instagram follows the range
+  hasProofUrl(custom, gbpUrl);
+  hasProofUrl(custom, shareUrl);
+  assert.ok(custom.includes(`href="${esc(growthPatientsLink(CUSTOM, 'paid-search'))}"`));
+  // Google profile calls keep their own window and say they do not follow the selected dates.
+  assert.match(custom, /own reporting month, (<!-- -->)?through Fri 23 Oct/);
+  assert.ok(custom.includes('does not follow the selected dates'));
+  assert.match(custom, /sampled search clicks · 15 Sept? to 8 Oct 2026/);
+  // Nav carries the range; no preset is highlighted.
+  assert.ok(custom.includes('href="/next/clinics?from=2026-09-15&amp;to=2026-10-10"'));
+  assert.ok(custom.includes('href="/next/channels?from=2026-09-15&amp;to=2026-10-10" aria-current="page"'));
+  assert.doesNotMatch(custom, /aria-current="true"/);
+  assert.doesNotMatch(custom, />0<|undefined|NaN|—/);
 });

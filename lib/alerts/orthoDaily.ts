@@ -126,8 +126,11 @@ export function campaignTotals(rows: AdsRow[]): CampaignTotals {
 }
 
 /** Read-only. Each source is caught on its own, so one broken feed shows "not yet" instead of blocking the email. */
-export async function readOrthoDaily(db: AdminClient, today: string): Promise<OrthoDailyData> {
-  const { yesterday, mtd } = periods(today);
+/** `p` (optional) replaces the windows; without it they are periods(today), as the email reads them. */
+export async function readOrthoDaily(
+  db: AdminClient, today: string, p: ReturnType<typeof periods> = periods(today),
+): Promise<OrthoDailyData> {
+  const { yesterday, mtd } = p;
   const [billing, googleSearch] = await Promise.all([
     (async () => {
       const { data } = await selectAll(

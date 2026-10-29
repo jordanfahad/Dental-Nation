@@ -9,6 +9,8 @@ import { STAGES, type Stage } from '../lib/smileclub/corporate';
 import {
   SMILE_CLUB_COMPANIES, SMILE_CLUB_SCRIPTS, executiveLink, growthLink, marketingLink, periods, practoRevenueLink,
 } from '../lib/alerts/links';
+import { parseRange, rangeParams, type ViewRange } from '../lib/overview/range';
+import { assertDatedUrls } from './fixtures/next-range';
 
 const TODAY = '2026-10-28';
 const P = periods(TODAY);
@@ -50,7 +52,7 @@ function sampleSmile(): SmileClubDailyData {
 }
 
 /** Render PreviewShell + ProgrammesView in a plain-React subprocess (the suite itself runs react-server). */
-function render(cases: { data: ProgrammesData }[]): string[] {
+function render(cases: { data: ProgrammesData; range?: ViewRange; rangeParams?: Record<string, string> }[]): string[] {
   const script = `
     const React = require('react');
     const { renderToStaticMarkup } = require('react-dom/server');
@@ -58,7 +60,8 @@ function render(cases: { data: ProgrammesData }[]): string[] {
     const { PreviewShell } = require('./components/next/PreviewShell.tsx');
     const cases = JSON.parse(process.env.PROGRAMMES_CASES);
     process.stdout.write(JSON.stringify(cases.map((c) => renderToStaticMarkup(
-      React.createElement(PreviewShell, { active: 'Programmes' }, React.createElement(ProgrammesView, { data: c.data }))
+      React.createElement(PreviewShell, { active: 'Programmes', rangeParams: c.rangeParams },
+        React.createElement(ProgrammesView, { data: c.data, range: c.range }))
     ))));
   `;
   const result = spawnSync(process.execPath, ['--import', 'tsx', '-e', script], {
@@ -180,4 +183,40 @@ test('an all-null read renders Unavailable everywhere and never a bare 0, undefi
   hasProofUrl(allNull, marketingLink('google', P.mtd, { gcamp: ORTHO_GOOGLE_CAMPAIGN }));
   hasProofUrl(allNull, practoRevenueLink('dental-nation', P.mtd));
   assert.ok(allNull.includes(esc('"value":"Unavailable"')));
+});
+
+/* ── date range ── */
+
+const CUSTOM = parseRange({ from: '2026-09-15', to: '2026-10-10' }, TODAY);
+const DEFAULT = parseRange({}, TODAY);
+const LASTMONTH = parseRange({ preset: 'lastmonth' }, TODAY);
+const [custom, defaultExplicit, lastMonth] = render([
+  { data: buildProgrammes(sampleCampaign(), sampleSmile(), TODAY, CUSTOM), range: CUSTOM, rangeParams: rangeParams(CUSTOM) },
+  { data: buildProgrammes(sampleCampaign(), sampleSmile(), TODAY, DEFAULT), range: DEFAULT, rangeParams: rangeParams(DEFAULT) },
+  { data: buildProgrammes(sampleCampaign(), sampleSmile(), TODAY, LASTMONTH), range: LASTMONTH, rangeParams: rangeParams(LASTMONTH) },
+]);
+
+test('the default range renders exactly as the page did before the date control', () => {
+  assert.equal(defaultExplicit, populated);
+  assert.match(populated, /Month to yesterday · 1 to 27 Oct 2026/);
+});
+
+test('a custom range renders its own dates and every proof URL carries them', () => {
+  assert.match(custom, /Selected dates · 15 Sept? to 10 Oct 2026/);
+  assert.doesNotMatch(custom, /Month to yesterday|1 to 27 Oct 2026/);
+  assertDatedUrls(custom, [CUSTOM]);
+  hasProofUrl(custom, marketingLink('google', CUSTOM, { gcamp: ORTHO_GOOGLE_CAMPAIGN }));
+  hasProofUrl(custom, growthLink(CUSTOM));
+  hasProofUrl(custom, executiveLink(CUSTOM));
+  hasProofUrl(custom, practoRevenueLink('dental-nation', CUSTOM));
+  // Members and scripts waiting stay live and say so, whatever the range.
+  hasProofUrl(custom, SMILE_CLUB_COMPANIES);
+  hasProofUrl(custom, SMILE_CLUB_SCRIPTS);
+  assert.ok(custom.includes(esc('"dates":"Live at the moment the page is opened"')));
+  assert.ok(custom.includes('href="/next?from=2026-09-15&amp;to=2026-10-10"'));
+  // Last month: whole of September, highlighted and carried.
+  assert.match(lastMonth, /Last month · 1 to 30 Sept? 2026/);
+  assert.match(lastMonth, /href="\/next\/programmes\?preset=lastmonth" aria-current="true"/);
+  assertDatedUrls(lastMonth, [{ from: '2026-09-01', to: '2026-09-30' }]);
+  for (const html of [custom, lastMonth]) assert.doesNotMatch(html, />0<|undefined|NaN|—/);
 });

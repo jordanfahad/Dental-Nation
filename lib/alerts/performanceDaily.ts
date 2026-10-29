@@ -238,8 +238,14 @@ async function readBrandedShare(mtd: Range): Promise<PerformanceDailyData['brand
   return percent == null ? null : { percent, from: mtd.from, to: last };
 }
 
-export async function readPerformanceDaily(db: AdminClient, today: string): Promise<PerformanceDailyData> {
-  const p = periods(today);
+/**
+ * `p` (optional) replaces the reporting windows; without it they are
+ * periods(today), exactly what the 09:00 email reads. The /next pages pass
+ * periodsFor(range) for a chosen date range.
+ */
+export async function readPerformanceDaily(
+  db: AdminClient, today: string, p: ReturnType<typeof periods> = periods(today),
+): Promise<PerformanceDailyData> {
   const growth = (r: Range, c: GrowthPerfClinic) => safe(async () => growthWindow(await getChannelPerformance(r, c, db)));
   const billed = (r: Range, clinic: ClinicFilterKey) => safe(async () => {
     const s = await getPractoSummary({ from: r.from, to: r.to, clinic });
@@ -261,7 +267,7 @@ export async function readPerformanceDaily(db: AdminClient, today: string): Prom
       return s.rows > 0 ? s.total : null;
     }),
     safe(async () => {
-      const ortho = await readOrthoDaily(db, today);
+      const ortho = await readOrthoDaily(db, today, p);
       const xs = ortho.doctors.map((d) => d.billedMtd);
       return xs.length > 0 && xs.every((v) => v != null) ? xs.reduce<number>((a, v) => a + (v ?? 0), 0) : null;
     }),

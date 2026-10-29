@@ -5,10 +5,12 @@
  * 09:00 email uses for the same figure, dates and clinic, and a missing value
  * is always the word "Unavailable", never 0.
  */
-import { dayLabel, rangeLabel } from '@/lib/alerts/shell';
+import { dayLabel } from '@/lib/alerts/shell';
 import { AL_MAHER_PRACTO_FROM, type ClinicFilterKey } from '@/config/clinics';
 import type { ClinicLens, OverviewData, OverviewMover } from '@/lib/overview/read';
 import { dayMonthYear } from '@/lib/overview/format';
+import { hrefWith, lastDayLabel, periodDates, rangeOfData, rangeParams, type ViewRange } from '@/lib/overview/range';
+import { DateRangeControl } from './DateRangeControl';
 import { Figure, UNAVAILABLE, fmtAed, fmtAedExact, fmtCount, fmtRating } from './Figure';
 
 const LIVE_DATES = 'Live at the moment the page is opened';
@@ -52,9 +54,11 @@ function TrendSvg({ prior7, last7, priorLabel, lastLabel }: { prior7: number; la
   );
 }
 
-export function OverviewView({ data, clinic }: { data: OverviewData; clinic: ClinicFilterKey }) {
+export function OverviewView({ data, clinic, range }: { data: OverviewData; clinic: ClinicFilterKey; range?: ViewRange }) {
   const { windows, labels } = data;
-  const mtdDates = withYear(rangeLabel(windows.mtd.from, windows.mtd.to), windows.mtd.to);
+  // The range the data was read for; without one it is the default month to yesterday.
+  const r = range ?? rangeOfData(windows.mtd, data.today);
+  const mtdDates = periodDates(r);
   const yDates = withYear(dayLabel(windows.yesterday.from), windows.yesterday.from);
   const last7Dates = withYear(labels.last7, windows.last7.to);
   const prior7Dates = withYear(labels.prior7, windows.prior7.to);
@@ -89,14 +93,15 @@ export function OverviewView({ data, clinic }: { data: OverviewData; clinic: Cli
       {big}
       <p className="m-0 mb-3 mt-1.5 min-h-[28px] text-[10px] text-[#617075]">{note}</p>
       <div className="flex items-center justify-between gap-2 border-t border-dn-line pt-2 text-[10px] text-[#657275]">
-        <span>Yesterday</span>
+        <span>{lastDayLabel(r)}</span>
         {day}
       </div>
     </article>
   );
 
-  const unavailableSpendNote =
-    'The spend reader on this page reports the month to date only, so there is no yesterday figure.';
+  const unavailableSpendNote = r.isDefault
+    ? 'The spend reader on this page reports the month to date only, so there is no yesterday figure.'
+    : 'The spend reader on this page reports the whole selected range only, so there is no figure for its last day.';
   const costNote =
     data.costPerEnquiry.mtd == null
       ? 'Spend or measured enquiries are unavailable, so no cost is calculated or estimated.'
@@ -109,19 +114,19 @@ export function OverviewView({ data, clinic }: { data: OverviewData; clinic: Cli
         <h1 className="m-0 mb-2 text-[27px] font-bold leading-tight tracking-[-1.1px] text-dn-navy sm:text-[32px]">
           How is the group doing?
         </h1>
-        <p className="m-0 text-xs text-[#617075]">Yesterday and the month so far, with the evidence one click away.</p>
+        <p className="m-0 text-xs text-[#617075]">
+          {r.isDefault ? 'Yesterday and the month so far' : 'The selected dates and their last day'}, with the evidence one click away.
+        </p>
       </div>
 
       <div className="my-4 flex flex-col justify-between gap-2 sm:flex-row sm:items-center sm:gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-md border border-dn-line bg-white px-2.5 py-1.5 text-xs text-dn-navy">
-            Month to yesterday · {mtdDates}
-          </span>
+          <DateRangeControl range={r} path="/next" keep={{ clinic: clinic === 'all' ? undefined : clinic }} />
           <span className="flex flex-wrap gap-1.5" role="group" aria-label="Clinic lens">
             {CLINIC_CHIPS.map((c) => (
               <a
                 key={c.key}
-                href={c.key === 'all' ? '/next' : `/next?clinic=${c.key}`}
+                href={hrefWith('/next', { clinic: c.key === 'all' ? undefined : c.key, ...rangeParams(r) })}
                 aria-current={c.key === clinic ? 'true' : undefined}
                 className={`rounded-md border px-2.5 py-1.5 text-xs no-underline ${
                   c.key === clinic
@@ -204,7 +209,7 @@ export function OverviewView({ data, clinic }: { data: OverviewData; clinic: Cli
           )}
           <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
             <div className="rounded-md bg-[#f4f7f5] p-3">
-              <p className="m-0 mb-1 text-[11px] text-[#526269]">Last 7 days · {last7Dates}</p>
+              <p className="m-0 mb-1 text-[11px] text-[#526269]">{r.isDefault ? 'Last 7 days' : '7 days to the last day'} · {last7Dates}</p>
               <Figure id="M01" display={fmtCount(data.trend.last7)} dates={last7Dates} scope={SHARED_SCOPE} url={data.trend.urlLast7} size="large" />
             </div>
             <div className="rounded-md bg-[#f4f7f5] p-3">
@@ -257,7 +262,7 @@ export function OverviewView({ data, clinic }: { data: OverviewData; clinic: Cli
 
       <Panel className="my-4">
         <div className="mb-3">
-          <h2 className="m-0 mb-1 text-base font-bold tracking-[-0.3px] text-dn-navy sm:text-lg">Clinic activity this month</h2>
+          <h2 className="m-0 mb-1 text-base font-bold tracking-[-0.3px] text-dn-navy sm:text-lg">{r.isDefault ? 'Clinic activity this month' : 'Clinic activity in the selected dates'}</h2>
           <p className="m-0 text-xs text-[#617075]">
             {mtdDates} · Appointments and billing are separate period measures, not an enquiry conversion funnel.
           </p>

@@ -5,12 +5,14 @@
  * existing detail view uses for the same dates and clinic, and a missing
  * value is always the word "Unavailable", never 0.
  */
-import { dayLabel, rangeLabel } from '@/lib/alerts/shell';
+import { dayLabel } from '@/lib/alerts/shell';
 import { AL_MAHER_PRACTO_FROM } from '@/config/clinics';
 import { metricDef } from '@/lib/metrics/registry';
 import type { ClinicsData, ClinicsRow } from '@/lib/overview/clinics';
 import { dayMonthYear } from '@/lib/overview/format';
+import { periodDates, rangeOfData, type ViewRange } from '@/lib/overview/range';
 import { Figure, fmtAed, fmtCount } from '../Figure';
+import { DateRangeControl } from '../DateRangeControl';
 
 const withYear = (label: string, iso: string) => `${label} ${iso.slice(0, 4)}`;
 
@@ -26,8 +28,10 @@ function Panel({ children, className = '' }: { children: React.ReactNode; classN
   return <section className={`min-w-0 rounded-[10px] border border-dn-line bg-white p-4 sm:p-5 ${className}`}>{children}</section>;
 }
 
-export function ClinicsView({ data }: { data: ClinicsData }) {
-  const mtdDates = withYear(rangeLabel(data.mtd.from, data.mtd.to), data.mtd.to);
+export function ClinicsView({ data, range }: { data: ClinicsData; range?: ViewRange }) {
+  // The range the data was read for; without one it is the default month to yesterday.
+  const r = range ?? rangeOfData(data.mtd, data.today);
+  const mtdDates = periodDates(r);
   const maherFrom = dayMonthYear(AL_MAHER_PRACTO_FROM);
   const missedName = metricDef('M05').name;
   const proxyName = metricDef('M26').name;
@@ -48,9 +52,7 @@ export function ClinicsView({ data }: { data: ClinicsData }) {
 
       <div className="my-4 flex flex-col justify-between gap-2 sm:flex-row sm:items-center sm:gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-md border border-dn-line bg-white px-2.5 py-1.5 text-xs text-dn-navy">
-            Month to yesterday · {mtdDates}
-          </span>
+          <DateRangeControl range={r} path="/next/clinics" />
           <span className="rounded-md border border-dn-line bg-white px-2.5 py-1.5 text-xs text-dn-navy">All connected clinics</span>
         </div>
         <span className="text-xs text-[#617075]">Dubai time · Live figures, opened {withYear(dayLabel(data.today), data.today)}</span>

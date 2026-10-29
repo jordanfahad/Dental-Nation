@@ -16,12 +16,18 @@
  */
 import { dayLabel, rangeLabel } from '@/lib/alerts/shell';
 import type { ChannelRow, ChannelsData } from '@/lib/overview/channels';
+import { rangeDates } from '@/lib/overview/format';
+import { periodDates, rangeOfData, type ViewRange } from '@/lib/overview/range';
 import { Figure, UNAVAILABLE, fmtAed, fmtAedExact, fmtCount } from '../Figure';
+import { DateRangeControl } from '../DateRangeControl';
 
 const SHARED_SCOPE = 'All clinics together (shared channels, never split by clinic)';
 const GBP_SCOPE = 'All connected clinics together';
 
 const withYear = (label: string, iso: string) => `${label} ${iso.slice(0, 4)}`;
+/** A source's own window: the original text within one month, the full form across months. */
+const spanDates = (x: { from: string; to: string }) =>
+  x.from.slice(0, 7) === x.to.slice(0, 7) ? withYear(rangeLabel(x.from, x.to), x.to) : rangeDates(x);
 
 /** Sub-tabs of the Channels section. Enquiries and Local & social are sections of this page; the rest come after approval. */
 const SUBNAV: { name: string; hash?: string }[] = [
@@ -65,8 +71,11 @@ function ShareBar({ enquiries, max }: { enquiries: number; max: number }) {
 const ESTIMATE_NOTE =
   'The Growth table marks this channel’s cost per enquiry approximate because it counts modelled phone enquiries. An estimate never sits in a headline, so the figure here is unavailable; the labelled approximate figure stays on the Growth table the button below opens.';
 
-export function ChannelsView({ data }: { data: ChannelsData }) {
-  const mtdDates = withYear(rangeLabel(data.mtd.from, data.mtd.to), data.mtd.to);
+export function ChannelsView({ data, range }: { data: ChannelsData; range?: ViewRange }) {
+  // The range the data was read for; without one it is the default month to yesterday.
+  const r = range ?? rangeOfData(data.mtd, data.today);
+  const mtdDates = periodDates(r);
+  const period = r.isDefault ? 'this month' : 'in these dates';
   const td = 'border-b border-[#e8eeea] px-3 py-3';
   const th = 'bg-[#f4f7f5] px-3 py-2.5 align-bottom text-[10px] font-semibold tracking-[0.025em] text-[#657275]';
 
@@ -95,7 +104,7 @@ export function ChannelsView({ data }: { data: ChannelsData }) {
   };
 
   const gbpDates = data.gbpCalls.range
-    ? withYear(rangeLabel(data.gbpCalls.range.from, data.gbpCalls.range.to), data.gbpCalls.range.to)
+    ? spanDates(data.gbpCalls.range)
     : 'Awaiting a reported day from Google';
   const gbpMissing = data.gbpCalls.missing.length
     ? ` Google has no reported data for ${data.gbpCalls.missing.join(' and ')}, so the total covers the other clinics only.`
@@ -133,9 +142,7 @@ export function ChannelsView({ data }: { data: ChannelsData }) {
 
         <div className="my-4 flex flex-col justify-between gap-2 sm:flex-row sm:items-center sm:gap-3">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-md border border-dn-line bg-white px-2.5 py-1.5 text-xs text-dn-navy">
-              Month to yesterday · {mtdDates}
-            </span>
+            <DateRangeControl range={r} path="/next/channels" />
             <span className="rounded-md border border-dn-line bg-white px-2.5 py-1.5 text-xs text-dn-navy">Shared channels</span>
           </div>
           <span className="text-xs text-[#617075]">Dubai time · Live figures, opened {withYear(dayLabel(data.today), data.today)}</span>
@@ -151,7 +158,7 @@ export function ChannelsView({ data }: { data: ChannelsData }) {
           <div className="mb-3 flex flex-col justify-between gap-2 sm:flex-row sm:items-start sm:gap-3.5">
             <div>
               <h2 className="m-0 mb-1 text-base font-bold tracking-[-0.3px] text-dn-navy sm:text-lg">Channel performance</h2>
-              <p className="m-0 text-xs text-[#617075]">Month to yesterday · Recorded spend and measured enquiries</p>
+              <p className="m-0 text-xs text-[#617075]">{r.isDefault ? 'Month to yesterday' : mtdDates} · Recorded spend and measured enquiries</p>
             </div>
             <span className="inline-block self-start rounded bg-[#e8f1e8] px-2 py-1 text-[11px] text-dn-navy">
               Modelled phone enquiries excluded
@@ -262,7 +269,7 @@ export function ChannelsView({ data }: { data: ChannelsData }) {
                 <div className="mt-4 rounded-[7px] bg-dn-beige p-3.5 text-xs">
                   <strong className="text-dn-navy">What counts?</strong>
                   <p className="m-0 mt-1">
-                    Tracked enquiries attributed to {data.biggest.name}, the largest channel by enquiries this month. Platform
+                    Tracked enquiries attributed to {data.biggest.name}, the largest channel by enquiries {period}. Platform
                     conversions and estimated phone enquiries are separate measures and are not mixed in.
                   </p>
                 </div>
@@ -281,7 +288,7 @@ export function ChannelsView({ data }: { data: ChannelsData }) {
               <>
                 <h2 className="m-0 mb-1 text-base font-bold tracking-[-0.3px] text-dn-navy sm:text-lg">Channel drill-down</h2>
                 <p className="m-0 text-xs text-[#5c6c72]">
-                  No channel has a measured enquiry this month, or the Growth report could not be read, so there is no
+                  No channel has a measured enquiry {period}, or the Growth report could not be read, so there is no
                   drill-down to show. Nothing is estimated in its place.
                 </p>
               </>
@@ -294,6 +301,7 @@ export function ChannelsView({ data }: { data: ChannelsData }) {
             <div className="flex items-center justify-between gap-4 border-b border-dn-line py-3 text-xs">
               <span>
                 Google profile calls ·{' '}
+                {r.isDefault ? '' : 'own reporting month, '}
                 {data.gbpCalls.throughDay ? `through ${dayLabel(data.gbpCalls.throughDay)}` : 'no reported day yet'}
               </span>
               <Figure
@@ -303,21 +311,22 @@ export function ChannelsView({ data }: { data: ChannelsData }) {
                 scope={GBP_SCOPE}
                 url={data.gbpCalls.url}
                 note={
-                  data.gbpCalls.value == null
+                  (data.gbpCalls.value == null
                     ? `Google has not reported a full day for every connected clinic, so the month-to-date calls are unavailable rather than counted as zero.${gbpMissing}`
-                    : `Google reports a day a few days late; this covers the month up to the latest fully reported day.${gbpMissing}`
+                    : `Google reports a day a few days late; this covers the month up to the latest fully reported day.${gbpMissing}`)
+                  + (r.isDefault ? '' : ' It keeps Google’s own reporting month and does not follow the selected dates.')
                 }
                 align="end"
               />
             </div>
             <div className="flex items-center justify-between gap-4 border-b border-dn-line py-3 text-xs">
               <span>
-                Brand share · sampled search clicks{data.share.range ? ` · ${withYear(rangeLabel(data.share.range.from, data.share.range.to), data.share.range.to)}` : ''}
+                Brand share · sampled search clicks{data.share.range ? ` · ${spanDates(data.share.range)}` : ''}
               </span>
               <Figure
                 id="M28"
                 display={data.share.percent != null ? `${data.share.percent}%` : UNAVAILABLE}
-                dates={data.share.range ? withYear(rangeLabel(data.share.range.from, data.share.range.to), data.share.range.to) : 'Awaiting a readable Search Console sample'}
+                dates={data.share.range ? spanDates(data.share.range) : 'Awaiting a readable Search Console sample'}
                 scope="The one group website, all clinics"
                 url={data.share.url}
                 note={data.share.percent != null ? undefined : 'The Search Console sample could not be read, or had no clicks, so the share is unavailable rather than estimated.'}
@@ -332,7 +341,7 @@ export function ChannelsView({ data }: { data: ChannelsData }) {
                 dates={mtdDates}
                 scope={"The group's one Instagram account"}
                 url={data.instagram.url}
-                note="The most recent recorded follower count inside the month to date; the source does not carry the exact observation day to this page."
+                note={`The most recent recorded follower count inside ${r.isDefault ? 'the month to date' : 'the selected dates'}; the source does not carry the exact observation day to this page.`}
                 align="end"
               />
             </div>
@@ -344,7 +353,7 @@ export function ChannelsView({ data }: { data: ChannelsData }) {
                 dates={mtdDates}
                 scope={"The group's one Instagram account"}
                 url={data.instagram.url}
-                note="Daily reach figures added over the month; the same person reached on two days counts twice."
+                note={`Daily reach figures added over ${r.isDefault ? 'the month' : 'the selected dates'}; the same person reached on two days counts twice.`}
                 align="end"
               />
             </div>

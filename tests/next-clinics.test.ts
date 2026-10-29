@@ -5,6 +5,9 @@ import { METRICS, metricDef } from '../lib/metrics/registry';
 import { buildClinics, emptyMissed, type ClinicsData, type MissedByClinic } from '../lib/overview/clinics';
 import { emptyPerformance } from '../lib/overview/read';
 import { executiveLink, growthLink, periods, practoRevenueLink } from '../lib/alerts/links';
+import { growthKeyOfClinic } from '../config/clinics';
+import { parseRange, rangeParams, type ViewRange } from '../lib/overview/range';
+import { assertDatedUrls } from './fixtures/next-range';
 import type { PerformanceDailyData } from '../lib/alerts/performanceDaily';
 
 const TODAY = '2026-10-28';
@@ -25,7 +28,7 @@ function sample(): PerformanceDailyData {
 const MISSED: MissedByClinic = { 'dental-nation': 10, 'dr-tosun': 5, 'al-maher': 4 };
 
 /** Render PreviewShell + ClinicsView in a plain-React subprocess (the suite itself runs react-server). */
-function render(cases: { data: ClinicsData }[]): string[] {
+function render(cases: { data: ClinicsData; range?: ViewRange; rangeParams?: Record<string, string> }[]): string[] {
   const script = `
     const React = require('react');
     const { renderToStaticMarkup } = require('react-dom/server');
@@ -33,7 +36,8 @@ function render(cases: { data: ClinicsData }[]): string[] {
     const { PreviewShell } = require('./components/next/PreviewShell.tsx');
     const cases = JSON.parse(process.env.CLINICS_CASES);
     process.stdout.write(JSON.stringify(cases.map((c) => renderToStaticMarkup(
-      React.createElement(PreviewShell, { active: 'Clinics' }, React.createElement(ClinicsView, { data: c.data }))
+      React.createElement(PreviewShell, { active: 'Clinics', rangeParams: c.rangeParams },
+        React.createElement(ClinicsView, { data: c.data, range: c.range }))
     ))));
   `;
   const result = spawnSync(process.execPath, ['--import', 'tsx', '-e', script], {
@@ -133,4 +137,38 @@ test('an all-null read renders Unavailable everywhere and never a bare 0, undefi
   hasProofUrl(allNull, executiveLink(P.mtd, 'al-maher'));
   hasProofUrl(allNull, growthLink(P.mtd, 'amc'));
   assert.ok(allNull.includes(esc('"value":"Unavailable"')));
+});
+
+/* ── date range ── */
+
+const CUSTOM = parseRange({ from: '2026-09-15', to: '2026-10-10' }, TODAY);
+const DEFAULT = parseRange({}, TODAY);
+const LAST30 = parseRange({ preset: 'last30' }, TODAY);
+const [custom, defaultExplicit, last30] = render([
+  { data: buildClinics(sample(), MISSED, TODAY, CUSTOM), range: CUSTOM, rangeParams: rangeParams(CUSTOM) },
+  { data: buildClinics(sample(), MISSED, TODAY, DEFAULT), range: DEFAULT, rangeParams: rangeParams(DEFAULT) },
+  { data: buildClinics(sample(), MISSED, TODAY, LAST30), range: LAST30, rangeParams: rangeParams(LAST30) },
+]);
+
+test('the default range renders exactly as the page did before the date control', () => {
+  assert.equal(defaultExplicit, populated);
+  assert.match(populated, /Month to yesterday · 1 to 27 Oct 2026/);
+});
+
+test('a custom range renders its own dates and every proof URL carries them', () => {
+  assert.match(custom, /Selected dates · 15 Sept? to 10 Oct 2026/);
+  assert.doesNotMatch(custom, /Month to yesterday|1 to 27 Oct 2026/);
+  assertDatedUrls(custom, [CUSTOM]);
+  for (const k of ['dental-nation', 'dr-tosun', 'al-maher'] as const) {
+    hasProofUrl(custom, executiveLink(CUSTOM, k));
+    hasProofUrl(custom, growthLink(CUSTOM, growthKeyOfClinic(k)));
+    assert.ok(custom.includes(`href="${esc(practoRevenueLink(k, CUSTOM))}"`), `billing proof for ${k}`);
+  }
+  assert.ok(custom.includes('href="/next/programmes?from=2026-09-15&amp;to=2026-10-10"'));
+  // A preset: highlighted, named, carried by the nav, its windows in every proof.
+  assert.match(last30, /Last 30 days · 28 Sept? to 27 Oct 2026/);
+  assert.match(last30, /href="\/next\/clinics\?preset=last30" aria-current="true"/);
+  assert.ok(last30.includes('href="/next/channels?preset=last30"'));
+  assertDatedUrls(last30, [{ from: '2026-09-28', to: '2026-10-27' }]);
+  for (const html of [custom, last30]) assert.doesNotMatch(html, />0<|undefined|NaN|—/);
 });

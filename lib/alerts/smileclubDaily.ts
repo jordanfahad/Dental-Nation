@@ -135,8 +135,10 @@ async function partnership(db: AdminClient, r: Range, clinic: GrowthPerfClinic):
 
 interface TaskRow { name: string | null; owner: string | null; status: string | null; raw: { stage?: number; steps?: number } | null }
 
-export async function readSmileClubDaily(db: AdminClient, today: string): Promise<SmileClubDailyData> {
-  const p = periods(today);
+/** `p` (optional) replaces the windows; without it they are periods(today), as the email reads them. */
+export async function readSmileClubDaily(
+  db: AdminClient, today: string, p: ReturnType<typeof periods> = periods(today),
+): Promise<SmileClubDailyData> {
   const clinics: GrowthPerfClinic[] = ['all', 'dn-alwasl', 'dr-tosun', 'amc'];
   const [growthRows, corp, reviews, tasks] = await Promise.all([
     Promise.all(clinics.flatMap((c) => [safe(() => partnership(db, p.yesterday, c)), safe(() => partnership(db, p.mtd, c))])),

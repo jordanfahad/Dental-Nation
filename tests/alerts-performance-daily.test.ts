@@ -9,6 +9,7 @@ import {
   BRANDED_QUERY, CHANNEL_ROWS, biggestMovers, brandedClickShare, buildPerformanceDaily, growthWindow, ownBrandSearches,
   readPerformanceDaily, spanLabel, type GrowthWindow, type PerfChannel, type PerformanceDailyData,
 } from '../lib/alerts/performanceDaily';
+import { periods, periodsFor } from '../lib/alerts/links';
 
 // Synthetic data only, and no network: the readers that use the dashboard's own
 // Supabase or Google clients find no credentials and report "not available".
@@ -388,4 +389,29 @@ test('Growth: Practo appointments by centre (Al Maher its own clinic); spend com
   const stale = await getChannelPerformance(MTD, 'all', fakeDb({ ...tables, ingestion_log: [{ finished_at: '2026-10-10T03:00:00Z', sheets_ok: ['Meta Ads (insights) — 1 rows'] }] }));
   const m2 = stale.channels.find((c) => c.key === 'paid-social')!;
   assert.deepEqual([m2.lastDelivery, m2.spendThrough], [null, '2026-10-05']);
+});
+
+test('read: optional windows default to periods(today); periodsFor(range) moves every window', async () => {
+  const appt = (k: string, day: string, status: string) =>
+    ({ appt_key: k, appt_date: day, mr_no: `DN-SYN-${k}`, status, doctor: '', patient_name: null, patient_phone: null, data: {} });
+  const tables: Rows = {
+    practo_appointments_raw: [appt('1', '2026-10-23', 'Arrived'), appt('2', '2026-10-05', 'Completed'), appt('3', '2026-09-30', 'Completed')],
+    meta_insights_raw: [
+      { key: 'm1', date: '2026-10-05', spend: 100.5, impressions: 1000, clicks: 10, leads: 1, campaign_name: 'Synthetic M' },
+      { key: 'm2', date: '2026-09-30', spend: 999, impressions: 1000, clicks: 10, leads: 1, campaign_name: 'Synthetic M' },
+    ],
+    google_ads_insights_raw: [{ key: 'g1', date: '2026-10-20', spend: 50, impressions: 10, clicks: 1, conversions: 0, campaign_name: 'Synthetic G' }],
+  };
+  // No `p` is exactly the email's read: the same as passing periods(today), and as periodsFor(month to yesterday).
+  const plain = await readPerformanceDaily(fakeDb(tables), TODAY);
+  assert.deepEqual(await readPerformanceDaily(fakeDb(tables), TODAY, periods(TODAY)), plain);
+  assert.deepEqual(await readPerformanceDaily(fakeDb(tables), TODAY, periodsFor(MTD)), plain);
+  assert.equal(plain.adSpendMtd, 150.5);
+  assert.equal(plain.growth.mtd?.booked, 2);
+  // A range from 30 Sep to 6 Oct: spend and bookings for those days, last day 6 Oct.
+  const custom = await readPerformanceDaily(fakeDb(tables), TODAY, periodsFor({ from: '2026-09-30', to: '2026-10-06' }));
+  assert.equal(custom.adSpendMtd, 1099.5);
+  assert.equal(custom.growth.mtd?.booked, 2);
+  assert.equal(custom.clinics.group.yesterday.booked, 0);
+  assert.notDeepEqual(custom.growth.mtd, plain.growth.mtd);
 });

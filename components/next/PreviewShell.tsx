@@ -4,7 +4,9 @@
  * Overview, Channels, Clinics and Programmes are real pages and link to each
  * other; each page passes `active` so the nav highlights it. Reports and
  * Admin are <details> buttons that point to the detailed dashboard, so
- * nothing links to a 404. Server component, no JavaScript needed.
+ * nothing links to a 404. The page links carry the current date range
+ * (rangeParams), so switching page keeps the dates. Server component, no
+ * JavaScript needed.
  */
 
 export type PreviewSection = 'Overview' | 'Channels' | 'Clinics' | 'Programmes';
@@ -46,7 +48,16 @@ function ComingSoonItem({ name, dark }: { name: string; dark?: boolean }) {
   );
 }
 
-export function PreviewShell({ children, active = 'Overview' }: { children: React.ReactNode; active?: PreviewSection }) {
+export function PreviewShell({
+  children, active = 'Overview', rangeParams = {},
+}: {
+  children: React.ReactNode;
+  active?: PreviewSection;
+  /** The current date range's params (from/to or preset), carried by the nav so switching page keeps the dates. */
+  rangeParams?: Record<string, string>;
+}) {
+  const q = new URLSearchParams(rangeParams).toString();
+  const sections = SECTIONS.map((s) => ({ ...s, href: q ? `${s.href}?${q}` : s.href }));
   return (
     <div className="min-h-screen bg-dn-off font-sans text-sm text-dn-ink">
       <div className="flex justify-between gap-3 bg-dn-mint px-4 py-2 text-[11px] text-dn-navy sm:px-7 sm:text-xs">
@@ -64,7 +75,7 @@ export function PreviewShell({ children, active = 'Overview' }: { children: Reac
           <a className="text-xs text-[#d9e6eb] underline" href="/?tab=executive">Detailed dashboard</a>
         </div>
         <nav className="relative hidden gap-7 sm:flex" aria-label="Main navigation">
-          {SECTIONS.map((s) =>
+          {sections.map((s) =>
             s.name === active ? (
               <a
                 key={s.name}
@@ -91,7 +102,7 @@ export function PreviewShell({ children, active = 'Overview' }: { children: Reac
         <details className="pb-3 sm:hidden">
           <summary className="cursor-pointer py-1 text-xs font-semibold">Navigate · {active}</summary>
           <nav className="relative mt-2 grid grid-cols-3 gap-1.5" aria-label="Mobile navigation">
-            {SECTIONS.map((s) =>
+            {sections.map((s) =>
               s.name === active ? (
                 <a
                   key={s.name}

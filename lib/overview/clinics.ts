@@ -23,7 +23,7 @@
 import type { AdminClient } from '@/lib/supabase/server';
 import { readPerformanceDaily, type PerfClinicKey, type PerformanceDailyData } from '@/lib/alerts/performanceDaily';
 import { getChannelPerformance } from '@/lib/growth/channelPerformance';
-import { executiveLink, growthLink, periods, practoRevenueLink, type ExecClinic, type Range } from '@/lib/alerts/links';
+import { executiveLink, growthLink, periods, periodsFor, practoRevenueLink, type ExecClinic, type Range } from '@/lib/alerts/links';
 import { AL_MAHER_PRACTO_FROM, growthKeyOfClinic } from '@/config/clinics';
 import { emptyPerformance } from './read';
 import { dayMonthYear } from './format';
@@ -77,8 +77,8 @@ export type MissedByClinic = Record<ExecClinic, number | null>;
 export const emptyMissed = (): MissedByClinic => ({ 'dental-nation': null, 'dr-tosun': null, 'al-maher': null });
 
 /** Pure projection of the email reader's data and the Growth no-shows into the Clinics shape. */
-export function buildClinics(perf: PerformanceDailyData, missed: MissedByClinic, today: string): ClinicsData {
-  const p = periods(today);
+export function buildClinics(perf: PerformanceDailyData, missed: MissedByClinic, today: string, range?: Range): ClinicsData {
+  const p = range ? periodsFor(range) : periods(today);
 
   const row = (key: PerfClinicKey, name: string, feedNote: string, clinic?: ExecClinic): ClinicsRow => {
     const c = perf.clinics[key];
@@ -109,10 +109,13 @@ export function buildClinics(perf: PerformanceDailyData, missed: MissedByClinic,
   };
 }
 
-/** Read everything the Clinics page shows, through the existing readers; never throws. */
-export async function readClinics(db: AdminClient | null, today: string): Promise<ClinicsData> {
-  if (!db) return buildClinics(emptyPerformance(), emptyMissed(), today);
-  const p = periods(today);
+/**
+ * Read everything the Clinics page shows, through the existing readers; never throws.
+ * `range` (optional, the page's date control) replaces month to yesterday.
+ */
+export async function readClinics(db: AdminClient | null, today: string, range?: Range): Promise<ClinicsData> {
+  if (!db) return buildClinics(emptyPerformance(), emptyMissed(), today, range);
+  const p = range ? periodsFor(range) : periods(today);
   // The Growth page's no-show column for one clinic lens, month to date, with
   // the page's DEFAULT options. No appointment feed rows means the report
   // could not be read (getChannelPerformance returns an empty report on
@@ -128,10 +131,10 @@ export async function readClinics(db: AdminClient | null, today: string): Promis
     }
   };
   const [perf, wasl, tosun, maher] = await Promise.all([
-    readPerformanceDaily(db, today).catch(() => emptyPerformance()),
+    readPerformanceDaily(db, today, p).catch(() => emptyPerformance()),
     noshowMtd('dental-nation'),
     noshowMtd('dr-tosun'),
     noshowMtd('al-maher'),
   ]);
-  return buildClinics(perf, { 'dental-nation': wasl, 'dr-tosun': tosun, 'al-maher': maher }, today);
+  return buildClinics(perf, { 'dental-nation': wasl, 'dr-tosun': tosun, 'al-maher': maher }, today, range);
 }
