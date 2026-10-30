@@ -25,12 +25,12 @@ export const ALERT_RULES = [
 /** The most anyone receives in a day. */
 export const ALERT_CAP = [
   { kind: 'lead:whatsapp', who: 'Dr Luvi: lead alert (off until configured)', morning: 'Off - owner setup pending', evening: '-', max: 0 },
-  { who: 'Mr Akbar', morning: 'GBP daily and performance daily', evening: '-', max: 2 },
-  { who: 'Dr Luvi', morning: 'Smile Club, DN Ortho and GBP daily', evening: 'Shoot schedule (copied), evenings before a shoot', max: 4 },
-  { who: 'Ms Shadi', morning: 'Smile Club, DN Ortho, GBP and performance daily', evening: '-', max: 4 },
+  { who: 'Mr Akbar', morning: 'GBP daily, performance daily and Clinic Activation', evening: '-', max: 3 },
+  { who: 'Dr Luvi', morning: 'Smile Club, DN Ortho, GBP daily and Clinic Activation', evening: 'Shoot schedule (copied), evenings before a shoot', max: 5 },
+  { who: 'Ms Shadi', morning: 'Smile Club, DN Ortho, GBP, performance daily and Clinic Activation', evening: '-', max: 5 },
   { who: 'Gautam', morning: 'Smile Club daily', evening: 'Shoot schedule (copied) or his evening update', max: 2 },
   { who: 'Mohan', morning: 'Briefing (when he has something)', evening: 'Shoot schedule (copied) or his evening update', max: 2 },
-  { who: 'Fahad', morning: 'Briefing, plus a copy of all four daily emails', evening: 'Shoot schedule (copied) or his evening update', max: 6 },
+  { who: 'Fahad', morning: 'Briefing, plus a copy of all five daily emails', evening: 'Shoot schedule (copied) or his evening update', max: 7 },
   { who: 'MJ', morning: 'Smile Club and DN Ortho daily', evening: 'Shoot schedule (to her), evenings before a shoot', max: 3 },
 ] as const;
 

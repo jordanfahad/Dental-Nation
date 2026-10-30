@@ -1,9 +1,9 @@
 /**
  * The daily 09:00 Dubai alert emails, in send order: the four approved by the
  * owner on 24 Oct 2026, and the Clinic Activation email (Dr Luvi's daily
- * report), which is GATED: its liveFrom is CLINIC_ACTIVATION_LIVE_FROM, null
- * until it is switched on, so the cron never sends it to its recipients while
- * the preview to Fahad still renders it. Sent by the /api/cron/alerts route through lib/alerts/delivery.ts:
+ * report), which is live from CLINIC_ACTIVATION_LIVE_FROM (31 Oct 2026): the
+ * cron sends it to its recipients from that Dubai day, never before, while the
+ * preview to Fahad renders it on any day. Sent by the /api/cron/alerts route through lib/alerts/delivery.ts:
  * one email per kind per day, claimed in lane_e.performance_email_claims before
  * sending. Nothing goes to anyone before LIVE_FROM except previews to Fahad.
  *
@@ -50,7 +50,7 @@ export const LIVE_FROM = '2026-10-25';
  * previews to Fahad only. To switch it on, set a Dubai day, e.g. '2026-11-01'
  * (after applying supabase/migrations/0052_clinic_activation_alert_kind.sql).
  */
-export const CLINIC_ACTIVATION_LIVE_FROM: string | null = null;
+export const CLINIC_ACTIVATION_LIVE_FROM: string | null = '2026-10-31'; // approved by Fahad 30 Oct 2026
 /** lane_e.app_secrets key: any row with this key asks the next cron run to email every preview to Fahad, once. */
 export const PREVIEW_KEY = 'alerts_preview_request';
 /** Dubai send window: 09:00 inclusive to 11:00 exclusive. */

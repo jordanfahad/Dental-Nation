@@ -2,10 +2,13 @@ import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { deliverDailyAlerts, dubaiDay, liveWindow, resolveRecipients, type DailyAlertDeps, type Mail } from '../lib/alerts/delivery';
-import { DAILY_ALERTS, DAILY_ALERT_KINDS, LIVE_FROM, PREVIEW_KEY, nextSendDay, previewNote, recipientsLine, type DailyAlert } from '../lib/alerts/registry';
+import { CLINIC_ACTIVATION_LIVE_FROM, DAILY_ALERTS, DAILY_ALERT_KINDS, LIVE_FROM, PREVIEW_KEY, nextSendDay, previewNote, recipientsLine, sendsLiveOn, type DailyAlert } from '../lib/alerts/registry';
 
-/** The kinds the cron sends live; the gated Clinic Activation email (liveFrom null) is previews only (tests/alerts-activation.test.ts). */
-const LIVE_KINDS = DAILY_ALERTS.filter((a) => a.liveFrom !== null).map((a) => a.kind);
+/** The kinds the cron sends live from LIVE_FROM; Clinic Activation joins them from 31 Oct 2026 (tests/alerts-activation.test.ts). */
+const LIVE_KINDS = DAILY_ALERTS.filter((a) => sendsLiveOn(a, LIVE_FROM)).map((a) => a.kind);
+/** First day of the Clinic Activation email (owner approval); from then on all five kinds are live. */
+const ACTIVATION_FROM = '2026-10-31';
+const ACTIVATION_DAY_0900 = '2026-10-31T05:00:00Z';
 
 /** In-memory claims, preview request and log. No transport, database or network. */
 function fixture(opts: { preview?: boolean; failKinds?: string[] } = {}) {
@@ -37,9 +40,13 @@ const addr = (...who: string[]) => who.map((w) => `${w}@example.invalid`);
 // 09:00 Dubai = 05:00 UTC (no daylight saving).
 const LIVE_DAY_0900 = '2026-10-25T05:00:00Z';
 
-test('registry: five kinds in order (four live, Clinic Activation gated), approved recipients, Fahad copied on each', () => {
+test('registry: five kinds in order (four live from LIVE_FROM, Clinic Activation from 31 Oct), approved recipients, Fahad copied on each', () => {
   assert.deepEqual(DAILY_ALERT_KINDS, ['am:sc-daily', 'am:ortho-daily', 'am:gbp-daily', 'am:akbar-perf', 'am:clinic-activation']);
   assert.deepEqual(LIVE_KINDS, ['am:sc-daily', 'am:ortho-daily', 'am:gbp-daily', 'am:akbar-perf']);
+  assert.equal(CLINIC_ACTIVATION_LIVE_FROM, ACTIVATION_FROM);
+  assert.deepEqual(DAILY_ALERTS.map((a) => a.liveFrom), [undefined, undefined, undefined, undefined, ACTIVATION_FROM]);
+  assert.deepEqual(DAILY_ALERTS.filter((a) => sendsLiveOn(a, '2026-10-30')).map((a) => a.kind), LIVE_KINDS);
+  assert.deepEqual(DAILY_ALERTS.filter((a) => sendsLiveOn(a, ACTIVATION_FROM)).map((a) => a.kind), [...DAILY_ALERT_KINDS]);
   const route = Object.fromEntries(DAILY_ALERTS.map((a) => [a.kind, { to: a.to, cc: a.cc }]));
   assert.deepEqual(route, {
     'am:sc-daily': { to: ['gautam', 'luvi', 'shadi', 'mj'], cc: ['fahad'] },
@@ -78,7 +85,7 @@ test('live send only 09:00 to 10:59 Dubai, from LIVE_FROM, to the approved recip
     const x = fixture(); await deliverDailyAlerts(at(utc), x.deps);
     assert.equal(x.sent.length, 0, utc); assert.equal(x.claims.size, 0, utc);
   }
-  for (const utc of [LIVE_DAY_0900, '2026-10-25T06:59:59Z', '2026-12-01T05:15:00Z']) {
+  for (const utc of [LIVE_DAY_0900, '2026-10-25T06:59:59Z', '2026-10-30T05:15:00Z']) {
     const x = fixture(); await deliverDailyAlerts(at(utc), x.deps);
     assert.deepEqual(x.sent.map((m) => m.to), [addr('gautam', 'luvi', 'shadi', 'mj'), addr('luvi', 'mj', 'shadi'), addr('akbar', 'shadi', 'luvi'), addr('akbar', 'shadi')], utc);
     assert.ok(x.sent.every((m) => m.cc.join() === addr('fahad').join()));
@@ -88,9 +95,29 @@ test('live send only 09:00 to 10:59 Dubai, from LIVE_FROM, to the approved recip
     assert.ok(x.rendered.every((r) => r.today === dubaiDay(at(utc)) && r.preview === undefined));
     assert.equal(x.rendered[3].recipients, 'To Mr Akbar and Ms Shadi; copied to Fahad.');
   }
+  // From 31 Oct the Clinic Activation email joins them, in the same window, to Mr Akbar, Ms Shadi and Dr Luvi.
+  for (const utc of ['2026-10-31T04:59:59Z', '2026-10-31T07:00:00Z', '2026-10-31T13:00:00Z']) {
+    const x = fixture(); await deliverDailyAlerts(at(utc), x.deps);
+    assert.equal(x.sent.length, 0, utc); assert.equal(x.claims.size, 0, utc);
+  }
+  for (const utc of [ACTIVATION_DAY_0900, '2026-10-31T06:59:59Z', '2026-12-01T05:15:00Z']) {
+    const x = fixture(); await deliverDailyAlerts(at(utc), x.deps);
+    assert.deepEqual(x.sent.map((m) => m.to), [addr('gautam', 'luvi', 'shadi', 'mj'), addr('luvi', 'mj', 'shadi'), addr('akbar', 'shadi', 'luvi'), addr('akbar', 'shadi'), addr('akbar', 'shadi', 'luvi')], utc);
+    assert.ok(x.sent.every((m) => m.cc.join() === addr('fahad').join()));
+    assert.ok(x.sent.every((m) => !m.subject.startsWith('[Preview]')));
+    assert.deepEqual(x.logs.map((l) => [l.kind, l.ok, l.note]), DAILY_ALERT_KINDS.map((k) => [k, true, 'Sent']));
+    assert.deepEqual(x.logs[2].recipients, addr('akbar', 'shadi', 'luvi', 'fahad'));
+    assert.deepEqual(x.logs[4].recipients, addr('akbar', 'shadi', 'luvi', 'fahad'));
+    assert.ok(x.rendered.every((r) => r.today === dubaiDay(at(utc)) && r.preview === undefined));
+    assert.equal(x.rendered[3].recipients, 'To Mr Akbar and Ms Shadi; copied to Fahad.');
+    assert.equal(x.rendered[4].recipients, 'To Mr Akbar, Ms Shadi and Dr Luvi; copied to Fahad.');
+  }
   // One person may receive several of these emails: no cross-kind cap.
   const x = fixture(); await deliverDailyAlerts(at(LIVE_DAY_0900), x.deps);
   assert.equal(x.sent.filter((m) => m.to.includes('shadi@example.invalid')).length, 4);
+  const y = fixture(); await deliverDailyAlerts(at(ACTIVATION_DAY_0900), y.deps);
+  assert.equal(y.sent.filter((m) => m.to.includes('shadi@example.invalid')).length, 5);
+  assert.equal(y.sent.filter((m) => m.to.includes('akbar@example.invalid')).length, 3);
 });
 
 test('one send per kind per day, including concurrent and repeated runs; the next day sends again', async () => {
@@ -102,6 +129,17 @@ test('one send per kind per day, including concurrent and repeated runs; the nex
   assert.deepEqual(later, LIVE_KINDS.map((k) => `${k}: already sent today`));
   await deliverDailyAlerts(at('2026-10-26T05:00:00Z'), x.deps);
   assert.equal(x.sent.length, 8); assert.equal(x.claims.size, 8);
+
+  // From 31 Oct: five kinds, still one send each per day.
+  const y = fixture();
+  await Promise.all([deliverDailyAlerts(at(ACTIVATION_DAY_0900), y.deps), deliverDailyAlerts(at(ACTIVATION_DAY_0900), y.deps)]);
+  await deliverDailyAlerts(at('2026-10-31T05:15:00Z'), y.deps);
+  const again = await deliverDailyAlerts(at('2026-10-31T06:45:00Z'), y.deps);
+  assert.equal(y.sent.length, 5); assert.equal(y.claims.size, 5);
+  assert.ok(y.claims.has(`am:clinic-activation:${ACTIVATION_FROM}`));
+  assert.deepEqual(again, DAILY_ALERT_KINDS.map((k) => `${k}: already sent today`));
+  await deliverDailyAlerts(at('2026-11-01T05:00:00Z'), y.deps);
+  assert.equal(y.sent.length, 10); assert.equal(y.claims.size, 10);
 });
 
 test('transport failure keeps the claim (no second copy); missing or duplicate addresses and no transport fail closed', async () => {
@@ -163,7 +201,7 @@ test('preview goes to Fahad only, any time, before LIVE_FROM, and is consumed on
     'Preview for Fahad: on Sun 25 Oct at 09:00 this goes to Dr Luvi, MJ and Ms Shadi, copied to Fahad.',
     'Preview for Fahad: on Sun 25 Oct at 09:00 this goes to Mr Akbar, Ms Shadi and Dr Luvi, copied to Fahad.',
     'Preview for Fahad: on Sun 25 Oct at 09:00 this goes to Mr Akbar and Ms Shadi, copied to Fahad.',
-    'Preview for Fahad: not switched on yet. Once it is, this goes at 09:00 to Mr Akbar, Ms Shadi and Dr Luvi, copied to Fahad.',
+    'Preview for Fahad: on Sat 31 Oct at 09:00 this goes to Mr Akbar, Ms Shadi and Dr Luvi, copied to Fahad.',
   ]);
   assert.ok(x.rendered.every((r) => r.today === '2026-10-24'));
   assert.ok(x.sent[0].html.includes('Preview for Fahad'));

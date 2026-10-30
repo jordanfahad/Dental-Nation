@@ -19,6 +19,11 @@ const alert = DAILY_ALERTS.find((a) => a.kind === KIND)!;
 const addr = (...who: string[]) => who.map((w) => `${w}@example.invalid`);
 // 09:00 Dubai = 05:00 UTC (no daylight saving).
 const AT_0900 = new Date('2026-10-29T05:00:00Z');
+/** Approved by the owner: Clinic Activation goes live on this Dubai day. */
+const ACTIVATION_FROM = '2026-10-31';
+const DAY_BEFORE = '2026-10-30';
+const AT_0900_DAY_BEFORE = new Date('2026-10-30T05:00:00Z');
+const AT_0900_LIVE = new Date('2026-10-31T05:00:00Z');
 
 /** In-memory claims and log; render uses the REAL builders on synthetic data for this kind. */
 function fixture(alerts: readonly DailyAlert[], opts: { preview?: boolean } = {}) {
@@ -48,44 +53,52 @@ function fixture(alerts: readonly DailyAlert[], opts: { preview?: boolean } = {}
   return { deps, claims, logs, sent, rendered, read, state };
 }
 
-test('registry: the fifth kind, its recipients, and the gate that keeps it off', () => {
+test('registry: the fifth kind, its recipients, and its own first live day (31 Oct 2026)', () => {
   assert.ok(alert, 'am:clinic-activation missing from DAILY_ALERTS');
+  assert.equal(DAILY_ALERTS.length, 5);
   assert.equal(DAILY_ALERTS[DAILY_ALERTS.length - 1].kind, KIND);
   assert.deepEqual([alert.to, alert.cc], [['akbar', 'shadi', 'luvi'], ['fahad']]);
   assert.equal(recipientsLine(alert), 'To Mr Akbar, Ms Shadi and Dr Luvi; copied to Fahad.');
-  assert.equal(CLINIC_ACTIVATION_LIVE_FROM, null);
-  assert.equal(alert.liveFrom, null);
-  assert.equal(liveFromOf(alert), null);
-  for (const day of [LIVE_FROM, TODAY, '2026-11-01', '2030-01-01']) assert.equal(sendsLiveOn(alert, day), false, day);
-  // The four approved emails are untouched by the gate.
+  assert.equal(CLINIC_ACTIVATION_LIVE_FROM, ACTIVATION_FROM);
+  assert.equal(alert.liveFrom, ACTIVATION_FROM);
+  assert.equal(liveFromOf(alert), ACTIVATION_FROM);
+  for (const day of [LIVE_FROM, TODAY, DAY_BEFORE]) assert.equal(sendsLiveOn(alert, day), false, day);
+  for (const day of [ACTIVATION_FROM, '2026-11-01', '2030-01-01']) assert.equal(sendsLiveOn(alert, day), true, day);
+  // The four approved emails are untouched by the Clinic Activation date.
   for (const a of DAILY_ALERTS.filter((x) => x.kind !== KIND)) {
     assert.equal(a.liveFrom, undefined);
     assert.equal(sendsLiveOn(a, LIVE_FROM), true);
     assert.equal(sendsLiveOn(a, '2026-10-24'), false);
   }
+  // The preview names its own first day, never earlier, and the real day once it has come.
+  assert.equal(previewNote(alert, '2026-10-30'), 'Preview for Fahad: on Sat 31 Oct at 09:00 this goes to Mr Akbar, Ms Shadi and Dr Luvi, copied to Fahad.');
+  assert.equal(previewNote(alert, '2026-11-01'), 'Preview for Fahad: on Sun 1 Nov at 09:00 this goes to Mr Akbar, Ms Shadi and Dr Luvi, copied to Fahad.');
+  assert.equal(previewNote({ ...alert, liveFrom: '2026-11-01' }, '2026-10-30'), 'Preview for Fahad: on Sun 1 Nov at 09:00 this goes to Mr Akbar, Ms Shadi and Dr Luvi, copied to Fahad.');
+  // The gate mechanism still holds a kind that is not switched on.
+  assert.equal(liveFromOf({ liveFrom: null }), null);
   assert.equal(
-    previewNote(alert, '2026-10-30'),
+    previewNote({ ...alert, liveFrom: null }, '2026-10-30'),
     'Preview for Fahad: not switched on yet. Once it is, this goes at 09:00 to Mr Akbar, Ms Shadi and Dr Luvi, copied to Fahad.',
   );
-  // Switched on later: the preview names its own first day, never earlier.
-  assert.equal(previewNote({ ...alert, liveFrom: '2026-11-01' }, '2026-10-30'), 'Preview for Fahad: on Sun 1 Nov at 09:00 this goes to Mr Akbar, Ms Shadi and Dr Luvi, copied to Fahad.');
 });
 
-test('the cron does NOT select the gated kind: no read, no claim, no log, no send, at any live hour', async () => {
-  for (const at of [AT_0900, new Date('2026-10-29T06:45:00Z'), new Date('2026-12-01T05:15:00Z')]) {
+test('before 31 Oct the cron does NOT select the kind: no read, no claim, no log, no send, at any live hour', async () => {
+  for (const at of [AT_0900, new Date('2026-10-29T06:45:00Z'), new Date('2026-10-30T05:00:00Z'), new Date('2026-10-30T06:59:59Z')]) {
     const x = fixture(DAILY_ALERTS);
     const out = await deliverDailyAlerts(at, x.deps);
     assert.equal(x.sent.length, 4, at.toISOString());
-    assert.ok(!x.rendered.includes(KIND) && x.read.length === 0, 'gated kind must not be read');
-    assert.ok(![...x.claims].some((c) => c.startsWith(KIND)), 'gated kind must not be claimed');
+    assert.ok(!x.rendered.includes(KIND) && x.read.length === 0, 'kind must not be read before its day');
+    assert.ok(![...x.claims].some((c) => c.startsWith(KIND)), 'kind must not be claimed before its day');
     assert.ok(!x.logs.some((l) => l.kind === KIND));
     assert.ok(!out.some((l) => l.startsWith(KIND)));
     assert.ok(!x.sent.some((m) => m.subject.startsWith('Clinic Activation')));
   }
-  // On its own, the gated kind does nothing at all.
-  const only = fixture([alert]);
-  assert.deepEqual(await deliverDailyAlerts(AT_0900, only.deps), []);
-  assert.equal(only.sent.length + only.claims.size + only.logs.length + only.rendered.length, 0);
+  // On its own, before its day, the kind does nothing at all.
+  for (const at of [AT_0900, AT_0900_DAY_BEFORE]) {
+    const only = fixture([alert]);
+    assert.deepEqual(await deliverDailyAlerts(at, only.deps), [], at.toISOString());
+    assert.equal(only.sent.length + only.claims.size + only.logs.length + only.rendered.length, 0, at.toISOString());
+  }
 });
 
 test('the preview path renders and sends it, to Fahad only', async () => {
@@ -95,33 +108,69 @@ test('the preview path renders and sends it, to Fahad only', async () => {
   assert.ok(mail, 'preview of the Clinic Activation email missing');
   assert.deepEqual([mail.to, mail.cc], [addr('fahad'), []]);
   assert.equal(mail.subject, '[Preview] Clinic Activation · Thu 29 Oct · 12 leads, AED 11,579 billed yesterday');
-  assert.ok(mail.html.includes('Preview for Fahad: not switched on yet.'));
+  assert.ok(mail.html.includes('Preview for Fahad: on Sat 31 Oct at 09:00 this goes to Mr Akbar, Ms Shadi and Dr Luvi, copied to Fahad.'));
   assert.deepEqual(x.logs.find((l) => l.kind === `preview:${KIND}`), { kind: `preview:${KIND}`, ok: true, recipients: addr('fahad') });
   assert.equal(x.claims.size, 0);
-  // At 09:00 with a preview request, the preview goes to Fahad while the live run still skips the kind.
+  // At 09:00 before its day with a preview request, the preview goes to Fahad while the live run still skips the kind.
   const both = fixture(DAILY_ALERTS, { preview: true });
   await deliverDailyAlerts(AT_0900, both.deps);
   const ca = both.sent.filter((m) => m.subject.includes('Clinic Activation'));
   assert.equal(ca.length, 1);
   assert.deepEqual(ca[0].to, addr('fahad'));
   assert.ok(![...both.claims].some((c) => c.startsWith(KIND)));
+  // From its day, a preview still goes to Fahad only, alongside the one live copy.
+  const live = fixture(DAILY_ALERTS, { preview: true });
+  await deliverDailyAlerts(AT_0900_LIVE, live.deps);
+  const previews = live.sent.filter((m) => m.subject.startsWith('[Preview] Clinic Activation'));
+  assert.equal(previews.length, 1);
+  assert.deepEqual([previews[0].to, previews[0].cc], [addr('fahad'), []]);
+  assert.equal(live.sent.filter((m) => m.subject.startsWith('Clinic Activation')).length, 1);
 });
 
-test('switching it on is the one setting: with a live day it is claimed and sent to its recipients once', async () => {
-  const on: DailyAlert = { ...alert, liveFrom: '2026-10-29' };
-  const x = fixture([on]);
-  await deliverDailyAlerts(AT_0900, x.deps);
-  await deliverDailyAlerts(new Date('2026-10-29T05:15:00Z'), x.deps);
+test('from 31 Oct it is claimed and sent once per day, 09:00 to 10:59 Dubai, to Mr Akbar, Ms Shadi and Dr Luvi, copied to Fahad', async () => {
+  // Outside the window on its first day: nothing.
+  for (const utc of ['2026-10-31T04:59:59Z', '2026-10-31T07:00:00Z', '2026-10-31T13:00:00Z']) {
+    const x = fixture([alert]);
+    await deliverDailyAlerts(new Date(utc), x.deps);
+    assert.equal(x.sent.length + x.claims.size + x.logs.length + x.rendered.length, 0, utc);
+  }
+  // Concurrent and repeated runs within the window: one copy, one claim.
+  const x = fixture([alert]);
+  await Promise.all([deliverDailyAlerts(AT_0900_LIVE, x.deps), deliverDailyAlerts(AT_0900_LIVE, x.deps)]);
+  await deliverDailyAlerts(new Date('2026-10-31T05:15:00Z'), x.deps);
+  const later = await deliverDailyAlerts(new Date('2026-10-31T06:59:59Z'), x.deps);
   assert.equal(x.sent.length, 1);
   assert.deepEqual([x.sent[0].to, x.sent[0].cc], [addr('akbar', 'shadi', 'luvi'), addr('fahad')]);
-  assert.ok(x.claims.has(`${KIND}:2026-10-29`));
-  // Before its own day it still waits.
-  const early = fixture([{ ...alert, liveFrom: '2026-10-30' }]);
-  await deliverDailyAlerts(AT_0900, early.deps);
-  assert.equal(early.sent.length, 0);
+  assert.match(x.sent[0].subject, /^Clinic Activation · Sat 31 Oct · /);
+  assert.deepEqual([...x.claims], [`${KIND}:${ACTIVATION_FROM}`]);
+  assert.deepEqual(x.logs, [{ kind: KIND, ok: true, recipients: addr('akbar', 'shadi', 'luvi', 'fahad') }]);
+  assert.deepEqual(later, [`${KIND}: already sent today`]);
+  // The next day sends again, once.
+  await deliverDailyAlerts(new Date('2026-11-01T05:00:00Z'), x.deps);
+  await deliverDailyAlerts(new Date('2026-11-01T06:30:00Z'), x.deps);
+  assert.equal(x.sent.length, 2);
+  assert.ok(x.claims.has(`${KIND}:2026-11-01`));
+
+  // With the full registry on 31 Oct: the four approved emails exactly as before, then Clinic Activation.
+  const all = fixture(DAILY_ALERTS);
+  await deliverDailyAlerts(AT_0900_LIVE, all.deps);
+  assert.deepEqual(all.sent.map((m) => [m.to, m.cc]), [
+    [addr('gautam', 'luvi', 'shadi', 'mj'), addr('fahad')],
+    [addr('luvi', 'mj', 'shadi'), addr('fahad')],
+    [addr('akbar', 'shadi', 'luvi'), addr('fahad')],
+    [addr('akbar', 'shadi'), addr('fahad')],
+    [addr('akbar', 'shadi', 'luvi'), addr('fahad')],
+  ]);
+  assert.equal(all.claims.size, 5);
+  assert.ok(all.sent.every((m) => !m.subject.startsWith('[Preview]')));
+
+  // An override to a later day still waits until that day.
+  const early = fixture([{ ...alert, liveFrom: '2026-11-01' }]);
+  await deliverDailyAlerts(AT_0900_LIVE, early.deps);
+  assert.equal(early.sent.length + early.claims.size, 0);
   // The switch is the CLINIC_ACTIVATION_LIVE_FROM constant the registry entry reads.
   const registry = readFileSync('lib/alerts/registry.ts', 'utf8');
-  assert.match(registry, /export const CLINIC_ACTIVATION_LIVE_FROM: string \| null = null;/);
+  assert.match(registry, /export const CLINIC_ACTIVATION_LIVE_FROM: string \| null = '2026-10-31';/);
   assert.match(registry, /kind: 'am:clinic-activation'.*liveFrom: CLINIC_ACTIVATION_LIVE_FROM/);
 });
 
