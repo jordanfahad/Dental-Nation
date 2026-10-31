@@ -31,7 +31,7 @@ async function main() {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(today)) throw new Error('today must be YYYY-MM-DD');
   const outDir = resolve(outArg);
 
-  const { DAILY_ALERTS, nextSendDay, previewNote, recipientsLine } = await import('../lib/alerts/registry');
+  const { ALL_ALERTS: DAILY_ALERTS, nextSendDay, previewNote, recipientsLine } = await import('../lib/alerts/registry');
   const { CHANNELS } = await import('../config/growth-channels');
   const { ORTHO_CHECKLIST } = await import('../config/ortho-checklist');
   const { ORTHO_GOOGLE_CAMPAIGN } = await import('../lib/alerts/orthoDaily');
@@ -184,12 +184,37 @@ async function main() {
     ortho,
   };
 
+  // DN Ortho weekly: invented rows (no real figures), shaped like the synced tables.
+  const { buildOrthoDashboard, funnelFor } = await import('../lib/ortho/dashboard');
+  const { weeklyRanges } = await import('../lib/alerts/orthoWeekly');
+  const wr = weeklyRanges(today);
+  const dayIn = (r: { from: string }, n: number) => { const d = new Date(`${r.from}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+  const src = {
+    google: [0, 1, 2, 3, 4].flatMap((n) => [
+      { campaign_name: 'Search | DNO Ortho | EN | Dubai | 2026-10', date: dayIn(wr.lastWeek, n), spend: 52, impressions: 210, clicks: 6 },
+      { campaign_name: 'Search | DNO Ortho | EN | Dubai | 2026-10', date: dayIn(wr.weekBefore, n), spend: 48, impressions: 190, clicks: 5 },
+    ]),
+    googleAds: [0, 1, 2].map((n) => ({ ad_name: ['Teeth Straightening in Dubai', 'Lost or Broken Retainer?', 'Braces for Kids and Teens'][n], day: dayIn(wr.lastWeek, n), spend: [120, 60, 30][n] })),
+    meta: [0, 1, 2, 3].map((n) => ({ campaign_name: 'Leads | WhatsApp | New Angles', adset_name: n % 2 ? 'Ortho Everyday Experts | Arabic' : 'Ortho Everyday Experts | English', date: dayIn(wr.lastWeek, n), spend: 60,
+      data: { actions: [{ action_type: 'onsite_conversion.messaging_conversation_started_7d', value: '5' }, { action_type: 'onsite_conversion.messaging_user_depth_2_message_send', value: '2' }] } })),
+    leads: Array.from({ length: 12 }, (_, n) => ({ inquiry_date: dayIn(wr.lastWeek, n % 7), raw_row: { _source_tab: 'Leads', 'Service / Inquiry Type': 'braces and clear aligners', Status: n < 2 ? 'Arrived' : n < 9 ? 'No answer' : 'Interested' } })),
+    appts: Array.from({ length: 18 }, (_, n) => ({ appt_date: dayIn(wr.lastWeek, n % 6), status: n % 5 ? 'Completed' : 'Cancel', doctor: n % 2 ? 'Dr. Hasna Alsaeed' : 'Dr.Yahya Serif Tosun', mr_no: `P${n}` })),
+    firstVisit: new Map(Array.from({ length: 18 }, (_, n) => [`P${n}`, n < 4 ? dayIn(wr.lastWeek, n % 6) : '2026-01-10'] as [string, string])),
+    bills: [{ bill_date: dayIn(wr.lastWeek, 2), data: { charges: [{ description: 'Pre-Orthodontic Treatment Visit', amount: 550 }, { description: 'Comprehensive orthodontic treatment of the adult dentition,ceramic', amount: 18000 }, { description: 'Essix Retainer /Per Arch', amount: 700 }] } }],
+  };
+  const orthoWeekly = {
+    today, ...wr,
+    last: funnelFor(src, wr.lastWeek), before: funnelFor(src, wr.weekBefore),
+    week: buildOrthoDashboard(src, wr.lastWeek), all: buildOrthoDashboard(src, wr.since),
+  };
+
   const fixtures: Record<Kind, unknown> = {
     'am:sc-daily': smileClub,
     'am:ortho-daily': ortho,
     'am:gbp-daily': gbp,
     'am:akbar-perf': performance,
     'am:clinic-activation': activation,
+    'am:ortho-weekly': orthoWeekly,
   };
 
   mkdirSync(outDir, { recursive: true });

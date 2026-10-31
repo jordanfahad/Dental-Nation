@@ -41,6 +41,7 @@ function labelFor(u: URL): string {
 /** The new leadership pages (/next, made the home page on 29 Oct 2026). */
 const NEXT_PAGES: Record<string, string> = {
   '/next': 'Overview', '/next/channels': 'Channels', '/next/clinics': 'Clinics', '/next/programmes': 'Programmes',
+  '/next/activation': 'Clinic Activation', '/next/ortho': 'DN Ortho',
 };
 
 export function BackFrom() {

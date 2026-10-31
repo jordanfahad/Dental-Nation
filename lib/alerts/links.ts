@@ -91,3 +91,10 @@ export type ActivationSection = 'leads' | 'smile-club' | 'gbp' | 'revenue' | 'or
 /** The Clinic Activation page pinned to these dates (from/to), optionally at one section. */
 export const activationLink = (r: Range, section?: ActivationSection) =>
   `${REPORTS}next/activation?${new URLSearchParams({ from: r.from, to: r.to }).toString()}${section ? `#${section}` : ''}`;
+
+/** The DN Ortho dashboard (/next/ortho), optionally at a section anchor. */
+export type OrthoSection = 'funnel' | 'weeks' | 'segments' | 'leads' | 'meta' | 'clinic';
+export const orthoLink = (r: Range, section?: OrthoSection) =>
+  `${REPORTS}next/ortho?${new URLSearchParams({ from: r.from, to: r.to }).toString()}${section ? `#${section}` : ''}`;
+/** Practo for all clinics: revenue (bills) or appointments. */
+export const practoLink = (ptab: 'revenue' | 'appointments', r: Range) => reportUrl({ tab: 'practo', ptab, ...dated(r) });

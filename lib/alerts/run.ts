@@ -3,7 +3,7 @@ import { OPS_ALERT_FROM } from '@/config/ops';
 import { emailConfigured, sendEmail } from '@/lib/notify/email';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
 import { emailOf, loadStoredEmails } from '@/lib/smileclub/alerts';
-import { DAILY_ALERTS, PREVIEW_KEY } from './registry';
+import { ALL_ALERTS, PREVIEW_KEY } from './registry';
 import { deliverDailyAlerts } from './delivery';
 
 /**
@@ -19,7 +19,7 @@ export async function runDailyAlerts(now = new Date()): Promise<string[]> {
   // One read per email per run, shared by its preview and live copies.
   const reads = new Map<string, Promise<unknown>>();
   return deliverDailyAlerts(now, {
-    alerts: DAILY_ALERTS,
+    alerts: ALL_ALERTS,
     paused: async () => {
       // Same rule as runSmileClubAlerts: a failed read counts as paused.
       const pause = await db.from('app_secrets').select('value').eq('key', 'alerts_paused').maybeSingle();

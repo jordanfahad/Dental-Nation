@@ -1,7 +1,7 @@
 /**
  * Shell of the /next DN-032 preview (mockups 01 and 06): the preview strip,
  * the navy brand header with the six-item navigation, and the footer.
- * Overview, Channels, Clinics, Programmes and Clinic Activation are real pages and link to each
+ * Overview, Channels, Clinics, Programmes, Clinic Activation and DN Ortho are real pages and link to each
  * other; each page passes `active` so the nav highlights it. Reports and
  * Admin are <details> buttons that point to the detailed dashboard, so
  * nothing links to a 404. The page links carry the current date range
@@ -9,7 +9,7 @@
  * JavaScript needed.
  */
 
-export type PreviewSection = 'Overview' | 'Channels' | 'Clinics' | 'Programmes' | 'Clinic Activation';
+export type PreviewSection = 'Overview' | 'Channels' | 'Clinics' | 'Programmes' | 'Clinic Activation' | 'DN Ortho';
 
 /** The real pages of the preview, in nav order. */
 const SECTIONS: { name: PreviewSection; href: string }[] = [
@@ -18,6 +18,7 @@ const SECTIONS: { name: PreviewSection; href: string }[] = [
   { name: 'Clinics', href: '/next/clinics' },
   { name: 'Programmes', href: '/next/programmes' },
   { name: 'Clinic Activation', href: '/next/activation' },
+  { name: 'DN Ortho', href: '/next/ortho' },
 ];
 
 const COMING_SOON = ['Reports', 'Admin'];

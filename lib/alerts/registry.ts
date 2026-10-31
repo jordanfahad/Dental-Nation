@@ -21,9 +21,10 @@ import { buildOrthoDaily, readOrthoDaily } from './orthoDaily';
 import { buildGbpDaily, readGbpDaily } from './gbpDaily';
 import { buildPerformanceDaily, readPerformanceDaily } from './performanceDaily';
 import { buildActivationDaily, readActivationDaily } from './activationDaily';
+import { buildOrthoWeekly, readOrthoWeekly } from './orthoWeekly';
 
 export type { Who };
-export type DailyAlertKind = 'am:sc-daily' | 'am:ortho-daily' | 'am:gbp-daily' | 'am:akbar-perf' | 'am:clinic-activation';
+export type DailyAlertKind = 'am:sc-daily' | 'am:ortho-daily' | 'am:gbp-daily' | 'am:akbar-perf' | 'am:clinic-activation' | 'am:ortho-weekly';
 export interface BuildOpts { preview?: string; recipients?: string }
 export interface AlertEmail { subject: string; html: string }
 
@@ -41,6 +42,8 @@ export interface DailyAlert<D = unknown> {
    * preview to Fahad renders it.
    */
   liveFrom?: string | null;
+  /** Weekly kinds: the only Dubai weekday it is sent (0 Sunday to 6 Saturday). Omitted = every day. */
+  weekday?: number;
 }
 
 /** First Dubai day on which the emails go to their real recipients. */
@@ -51,6 +54,8 @@ export const LIVE_FROM = '2026-10-25';
  * (after applying supabase/migrations/0052_clinic_activation_alert_kind.sql).
  */
 export const CLINIC_ACTIVATION_LIVE_FROM: string | null = '2026-10-31'; // approved by Fahad 30 Oct 2026
+/** The DN Ortho weekly email's first live day (Monday 9 Nov 2026; Dr Luvi asked for it on 30 Oct). */
+export const ORTHO_WEEKLY_LIVE_FROM: string | null = '2026-11-09';
 /** lane_e.app_secrets key: any row with this key asks the next cron run to email every preview to Fahad, once. */
 export const PREVIEW_KEY = 'alerts_preview_request';
 /** Dubai send window: 09:00 inclusive to 11:00 exclusive. */
@@ -66,6 +71,14 @@ export const DAILY_ALERTS: readonly DailyAlert[] = [
   { kind: 'am:clinic-activation', label: 'Clinic Activation daily', to: ['akbar', 'shadi', 'luvi'], cc: ['fahad'], read: readActivationDaily, build: buildActivationDaily, liveFrom: CLINIC_ACTIVATION_LIVE_FROM },
 ];
 
+/** Weekly emails, sent by the same 09:00 run on their weekday only. */
+export const WEEKLY_ALERTS: readonly DailyAlert[] = [
+  { kind: 'am:ortho-weekly', label: 'DN Ortho weekly (Mondays)', to: ['luvi', 'akbar', 'shadi'], cc: ['fahad'], read: readOrthoWeekly, build: buildOrthoWeekly, liveFrom: ORTHO_WEEKLY_LIVE_FROM, weekday: 1 },
+];
+
+/** Every email the 09:00 run handles, daily first. */
+export const ALL_ALERTS: readonly DailyAlert[] = [...DAILY_ALERTS, ...WEEKLY_ALERTS];
+
 /** The first day this kind goes live: its own liveFrom, never before LIVE_FROM; null = not switched on. */
 export function liveFromOf(a: Pick<DailyAlert, 'liveFrom'>): string | null {
   if (a.liveFrom === null) return null;
@@ -74,8 +87,9 @@ export function liveFromOf(a: Pick<DailyAlert, 'liveFrom'>): string | null {
 }
 
 /** True when the cron may send this kind to its real recipients on Dubai day `day`. */
-export function sendsLiveOn(a: Pick<DailyAlert, 'liveFrom'>, day: string): boolean {
+export function sendsLiveOn(a: Pick<DailyAlert, 'liveFrom' | 'weekday'>, day: string): boolean {
   const from = liveFromOf(a);
+  if (a.weekday != null && new Date(`${day}T12:00:00Z`).getUTCDay() !== a.weekday) return false;
   return from != null && day >= from;
 }
 
@@ -98,9 +112,11 @@ export function nextSendDay(today: string, dubaiHour: number): string {
 }
 
 /** Yellow band on a preview copy. A kind that is not switched on says so instead of naming a send day. */
-export function previewNote(a: Pick<DailyAlert, 'to' | 'cc' | 'liveFrom'>, sendDay: string): string {
+export function previewNote(a: Pick<DailyAlert, 'to' | 'cc' | 'liveFrom' | 'weekday'>, sendDay: string): string {
   const who = `${namesOf(a.to)}${a.cc.length ? `, copied to ${namesOf(a.cc)}` : ''}`;
   const from = liveFromOf(a);
   if (from == null) return `Preview for Fahad: not switched on yet. Once it is, this goes at 09:00 to ${who}.`;
-  return `Preview for Fahad: on ${dayLabel(sendDay < from ? from : sendDay)} at 09:00 this goes to ${who}.`;
+  let day = sendDay < from ? from : sendDay;
+  if (a.weekday != null) while (new Date(`${day}T12:00:00Z`).getUTCDay() !== a.weekday) day = addDaysIso(day, 1);
+  return `Preview for Fahad: on ${dayLabel(day)} at 09:00 this goes to ${who}.`;
 }

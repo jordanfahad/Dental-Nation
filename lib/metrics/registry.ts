@@ -25,7 +25,7 @@ export type KnownMetricId =
  * which cover only its own eleven figures) still type-checks as sections add
  * figures; the registry itself stays exhaustive over KnownMetricId.
  */
-export type MetricId = `M${string}` | `A${string}`;
+export type MetricId = `M${string}` | `A${string}` | `O${string}`;
 
 /** The Clinic Activation report's own figures (/next/activation), kept apart from M01 to M35. */
 export type ActivationMetricId =
@@ -514,12 +514,37 @@ const ACTIVATION_REGISTRY = {
   },
 } satisfies Record<ActivationMetricId, MetricDef>;
 
+/** The DN Ortho dashboard's own figures (/next/ortho and the Monday DN Ortho email). */
+export type OrthoMetricId =
+  | 'O01' | 'O02' | 'O03' | 'O04' | 'O05' | 'O06' | 'O07' | 'O08' | 'O09' | 'O10' | 'O11' | 'O12';
+
+const ortho = (id: OrthoMetricId, name: string, definition: string, unit: MetricUnit, source: string): MetricDef =>
+  ({ id, name, definition, unit, source, definitionVersion: 1 });
+const PRACTO_SOURCE = 'Practo (appointments and bills), synced by the dashboard; all patients, whatever brought them.';
+const ORTHO_REGISTRY = {
+  O01: ortho('O01', 'DN Ortho ad spend', 'Google spend on campaigns named ortho plus Meta spend on campaigns or ad sets named ortho, in the selected Dubai days.', 'AED', 'Google Ads and Meta Ads, synced by the dashboard.'),
+  O02: ortho('O02', 'DN Ortho Google spend', 'Spend on Google campaigns whose name says ortho (the DN Ortho Search campaign and the September one); by segment, the DN Ortho Search ad spend by its ad group.', 'AED', 'Google Ads, synced by the dashboard.'),
+  O03: ortho('O03', 'DN Ortho Google clicks', 'Clicks on Google campaigns whose name says ortho.', 'count', 'Google Ads, synced by the dashboard.'),
+  O04: ortho('O04', 'DN Ortho Meta spend', 'Spend on Meta campaigns or ad sets whose name says ortho.', 'AED', 'Meta Ads, synced by the dashboard.'),
+  O05: ortho('O05', 'People who messaged a DN Ortho Meta ad', 'People who started a WhatsApp chat or sent a lead form from a Meta ortho ad; real conversations are those who sent at least two messages. Meta\u2019s own leads figure double counts and is not used.', 'count', 'Meta Ads, synced by the dashboard.'),
+  O06: ortho('O06', 'DN Ortho enquiries', 'Lead tracker rows (lead tabs only) whose Campaign / Offer or Service text names ortho work (braces, aligners, Invisalign, retainers, gaps, crooked teeth), by enquiry date.', 'count', 'Inhouse Lead Tracker, synced by the dashboard.'),
+  O07: ortho('O07', 'DN Ortho enquiries booked or arrived', 'Of the DN Ortho enquiries (O06), those whose Status says Booked or Arrived.', 'count', 'Inhouse Lead Tracker, synced by the dashboard.'),
+  O08: ortho('O08', 'Orthodontist appointments', 'Practo appointments with Dr Hasna, Dr Yasmin, Dr Yahya Tosun or Dr Suzanna in the selected days, any status; attended is Arrived or Completed.', 'count', PRACTO_SOURCE),
+  O09: ortho('O09', 'New patients seen by an orthodontist', 'Attended orthodontist appointments that are the patient\u2019s first appointment in the Practo feed.', 'count', PRACTO_SOURCE),
+  O10: ortho('O10', 'Ortho assessments', 'Practo bill lines for a Pre-Orthodontic Treatment Visit, by bill date.', 'count', PRACTO_SOURCE),
+  O11: ortho('O11', 'Ortho treatment starts', 'Practo bill lines for comprehensive or limited orthodontic treatment, not the subsequent visits, by bill date; the AED is those lines.', 'count', PRACTO_SOURCE),
+  O12: ortho('O12', 'Ortho billing', 'All Practo bill lines describing ortho work (treatment, visits, aligners, retainers), by bill date.', 'AED', PRACTO_SOURCE),
+} satisfies Record<OrthoMetricId, MetricDef>;
+
 /** Every defined measure; indexing with an unknown id gives undefined at runtime. */
-export const METRICS: Record<MetricId, MetricDef> = { ...REGISTRY, ...ACTIVATION_REGISTRY };
+export const METRICS: Record<MetricId, MetricDef> = { ...REGISTRY, ...ACTIVATION_REGISTRY, ...ORTHO_REGISTRY };
 
 /** Typed lookup; the id doubles as the chip under every figure. */
-export const metricDef = (id: KnownMetricId | ActivationMetricId): MetricDef =>
-  (REGISTRY as Record<string, MetricDef>)[id] ?? (ACTIVATION_REGISTRY as Record<string, MetricDef>)[id];
+export const metricDef = (id: KnownMetricId | ActivationMetricId | OrthoMetricId): MetricDef =>
+  (REGISTRY as Record<string, MetricDef>)[id] ?? (ACTIVATION_REGISTRY as Record<string, MetricDef>)[id] ?? (ORTHO_REGISTRY as Record<string, MetricDef>)[id];
+
+/** The DN Ortho dashboard's measures, in id order. */
+export const ORTHO_METRIC_IDS = Object.keys(ORTHO_REGISTRY) as OrthoMetricId[];
 
 /** The Clinic Activation report's own measures, in id order. */
 export const ACTIVATION_METRIC_IDS = Object.keys(ACTIVATION_REGISTRY) as ActivationMetricId[];

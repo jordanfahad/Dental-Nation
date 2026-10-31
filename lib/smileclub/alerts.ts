@@ -98,7 +98,7 @@ const MAX_PER_DAY = 2;
  * have their own once-a-day claim. They and their preview copies never count
  * toward, or block, the Smile Club briefings below.
  */
-const DAILY_ALERT_KINDS: readonly string[] = ['am:sc-daily', 'am:ortho-daily', 'am:gbp-daily', 'am:akbar-perf', 'am:clinic-activation'];
+const DAILY_ALERT_KINDS: readonly string[] = ['am:sc-daily', 'am:ortho-daily', 'am:gbp-daily', 'am:akbar-perf', 'am:clinic-activation', 'am:ortho-weekly'];
 const separateFromCap = (kind: string) => DAILY_ALERT_KINDS.includes(kind) || kind.startsWith('preview:');
 
 const LINK = 'https://reports.dentalnation.com/?tab=smileclub';

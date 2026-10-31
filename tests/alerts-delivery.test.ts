@@ -2,7 +2,7 @@ import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { deliverDailyAlerts, dubaiDay, liveWindow, resolveRecipients, type DailyAlertDeps, type Mail } from '../lib/alerts/delivery';
-import { CLINIC_ACTIVATION_LIVE_FROM, DAILY_ALERTS, DAILY_ALERT_KINDS, LIVE_FROM, PREVIEW_KEY, nextSendDay, previewNote, recipientsLine, sendsLiveOn, type DailyAlert } from '../lib/alerts/registry';
+import { CLINIC_ACTIVATION_LIVE_FROM, DAILY_ALERTS, DAILY_ALERT_KINDS, LIVE_FROM, PREVIEW_KEY, nextSendDay, previewNote, recipientsLine, sendsLiveOn, type DailyAlert, WEEKLY_ALERTS } from '../lib/alerts/registry';
 
 /** The kinds the cron sends live from LIVE_FROM; Clinic Activation joins them from 31 Oct 2026 (tests/alerts-activation.test.ts). */
 const LIVE_KINDS = DAILY_ALERTS.filter((a) => sendsLiveOn(a, LIVE_FROM)).map((a) => a.kind);
@@ -301,7 +301,7 @@ test('wiring: cron route, schedule, old path no longer sends, Smile Club cap exc
   assert.doesNotMatch(sc, /runPerformanceAlerts|lib\/performance\/alerts/);
   assert.match(sc, /const MORNING: Who\[\] = \['mohan', 'fahad'\]/);
   const capKinds = sc.match(/const DAILY_ALERT_KINDS: readonly string\[\] = \[([^\]]*)\]/)?.[1];
-  assert.deepEqual(capKinds?.split(',').map((s) => s.trim().replace(/'/g, '')), [...DAILY_ALERT_KINDS]);
+  assert.deepEqual(capKinds?.split(',').map((s) => s.trim().replace(/'/g, '')), [...DAILY_ALERT_KINDS, ...WEEKLY_ALERTS.map((a) => a.kind)]);
   assert.match(sc, /kind\.startsWith\('preview:'\)/);
   assert.match(sc, /if \(separateFromCap\(kind\)\) continue;/);
 
