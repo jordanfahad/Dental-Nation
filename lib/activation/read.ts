@@ -45,7 +45,7 @@ export const NON_LEAD_TABS = [SMILE_CLUB_TAB, GMB_FRONTOFFICE_TAB];
 
 export interface LeadBucket {
   leads: number;
-  /** Leads whose Conversion column says booked/converted (cohort: by enquiry date). */
+  /** Leads the front office marked Booked or Arrived in Status, or booked in Conversion (cohort: by enquiry date). */
   converted: number;
   /** By Inquiry Platform as the sync normalised it (channel_source); "Not recorded" when empty. */
   byPlatform: Record<string, number>;
@@ -116,11 +116,31 @@ export interface AmcDay {
   doctors: Record<string, { invoices: number; amount: number }>;
   preparedBy: string | null;
 }
+/**
+ * A month-to-date file Dr Luvi sends instead of daily tabs (October 2026:
+ * daily tabs only start in November). Totals only, never patient names.
+ */
+export interface AmcMonthFile {
+  from: string;
+  to: string;
+  patients: number | null;
+  patientsOld: number | null;
+  patientsNew: number | null;
+  amount: number | null;
+  doctors: Record<string, { patients: number; amount: number }>;
+}
 export type AmcTotals = Omit<AmcDay, 'reportDate' | 'preparedBy'> & {
   /** Report dates present in the window, ascending. */
   days: string[];
-  /** Dubai days in the window with no report tab. */
+  /** Dubai days in the window with neither a report tab nor a month file. */
   missingDays: string[];
+  /** The month file covering part of the window, when there is one. */
+  monthFile: AmcMonthFile | null;
+  /**
+   * Invoiced AED for the window: the month file plus the daily tabs after it
+   * (daily tabs inside the month file's dates are not added twice).
+   */
+  invoicedToDate: number | null;
 };
 export interface RevenueSection {
   practo: {
@@ -176,10 +196,20 @@ export interface LeadRow {
   raw_row: Record<string, unknown> | null;
 }
 
+/**
+ * Dr Luvi's rule (30 Oct 2026): a lead has converted when its Status says it
+ * was booked or the patient arrived. "Cancelled" and "not booked" never count.
+ */
+export function statusConverted(row: Record<string, unknown> | null | undefined): boolean {
+  const key = Object.keys(row ?? {}).find((k) => /^\s*status\s*$/i.test(k));
+  const v = key ? text(row![key]).toLowerCase() : '';
+  return /\b(booked|arrived)\b/.test(v) && !/cancel|\bnot\b|\bno\b/.test(v);
+}
+
 const emptyLeadBucket = (): LeadBucket => ({ leads: 0, converted: 0, byPlatform: {}, byGroup: {} });
 function addLead(b: LeadBucket, row: LeadRow) {
   b.leads += 1;
-  if (bookedFrom(row.booking_status)) b.converted += 1;
+  if (bookedFrom(row.booking_status) || statusConverted(row.raw_row)) b.converted += 1;
   const platform = text(row.channel_source) || 'Not recorded';
   b.byPlatform[platform] = (b.byPlatform[platform] ?? 0) + 1;
   const group = leadGroup(row);
@@ -214,7 +244,7 @@ const followedUp = (d: Record<string, unknown>) =>
   Object.entries(d).some(([k, v]) => /follow/i.test(k) && !/date/i.test(k) && !!text(v) && !/^(n\/?a|-+)$/i.test(text(v)));
 const isConverted = (d: Record<string, unknown>) => {
   const key = Object.keys(d).find((k) => /^conversion\b/i.test(k));
-  return key ? conversionIsBooked(text(d[key])) : false;
+  return (key ? conversionIsBooked(text(d[key])) : false) || statusConverted(d);
 };
 
 /** Pure: count Smile Club tab rows (raw_lead_tracker data). Names and phones are never read. */
@@ -329,12 +359,28 @@ function daysOf(r: Range): string[] {
   return out;
 }
 
-/** Pure: the yesterday report and window totals from amc_daily_report rows. */
-export function summariseAmc(rows: AmcRow[], p: { yesterday: Range; mtd: Range }): NonNullable<RevenueSection['amc']> {
+export interface AmcMonthRow {
+  covers_from: string; covers_to: string;
+  patients: number | null; patients_old: number | null; patients_new: number | null;
+  amount_total: number | string | null;
+  doctors: Record<string, { patients: number; amount: number }> | null;
+}
+
+/** Pure: the yesterday report and window totals from amc_daily_report rows (and any month file inside the window). */
+export function summariseAmc(rows: AmcRow[], p: { yesterday: Range; mtd: Range }, monthRows: AmcMonthRow[] = []): NonNullable<RevenueSection['amc']> {
+  const m = monthRows
+    .filter((r) => r.covers_from >= p.mtd.from && r.covers_to <= p.mtd.to)
+    .sort((a, b) => b.covers_to.localeCompare(a.covers_to))[0];
+  const monthFile: AmcMonthFile | null = m ? {
+    from: m.covers_from, to: m.covers_to,
+    patients: n(m.patients), patientsOld: n(m.patients_old), patientsNew: n(m.patients_new),
+    amount: n(m.amount_total), doctors: m.doctors ?? {},
+  } : null;
+  const inMonthFile = (d: string) => !!monthFile && d >= monthFile.from && d <= monthFile.to;
   const days = rows.filter((r) => inRange(r.report_date, p.mtd)).map(amcDay).sort((a, b) => a.reportDate.localeCompare(b.reportDate));
   const y = days.find((d) => d.reportDate === p.yesterday.to) ?? null;
   let window: AmcTotals | null = null;
-  if (days.length) {
+  if (days.length || monthFile) {
     const sum = (k: keyof Omit<AmcDay, 'reportDate' | 'doctors' | 'preparedBy'>) => r2(nullableSum(days.map((d) => d[k])));
     const doctors: AmcDay['doctors'] = {};
     for (const d of days) for (const [name, v] of Object.entries(d.doctors)) {
@@ -351,7 +397,11 @@ export function summariseAmc(rows: AmcRow[], p: { yesterday: Range; mtd: Range }
       cashTotal: sum('cashTotal'), cardTotal: sum('cardTotal'), advanceTotal: sum('advanceTotal'), balanceTotal: sum('balanceTotal'),
       invoiceCount: sum('invoiceCount'), doctors,
       days: days.map((d) => d.reportDate),
-      missingDays: daysOf(p.mtd).filter((d) => !have.has(d)),
+      missingDays: daysOf(p.mtd).filter((d) => !have.has(d) && !inMonthFile(d)),
+      monthFile,
+      invoicedToDate: monthFile
+        ? r2(nullableSum([monthFile.amount, ...days.filter((d) => !inMonthFile(d.reportDate)).map((d) => d.invoiceAmountTotal)]))
+        : sum('invoiceAmountTotal'),
     };
   }
   return { source: 'amc-daily-report', clinic: 'al-maher', yesterday: y, window };
@@ -398,7 +448,15 @@ export async function readClinicActivation(db: AdminClient, today: string, range
       const { data } = await selectAll(() => db.from('amc_daily_report')
         .select('report_date,total_appointments,consulted,invoiced,non_invoiced,cancelled,patients_old,patients_new,invoice_amount_total,insurance_total,copay_total,cash_total,card_total,advance_total,balance_total,invoice_count,doctors,prepared_by')
         .gte('report_date', mtd.from).lte('report_date', mtd.to), 'report_date');
-      return summariseAmc(data as AmcRow[], p);
+      // The month file table is optional: unreadable means no month file, never a lost AMC section.
+      const month = await safe(async () => {
+        const { data: rows, error } = await db.from('amc_month_report')
+          .select('covers_from,covers_to,patients,patients_old,patients_new,amount_total,doctors')
+          .gte('covers_from', mtd.from).lte('covers_to', mtd.to);
+        if (error) throw error;
+        return rows as AmcMonthRow[];
+      });
+      return summariseAmc(data as AmcRow[], p, month ?? []);
     }),
     safe(() => readOrthoDaily(db, today, p)),
     Promise.all(practoClinics.flatMap((c) => [practo(yesterday, c), practo(mtd, c)])),

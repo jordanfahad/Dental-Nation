@@ -15,7 +15,7 @@
  */
 import type { AdminClient } from '@/lib/supabase/server';
 import { readClinicActivation, type ClinicActivation } from '@/lib/activation/read';
-import { buildActivation, GMB_NO_COPY, type ActivationData } from '@/lib/overview/activation';
+import { amcMonthFileLine, buildActivation, CONVERTED_RULE, GMB_NO_COPY, TOSUN_LEADS_NOTE, type ActivationData } from '@/lib/overview/activation';
 import { activationLink, type ActivationSection } from './links';
 import {
   bold, dayLabel, emailHtml, finishEmail, fmt, gap, h2, note, NOT_YET, num, proof, rangeLabel, table, text, tiles,
@@ -99,7 +99,7 @@ export function buildActivationDaily(
   const missing = amc.missingDays;
   const amcDaysLine = amc.daysReported == null
     ? 'AMC daily sheet: could not be read.'
-    : `AMC daily sheet: ${plural(amc.daysReported, 'day', 'days')} reported in ${rangeLabel(window.from, window.to)}; ${missing && missing.length ? `${plural(missing.length, 'day', 'days')} missing` : 'no days missing'}.`;
+    : `AMC daily sheet: ${plural(amc.daysReported, 'day', 'days')} reported in ${rangeLabel(window.from, window.to)}; ${missing && missing.length ? `${plural(missing.length, 'day', 'days')} missing` : 'no days missing'}.${amc.monthFile ? ` ${amcMonthFileLine(amc.monthFile)}` : ''}`;
 
   /* e. DN Ortho */
   const o = d.ortho;
@@ -122,7 +122,7 @@ export function buildActivationDaily(
       { label: 'Converted · month to date', value: leadTotal.window.converted, href: leadsHref },
     ]),
     table(['Clinic', 'Yesterday', 'Month to date', 'Converted', 'Top platforms'], leadRows, [1, 2, 3]),
-    note('Source: the lead tracker lead tabs (Smile Club, GMB and website tabs left out), by enquiry date.'),
+    note(`Source: the lead tracker lead tabs (Smile Club, GMB and website tabs left out), by enquiry date. ${CONVERTED_RULE} ${TOSUN_LEADS_NOTE}`),
 
     h2('2. Smile Club'),
     table(['Clinic', 'Enquiries yesterday', 'Enquiries month to date', 'Followed up', 'Converted'], smileRows, [1, 2, 3, 4]),
@@ -138,7 +138,7 @@ export function buildActivationDaily(
     tiles([
       { label: 'Practo billed · yesterday (AED)', value: together.yesterday, href: together.urlYesterday, sub: 'Al Wasl and Dr Tosun' },
       { label: 'Practo billed · month to date (AED)', value: together.window, href: together.urlWindow, sub: 'Al Wasl and Dr Tosun' },
-      { label: 'AMC invoiced · month to date (AED)', value: invoiced.window, href: revHref, sub: 'Al Maher daily sheet' },
+      { label: 'AMC invoiced · month to date (AED)', value: amc.invoicedToDate ?? invoiced.window, href: revHref, sub: amc.monthFile ? 'Al Maher month file and daily sheet' : 'Al Maher daily sheet' },
     ]),
     table(['Practo', 'Yesterday', 'Month to date', ''], practoRows, [1, 2]),
     table(['Al Maher (AMC daily sheet)', 'Yesterday', 'Month to date'], amcRows, [1, 2]),

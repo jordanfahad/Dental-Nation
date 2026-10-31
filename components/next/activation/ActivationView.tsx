@@ -13,6 +13,7 @@
  */
 import { dayLabel } from '@/lib/alerts/shell';
 import type { ActivationData, GmbLine } from '@/lib/overview/activation';
+import { amcMonthFileLine, CONVERTED_RULE, TOSUN_LEADS_NOTE } from '@/lib/overview/activationCopy';
 import { dayMonthYear, rangeDates } from '@/lib/overview/format';
 import { lastDayLabel, periodDates, rangeOfData, type ViewRange } from '@/lib/overview/range';
 import type { MetricId } from '@/lib/metrics/registry';
@@ -244,8 +245,8 @@ export function ActivationView({ data, range }: { data: ActivationData; range?: 
           })}
         </Table>
         <Note>
-          Source: the Inhouse Lead Tracker lead tabs, by enquiry date. Smile Club, GMB and website tabs are left out. Converted
-          means the Conversion column says booked or converted. The proof opens the Growth enquiries for the same dates.
+          Source: the Inhouse Lead Tracker lead tabs, by enquiry date. Smile Club, GMB and website tabs are left out. {CONVERTED_RULE}{' '}
+          {TOSUN_LEADS_NOTE} The proof opens the Growth enquiries for the same dates.
         </Note>
       </Panel>
 
@@ -277,7 +278,7 @@ export function ActivationView({ data, range }: { data: ActivationData; range?: 
         </Table>
         <Note>
           Source: the lead tracker&apos;s Smile Club tab. Followed up means a follow-up remark is entered; converted means the
-          Conversion column says booked or converted.{smileClub.undated ? ' Rows with no readable date are left out.' : ''}{' '}
+          Status column says Booked or Arrived, or the Conversion column says booked.{smileClub.undated ? ' Rows with no readable date are left out.' : ''}{' '}
           <a className="font-semibold text-dn-navy underline underline-offset-4" href={smileClub.companiesUrl}>
             Open the company pipeline
           </a>
@@ -345,6 +346,12 @@ export function ActivationView({ data, range }: { data: ActivationData; range?: 
               Missing days:{' '}
               {amc.missingDays == null ? UNAVAILABLE : amc.missingDays.length ? dayRuns(amc.missingDays) : 'none'}
             </p>
+            {amc.monthFile && (
+              <p className="m-0 mb-2 text-xs text-[#5c6c72]">
+                {amcMonthFileLine(amc.monthFile)}
+                {amc.invoicedToDate != null && <> Invoiced for the selected dates: <strong className="text-dn-navy">{fmtAed(amc.invoicedToDate)}</strong>.</>}
+              </p>
+            )}
             <Table label="AMC daily sheet" minWidth="min-w-[340px]" head={['Measure', yHead, wHead]}>
               {amc.measures.map((m) => (
                 <tr key={m.id}>

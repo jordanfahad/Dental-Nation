@@ -1,7 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import {
-  countLeads, countSmileClub, isNonLeadTab, readClinicActivation, summariseAmc, summariseGmb,
+  countLeads, countSmileClub, isNonLeadTab, readClinicActivation, statusConverted, summariseAmc, summariseGmb,
   type AmcRow, type GmbRow, type LeadRow,
 } from '../lib/activation/read';
 import { periods, periodsFor } from '../lib/alerts/links';
@@ -125,6 +125,33 @@ test('AMC revenue: yesterday report, window totals, missing days listed, nulls k
   const none = summariseAmc([], P);
   assert.equal(none.yesterday, null);
   assert.equal(none.window, null);
+});
+
+test('AMC month file: covers its days, is not added twice, later daily tabs add on', () => {
+  const month = [{ covers_from: '2026-10-01', covers_to: '2026-10-27', patients: 50, patients_old: 40, patients_new: 10,
+    amount_total: '90000.50', doctors: { 'Dr. Alpha': { patients: 50, amount: 90000.5 } } }];
+  const a = summariseAmc([amcRow('2026-10-27'), amcRow('2026-10-28')], P, month);
+  assert.equal(a.window?.monthFile?.amount, 90000.5);
+  assert.equal(a.window?.invoicedToDate, 93914.62); // month file + 28 Oct only; 27 Oct is inside the file
+  assert.deepEqual(a.window?.missingDays, []);
+  // A window that does not hold the whole file ignores it.
+  const part = summariseAmc([amcRow('2026-10-28')], { yesterday: P.yesterday, mtd: { from: '2026-10-15', to: '2026-10-28' } }, month);
+  assert.equal(part.window?.monthFile, null);
+  assert.equal(part.window?.invoicedToDate, 3914.12);
+  // Month file alone still gives a window.
+  assert.equal(summariseAmc([], P, month).window?.invoicedToDate, 90000.5);
+});
+
+test('leads: Status Booked or Arrived counts as converted; Cancelled and Not booked do not', () => {
+  assert.equal(statusConverted({ Status: 'Arrived' }), true);
+  assert.equal(statusConverted({ Status: ' booked ' }), true);
+  assert.equal(statusConverted({ 'Status ': 'Booked and arrived' }), true);
+  assert.equal(statusConverted({ Status: 'Cancelled' }), false);
+  assert.equal(statusConverted({ Status: 'Not booked' }), false);
+  assert.equal(statusConverted({ Status: 'No answer' }), false);
+  assert.equal(statusConverted(null), false);
+  const row = (status: string) => ({ inquiry_date: '2026-10-28', booking_status: null, channel_source: 'Meta', clinic: 'DN Al Wasl', whatsapp_ref: null, raw_row: { Status: status } });
+  assert.equal(countLeads([row('Arrived'), row('No answer')], P).total.window.converted, 1);
 });
 
 test('readClinicActivation never throws: failed sources are null, never 0', async () => {

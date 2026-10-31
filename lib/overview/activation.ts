@@ -19,10 +19,11 @@
  */
 import type { AdminClient } from '@/lib/supabase/server';
 import { readClinicActivation } from '@/lib/activation/read';
+export { amcMonthFileLine, CONVERTED_RULE, TOSUN_LEADS_NOTE } from './activationCopy';
 import { growthKeyOfClinic, type GrowthClinicKey } from '@/config/clinics';
 import { activationSources } from '@/config/sheet-mapping';
 import type {
-  ActivationClinic, AmcDay, AmcTotals, ClinicActivation, GmbSnapshot, GmbWindowSums, LeadBucket, LeadClinic, SmileClubBucket,
+  ActivationClinic, AmcDay, AmcMonthFile, AmcTotals, ClinicActivation, GmbSnapshot, GmbWindowSums, LeadBucket, LeadClinic, SmileClubBucket,
 } from '@/lib/activation/read';
 import { ORTHO_GOOGLE_CAMPAIGN } from '@/lib/alerts/orthoDaily';
 import {
@@ -129,6 +130,10 @@ export interface ActivationData {
       /** Report days in the window; null = unreadable. */
       daysReported: Val;
       missingDays: string[] | null;
+      /** Dr Luvi's month-to-date file for part of the window (October 2026); null = none. */
+      monthFile: AmcMonthFile | null;
+      /** Invoiced AED for the window: month file plus daily tabs after it; null = nothing reported. */
+      invoicedToDate: Val;
       yesterdayReported: boolean;
       sheetUrl: string;
     };
@@ -259,6 +264,8 @@ export function buildActivation(a: ClinicActivation): ActivationData {
         })),
         daysReported: amc == null ? null : (amcW?.days.length ?? 0),
         missingDays: amc == null ? null : (amcW?.missingDays ?? daysOf(window)),
+        monthFile: amcW?.monthFile ?? null,
+        invoicedToDate: finite(amcW?.invoicedToDate),
         yesterdayReported: amcY != null,
         sheetUrl: AMC_SHEET_URL,
       },
