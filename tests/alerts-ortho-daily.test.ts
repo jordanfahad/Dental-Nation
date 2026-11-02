@@ -14,6 +14,11 @@ const TODAY = '2026-10-25';
 const DN_CENTRE = 'DENTAL NATION GENERAL DENTAL CLINIC L.L.C S.O.C';
 const TOSUN_CENTRE = 'DR TOSUN DENTAL CLINIC L.L.C';
 
+const funnel = (spend: number, leads: number, attended: number) => ({
+  googleSpend: spend / 2, googleClicks: 5, googleImpressions: 100, metaSpend: spend / 2, metaPeople: 6, metaRealPeople: 3, spend,
+  leads, leadsBooked: 1, appointments: attended + 1, attended, newAttended: 1, assessments: 1, starts: 1, startsAed: 18000, orthoBilled: 20000,
+});
+
 const data = (over: Partial<OrthoDailyData> = {}): OrthoDailyData => ({
   doctors: [
     { key: 'hasna', name: 'Dr Hasna Alsaeed', clinic: 'dental-nation', clinicLabel: 'Dental Nation Al Wasl', billedMtd: 38600 },
@@ -26,6 +31,11 @@ const data = (over: Partial<OrthoDailyData> = {}): OrthoDailyData => ({
     mtd: { spend: 80.1, impressions: 230, clicks: 7, activeDays: 2 },
   },
   checklist: ORTHO_CHECKLIST,
+  funnel: { yesterday: funnel(70, 3, 4), mtd: funnel(980, 41, 52), segments: [
+    { key: 'S1', name: 'S1 adults', googleSpend: 60, leadsTagged: 0 },
+    { key: 'S2', name: 'S2 after braces', googleSpend: 15, leadsTagged: 0 },
+    { key: 'S3', name: 'S3 parents', googleSpend: 5.1, leadsTagged: 0 },
+  ] },
   ...over,
 });
 
@@ -39,9 +49,8 @@ const linkOf = (html: string, label: string) => {
 const params = (u: URL | null) => (u ? Object.fromEntries(u.searchParams) : null);
 
 test('subject follows the approved format', () => {
-  assert.equal(buildOrthoDaily(data(), TODAY).subject, 'DN Ortho · Sun 25 Oct · AED 107,800 orthodontist billing this month');
-  assert.equal(buildOrthoDaily(data({ doctors: data().doctors.map((d) => ({ ...d, billedMtd: null })) }), TODAY).subject,
-    'DN Ortho · Sun 25 Oct · orthodontist billing not yet available');
+  assert.equal(buildOrthoDaily(data(), TODAY).subject, 'DN Ortho · Sun 25 Oct · AED 70 spend, 3 enquiries, 4 orthodontist visits yesterday');
+  assert.equal(buildOrthoDaily(data({ funnel: null }), TODAY).subject, 'DN Ortho · Sun 25 Oct · figures not yet available');
 });
 
 test('every figure links to reports.dentalnation.com with the right tab, dates and clinic', () => {
@@ -51,50 +60,47 @@ test('every figure links to reports.dentalnation.com with the right tab, dates a
   for (const h of all) assert.ok(h.startsWith(REPORTS), h);
   const mtd = { preset: 'custom', from: '2026-10-01', to: '2026-10-24' };
   const revenue = (clinic: string) => ({ tab: 'practo', ptab: 'revenue', clinic, ...mtd });
-  // Tile total and landing button: Al Wasl billing view, month to date.
-  assert.deepEqual(params(linkOf(html, '107,800')), revenue('dental-nation'));
-  assert.match(html, /href="[^"]*ptab=revenue&amp;clinic=dental-nation[^"]*"[^>]*>Open the orthodontist billing report/);
+  // Landing button and the funnel: the DN Ortho dashboard for the same dates.
+  assert.match(html, /href="https:\/\/reports\.dentalnation\.com\/next\/ortho\?from=2026-10-01&amp;to=2026-10-24"[^>]*>Open the DN Ortho dashboard/);
+  assert.equal(linkOf(html, 'AED 980')?.pathname, '/next/ortho');
   // Per doctor, the clinic whose Revenue view shows that doctor.
   assert.deepEqual(params(linkOf(html, '38,600')), revenue('dental-nation'));
   assert.deepEqual(params(linkOf(html, '21,900')), revenue('dental-nation'));
   assert.deepEqual(params(linkOf(html, '47,300')), revenue('dr-tosun'));
   // Google: exact campaign name, yesterday and month to date.
-  assert.deepEqual(params(linkOf(html, 'AED 80')), { tab: 'marketing', mtab: 'google', gcamp: ORTHO_GOOGLE_CAMPAIGN, ...mtd });
   assert.deepEqual(params(linkOf(html, 'AED 80 · 7 clicks')), { tab: 'marketing', mtab: 'google', gcamp: ORTHO_GOOGLE_CAMPAIGN, ...mtd });
   assert.deepEqual(params(linkOf(html, 'AED 58 · 5 clicks')), { tab: 'marketing', mtab: 'google', gcamp: ORTHO_GOOGLE_CAMPAIGN, preset: 'custom', from: '2026-10-24', to: '2026-10-24' });
-  assert.ok(all.some((h) => h.includes('mtab=demand') && h.includes('from=2026-10-01') && h.includes('to=2026-10-24')));
+  assert.ok(all.some((h) => h.includes('mtab=meta') && h.includes('from=2026-10-01') && h.includes('to=2026-10-24')));
   assert.ok(html.includes('Sat 24 Oct (yesterday) and 1 to 24 Oct (month to date)'));
-  assert.match(html, /Live · 7 clicks month to date/);
   assert.match(html, />Live<\/td>/);
 });
 
 test('a campaign with no spend or impressions reads Not live, linked to the campaign view', () => {
   const zero = { spend: 0, impressions: 0, clicks: 0, activeDays: 0 };
   const { html } = buildOrthoDaily(data({ googleSearch: { campaign: ORTHO_GOOGLE_CAMPAIGN, yesterday: zero, mtd: zero } }), TODAY);
-  assert.equal(params(linkOf(html, 'Not live'))?.gcamp, ORTHO_GOOGLE_CAMPAIGN);
-  assert.match(html, /Built, paused for review/);
-  assert.match(html, /Built, paused<\/td>/);
-  assert.match(html, /empty until this campaign runs/);
-  assert.match(html, /Once the campaign is live/);
+  assert.match(html, />Not live<\/td>/);
+  assert.ok(hrefs(html).some((h) => new URL(h).searchParams.get('gcamp') === ORTHO_GOOGLE_CAMPAIGN));
 });
 
 test('nulls render "not yet" without links, and the email still builds', () => {
-  const { html, subject } = buildOrthoDaily(data({ doctors: data().doctors.map((d) => ({ ...d, billedMtd: null })), googleSearch: null }), TODAY);
+  const { html, subject } = buildOrthoDaily(data({ doctors: data().doctors.map((d) => ({ ...d, billedMtd: null })), googleSearch: null, funnel: null }), TODAY);
   assert.ok(subject.startsWith('DN Ortho · Sun 25 Oct'));
   assert.ok(!hrefs(html).some((h) => h.includes('ptab=revenue') && !h.includes('clinic=dental-nation')), 'no per-doctor Tosun link without a figure');
   assert.ok(!html.includes('AED 58') && !html.includes('AED 80'));
-  // 3 tiles + 4 doctors x 2 + Suzanna 2 + Google 3 = at least 12 "not yet".
+  // 4 tiles + 4 doctors + Google 3 + Meta 2 = at least 12 "not yet".
   assert.ok(html.split(NOT_YET).length - 1 >= 12);
 });
 
-test('fixed "not yet" figures: ortho enquiries, appointments, Al Maher', () => {
+test('funnel, segments and the fixed "not yet" rows (Al Maher billing, segment enquiries)', () => {
   const { html } = buildOrthoDaily(data(), TODAY);
   const suzanna = html.slice(html.indexOf('Dr Suzanna Almaali'), html.indexOf('</tr>', html.indexOf('Dr Suzanna Almaali')));
-  assert.equal(suzanna.split(NOT_YET).length - 1, 2);
+  assert.equal(suzanna.split(NOT_YET).length - 1, 1);
   assert.ok(!suzanna.includes('<a '));
-  const enquiries = html.slice(html.indexOf('Ortho enquiries'), html.indexOf('Needs the ortho tagging update'));
-  assert.ok(enquiries.includes(NOT_YET) && !enquiries.includes('<a '));
-  assert.equal(html.split(NOT_YET).length - 1, 1 + 4 + 1); // tile, appointments x4, Suzanna billed
+  assert.equal(html.split(NOT_YET).length - 1, 1); // Suzanna billed only
+  for (const label of ['Ortho enquiries (lead tracker)', 'Orthodontist visits attended', 'Ortho treatment starts', 'S1 adults', 'S3 parents']) {
+    assert.ok(html.includes(label), label);
+  }
+  assert.match(html, /Not yet: enquiries per segment/);
 });
 
 test('checklist comes from the config file with the project-plan note; no em or en dashes', () => {
@@ -104,7 +110,7 @@ test('checklist comes from the config file with the project-plan note; no em or 
   assert.match(html, /Checklist status comes from the project plan; there is no dashboard page for it yet\./);
   assert.match(html, /Last updated Sat 24 Oct\./);
   assert.ok(!/[–—]/.test(html) && !/[–—]/.test(subject));
-  assert.match(html, /finalised bills/);
+  assert.match(html, /treating doctor/);
 });
 
 test('checklist campaign row never contradicts the Campaigns table', () => {
@@ -153,8 +159,9 @@ test('reader: Revenue by conducting doctor rule, clinic by centre, one failed so
   const none = await readOrthoDaily(fixtureDb({ practo_bills_raw: unattributed, google_ads_insights_raw: ads }), TODAY);
   assert.deepEqual(none.doctors.map((d) => d.billedMtd), [null, null, null]);
   const built = buildOrthoDaily(none, TODAY);
-  assert.match(built.subject, /orthodontist billing not yet available$/);
-  assert.ok(!/AED 0\b/.test(built.subject + built.html));
+  // The doctor billing never reads 0 (the funnel may: no Meta spend is a real 0).
+  const billing = built.html.slice(built.html.indexOf('Billing by orthodontist'), built.html.indexOf('Content and launch checklist'));
+  assert.ok(!/>0<|AED 0\b/.test(billing));
 });
 
 test('billing figure only when it is a named bar on the linked Revenue view (exact name, top 7 plus Other)', () => {

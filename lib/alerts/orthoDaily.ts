@@ -25,7 +25,8 @@ import { clinicOfCenter } from '@/config/clinics';
 import { topMix } from '@/lib/practo/report';
 import type { MixRow } from '@/lib/types';
 import { ORTHO_CHECKLIST, type OrthoChecklist } from '@/config/ortho-checklist';
-import { marketingLink, periods, practoRevenueLink, type ExecClinic } from './links';
+import { buildOrthoDashboard, funnelFor, readOrthoSources, type Funnel, type SegmentLine } from '@/lib/ortho/dashboard';
+import { marketingLink, orthoLink, periods, practoRevenueLink, type ExecClinic } from './links';
 import {
   dayLabel, emailHtml, finishEmail, fmt, gap, h2, note, NOT_YET, num, proof, rangeLabel, table, text, tiles,
 } from './shell';
@@ -69,6 +70,11 @@ export interface OrthoDailyData {
   /** The new Google Search campaign; null = Google Ads could not be read. */
   googleSearch: { campaign: string; yesterday: CampaignTotals; mtd: CampaignTotals } | null;
   checklist: OrthoChecklist;
+  /**
+   * The DN Ortho dashboard's figures (lib/ortho/dashboard.ts) for yesterday and
+   * month to date, so the email and /next/ortho agree. null = could not be read.
+   */
+  funnel?: { yesterday: Funnel; mtd: Funnel; segments: SegmentLine[] } | null;
 }
 
 export interface PractoBillRow {
@@ -131,7 +137,7 @@ export async function readOrthoDaily(
   db: AdminClient, today: string, p: ReturnType<typeof periods> = periods(today),
 ): Promise<OrthoDailyData> {
   const { yesterday, mtd } = p;
-  const [billing, googleSearch] = await Promise.all([
+  const [billing, googleSearch, funnel] = await Promise.all([
     (async () => {
       const { data } = await selectAll(
         () => db.from('practo_bills_raw').select('bill_date, data').gte('bill_date', mtd.from).lte('bill_date', mtd.to),
@@ -152,6 +158,10 @@ export async function readOrthoDaily(
         mtd: campaignTotals(rows),
       };
     })().catch(() => null),
+    (async () => {
+      const s = await readOrthoSources(db, mtd);
+      return { yesterday: funnelFor(s, yesterday), mtd: funnelFor(s, mtd), segments: buildOrthoDashboard(s, mtd).segments };
+    })().catch(() => null),
   ]);
   return {
     // A doctor with no named bar on the linked Revenue view cannot be proved
@@ -162,6 +172,7 @@ export async function readOrthoDaily(
     })),
     googleSearch,
     checklist: ORTHO_CHECKLIST,
+    funnel,
   };
 }
 
@@ -171,6 +182,9 @@ const GOOGLE_CHECKLIST_ITEM = 'Google Search campaign';
 const isDay = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s) && Number.isFinite(Date.parse(`${s}T12:00:00Z`));
 const spendClicks = (t: CampaignTotals) => `AED ${fmt(t.spend)} · ${fmt(t.clicks)} ${t.clicks === 1 ? 'click' : 'clicks'}`;
 
+const aed = (v: number | null | undefined) => (v == null ? null : `AED ${fmt(v)}`);
+const plural = (n: number, one: string, many: string) => `${fmt(n)} ${n === 1 ? one : many}`;
+
 /** Pure: no IO. */
 export function buildOrthoDaily(
   data: OrthoDailyData,
@@ -178,9 +192,12 @@ export function buildOrthoDaily(
   opts: { preview?: string; recipients?: string } = {},
 ): { subject: string; html: string } {
   const { yesterday, mtd } = periods(today);
-  const billingLink = practoRevenueLink('dental-nation', mtd);
-  const billed = data.doctors.map((d) => d.billedMtd);
-  const total = billed.length > 0 && billed.every((v) => v != null) ? billed.reduce<number>((a, v) => a + (v ?? 0), 0) : null;
+  const dashY = orthoLink(yesterday, 'weeks');
+  const dashM = orthoLink(mtd, 'weeks');
+  const f = data.funnel ?? null;
+  const fy = f?.yesterday ?? null;
+  const fm = f?.mtd ?? null;
+  const cell = (v: number | null | undefined, href: string, money = false) => (v == null ? NOT_YET : num(money ? aed(v) : v, href));
 
   const g = data.googleSearch;
   const gcamp = g?.campaign ?? ORTHO_GOOGLE_CAMPAIGN;
@@ -188,49 +205,64 @@ export function buildOrthoDaily(
   const gYesterday = marketingLink('google', yesterday, { gcamp });
   const live = g != null && g.mtd.activeDays > 0;
 
-  const searchTile = g == null
-    ? { label: 'Google Search campaign', value: null }
-    : live
-      ? { label: 'Google Search campaign', value: `AED ${fmt(g.mtd.spend)}`, href: gMtd, sub: `Live · ${fmt(g.mtd.clicks)} ${g.mtd.clicks === 1 ? 'click' : 'clicks'} month to date` }
-      : { label: 'Google Search campaign', value: 'Not live', href: gMtd, sub: 'Built, paused for review', subTone: 'down' as const };
-
   const doctorRows = data.doctors.map((d) => {
     const href = practoRevenueLink(d.clinic, mtd);
-    return [text(d.name), text(d.clinicLabel), num(d.billedMtd, href), NOT_YET, d.billedMtd == null ? '' : proof(href)];
+    return [text(d.name), text(d.clinicLabel), num(d.billedMtd, href), d.billedMtd == null ? '' : proof(href)];
   });
   // Al Maher is in Practo from 22 Oct 2026, but its charge lines carry no conducting doctor yet.
-  doctorRows.push([text('Dr Suzanna Almaali'), text('Al Maher Medical Centre'), NOT_YET, NOT_YET, '']);
+  doctorRows.push([text('Dr Suzanna Almaali'), text('Al Maher Medical Centre'), NOT_YET, '']);
 
   const googleRow = g == null
-    ? [text('Google Search: DN Ortho (new)'), NOT_YET, NOT_YET, NOT_YET, proof(gMtd)]
+    ? [text('Google Search: DN Ortho'), NOT_YET, NOT_YET, NOT_YET, proof(gMtd)]
     : live
-      ? [text('Google Search: DN Ortho (new)'), text(g.yesterday.activeDays > 0 ? 'Live' : 'No activity yesterday'),
+      ? [text('Google Search: DN Ortho'), text(g.yesterday.activeDays > 0 ? 'Live' : 'No activity yesterday'),
         num(spendClicks(g.yesterday), gYesterday), num(spendClicks(g.mtd), gMtd), proof(gMtd)]
-      : [text('Google Search: DN Ortho (new)'), text('Built, paused'), text('not live'), text('not live'), proof(gMtd)];
+      : [text('Google Search: DN Ortho'), text('Not live'), text('-'), text('-'), proof(gMtd)];
+  const metaRow = [
+    text('Meta: ortho ad sets'),
+    text(fy?.metaSpend ? 'Live' : fm?.metaSpend ? 'No spend yesterday' : fm ? 'No spend this month' : 'not yet'),
+    fy ? num(`${aed(fy.metaSpend) ?? 'not yet'} · ${fmt(fy.metaRealPeople ?? 0)} real chats`, dashY) : NOT_YET,
+    fm ? num(`${aed(fm.metaSpend) ?? 'not yet'} · ${fmt(fm.metaRealPeople ?? 0)} real chats`, dashM) : NOT_YET,
+    proof(marketingLink('meta', mtd)),
+  ];
+
+  const funnelRows: [string, (x: Funnel) => number | null, boolean][] = [
+    ['Ad spend (Google and Meta)', (x) => x.spend, true],
+    ['Google clicks', (x) => x.googleClicks, false],
+    ['Meta real chats', (x) => x.metaRealPeople, false],
+    ['Ortho enquiries (lead tracker)', (x) => x.leads, false],
+    ['Enquiries booked or arrived', (x) => x.leadsBooked, false],
+    ['Orthodontist visits attended', (x) => x.attended, false],
+    ['New patients seen by an orthodontist', (x) => x.newAttended, false],
+    ['Ortho assessments billed', (x) => x.assessments, false],
+    ['Ortho treatment starts', (x) => x.starts, false],
+    ['Ortho billing (all ortho bill lines)', (x) => x.orthoBilled, true],
+  ];
+  const segSum = (f?.segments ?? []).reduce((a, x) => a + (x.googleSpend ?? 0), 0);
 
   const checklist = data.checklist;
   const body = [
     h2('At a glance'),
     tiles([
-      { label: 'Orthodontist billing · month to date (AED)', value: total, href: billingLink, sub: '3 orthodontists, finalised bills' },
-      searchTile,
-      // Template 2: "not yet" with the Demand view as its proof (only Meta rows are classified as ortho today).
-      { label: 'Ortho enquiries', value: null, sub: 'Needs the ortho tagging update', extra: `<div>${proof(marketingLink('demand', mtd))}</div>` },
+      { label: 'Ad spend · month to date', value: aed(fm?.spend), href: dashM, sub: fy?.spend == null ? undefined : `AED ${fmt(fy.spend)} yesterday` },
+      { label: 'Ortho enquiries · month to date', value: fm?.leads ?? null, href: orthoLink(mtd, 'leads'), sub: fm?.leadsBooked == null ? undefined : `${fmt(fm.leadsBooked)} booked or arrived` },
+      { label: 'Orthodontist visits · month to date', value: fm?.attended ?? null, href: orthoLink(mtd, 'clinic'), sub: fm?.newAttended == null ? undefined : `${fmt(fm.newAttended)} new patients` },
+      { label: 'Treatment starts · month to date', value: fm?.starts ?? null, href: dashM, sub: fm?.startsAed == null ? undefined : `AED ${fmt(fm.startsAed)}` },
     ]),
-    h2('Billing by orthodontist (month to date)'),
-    table(['Orthodontist', 'Clinic', 'Billed (AED)', 'Appointments', ''], doctorRows, [2, 3]),
-    note('From Practo "Revenue by conducting doctor" (finalised bills; open bills appear once finalised). Appointments per doctor for a date range need a dashboard update.'),
+    h2('Yesterday and month to date'),
+    f ? table(['Measure', `Yesterday (${dayLabel(yesterday.from)})`, `Month to date (${rangeLabel(mtd.from, mtd.to)})`],
+      funnelRows.map(([label, get, money]) => [text(label), cell(get(f.yesterday), dashY, money), cell(get(f.mtd), dashM, money)]), [1, 2])
+      : note('The DN Ortho figures could not be read this morning.'),
+    note('Ads and enquiries are DN Ortho only. Visits, assessments, starts and billing are every orthodontist patient in Practo, because Practo cannot yet link a patient to a lead or a campaign.'),
     h2('Campaigns'),
-    table(['Campaign', 'Status', 'Yesterday', 'Month to date', ''], [
-      googleRow,
-      [text('Meta: DN Ortho (Sep)'), text('Stopped 6 Oct'), text('-'), text('-'), proof(marketingLink('demand', mtd))],
-    ], [2, 3]),
-    note(live
-      ? 'On the Google Ads page the headline totals are for the whole account; the campaign table below them shows this campaign only.'
-      : 'On the Google Ads page the headline totals are for the whole account; the campaign table below them is empty until this campaign runs.'),
-    gap(live
-      ? 'Not in this email yet: spend, clicks and enquiries per ad group (S1 adults, S2 teeth moved, S3 children). WhatsApp chats per campaign need a tracking update first.'
-      : 'Once the campaign is live: spend, clicks and enquiries per ad group (S1 adults, S2 teeth moved, S3 children). WhatsApp chats per campaign need a tracking update first.'),
+    table(['Campaign', 'Status', 'Yesterday', 'Month to date', ''], [googleRow, metaRow], [2, 3]),
+    f && segSum > 0 ? table(['Google segment', 'Spend month to date', 'Share'], f.segments.map((x) => [
+      text(x.name), cell(x.googleSpend, orthoLink(mtd, 'segments'), true), text(x.googleSpend == null ? '' : `${Math.round((x.googleSpend / segSum) * 100)}%`),
+    ]), [1, 2]) : '',
+    gap('Not yet: enquiries per segment (S1, S2, S3). They appear once the WhatsApp message carries a code such as DNO-S1 and the front office keeps it in the tracker.'),
+    h2('Billing by orthodontist (month to date)'),
+    table(['Orthodontist', 'Clinic', 'Billed (AED)', ''], doctorRows, [2]),
+    note('Practo names the treating doctor on very few bills, so a doctor with no named figure shows not yet, never 0. Ortho billing above counts every ortho bill line instead.'),
     h2('Content and launch checklist'),
     // The plan's status for the campaign is written by hand; once Google Ads shows
     // it running, the row must not contradict the Campaigns table.
@@ -241,17 +273,22 @@ export function buildOrthoDaily(
     isDay(checklist.updated) ? note(`Last updated ${dayLabel(checklist.updated)}.`) : '',
   ].join('\n');
 
-  const subject = total != null
-    ? `DN Ortho · ${dayLabel(today)} · AED ${fmt(total)} orthodontist billing this month`
-    : `DN Ortho · ${dayLabel(today)} · orthodontist billing not yet available`;
+  const parts = fy
+    ? [
+      fy.spend == null ? 'spend not yet' : `AED ${fmt(fy.spend)} spend`,
+      fy.leads == null ? 'enquiries not yet' : plural(fy.leads, 'enquiry', 'enquiries'),
+      fy.attended == null ? 'visits not yet' : plural(fy.attended, 'orthodontist visit', 'orthodontist visits'),
+    ]
+    : ['figures not yet available'];
+  const subject = `DN Ortho · ${dayLabel(today)} · ${parts.join(', ')} yesterday`.replace('available yesterday', 'available');
 
   return finishEmail(subject, emailHtml({
     kicker: 'DN ORTHO · DAILY 9 AM',
-    title: 'DN Ortho: status and month to date',
+    title: 'DN Ortho: spend, enquiries, visits and treatment starts',
     subtitle: `${dayLabel(yesterday.from)} (yesterday) and ${rangeLabel(mtd.from, mtd.to)} (month to date)`,
     body,
-    landing: { href: billingLink, label: 'Open the orthodontist billing report' },
-    sources: 'Sources: Practo bills (every 15 min; Al Maher from 22 Oct 2026), Google Ads (every 15 min), project plan.',
+    landing: { href: orthoLink(mtd), label: 'Open the DN Ortho dashboard' },
+    sources: 'Sources: Google Ads and Meta Ads (ortho campaigns and ad sets), Inhouse Lead Tracker, Practo appointments and bills, project plan.',
     recipients: opts.recipients ?? ORTHO_DAILY_RECIPIENTS,
     preview: opts.preview,
   }));
