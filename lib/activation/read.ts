@@ -422,7 +422,10 @@ export async function readClinicActivation(db: AdminClient, today: string, range
 
   const practo = (r: Range, clinic: ClinicFilterKey) => safe(async () => {
     const s = await getPractoSummary({ from: r.from, to: r.to, clinic });
-    return s.source === 'live' ? s.revenue : null;
+    if (s.source === 'live') return s.revenue;
+    // Practo was read and the group has bills for these dates, but none at this
+    // clinic (e.g. a clinic closed that day): that is a real 0, not "not yet".
+    return s.byClinic.length > 0 ? 0 : null;
   });
   const practoClinics: ClinicFilterKey[] = ['all', 'dental-nation', 'dr-tosun', 'al-maher'];
 
