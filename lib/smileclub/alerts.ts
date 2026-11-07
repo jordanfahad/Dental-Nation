@@ -65,6 +65,11 @@ export async function loadStoredEmails(sb: NonNullable<ReturnType<typeof getSupa
   return !error;
 }
 
+/** Every address for `w` (a stored value may be a comma-separated list). */
+export function emailsOf(w: Who): string[] {
+  return (emailOf(w) ?? '').split(',').map((a) => a.trim()).filter(Boolean);
+}
+
 export function emailOf(w: Who): string | null {
   const k = w.toUpperCase();
   return process.env[`SC_EMAIL_${k}`]?.trim() || process.env[`SC_REVIEW_EMAIL_${k}`]?.trim() || STORED[w] || DEFAULTS[w] || null;
@@ -162,8 +167,8 @@ async function send(to: Who[], cc: Who[], subject: string, html: string, cap?: {
     if (!fine) held.push(a);
     return fine;
   };
-  const toE = [...new Set(to.map(emailOf).filter((x): x is string => !!x))].filter(allowed);
-  const ccE = [...new Set(cc.map(emailOf).filter((x): x is string => !!x))].filter((x) => !toE.includes(x)).filter(allowed);
+  const toE = [...new Set(to.flatMap(emailsOf))].filter(allowed);
+  const ccE = [...new Set(cc.flatMap(emailsOf))].filter((x) => !toE.includes(x)).filter(allowed);
   const missing = [...to, ...cc].filter((w) => !emailOf(w)).map((w) => NAME[w]);
   const all = [...toE, ...ccE];
   if (!emailConfigured()) return { ok: false, recipients: all, note: 'email transport not configured' };
@@ -677,8 +682,8 @@ async function runEvening(sb: Sb, today: string, out: string[]) {
     }
   }
   for (const who of due) {
-    const a = emailOf(who)?.toLowerCase();
-    if (!a || log.slot.pm.has(a)) continue; // already had this evening's email (e.g. the shoot email)
+    const addrs = emailsOf(who).map((x) => x.toLowerCase());
+    if (!addrs.length || addrs.some((x) => log.slot.pm.has(x))) continue; // already had this evening's email (e.g. the shoot email)
     try {
       const m = buildEvening(ctx, who);
       if (!m) continue;

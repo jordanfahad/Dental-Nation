@@ -45,10 +45,13 @@ export const liveWindow = (now: Date) => dubaiDay(now) >= LIVE_FROM && (SEND_HOU
 
 /** Trimmed addresses, or null when any is missing or two are the same (case-insensitive). */
 export function resolveRecipients(alert: Pick<DailyAlert, 'to' | 'cc'>, address: DailyAlertDeps['address']): { to: string[]; cc: string[] } | null {
-  const pick = (who: readonly Who[]) => who.map((w) => address(w)?.trim() ?? '');
-  const to = pick(alert.to), cc = pick(alert.cc);
+  // A person's stored address may be a comma-separated list (e.g. a work and a
+  // personal inbox, Mr Akbar from 7 Nov 2026); every listed address receives.
+  const pick = (who: readonly Who[]) => who.map((w) => (address(w) ?? '').split(',').map((a) => a.trim()).filter(Boolean));
+  const toLists = pick(alert.to), ccLists = pick(alert.cc);
+  if (!toLists.length || [...toLists, ...ccLists].some((l) => !l.length)) return null;
+  const to = toLists.flat(), cc = ccLists.flat();
   const all = [...to, ...cc];
-  if (!to.length || all.some((a) => !a)) return null;
   if (new Set(all.map((a) => a.toLowerCase())).size !== all.length) return null;
   return { to, cc };
 }

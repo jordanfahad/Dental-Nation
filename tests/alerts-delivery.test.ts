@@ -2,7 +2,7 @@ import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { deliverDailyAlerts, dubaiDay, liveWindow, resolveRecipients, type DailyAlertDeps, type Mail } from '../lib/alerts/delivery';
-import { CLINIC_ACTIVATION_LIVE_FROM, DAILY_ALERTS, DAILY_ALERT_KINDS, LIVE_FROM, PREVIEW_KEY, nextSendDay, previewNote, recipientsLine, sendsLiveOn, type DailyAlert, WEEKLY_ALERTS } from '../lib/alerts/registry';
+import { CLINIC_ACTIVATION_LIVE_FROM, DAILY_ALERTS, DAILY_ALERT_KINDS, LIVE_FROM, PREVIEW_KEY, nextSendDay, previewNote, recipientsLine, sendsLiveOn, type DailyAlert, type Who, WEEKLY_ALERTS } from '../lib/alerts/registry';
 
 /** The kinds the cron sends live from LIVE_FROM; Clinic Activation joins them from 31 Oct 2026 (tests/alerts-activation.test.ts). */
 const LIVE_KINDS = DAILY_ALERTS.filter((a) => sendsLiveOn(a, LIVE_FROM)).map((a) => a.kind);
@@ -321,4 +321,17 @@ test('synthetic alerts list: the order and failures of any registry are honoured
   const x = fixture(); x.deps.alerts = [one];
   await deliverDailyAlerts(at(LIVE_DAY_0900), x.deps);
   assert.deepEqual(x.sent.map((m) => [m.to, m.cc]), [[addr('akbar', 'shadi'), addr('fahad')]]);
+});
+
+test('a comma-separated stored address sends to every listed inbox', () => {
+  // Synthetic addresses only: real personal inboxes live in lane_e.app_secrets, never in this public repo.
+  const address = (w: Who) => (w === 'akbar' ? 'work@example.invalid, personal@example.invalid' : `${w}@example.invalid`);
+  const r = resolveRecipients({ to: ['akbar', 'shadi'], cc: ['fahad'] }, address);
+  assert.deepEqual(r, {
+    to: ['work@example.invalid', 'personal@example.invalid', 'shadi@example.invalid'],
+    cc: ['fahad@example.invalid'],
+  });
+  // A duplicate across the lists still refuses, and an empty list for a person refuses.
+  assert.equal(resolveRecipients({ to: ['akbar'], cc: ['akbar'] }, address), null);
+  assert.equal(resolveRecipients({ to: ['akbar'], cc: [] }, () => ' , '), null);
 });
