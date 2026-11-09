@@ -19,11 +19,11 @@
  */
 import type { AdminClient } from '@/lib/supabase/server';
 import { readClinicActivation } from '@/lib/activation/read';
-export { amcMonthFileLine, CONVERTED_RULE, TOSUN_LEADS_NOTE } from './activationCopy';
+export { amcMonthFileLine, CONVERTED_RULE, DOCTOR_RULE, SNAPSHOT_NOTE, TOSUN_LEADS_NOTE } from './activationCopy';
 import { growthKeyOfClinic, type GrowthClinicKey } from '@/config/clinics';
 import { activationSources } from '@/config/sheet-mapping';
 import type {
-  ActivationClinic, AmcDay, AmcMonthFile, AmcTotals, ClinicActivation, GmbSnapshot, GmbWindowSums, LeadBucket, LeadClinic, SmileClubBucket,
+  ActivationClinic, AmcDay, AmcMonthFile, AmcTotals, ClinicActivation, FrontOfficePerformance, GmbSnapshot, GmbWindowSums, LeadBucket, LeadClinic, SmileClubBucket,
 } from '@/lib/activation/read';
 import { ORTHO_GOOGLE_CAMPAIGN } from '@/lib/alerts/orthoDaily';
 import {
@@ -115,14 +115,48 @@ export interface PractoLine { key: ExecClinic | 'together'; name: string; yester
 
 export interface OrthoDoctorLine { name: string; clinicLabel: string; billed: Val; url: string }
 
+/**
+ * One row per clinic, the same measures for every clinic (Dr Luvi, 9 Nov 2026:
+ * uniform, with the source named on each row). Al Wasl and Dr Tosun come from
+ * Practo bills; Al Maher from Dr Luvi's AMC daily sheet, as she asked.
+ */
+export interface RevenueRow {
+  key: ActivationClinic | 'total';
+  name: string;
+  yesterday: Val;
+  window: Val;
+  /** Bills (Practo) or invoices (AMC sheet) behind the window figure. */
+  billsWindow: Val;
+  source: string;
+  sourceUrl: string;
+  urlYesterday: string;
+  urlWindow: string;
+}
+
+export interface DoctorLine {
+  doctor: string;
+  clinicName: string;
+  yesterday: Val;
+  window: Val;
+  billsWindow: Val;
+  source: string;
+  sourceUrl: string;
+}
+
 export interface ActivationData {
   today: string;
   yesterday: Range;
   window: Range;
   leads: { read: boolean; lines: LeadLine[]; excludedRows: Val };
   smileClub: { read: boolean; lines: SmileLine[]; undated: Val; companiesUrl: string };
-  gbp: { read: boolean; lines: GmbLine[]; googleUrl: string; copiesFrom: string };
+  gbp: { read: boolean; lines: GmbLine[]; frontOffice: FrontOfficePerformance[]; googleUrl: string; copiesFrom: string };
+  /** When the figures were read (ISO, UTC): the 09:00 email is a snapshot, the page is live. */
+  readAt: string;
   revenue: {
+    /** The uniform per-clinic table (A12/A13 figures), plus a total row. */
+    rows: RevenueRow[];
+    /** Billed AED per doctor; null = unreadable. */
+    doctors: DoctorLine[] | null;
     practo: PractoLine[];
     amc: {
       read: boolean;
@@ -178,6 +212,7 @@ function daysOf(r: Range): string[] {
   return out;
 }
 
+const round2 = (v: Val): Val => (v == null ? null : Math.round(v * 100) / 100);
 const finite = (v: unknown): Val => (typeof v === 'number' && Number.isFinite(v) ? v : null);
 const sumAll = (xs: Val[]): Val => (xs.length > 0 && xs.every((x) => x != null) ? xs.reduce<number>((a, x) => a + (x ?? 0), 0) : null);
 
@@ -229,6 +264,48 @@ export function buildActivation(a: ClinicActivation): ActivationData {
   const amcY: AmcDay | null = amc?.yesterday ?? null;
   const amcW: AmcTotals | null = amc?.window ?? null;
 
+  const bills = a.revenue.practo.bills;
+  const practoRow = (key: 'dental-nation' | 'dr-tosun', line: PractoLine): RevenueRow => ({
+    key, name: line.name, yesterday: line.yesterday, window: line.window, billsWindow: finite(bills?.[key]?.window),
+    source: 'Practo bills', sourceUrl: practoRevenueLink(key, window), urlYesterday: line.urlYesterday, urlWindow: line.urlWindow,
+  });
+  const amcRow: RevenueRow = {
+    key: 'al-maher', name: 'Al Maher',
+    // No Report tab for that day is "not reported", never 0 (the sheet skips days).
+    yesterday: finite(amcY?.invoiceAmountTotal),
+    window: finite(amcW?.invoicedToDate),
+    billsWindow: amcW?.monthFile ? null : finite(amcW?.invoiceCount),
+    source: 'AMC daily sheet (Dr Luvi)', sourceUrl: AMC_SHEET_URL, urlYesterday: AMC_SHEET_URL, urlWindow: AMC_SHEET_URL,
+  };
+  const clinicRows = [practoRow('dental-nation', wasl), practoRow('dr-tosun', tosun), amcRow];
+  const revenueRows: RevenueRow[] = [...clinicRows, {
+    key: 'total', name: 'All three clinics',
+    yesterday: round2(sumAll(clinicRows.map((r) => r.yesterday))), window: round2(sumAll(clinicRows.map((r) => r.window))),
+    billsWindow: sumAll(clinicRows.map((r) => r.billsWindow)),
+    source: 'Practo bills and the AMC daily sheet, added together', sourceUrl: executiveLink(window),
+    urlYesterday: executiveLink(yesterday), urlWindow: executiveLink(window),
+  }];
+
+  const PRACTO_NAMES: Record<string, string> = { 'dental-nation': 'Al Wasl', 'dr-tosun': 'Dr Tosun', 'al-maher': 'Al Maher' };
+  const docs = a.doctors;
+  const doctorLines: DoctorLine[] | null = docs == null ? null : [
+    // Al Wasl and Dr Tosun from Practo (bill matched to the patient's appointment that day).
+    ...docs.lines.filter((l) => l.clinic !== 'al-maher').map((l) => ({
+      doctor: l.doctor, clinicName: PRACTO_NAMES[l.clinic], yesterday: l.yesterday, window: l.window, billsWindow: l.billsWindow,
+      source: 'Practo bills, by the doctor the patient saw that day', sourceUrl: practoRevenueLink(l.clinic as ExecClinic, window),
+    })),
+    ...(['dental-nation', 'dr-tosun'] as const).filter((c) => docs.unmatched[c].billsWindow > 0).map((c) => ({
+      doctor: 'Not matched to an appointment', clinicName: PRACTO_NAMES[c], yesterday: docs.unmatched[c].yesterday,
+      window: docs.unmatched[c].window, billsWindow: docs.unmatched[c].billsWindow,
+      source: 'Practo bills with no appointment that day', sourceUrl: practoRevenueLink(c, window),
+    })),
+    // Al Maher from the AMC daily sheet's doctor column, like its clinic total.
+    ...Object.entries(amcW?.doctors ?? {}).sort((x, y) => y[1].amount - x[1].amount).map(([doctor, v]) => ({
+      doctor, clinicName: 'Al Maher', yesterday: finite(amcY?.doctors?.[doctor]?.amount ?? (amcY ? 0 : null)), window: finite(v.amount),
+      billsWindow: finite(v.invoices), source: 'AMC daily sheet (Dr Luvi)', sourceUrl: AMC_SHEET_URL,
+    })),
+  ];
+
   const o = a.ortho;
   const g = o?.googleSearch ?? null;
   const live = g != null && g.mtd.activeDays > 0;
@@ -254,8 +331,11 @@ export function buildActivation(a: ClinicActivation): ActivationData {
       undated: a.smileClub?.undated ?? null,
       companiesUrl: SMILE_CLUB_COMPANIES,
     },
-    gbp: { read: a.gmb != null, lines: gmbLines, googleUrl: socialLink('all'), copiesFrom: GMB_COPIES_FROM },
+    gbp: { read: a.gmb != null, lines: gmbLines, frontOffice: a.gmb?.frontOffice ?? [], googleUrl: socialLink('all'), copiesFrom: GMB_COPIES_FROM },
+    readAt: a.readAt,
     revenue: {
+      rows: revenueRows,
+      doctors: doctorLines,
       practo: [wasl, tosun, together],
       amc: {
         read: amc != null,

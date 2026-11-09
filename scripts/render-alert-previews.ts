@@ -182,6 +182,18 @@ async function main() {
       amc: summariseAmc([amcRow(y, '3914.12', 9), amcRow(dayBefore, '2210.00', 7)], P),
     },
     ortho,
+    doctors: {
+      lines: [
+        { doctor: 'Dr Synthetic A', clinic: 'dental-nation', yesterday: 5000, window: 150000, billsWindow: 40 },
+        { doctor: 'Dr Synthetic B', clinic: 'dr-tosun', yesterday: 4339, window: 140000, billsWindow: 35 },
+      ],
+      unmatched: {
+        'dental-nation': { yesterday: 2240, window: 91900, billsWindow: 12 },
+        'dr-tosun': { yesterday: 0, window: 8600, billsWindow: 3 },
+        'al-maher': { yesterday: 0, window: 0, billsWindow: 0 },
+      },
+    },
+    readAt: new Date().toISOString(),
   };
 
   // DN Ortho weekly: invented rows (no real figures), shaped like the synced tables.

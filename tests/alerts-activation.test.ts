@@ -11,6 +11,7 @@ import {
 } from '../lib/alerts/links';
 import { ORTHO_GOOGLE_CAMPAIGN } from '../lib/alerts/orthoDaily';
 import type { ClinicActivation } from '../lib/activation/read';
+import { AMC_SHEET_URL } from '../lib/overview/activation';
 import { PLANTED_NAME, PLANTED_PHONE, TODAY, nullActivation, sampleActivation } from './fixtures/activation';
 
 const P = periods(TODAY);
@@ -107,7 +108,7 @@ test('the preview path renders and sends it, to Fahad only', async () => {
   const mail = x.sent.find((m) => m.subject.startsWith('[Preview] Clinic Activation'));
   assert.ok(mail, 'preview of the Clinic Activation email missing');
   assert.deepEqual([mail.to, mail.cc], [addr('fahad'), []]);
-  assert.equal(mail.subject, '[Preview] Clinic Activation · Thu 29 Oct · 12 leads, AED 11,579 billed yesterday');
+  assert.equal(mail.subject, '[Preview] Clinic Activation · Thu 29 Oct · 12 leads, AED 15,493 billed yesterday');
   assert.ok(mail.html.includes('Preview for Fahad: on Sat 31 Oct at 09:00 this goes to Mr Akbar, Ms Shadi and Dr Luvi, copied to Fahad.'));
   assert.deepEqual(x.logs.find((l) => l.kind === `preview:${KIND}`), { kind: `preview:${KIND}`, ok: true, recipients: addr('fahad') });
   assert.equal(x.claims.size, 0);
@@ -185,18 +186,21 @@ const figureLinks = (html: string) => [...html.matchAll(/<a href="([^"]+)" style
   .map((m) => ({ href: m[1].replace(/&amp;/g, '&'), value: m[2] }));
 
 test('subject and the five sections in order', () => {
-  assert.equal(full.subject, 'Clinic Activation · Thu 29 Oct · 12 leads, AED 11,579 billed yesterday');
+  assert.equal(full.subject, 'Clinic Activation · Thu 29 Oct · 12 leads, AED 15,493 billed yesterday');
   const order = ['1. Leads', '2. Smile Club', '3. Google Business Profile (front office)', '4. Revenue', '5. DN Ortho'].map((s) => full.html.indexOf(s));
   assert.ok(order.every((i) => i > 0));
   assert.deepEqual([...order].sort((a, b) => a - b), order);
   assert.ok(full.html.includes('Wed 28 Oct (yesterday) and 1 to 28 Oct (month to date)'));
   assert.ok(full.html.includes('As entered by the front office in the lead tracker GMB tab, snapshotted daily.'));
   assert.ok(full.html.includes('Daily copies start 29 Oct 2026'));
-  assert.ok(full.html.includes('AMC comes from the clinic\u2019s daily sheet, not Practo'));
+  // 9 Nov 2026: one revenue table, the same measures per clinic, a source on every row.
+  assert.ok(full.html.includes('AMC daily sheet (Dr Luvi)') && full.html.includes('Practo bills'));
+  assert.ok(full.html.includes('4b. Revenue by doctor'));
+  assert.ok(full.html.includes('The 09:00 email is a snapshot'));
   assert.ok(full.html.includes('2 days reported in 1 to 28 Oct; 26 days missing.'));
-  assert.ok(full.html.includes('Practo does not record the treating doctor on almost all billed work'));
+  assert.ok(full.html.includes('the doctor table in section 4b uses the appointment match'));
   assert.ok(full.html.includes('To Mr Akbar, Ms Shadi and Dr Luvi; copied to Fahad.'));
-  for (const v of ['>12<', '>15<', '>618<', '>349<', '>AED 7,240<', '>AED 148,600<', '>11,579<', '>AED 3,914<', '>AED 310<', '>183<', '>AED 38,600<']) {
+  for (const v of ['>12<', '>15<', '>618<', '>349<', '>AED 7,240<', '>AED 148,600<',  '>AED 3,914<', '>AED 310<', '>183<', '>AED 38,600<']) {
     assert.ok(full.html.includes(v), v);
   }
 });
@@ -209,6 +213,8 @@ test('every figure links to the Clinic Activation page pinned to the same dates,
     executiveLink(P.yesterday), executiveLink(P.mtd),
     marketingLink('google', P.yesterday, { gcamp: ORTHO_GOOGLE_CAMPAIGN }), marketingLink('google', P.mtd, { gcamp: ORTHO_GOOGLE_CAMPAIGN }),
     practoRevenueLink('dental-nation', P.mtd), practoRevenueLink('dr-tosun', P.mtd),
+    // Al Maher's revenue and doctor rows prove themselves on Dr Luvi's AMC sheet (9 Nov 2026: a source on every row).
+    AMC_SHEET_URL,
   ]);
   const figs = figureLinks(full.html);
   assert.ok(figs.length > 60, `expected many linked figures, got ${figs.length}`);
@@ -250,7 +256,8 @@ test('no patient name or phone number is possible in the email', () => {
     assert.ok(!m.html.includes(PLANTED_NAME) && !m.html.includes(PLANTED_PHONE));
   }
   assert.ok(full.html.includes('Other platform'));
-  assert.ok(!full.html.includes('Dr. Alpha'), 'AMC doctor lines are not in the email');
+  // Doctor revenue is shown since 9 Nov 2026 (Dr Luvi asked for it): doctor names are staff, never patients.
+  assert.ok(full.html.includes('Revenue by doctor'));
 });
 
 test('migration 0052 extends the claim CHECK with the new kind and nothing else', () => {

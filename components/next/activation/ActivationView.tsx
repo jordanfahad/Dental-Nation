@@ -13,7 +13,7 @@
  */
 import { dayLabel } from '@/lib/alerts/shell';
 import type { ActivationData, GmbLine } from '@/lib/overview/activation';
-import { amcMonthFileLine, CONVERTED_RULE, TOSUN_LEADS_NOTE } from '@/lib/overview/activationCopy';
+import { amcMonthFileLine, CONVERTED_RULE, DOCTOR_RULE, SNAPSHOT_NOTE, TOSUN_LEADS_NOTE } from '@/lib/overview/activationCopy';
 import { dayMonthYear, rangeDates } from '@/lib/overview/format';
 import { lastDayLabel, periodDates, rangeOfData, type ViewRange } from '@/lib/overview/range';
 import type { MetricId } from '@/lib/metrics/registry';
@@ -37,6 +37,7 @@ const ORTHO_REASON =
   'Practo does not record the treating doctor on almost all billed work, so a doctor with no named figure on Revenue by conducting doctor shows not yet, never 0.';
 const TOGETHER_NOTE =
   'Al Wasl and Dr Tosun added together. The opened Executive view’s group total also includes Al Maher’s Practo bills, so it can be higher.';
+const FO_CLINIC: Record<string, string> = { 'dental-nation': 'Al Wasl', 'dr-tosun': 'Dr Tosun', 'al-maher': 'Al Maher' };
 const UNREAD = (what: string) => `The ${what} could not be read when this page was opened.`;
 
 function Panel({ id, children, className = '' }: { id?: string; children: React.ReactNode; className?: string }) {
@@ -246,7 +247,7 @@ export function ActivationView({ data, range }: { data: ActivationData; range?: 
         </Table>
         <Note>
           Source: the Inhouse Lead Tracker lead tabs, by enquiry date. Smile Club, GMB and website tabs are left out. {CONVERTED_RULE}{' '}
-          {TOSUN_LEADS_NOTE} The proof opens the Growth enquiries for the same dates.
+          {TOSUN_LEADS_NOTE} The proof opens the Growth enquiries for the same dates. {SNAPSHOT_NOTE}
         </Note>
       </Panel>
 
@@ -305,53 +306,91 @@ export function ActivationView({ data, range }: { data: ActivationData; range?: 
             Open Google&apos;s own review count
           </a>
         </Note>
+        {gbp.frontOffice.length > 0 && (
+          <>
+            <h3 className="m-0 mb-2 mt-5 text-sm font-bold text-dn-navy">Front office performance · {wHead}</h3>
+            <Table label="Front office performance" minWidth="min-w-[480px]" head={['Front office', 'Clinic', 'Reviews collected', 'Photos', 'Videos', 'Days reported']}>
+              {gbp.frontOffice.map((f) => (
+                <tr key={`${f.clinic}-${f.foName}`}>
+                  <td className={`${td} font-semibold text-dn-navy`}>{f.foName}</td>
+                  <td className={td}>{FO_CLINIC[f.clinic]}</td>
+                  <td className={td}>{fmtCount(f.reviewsToday)}</td>
+                  <td className={td}>{fmtCount(f.photos)}</td>
+                  <td className={td}>{fmtCount(f.videos)}</td>
+                  <td className={td}>{fmtCount(f.days)}</td>
+                </tr>
+              ))}
+            </Table>
+            <Note>Per person, from the same GMB tab, added up over the selected dates.</Note>
+          </>
+        )}
       </Panel>
 
-      {/* d. Revenue */}
+      {/* d. Revenue: the same measures for every clinic, each row with its source (Dr Luvi, 9 Nov 2026) */}
       <Panel id="revenue">
         <Head kicker="Revenue" title="Billed revenue per clinic" sub={sub} />
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <div className="min-w-0">
-            <h3 className="m-0 mb-2 text-sm font-bold text-dn-navy">Practo billed · Al Wasl and Dr Tosun</h3>
-            <Table label="Practo billed revenue" minWidth="min-w-[340px]" head={['Clinic', `Billed · ${yHead}`, `Billed · ${wHead}`]}>
-              {revenue.practo.map((p) => {
-                const cls = p.key === 'together' ? tdTotal : td;
-                const id: MetricId = p.key === 'together' ? 'A12' : 'M06';
-                const note = p.key === 'together' ? TOGETHER_NOTE : undefined;
-                return (
-                  <tr key={p.key}>
-                    <td className={`${cls} font-semibold text-dn-navy`}>{p.name}</td>
-                    <td className={cls}>{fig(id, p.yesterday, 'aed', yDates, p.name, p.urlYesterday, note, practoUnavailable)}</td>
-                    <td className={cls}>{fig(id, p.window, 'aed', wDates, p.name, p.urlWindow, note, practoUnavailable)}</td>
-                  </tr>
-                );
-              })}
-            </Table>
-            <Note>Source: Practo bills, read exactly as the morning performance email reads them. The proof opens the Executive view for the same dates and clinic.</Note>
-          </div>
-          <div className="min-w-0">
-            <h3 className="m-0 mb-2 text-sm font-bold text-dn-navy">Al Maher (AMC) · daily sheet</h3>
-            <p className="m-0 mb-2 flex flex-wrap items-center gap-1.5 text-xs text-[#5c6c72]">
-              Days reported:
-              <Figure
-                id="A22"
-                display={fmtCount(amc.daysReported)}
-                dates={wDates}
-                scope="Al Maher"
-                url={amc.sheetUrl}
-                note={amc.read ? AMC_NOTE : `${amcUnread} ${AMC_NOTE}`}
-              />
-            </p>
-            <p className="m-0 mb-2 text-xs text-[#5c6c72]">
-              Missing days:{' '}
-              {amc.missingDays == null ? UNAVAILABLE : amc.missingDays.length ? dayRuns(amc.missingDays) : 'none'}
-            </p>
-            {amc.monthFile && (
-              <p className="m-0 mb-2 text-xs text-[#5c6c72]">
-                {amcMonthFileLine(amc.monthFile)}
-                {amc.invoicedToDate != null && <> Invoiced for the selected dates: <strong className="text-dn-navy">{fmtAed(amc.invoicedToDate)}</strong>.</>}
-              </p>
-            )}
+        <Table label="Billed revenue per clinic" minWidth="min-w-[640px]" head={['Clinic', `Billed · ${yHead}`, `Billed · ${wHead}`, `Bills · ${wHead}`, 'Source']}>
+          {revenue.rows.map((r) => {
+            const cls = r.key === 'total' ? tdTotal : td;
+            const id: MetricId = r.key === 'al-maher' ? 'A13' : r.key === 'total' ? 'A12' : 'M06';
+            return (
+              <tr key={r.key}>
+                <td className={`${cls} font-semibold text-dn-navy`}>{r.name}</td>
+                <td className={cls}>{fig(id, r.yesterday, 'aed', yDates, r.name, r.urlYesterday, r.source, r.key === 'al-maher' ? amcYNote ?? 'There is no AMC Report tab for this day.' : practoUnavailable)}</td>
+                <td className={cls}>{fig(id, r.window, 'aed', wDates, r.name, r.urlWindow, r.source)}</td>
+                <td className={cls}>{fmtCount(r.billsWindow)}</td>
+                <td className={cls}>
+                  <a className="text-[11px] font-semibold text-dn-navy underline underline-offset-4" href={r.sourceUrl}>{r.source}</a>
+                </td>
+              </tr>
+            );
+          })}
+        </Table>
+        <Note>
+          Al Wasl and Dr Tosun from Practo bills; Al Maher from Dr Luvi&apos;s AMC daily sheet. Days with no AMC Report tab show as Unavailable, never 0.
+          {' '}{AMC_NOTE}
+          {amc.monthFile ? ` ${amcMonthFileLine(amc.monthFile)}` : ''}
+        </Note>
+        <p className="m-0 mt-2 flex flex-wrap items-center gap-1.5 text-xs text-[#5c6c72]">
+          AMC days reported:
+          <Figure
+            id="A22"
+            display={fmtCount(amc.daysReported)}
+            dates={wDates}
+            scope="Al Maher"
+            url={amc.sheetUrl}
+            note={amc.read ? AMC_NOTE : `${amcUnread} ${AMC_NOTE}`}
+          />
+        </p>
+        <p className="m-0 mt-1 text-xs text-[#5c6c72]">
+          Missing days:{' '}
+          {amc.missingDays == null ? UNAVAILABLE : amc.missingDays.length ? dayRuns(amc.missingDays) : 'none'}
+        </p>
+
+        <h3 className="m-0 mb-2 mt-5 text-sm font-bold text-dn-navy">Revenue by doctor · {wHead}</h3>
+        {revenue.doctors == null ? (
+          <p className="m-0 text-xs text-[#617075]">{UNAVAILABLE}: doctor revenue could not be read.</p>
+        ) : (
+          <Table label="Revenue by doctor" minWidth="min-w-[640px]" head={['Doctor', 'Clinic', `Billed · ${yHead}`, `Billed · ${wHead}`, 'Bills', 'Source']}>
+            {revenue.doctors.map((l) => (
+              <tr key={`${l.clinicName}-${l.doctor}`}>
+                <td className={`${td} font-semibold text-dn-navy`}>{l.doctor}</td>
+                <td className={td}>{l.clinicName}</td>
+                <td className={td}>{fmtAed(l.yesterday)}</td>
+                <td className={td}>{fmtAed(l.window)}</td>
+                <td className={td}>{fmtCount(l.billsWindow)}</td>
+                <td className={td}>
+                  <a className="text-[11px] font-semibold text-dn-navy underline underline-offset-4" href={l.sourceUrl}>{l.source}</a>
+                </td>
+              </tr>
+            ))}
+          </Table>
+        )}
+        <Note>{DOCTOR_RULE}</Note>
+
+        <details className="mt-4">
+          <summary className="cursor-pointer text-xs font-semibold text-dn-navy">AMC daily sheet detail (appointments, payment split)</summary>
+          <div className="mt-2">
             <Table label="AMC daily sheet" minWidth="min-w-[340px]" head={['Measure', yHead, wHead]}>
               {amc.measures.map((m) => (
                 <tr key={m.id}>
@@ -361,12 +400,8 @@ export function ActivationView({ data, range }: { data: ActivationData; range?: 
                 </tr>
               ))}
             </Table>
-            <Note>
-              AMC comes from the clinic&apos;s daily sheet, not Practo, so it is never added to the Practo figures. A day with no
-              Report tab is listed as missing, not counted as 0.
-            </Note>
           </div>
-        </div>
+        </details>
       </Panel>
 
       {/* e. DN Ortho */}

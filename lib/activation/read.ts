@@ -21,7 +21,7 @@
 import type { AdminClient } from '@/lib/supabase/server';
 import { selectAll } from '@/lib/supabase/selectAll';
 import { GMB_CLINICS, type GmbClinicKey } from '@/config/gmb-clinics';
-import { type ClinicFilterKey } from '@/config/clinics';
+import { clinicOfCenter, type ClinicFilterKey } from '@/config/clinics';
 import { GMB_FRONTOFFICE_TAB, SMILE_CLUB_TAB, sheetMapping } from '@/config/sheet-mapping';
 import { isWebsiteMirrorTab } from '@/config/website-enquiries';
 import { periods, periodsFor, type Range } from '@/lib/alerts/links';
@@ -94,6 +94,12 @@ export interface GmbSection {
   yesterday: Record<ActivationClinic, GmbSnapshot | null>;
   window: Record<ActivationClinic, GmbWindowSums>;
   total: GmbWindowSums;
+  /** Per front-office person in the window (first name as the tab gives it), by reviews collected. */
+  frontOffice: FrontOfficePerformance[];
+}
+export interface FrontOfficePerformance extends GmbWindowSums {
+  foName: string;
+  clinic: ActivationClinic;
 }
 
 export interface AmcDay {
@@ -147,6 +153,8 @@ export interface RevenueSection {
     source: 'practo';
     /** Billed AED (getPractoSummary revenue, source live); null = not available. */
     byClinic: Record<ClinicFilterKey, { yesterday: number | null; window: number | null }>;
+    /** Bills counted in each figure above (same read); null = not available. */
+    bills?: Record<ClinicFilterKey, { yesterday: number | null; window: number | null }>;
   };
   /** Al Maher (AMC) from Dr Luvi's daily report sheet; null = table unreadable. */
   amc: {
@@ -168,6 +176,85 @@ export interface ClinicActivation {
   gmb: GmbSection | null;
   revenue: RevenueSection;
   ortho: OrthoDailyData | null;
+  /** Practo billed AED per doctor (bill matched to the patient's appointment that day); null = unreadable. */
+  doctors: DoctorRevenueSection | null;
+  /** When this read ran (ISO, UTC): the 09:00 email is a snapshot, the page is live. */
+  readAt: string;
+}
+
+/* ── doctor revenue ── */
+
+export type PractoClinic = 'dental-nation' | 'dr-tosun' | 'al-maher';
+export interface DoctorRevenueLine {
+  doctor: string;
+  clinic: PractoClinic;
+  yesterday: number;
+  window: number;
+  billsWindow: number;
+}
+export interface DoctorRevenueSection {
+  /** Doctors by billed AED in the window, highest first. */
+  lines: DoctorRevenueLine[];
+  /** Bills with no appointment for the same patient that day, per clinic. */
+  unmatched: Record<PractoClinic, { yesterday: number; window: number; billsWindow: number }>;
+}
+export interface DoctorBillRow { bill_date: string | null; amount: number | string | null; data: Record<string, unknown> | null }
+export interface DoctorApptRow { appt_date: string | null; appt_time: string | null; mr_no: string | null; doctor: string | null; status: string | null }
+
+const PRACTO_CLINICS: PractoClinic[] = ['dental-nation', 'dr-tosun', 'al-maher'];
+
+/**
+ * Pure: Practo billed AED per doctor, the way Practo's own Bills Report
+ * groups by admitting doctor. Practo leaves the conducting doctor empty on
+ * almost every charge line, so each bill (its whole amount, as the clinic
+ * revenue figure counts it) goes to the doctor of the same patient's
+ * appointment on the bill date: an attended appointment first, then the
+ * earliest. A bill with no such appointment is "not matched", never guessed.
+ * The doctors plus "not matched" add up to the clinic's billed revenue.
+ */
+export function doctorRevenue(bills: DoctorBillRow[], appts: DoctorApptRow[], p: { yesterday: Range; mtd: Range }): DoctorRevenueSection {
+  const attended = (st: string | null) => /^(arrived|completed)$/i.test(text(st));
+  const bySlot = new Map<string, DoctorApptRow[]>();
+  for (const a of appts) {
+    const doc = text(a.doctor), mr = text(a.mr_no);
+    if (!doc || !mr || !a.appt_date) continue;
+    const k = `${mr}|${a.appt_date}`;
+    const list = bySlot.get(k) ?? [];
+    list.push(a);
+    bySlot.set(k, list);
+  }
+  const doctorFor = (mr: string, day: string) => {
+    const list = bySlot.get(`${mr}|${day}`);
+    if (!list?.length) return null;
+    const sorted = [...list].sort((x, y) => Number(attended(y.status)) - Number(attended(x.status)) || text(x.appt_time).localeCompare(text(y.appt_time)));
+    return text(sorted[0].doctor);
+  };
+  const lines = new Map<string, DoctorRevenueLine>();
+  const unmatched = per(PRACTO_CLINICS, () => ({ yesterday: 0, window: 0, billsWindow: 0 }));
+  for (const b of bills) {
+    if (!inRange(b.bill_date, p.mtd)) continue;
+    const clinic = clinicOfCenter(text(b.data?.center_name)) as PractoClinic;
+    if (!PRACTO_CLINICS.includes(clinic)) continue;
+    const amount = Number(b.amount) || 0;
+    const isY = inRange(b.bill_date, p.yesterday);
+    const doc = doctorFor(text(b.data?.mr_no), b.bill_date!);
+    if (!doc) {
+      const u = unmatched[clinic];
+      u.window += amount; u.billsWindow += 1; if (isY) u.yesterday += amount;
+      continue;
+    }
+    const key = `${clinic}|${doc}`;
+    const l = lines.get(key) ?? { doctor: doc, clinic, yesterday: 0, window: 0, billsWindow: 0 };
+    l.window += amount; l.billsWindow += 1; if (isY) l.yesterday += amount;
+    lines.set(key, l);
+  }
+  const round = (x: number) => Math.round(x * 100) / 100;
+  for (const u of Object.values(unmatched)) { u.window = round(u.window); u.yesterday = round(u.yesterday); }
+  return {
+    lines: [...lines.values()].map((l) => ({ ...l, window: round(l.window), yesterday: round(l.yesterday) }))
+      .sort((a, b) => b.window - a.window),
+    unmatched,
+  };
 }
 
 /* ── helpers ── */
@@ -322,7 +409,18 @@ export function summariseGmb(rows: GmbRow[], p: { yesterday: Range; mtd: Range }
     yesterday[c] = y ? snap(y) : null;
     window[c] = gmbSums(inWindow.filter((r) => r.clinic === c));
   }
-  return { latest, yesterday, window, total: gmbSums(inWindow) };
+  const byFo = new Map<string, { foName: string; clinic: ActivationClinic; rows: GmbRow[] }>();
+  for (const r of inWindow) {
+    const foName = text(r.fo_name).split(' ')[0] || 'Not entered';
+    const k = `${r.clinic}|${foName.toLowerCase()}`;
+    const g = byFo.get(k) ?? { foName, clinic: r.clinic as ActivationClinic, rows: [] };
+    g.rows.push(r);
+    byFo.set(k, g);
+  }
+  const frontOffice = [...byFo.values()]
+    .map((g) => ({ foName: g.foName, clinic: g.clinic, ...gmbSums(g.rows) }))
+    .sort((a, b) => (b.reviewsToday ?? -1) - (a.reviewsToday ?? -1) || a.foName.localeCompare(b.foName));
+  return { latest, yesterday, window, total: gmbSums(inWindow), frontOffice };
 }
 
 /* ── AMC daily report ── */
@@ -422,14 +520,14 @@ export async function readClinicActivation(db: AdminClient, today: string, range
 
   const practo = (r: Range, clinic: ClinicFilterKey) => safe(async () => {
     const s = await getPractoSummary({ from: r.from, to: r.to, clinic });
-    if (s.source === 'live') return s.revenue;
+    if (s.source === 'live') return { revenue: s.revenue, bills: s.billCount };
     // Practo was read and the group has bills for these dates, but none at this
     // clinic (e.g. a clinic closed that day): that is a real 0, not "not yet".
-    return s.byClinic.length > 0 ? 0 : null;
+    return s.byClinic.length > 0 ? { revenue: 0, bills: 0 } : null;
   });
   const practoClinics: ClinicFilterKey[] = ['all', 'dental-nation', 'dr-tosun', 'al-maher'];
 
-  const [leads, smileClub, gmb, amc, ortho, practoFigures] = await Promise.all([
+  const [leads, smileClub, gmb, amc, ortho, practoFigures, doctors] = await Promise.all([
     safe(async () => {
       const { data } = await selectAll(() => db.from('leads')
         .select('id,inquiry_date,booking_status,channel_source,clinic,whatsapp_ref,raw_row')
@@ -463,9 +561,19 @@ export async function readClinicActivation(db: AdminClient, today: string, range
     }),
     safe(() => readOrthoDaily(db, today, p)),
     Promise.all(practoClinics.flatMap((c) => [practo(yesterday, c), practo(mtd, c)])),
+    safe(async () => {
+      const [{ data: bills }, { data: appts }] = await Promise.all([
+        selectAll(() => db.from('practo_bills_raw').select('bill_key,bill_date,amount,data')
+          .gte('bill_date', mtd.from).lte('bill_date', mtd.to), 'bill_key'),
+        selectAll(() => db.from('practo_appointments_raw').select('appt_key,appt_date,appt_time,mr_no,doctor,status')
+          .gte('appt_date', mtd.from).lte('appt_date', mtd.to), 'appt_key'),
+      ]);
+      return doctorRevenue(bills as DoctorBillRow[], appts as DoctorApptRow[], p);
+    }),
   ]);
 
-  const byClinic = Object.fromEntries(practoClinics.map((c, i) => [c, { yesterday: practoFigures[i * 2], window: practoFigures[i * 2 + 1] }])) as RevenueSection['practo']['byClinic'];
+  const byClinic = Object.fromEntries(practoClinics.map((c, i) => [c, { yesterday: practoFigures[i * 2]?.revenue ?? null, window: practoFigures[i * 2 + 1]?.revenue ?? null }])) as RevenueSection['practo']['byClinic'];
+  const bills = Object.fromEntries(practoClinics.map((c, i) => [c, { yesterday: practoFigures[i * 2]?.bills ?? null, window: practoFigures[i * 2 + 1]?.bills ?? null }])) as NonNullable<RevenueSection['practo']['bills']>;
 
   return {
     today,
@@ -474,7 +582,9 @@ export async function readClinicActivation(db: AdminClient, today: string, range
     leads,
     smileClub,
     gmb,
-    revenue: { practo: { source: 'practo', byClinic }, amc },
+    revenue: { practo: { source: 'practo', byClinic, bills }, amc },
     ortho,
+    doctors,
+    readAt: new Date().toISOString(),
   };
 }

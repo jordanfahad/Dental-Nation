@@ -487,11 +487,11 @@ const ACTIVATION_REGISTRY = {
   },
   A12: {
     id: 'A12',
-    name: 'Practo billed, Al Wasl and Dr Tosun',
+    name: 'Billed revenue, all three clinics',
     definition:
-      'Billed revenue (M06) for Al Wasl added to billed revenue for Dr Tosun over the same selected Dubai days; Al Maher is left out because its revenue in this report comes from its own daily sheet, and the total is unavailable when either clinic is.',
+      'Practo billed revenue (M06) for Al Wasl and Dr Tosun plus the AMC invoiced amount (A13) for Al Maher, over the same selected Dubai days; unavailable when any of the three is (for example a day with no AMC Report tab).',
     unit: 'AED',
-    source: 'Practo bills, read by the same summary the Executive view and the morning performance email use.',
+    source: 'Practo bills for Al Wasl and Dr Tosun; Dr Luvi\u2019s AMC daily sheet for Al Maher.',
     definitionVersion: 1,
   },
   A13: amc('A13', 'AMC invoiced amount', 'The total invoice amount in AED', 'AED'),

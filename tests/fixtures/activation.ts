@@ -107,6 +107,18 @@ export function sampleActivation(range?: Range): ClinicActivation {
       amc: summariseAmc(AMC, p),
     },
     ortho: sampleOrtho(),
+    doctors: {
+      lines: [
+        { doctor: 'Dr Synthetic A', clinic: 'dental-nation', yesterday: 5000, window: 150000, billsWindow: 40 },
+        { doctor: 'Dr Synthetic B', clinic: 'dr-tosun', yesterday: 4339, window: 140000, billsWindow: 35 },
+      ],
+      unmatched: {
+        'dental-nation': { yesterday: 2240, window: 91900, billsWindow: 12 },
+        'dr-tosun': { yesterday: 0, window: 8600, billsWindow: 3 },
+        'al-maher': { yesterday: 0, window: 0, billsWindow: 0 },
+      },
+    },
+    readAt: '2026-10-29T05:00:00.000Z',
   };
 }
 
@@ -126,5 +138,7 @@ export function nullActivation(): ClinicActivation {
       amc: null,
     },
     ortho: null,
+    doctors: null,
+    readAt: '2026-10-29T05:00:00.000Z',
   };
 }

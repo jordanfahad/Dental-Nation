@@ -15,7 +15,7 @@
  */
 import type { AdminClient } from '@/lib/supabase/server';
 import { readClinicActivation, type ClinicActivation } from '@/lib/activation/read';
-import { amcMonthFileLine, buildActivation, CONVERTED_RULE, GMB_NO_COPY, TOSUN_LEADS_NOTE, type ActivationData } from '@/lib/overview/activation';
+import { amcMonthFileLine, buildActivation, CONVERTED_RULE, DOCTOR_RULE, GMB_NO_COPY, SNAPSHOT_NOTE, TOSUN_LEADS_NOTE, type ActivationData } from '@/lib/overview/activation';
 import { activationLink, type ActivationSection } from './links';
 import {
   bold, dayLabel, emailHtml, finishEmail, fmt, gap, h2, note, NOT_YET, num, proof, rangeLabel, table, text, tiles,
@@ -81,21 +81,26 @@ export function buildActivationDaily(
     return [text(l.name), ...latest, ...sums];
   });
 
-  /* d. Revenue */
-  const together = d.revenue.practo.find((p) => p.key === 'together')!;
-  const practoRows = d.revenue.practo.map((p) => [
-    p.key === 'together' ? bold(p.name) : text(p.name),
-    num(aed(p.yesterday), p.urlYesterday), num(aed(p.window), p.urlWindow),
-    p.yesterday != null || p.window != null ? proof(p.urlWindow) : '',
+  const CLINIC_LABEL: Record<string, string> = { 'dental-nation': 'Al Wasl', 'dr-tosun': 'Dr Tosun', 'al-maher': 'Al Maher' };
+  /* c2. Front office, per person */
+  const foRows = d.gbp.frontOffice.map((f) => [
+    bold(f.foName), text(CLINIC_LABEL[f.clinic]),
+    num(f.reviewsToday, gbpHref), num(f.photos, gbpHref), num(f.videos, gbpHref), num(f.days, gbpHref),
   ]);
+
+  /* d. Revenue: the same measures for every clinic, each row with its source */
+  const revRows = d.revenue.rows.map((r) => [
+    r.key === 'total' ? bold(r.name) : text(r.name),
+    num(aed(r.yesterday), r.urlYesterday), num(aed(r.window), r.urlWindow), num(r.billsWindow, r.urlWindow),
+    `${muted(r.source)} ${r.window != null ? proof(r.sourceUrl, 'Source') : ''}`,
+  ]);
+  const docRows = (d.revenue.doctors ?? []).map((l) => [
+    text(l.doctor), text(l.clinicName), num(aed(l.yesterday), l.sourceUrl), num(aed(l.window), l.sourceUrl), num(l.billsWindow, l.sourceUrl),
+    muted(l.source),
+  ]);
+
+  const totalRev = d.revenue.rows.find((r) => r.key === 'total')!;
   const amc = d.revenue.amc;
-  const revHref = page('revenue');
-  const amcRows = amc.measures.map((m) => [
-    text(m.label),
-    num(m.unit === 'AED' ? aed(m.yesterday) : m.yesterday, revHref),
-    num(m.unit === 'AED' ? aed(m.window) : m.window, revHref),
-  ]);
-  const invoiced = amc.measures.find((m) => m.id === 'A13')!;
   const missing = amc.missingDays;
   const amcDaysLine = amc.daysReported == null
     ? 'AMC daily sheet: could not be read.'
@@ -123,6 +128,7 @@ export function buildActivationDaily(
     ]),
     table(['Clinic', 'Yesterday', 'Month to date', 'Converted', 'Top platforms'], leadRows, [1, 2, 3]),
     note(`Source: the lead tracker lead tabs (Smile Club, GMB and website tabs left out), by enquiry date. ${CONVERTED_RULE} ${TOSUN_LEADS_NOTE}`),
+    note(SNAPSHOT_NOTE),
 
     h2('2. Smile Club'),
     table(['Clinic', 'Enquiries yesterday', 'Enquiries month to date', 'Followed up', 'Converted'], smileRows, [1, 2, 3, 4]),
@@ -132,27 +138,29 @@ export function buildActivationDaily(
     note('As entered by the front office in the lead tracker GMB tab, snapshotted daily.'),
     table(['Clinic', 'Front office', 'Reviews today', 'Reviews total', 'Photos', 'Videos', 'Month to date'], gbpRows, [2, 3, 4, 5]),
     note(`Front office entries, not Google’s own figures.`),
+    foRows.length ? table(['Front office', 'Clinic', 'Reviews collected', 'Photos', 'Videos', 'Days reported'], foRows, [2, 3, 4, 5]) : '',
+    foRows.length ? note('Month to date, per person, from the same GMB tab.') : '',
     `<p style="margin:2px 0">${proof(d.gbp.googleUrl, 'Google’s own review count')}</p>`,
 
     h2('4. Revenue'),
-    tiles([
-      { label: 'Practo billed · yesterday (AED)', value: together.yesterday, href: together.urlYesterday, sub: 'Al Wasl and Dr Tosun' },
-      { label: 'Practo billed · month to date (AED)', value: together.window, href: together.urlWindow, sub: 'Al Wasl and Dr Tosun' },
-      { label: 'AMC invoiced · month to date (AED)', value: amc.invoicedToDate ?? invoiced.window, href: revHref, sub: amc.monthFile ? 'Al Maher month file and daily sheet' : 'Al Maher daily sheet' },
-    ]),
-    table(['Practo', 'Yesterday', 'Month to date', ''], practoRows, [1, 2]),
-    table(['Al Maher (AMC daily sheet)', 'Yesterday', 'Month to date'], amcRows, [1, 2]),
+    table(['Clinic', 'Billed yesterday', 'Billed month to date', 'Bills month to date', 'Source'], revRows, [1, 2, 3]),
     note(amcDaysLine),
-    note('AMC comes from the clinic’s daily sheet, not Practo, and is never added to the Practo figures.'),
+    h2('4b. Revenue by doctor (month to date)'),
+    docRows.length ? table(['Doctor', 'Clinic', 'Yesterday', 'Month to date', 'Bills', 'Source'], docRows, [2, 3, 4])
+      : note('Doctor revenue could not be read this morning.'),
+    note(DOCTOR_RULE),
 
     h2('5. DN Ortho'),
     table(['Campaign', 'Status', 'Yesterday', 'Month to date', ''], [campaignRow], [2, 3]),
     table(['Orthodontist', 'Clinic', 'Billed month to date', ''], orthoRows, [2]),
-    gap('Not yet: Practo does not record the treating doctor on almost all billed work, so a doctor with no named figure shows not yet, never 0.'),
+    gap('Orthodontist billing above uses Practo’s treating-doctor field, which is rarely filled; the doctor table in section 4b uses the appointment match instead.'),
   ].join('\n');
 
   const leadsPart = leadTotal.yesterday.leads == null ? 'leads not yet' : plural(leadTotal.yesterday.leads, 'lead', 'leads');
-  const billedPart = together.yesterday == null ? 'billed yesterday not yet' : `AED ${fmt(together.yesterday)} billed yesterday`;
+  const practoY = d.revenue.practo.find((p) => p.key === 'together')?.yesterday ?? null;
+  const billedPart = totalRev.yesterday != null
+    ? `AED ${fmt(totalRev.yesterday)} billed yesterday`
+    : practoY != null ? `AED ${fmt(practoY)} billed yesterday (AMC tab not in yet)` : 'billed yesterday not yet';
   const subject = `Clinic Activation · ${dayLabel(today)} · ${leadsPart}, ${billedPart}`;
 
   return finishEmail(subject, emailHtml({

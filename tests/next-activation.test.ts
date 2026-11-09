@@ -77,8 +77,8 @@ test('every figure renders with its id chip and the registry defines each one in
   hasFigure(populated, 'A11', '2');
   hasFigure(populated, 'M06', 'AED 7,240');
   hasFigure(populated, 'M06', 'AED 148,600');
-  hasFigure(populated, 'A12', 'AED 11,579');
-  hasFigure(populated, 'A12', 'AED 390,500');
+  hasFigure(populated, 'A12', 'AED 15,493');
+  hasFigure(populated, 'A12', 'AED 396,624');
   hasFigure(populated, 'A13', 'AED 3,914');
   hasFigure(populated, 'A13', 'AED 6,124');
   hasFigure(populated, 'A22', '2');
@@ -132,7 +132,9 @@ test('proof URLs: Growth for leads and Smile Club, Executive for Practo, Social 
 test('labels and notes say where each figure comes from, in plain words', () => {
   assert.ok(populated.includes('As entered by the front office in the lead tracker GMB tab, snapshotted daily.'));
   assert.ok(populated.includes('Daily copies start 29 Oct 2026'));
-  assert.ok(populated.includes('AMC comes from the clinic&#x27;s daily sheet, not Practo'));
+  // 9 Nov 2026: one revenue table with a source on every row, plus revenue by doctor and front office.
+  assert.ok(populated.includes('AMC daily sheet (Dr Luvi)') && populated.includes('Practo bills'));
+  assert.ok(populated.includes('Revenue by doctor') && populated.includes('Front office performance'));
   assert.match(populated, /Missing days: 1 to 26 Oct 2026/);
   assert.ok(populated.includes('Practo does not record the treating doctor on almost all billed work'));
   assert.ok(populated.includes('lead tracker'));
@@ -166,9 +168,10 @@ test('no patient name or phone number can reach the page', () => {
   assert.deepEqual(topPlatforms({ Instagram: 3, 'A Person': 2, 'Another Person': 2, WhatsApp: 1 }), [
     { label: 'Other platform', count: 4 }, { label: 'Instagram', count: 3 }, { label: 'WhatsApp', count: 1 },
   ]);
-  // The view model and the view never touch names, phones or doctor-level AMC lines.
+  // The view model and the view never touch patient names or phones. Doctor revenue (staff names) is
+  // shown since 9 Nov 2026 at Dr Luvi's request.
   const model = JSON.stringify(buildActivation(sampleActivation()));
-  assert.ok(!model.includes(PLANTED_NAME) && !model.includes(PLANTED_PHONE) && !model.includes('Dr. Alpha'));
+  assert.ok(!model.includes(PLANTED_NAME) && !model.includes(PLANTED_PHONE));
   const view = readFileSync('components/next/activation/ActivationView.tsx', 'utf8');
   assert.doesNotMatch(view, /Patient Name|Contact Number|preparedBy|doctors\[/);
 });
