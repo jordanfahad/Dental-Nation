@@ -104,3 +104,28 @@ test('weekly email: Mondays only, from 9 Nov 2026', () => {
   assert.equal(sendsLiveOn(weekly, '2026-11-10'), false);
   assert.equal(sendsLiveOn(weekly, '2026-11-16'), true);
 });
+
+test('creatives: one card per ortho ad with spend, image and copy, highest spend first', async () => {
+  const { buildCreatives } = await import('../lib/ortho/dashboard');
+  const meta = [
+    { ad_id: 'a1', ad_name: 'Ortho | gap | EN', adset_name: 'Ortho Everyday Experts | English', campaign_name: 'New Angles', date: '2026-10-27', spend: 40,
+      data: { actions: [{ action_type: 'onsite_conversion.messaging_conversation_started_7d', value: '4' }, { action_type: 'onsite_conversion.messaging_user_depth_2_message_send', value: '2' }] } },
+    { ad_id: 'a1', ad_name: 'Ortho | gap | EN', adset_name: 'Ortho Everyday Experts | English', campaign_name: 'New Angles', date: '2026-10-28', spend: 20, data: null },
+    { ad_id: 'a2', ad_name: 'Ortho | kids | AR', adset_name: 'Ortho Everyday Experts | Arabic', campaign_name: 'New Angles', date: '2026-10-27', spend: 70, data: null },
+    { ad_id: 'x', ad_name: 'Whitening', adset_name: 'General', campaign_name: 'Tooth Gap', date: '2026-10-27', spend: 99, data: null },
+  ];
+  const creatives = [{ ad_id: 'a1', ad_name: null, thumbnail_url: 'https://cdn.example.invalid/t.jpg', image_url: null, title: 'Close the gap', body: 'Braces and aligners', headlines: null, descriptions: null }];
+  const google = [{ ad_name: 'Braces for Kids and Teens', day: '2026-10-27', spend: 10 }];
+  const googleCreatives = [{ ad_id: 'g', ad_name: 'Braces for Kids and Teens', thumbnail_url: null, image_url: null, title: null, body: null, headlines: ['Braces for Kids', 'When to start'], descriptions: ['An assessment is not a commitment.'] }];
+  const cards = buildCreatives(meta, creatives, google, googleCreatives, R);
+  assert.deepEqual(cards.map((c) => [c.adId, c.spend]), [['a2', 70], ['a1', 60], ['Braces for Kids and Teens', 10]]);
+  const a1 = cards.find((c) => c.adId === 'a1')!;
+  assert.equal(a1.imageUrl, 'https://cdn.example.invalid/t.jpg');
+  assert.equal(a1.title, 'Close the gap');
+  assert.equal(a1.realPeople, 2);
+  assert.equal(a1.lastSpend, '2026-10-28');
+  const g = cards.find((c) => c.platform === 'google')!;
+  assert.equal(g.group, 'S3 parents');
+  assert.equal(g.title, 'Braces for Kids | When to start');
+  assert.equal(cards.some((c) => c.adId === 'x'), false, 'non-ortho ads are left out');
+});

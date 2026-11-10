@@ -6,7 +6,7 @@
  * A source that cannot be read is "Unavailable", never 0. Server component.
  */
 import { dayLabel } from '@/lib/alerts/shell';
-import type { OrthoDashboard, Funnel } from '@/lib/ortho/dashboard';
+import type { OrthoCreative, OrthoDashboard, Funnel } from '@/lib/ortho/dashboard';
 import { DNO_SEARCH_CAMPAIGN } from '@/lib/ortho/dashboard';
 import { marketingLink, growthLink, practoLink, type Range } from '@/lib/alerts/links';
 import { dayMonthYear, rangeDates } from '@/lib/overview/format';
@@ -66,7 +66,39 @@ function Note({ children }: { children: React.ReactNode }) {
   return <p className="m-0 mt-3 text-[11px] text-[#627277]">{children}</p>;
 }
 
-export function OrthoView({ data, range }: { data: OrthoDashboard; range: ViewRange }) {
+function CreativeCard({ c, rangeTo }: { c: OrthoCreative; rangeTo: string }) {
+  const live = c.lastSpend != null && c.lastSpend >= rangeTo;
+  return (
+    <div className="flex min-w-0 flex-col overflow-hidden rounded-lg border border-dn-line bg-white">
+      {c.imageUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element -- Meta's CDN image, refreshed by the daily sync
+        <img src={c.imageUrl} alt={c.adName} loading="lazy" className="aspect-square w-full bg-[#f4f7f5] object-cover" />
+      ) : (
+        <div className="flex aspect-[2/1] w-full items-center bg-[#f4f7f5] p-3 text-xs font-semibold text-dn-navy">
+          {c.title ?? 'Google search ad'}
+        </div>
+      )}
+      <div className="flex flex-1 flex-col gap-1 p-3">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#5c6c72]">{c.platform === 'meta' ? 'Meta' : 'Google'}</span>
+          <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${live ? 'bg-[#e7f2ec] text-[#1d7a4f]' : 'bg-[#eef1f2] text-[#5c6c72]'}`}>
+            {live ? 'Live' : c.lastSpend ? `Last spend ${dayMonthYear(c.lastSpend)}` : 'No spend'}
+          </span>
+        </div>
+        <p className="m-0 text-xs font-semibold text-dn-navy">{c.adName}</p>
+        <p className="m-0 text-[11px] text-[#647578]">{c.group}</p>
+        {c.platform === 'meta' && c.title ? <p className="m-0 text-xs font-semibold">{c.title}</p> : null}
+        {c.body ? <p className="m-0 line-clamp-3 text-[11px] text-[#3f4d52]">{c.body}</p> : null}
+        <p className="m-0 mt-auto pt-2 text-xs text-dn-navy">
+          <b>{fmtAed(c.spend)}</b>
+          {c.realPeople != null ? <> · {fmtCount(c.realPeople)} real chats{c.realPeople ? ` · AED ${Math.round(c.spend / c.realPeople)} each` : ''}</> : null}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+export function OrthoView({ data, range, creatives = null }: { data: OrthoDashboard; range: ViewRange; creatives?: OrthoCreative[] | null }) {
   const dates = rangeDates(range);
   const proof = (r: Range) => ({
     google: marketingLink('google', r, { gcamp: DNO_SEARCH_CAMPAIGN }),
@@ -165,6 +197,20 @@ export function OrthoView({ data, range }: { data: OrthoDashboard; range: ViewRa
           {data.weeks.map((w) => weekRow(rangeDates(w.range), w.range, w.funnel))}
           {weekRow('Total', range, t, true)}
         </Table>
+      </Panel>
+
+      <Panel id="creatives">
+        <Head kicker="The ads" title="Ortho creatives running in these dates" sub={`${dates} · highest spend first`} />
+        {creatives == null ? (
+          <p className="m-0 text-xs text-[#617075]">{UNAVAILABLE}: the ad creatives could not be read.</p>
+        ) : creatives.length === 0 ? (
+          <p className="m-0 text-xs text-[#617075]">No ortho ads had spend in these dates.</p>
+        ) : (
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
+            {creatives.map((c) => <CreativeCard key={`${c.platform}-${c.adId}`} c={c} rangeTo={range.to} />)}
+          </div>
+        )}
+        <Note>Images and copy as Meta and Google hold them, refreshed by the daily sync. A real chat means the person sent at least two messages.</Note>
       </Panel>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">

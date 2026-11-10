@@ -358,3 +358,79 @@ export async function readOrthoSources(db: AdminClient, range: Range): Promise<S
 export async function readOrthoDashboard(db: AdminClient, range: Range): Promise<OrthoDashboard> {
   return buildOrthoDashboard(await readOrthoSources(db, range), range);
 }
+
+/* ── creatives (Mr Akbar, 10 Nov 2026: he must see the ortho ads themselves) ── */
+
+export interface OrthoCreative {
+  platform: 'meta' | 'google';
+  adId: string;
+  adName: string;
+  /** Meta ad set, or the Google segment (S1/S2/S3). */
+  group: string;
+  imageUrl: string | null;
+  title: string | null;
+  body: string | null;
+  spend: number;
+  people: number | null;
+  realPeople: number | null;
+  /** Last day with spend in the range; null = none. */
+  lastSpend: string | null;
+}
+
+interface MetaAdRow { ad_id: string | null; ad_name: string | null; adset_name: string | null; campaign_name: string | null; date: string; spend: number | string | null; data: { actions?: MetaActions } | null }
+interface CreativeRow { ad_id: string; ad_name: string | null; thumbnail_url: string | null; image_url: string | null; title: string | null; body: string | null; headlines: string[] | null; descriptions: string[] | null }
+
+/** Pure: one card per ad with spend in the range, highest spend first. */
+export function buildCreatives(meta: MetaAdRow[], metaCreatives: CreativeRow[], googleAds: GoogleAdRow[], googleCreatives: CreativeRow[], range: Range): OrthoCreative[] {
+  const byAd = new Map<string, OrthoCreative>();
+  const metaInfo = new Map(metaCreatives.map((c) => [c.ad_id, c]));
+  for (const r of meta) {
+    if (!r.ad_id || !inR(r.date, range) || !(ORTHO_NAME.test(r.campaign_name ?? '') || ORTHO_NAME.test(r.adset_name ?? ''))) continue;
+    const c = metaInfo.get(r.ad_id);
+    const card = byAd.get(r.ad_id) ?? {
+      platform: 'meta', adId: r.ad_id, adName: r.ad_name ?? c?.ad_name ?? 'Unnamed ad', group: r.adset_name ?? r.campaign_name ?? '',
+      imageUrl: c?.image_url || c?.thumbnail_url || null, title: c?.title || null, body: c?.body || null,
+      spend: 0, people: 0, realPeople: 0, lastSpend: null,
+    } as OrthoCreative;
+    const p = metaPeople(r.data?.actions);
+    card.spend = r2(card.spend + num(r.spend));
+    card.people = (card.people ?? 0) + p.gross;
+    card.realPeople = (card.realPeople ?? 0) + p.net;
+    if (num(r.spend) > 0 && (!card.lastSpend || r.date > card.lastSpend)) card.lastSpend = r.date;
+    byAd.set(r.ad_id, card);
+  }
+  const googleInfo = new Map(googleCreatives.map((c) => [c.ad_name ?? '', c]));
+  const googleCards = new Map<string, OrthoCreative>();
+  for (const a of googleAds) {
+    if (!inR(a.day, range)) continue;
+    const c = googleInfo.get(a.ad_name);
+    const card = googleCards.get(a.ad_name) ?? {
+      platform: 'google', adId: a.ad_name, adName: a.ad_name, group: SEGMENTS.find((s) => s.key === segmentOfAd(a.ad_name))!.name,
+      imageUrl: null, title: (c?.headlines ?? []).slice(0, 3).join(' | ') || c?.title || null,
+      body: (c?.descriptions ?? [])[0] ?? c?.body ?? null, spend: 0, people: null, realPeople: null, lastSpend: null,
+    } as OrthoCreative;
+    card.spend = r2(card.spend + num(a.spend));
+    if (num(a.spend) > 0 && (!card.lastSpend || a.day > card.lastSpend)) card.lastSpend = a.day;
+    googleCards.set(a.ad_name, card);
+  }
+  return [...byAd.values(), ...googleCards.values()].filter((c) => c.spend > 0).sort((x, y) => y.spend - x.spend);
+}
+
+/** Read every ortho ad with spend in `range`, with its image and copy. Never throws (null = unreadable). */
+export async function readOrthoCreatives(db: AdminClient, range: Range): Promise<OrthoCreative[] | null> {
+  return safe(async () => {
+    const [{ data: meta }, google] = await Promise.all([
+      selectAll(() => db.from('meta_ad_insights_raw').select('key,ad_id,ad_name,adset_name,campaign_name,date,spend,data')
+        .or('campaign_name.ilike.%ortho%,adset_name.ilike.%ortho%').gte('date', range.from).lte('date', range.to), 'key'),
+      readOrthoSources(db, range).then((s) => s.googleAds ?? []),
+    ]);
+    const ids = [...new Set((meta as MetaAdRow[]).map((r) => r.ad_id).filter((x): x is string => !!x))];
+    const [{ data: metaCreatives }, { data: googleCreatives }] = await Promise.all([
+      ids.length
+        ? db.from('ad_creatives').select('ad_id,ad_name,thumbnail_url,image_url,title,body,headlines,descriptions').eq('platform', 'meta').in('ad_id', ids)
+        : Promise.resolve({ data: [] }),
+      db.from('ad_creatives').select('ad_id,ad_name,thumbnail_url,image_url,title,body,headlines,descriptions').eq('platform', 'google').eq('campaign_name', DNO_SEARCH_CAMPAIGN),
+    ]);
+    return buildCreatives(meta as MetaAdRow[], (metaCreatives ?? []) as CreativeRow[], google, (googleCreatives ?? []) as CreativeRow[], range);
+  });
+}

@@ -2,7 +2,7 @@ import { getSupabaseAdmin } from '@/lib/supabase/server';
 import { dubaiDay } from '@/lib/gbp/plan';
 import { addDaysIso } from '@/lib/alerts/links';
 import { parseRange, rangeParams, type ViewRange } from '@/lib/overview/range';
-import { ORTHO_FROM, readOrthoDashboard, buildOrthoDashboard } from '@/lib/ortho/dashboard';
+import { ORTHO_FROM, readOrthoCreatives, readOrthoDashboard, buildOrthoDashboard } from '@/lib/ortho/dashboard';
 import { PreviewShell } from '@/components/next/PreviewShell';
 import { OrthoView } from '@/components/next/ortho/OrthoView';
 import { ProofDrawer } from '@/components/next/ProofDrawer';
@@ -26,12 +26,12 @@ export default async function NextOrthoPage({
   const parsed = parseRange(await searchParams, today);
   const range: ViewRange = parsed.preset === 'default' ? { ...parsed, from: ORTHO_FROM, to: addDaysIso(today, -1) } : parsed;
   const db = getSupabaseAdmin();
-  const data = db ? await readOrthoDashboard(db, range) : buildOrthoDashboard(
-    { google: null, googleAds: null, meta: null, leads: null, appts: null, firstVisit: null, bills: null }, range,
-  );
+  const [data, creatives] = db
+    ? await Promise.all([readOrthoDashboard(db, range), readOrthoCreatives(db, range)])
+    : [buildOrthoDashboard({ google: null, googleAds: null, meta: null, leads: null, appts: null, firstVisit: null, bills: null }, range), null];
   return (
     <PreviewShell active="DN Ortho" rangeParams={rangeParams(parsed)}>
-      <OrthoView data={data} range={range} />
+      <OrthoView data={data} range={range} creatives={creatives} />
       <ProofDrawer />
     </PreviewShell>
   );
