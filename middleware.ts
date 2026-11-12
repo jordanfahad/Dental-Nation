@@ -92,5 +92,5 @@ export const config = {
   // forward to an investor), the board deck itself (board-assets/* — it is the
   // download button ON that link, and without this exclusion a board member
   // gets the login page delivered as a .pptx), Next internals and static files.
-  matcher: ['/((?!login|share/|board-assets/|reports/arabyads|api/cron|api/practo|api/meta|api/google-ads|api/notify|api/widget-health|api/widget-probe|Leave-Calendar|api/leave-|_next/static|_next/image|favicon.ico).*)'],
+  matcher: ['/((?!login|share/|board-assets/|reports/arabyads|api/cron|api/practo|api/meta|api/google-ads|api/notify|api/widget-health|api/widget-probe|api/zavis|Leave-Calendar|api/leave-|_next/static|_next/image|favicon.ico).*)'],
 };
