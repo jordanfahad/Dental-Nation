@@ -125,7 +125,7 @@ export function buildLeadEmail(lead: ZavisLead, ad: AdSource, mode: AlertMode): 
   const link = lead.conversationId ? `https://crm.zavis.ai/app/accounts/13/conversations/${lead.conversationId}` : 'https://crm.zavis.ai';
   const row = (k: string, v: string | null) => `<tr><td style="padding:4px 10px 4px 0;color:#5c6c72">${esc(k)}</td><td style="padding:4px 0"><b>${esc(v ?? 'not given')}</b></td></tr>`;
   const html = `<div style="font-family:Arial,sans-serif;font-size:14px;color:#1f2a30">
-${mode === 'test' ? '<p style="background:#fff7d6;padding:6px 10px;border-radius:4px;font-size:12px">Test mode: sent to Fahad only, for every new lead, to confirm how Zavis marks ad leads. Dr Luvi receives ad leads once this is switched to live.</p>' : ''}
+${mode === 'test' ? '<p style="background:#fff7d6;padding:6px 10px;border-radius:4px;font-size:12px">Test mode: sent to Fahad only, for every new lead, to confirm how Zavis marks ad leads. Dr Luvi and MJ receive ad leads once this is switched to live.</p>' : ''}
 <p style="margin:0 0 8px"><b>A new lead has just come in on Zavis.</b></p>
 <table style="border-collapse:collapse">
 ${row('Name', lead.name)}${row('Phone', lead.phone)}${row('First message', lead.firstMessage ? lead.firstMessage.slice(0, 300) : null)}

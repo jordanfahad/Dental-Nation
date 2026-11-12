@@ -84,7 +84,8 @@ export async function POST(req: NextRequest) {
       .select('conversation_id');
     if (!claimed?.length) return;
     await loadStoredEmails(db);
-    const to = emailsOf(d.to);
+    // Live: Dr Luvi and MJ (Fahad, 12 Nov 2026), Fahad copied. Test: Fahad only.
+    const to = d.to === 'luvi' ? [...emailsOf('luvi'), ...emailsOf('mj')] : emailsOf(d.to);
     if (!to.length) return;
     const { subject, html } = buildLeadEmail(lead, ad, mode);
     const r = await sendEmail({ to, cc: d.to === 'luvi' ? emailsOf('fahad') : [], subject, html, from: OPS_ALERT_FROM });
