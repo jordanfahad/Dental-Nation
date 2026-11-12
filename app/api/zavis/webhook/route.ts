@@ -38,9 +38,15 @@ function tokenOk(given: string | null, want: string | null): boolean {
 const MODES: AlertMode[] = ['off', 'test', 'live'];
 
 export async function POST(req: NextRequest) {
-  if (!tokenOk(req.nextUrl.searchParams.get('token'), await expectedToken())) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  const given = req.nextUrl.searchParams.get('token');
+  if (!tokenOk(given, await expectedToken())) {
+    // One line per refused call (never the token itself), so a mistyped URL in Zavis shows up in the logs.
+    console.warn(`[zavis-webhook] refused: ${given ? 'wrong token' : 'no token'}`);
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  }
   let payload: unknown;
   try { payload = await req.json(); } catch { return NextResponse.json({ ok: true, ignored: 'not json' }); }
+  console.log(`[zavis-webhook] received ${eventOf(payload)}`);
 
   after(async () => {
     const db = getSupabaseAdmin();
