@@ -97,7 +97,7 @@ export const GBP_CLINIC_NAMES: Record<GmbClinicKey, string> = {
 };
 /** How far back to look for a branch's latest reported day (the sync re-pulls the last 30 days). */
 export const LOOKBACK_DAYS = 30;
-export const DEFAULT_RECIPIENTS = 'To Mr Akbar, Ms Shadi and Dr Luvi; copied to Fahad.';
+export const DEFAULT_RECIPIENTS = 'To Mr Akbar and Dr Luvi; copied to Fahad.';
 const MAP_VIEWS = ['map_views_desktop', 'map_views_mobile'];
 
 const monthStart = (iso: string) => `${iso.slice(0, 7)}-01`;

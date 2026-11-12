@@ -110,7 +110,7 @@ export interface PerformanceDailyData {
 
 /* ── rules ── */
 
-export const PERFORMANCE_DAILY_RECIPIENTS = 'To Mr Akbar and Ms Shadi; copied to Fahad.';
+export const PERFORMANCE_DAILY_RECIPIENTS = 'To Mr Akbar; copied to Fahad.';
 /** The Search Console read is dropped (shown "not yet") after this long. */
 export const SEARCH_CONSOLE_TIMEOUT_MS = 8_000;
 /** Smallest absolute change in enquiries that counts as a mover. */

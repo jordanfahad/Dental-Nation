@@ -190,7 +190,7 @@ test('no em or en dashes, UK copy, no prices in the Smile Club rows', () => {
   assert.equal(/[–—]/.test(subject + html), false);
   assert.match(html, /To Mr Akbar - test\./);
   assert.match(html, /Preview - sample/);
-  assert.match(buildPerformanceDaily(sample(), TODAY).html, /To Mr Akbar and Ms Shadi; copied to Fahad\./);
+  assert.match(buildPerformanceDaily(sample(), TODAY).html, /To Mr Akbar; copied to Fahad\./);
   for (const row of html.match(/<tr><td[^>]*>Smile Club:[\s\S]*?<\/tr>/g) ?? []) assert.doesNotMatch(row, /AED|dirham|price/i);
   assert.equal((html.match(/<tr><td[^>]*>Smile Club:/g) ?? []).length, 2);
   // A mover from a channel outside the table keeps a clean name.

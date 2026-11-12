@@ -97,7 +97,8 @@ test('funnel: spend, people, enquiries, visits, new patients, starts; unreadable
 
 test('weekly email: Mondays only, from 9 Nov 2026', () => {
   const weekly = ALL_ALERTS.find((a) => a.kind === 'am:ortho-weekly')!;
-  assert.deepEqual([...weekly.to], ['luvi', 'akbar', 'shadi']);
+  // Ms Shadi came off the weekly email on 12 Nov 2026.
+  assert.deepEqual([...weekly.to], ['luvi', 'akbar']);
   assert.deepEqual([...weekly.cc], ['fahad']);
   assert.equal(sendsLiveOn(weekly, '2026-11-02'), false); // a Monday before the first send
   assert.equal(sendsLiveOn(weekly, '2026-11-09'), true);

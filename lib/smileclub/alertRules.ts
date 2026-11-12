@@ -13,9 +13,10 @@
  */
 export const ALERT_RULES = [
   { when: '09:00 daily, from Sun 25 Oct', what: 'Smile Club: Partnerships (Smile Club) enquiries, bookings and visits for yesterday and month to date, by clinic · partner companies by stage · shoots and scripts · what is due today. Every figure links to its report.', to: 'Gautam, Dr Luvi, Ms Shadi, MJ', cc: 'Fahad' },
-  { when: '09:00 daily, from Sun 25 Oct', what: 'DN Ortho: billing by orthodontist month to date · the campaigns · content and launch checklist. Every figure links to its report.', to: 'Dr Luvi, MJ, Ms Shadi', cc: 'Fahad' },
-  { when: '09:00 daily, from Sun 25 Oct', what: 'Google Business Profile: calls, directions, website clicks and map views for the latest day Google has reported and month to date, per clinic · reviews and replies · what needs attention. Every figure links to its report.', to: 'Mr Akbar, Ms Shadi, Dr Luvi', cc: 'Fahad' },
-  { when: '09:00 daily, from Sun 25 Oct', what: 'Daily and month to date performance: group and clinic enquiries, bookings, visits and billing · digital marketing by channel · programmes · brand signals · last 7 days against the 7 before. Every figure links to its report.', to: 'Mr Akbar, Ms Shadi', cc: 'Fahad' },
+  { when: '09:00 daily, from Sun 25 Oct', what: 'DN Ortho: billing by orthodontist month to date · the campaigns · content and launch checklist. Every figure links to its report.', to: 'Dr Luvi, MJ', cc: 'Fahad' },
+  { when: '09:00 daily, from Sun 25 Oct', what: 'Google Business Profile: calls, directions, website clicks and map views for the latest day Google has reported and month to date, per clinic · reviews and replies · what needs attention. Every figure links to its report.', to: 'Mr Akbar, Dr Luvi', cc: 'Fahad' },
+  { when: '09:00 daily, from Sun 25 Oct', what: 'Daily and month to date performance: group and clinic enquiries, bookings, visits and billing · digital marketing by channel · programmes · brand signals · last 7 days against the 7 before. Every figure links to its report.', to: 'Mr Akbar', cc: 'Fahad' },
+  { when: '09:00 daily, from Fri 13 Nov', what: 'Daily snapshot: every project (Clinic Activation, DN Ortho and the marketing plan, Google Business Profile, Smile Club) in one table: status, yesterday, progress against target, tasks and the main bottleneck, each linking to its detail on the Projects page.', to: 'Ms Shadi', cc: 'Fahad' },
   { when: '09:00 — morning briefing, when he has something', what: 'His tasks and score · today’s and tomorrow’s shoots · final approvals (cleared to film) · review comments on his work', to: 'Mohan', cc: '' },
   { when: '09:00 daily — morning briefing', what: 'Meta leads red flags, the whole team’s status, script sign-offs, his own tasks, every sign-off decision since yesterday', to: 'Fahad', cc: '' },
   { when: '17:00 — only the evening before a shoot', what: 'Tomorrow’s schedule: time, dentist, clinic, hours, what is filmed, languages · who still has to approve which dentist tonight (with the backup day) · wardrobe · the team’s updates since the morning', to: 'MJ', cc: 'Dr Luvi, Gautam, Fahad, Mohan' },
@@ -27,10 +28,10 @@ export const ALERT_CAP = [
   { kind: 'lead:whatsapp', who: 'Dr Luvi: lead alert (off until configured)', morning: 'Off - owner setup pending', evening: '-', max: 0 },
   { who: 'Mr Akbar', morning: 'GBP daily, performance daily and Clinic Activation', evening: '-', max: 3 },
   { who: 'Dr Luvi', morning: 'Smile Club, DN Ortho, GBP daily and Clinic Activation', evening: 'Shoot schedule (copied), evenings before a shoot', max: 5 },
-  { who: 'Ms Shadi', morning: 'Smile Club, DN Ortho, GBP, performance daily and Clinic Activation', evening: '-', max: 5 },
+  { who: 'Ms Shadi', morning: 'Smile Club daily and the daily snapshot', evening: '-', max: 2 },
   { who: 'Gautam', morning: 'Smile Club daily', evening: 'Shoot schedule (copied) or his evening update', max: 2 },
   { who: 'Mohan', morning: 'Briefing (when he has something)', evening: 'Shoot schedule (copied) or his evening update', max: 2 },
-  { who: 'Fahad', morning: 'Briefing, plus a copy of all five daily emails', evening: 'Shoot schedule (copied) or his evening update', max: 7 },
+  { who: 'Fahad', morning: 'Briefing, plus a copy of all six daily emails', evening: 'Shoot schedule (copied) or his evening update', max: 8 },
   { who: 'MJ', morning: 'Smile Club and DN Ortho daily', evening: 'Shoot schedule (to her), evenings before a shoot', max: 3 },
 ] as const;
 

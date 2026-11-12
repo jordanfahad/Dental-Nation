@@ -60,8 +60,8 @@ test('Akbar section 7 is last, counts only, with data note and unchanged subject
   assert.match(mail.html, /12 Oct 2026, 09:30 Dubai/);
   assert.doesNotMatch(mail.html + mail.subject, /\u2014/);
   for (const row of receptionLeads()) assert.ok(!mail.html.includes(row.id));
-  // The legacy review copy is no longer sent; owner approval of 24 Oct 2026 routes the daily performance email to Mr Akbar.
+  // The legacy review copy is no longer sent; owner approval of 24 Oct 2026 routes the daily performance email to Mr Akbar (Ms Shadi off it since 12 Nov 2026).
   const live = DAILY_ALERTS.find((a) => a.kind === 'am:akbar-perf')!;
-  assert.deepEqual([live.to, live.cc], [['akbar', 'shadi'], ['fahad']]);
+  assert.deepEqual([live.to, live.cc], [['akbar'], ['fahad']]);
   assert.match(mail.subject, /^\[Template review\] Daily performance - Mon 12 Oct/);
 });

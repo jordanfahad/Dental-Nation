@@ -220,6 +220,22 @@ async function main() {
     week: buildOrthoDashboard(src, wr.lastWeek), all: buildOrthoDashboard(src, wr.since),
   };
 
+  // Daily snapshot: built from the fixtures above, with invented tasks.
+  const { buildSnapshot } = await import('../lib/projects/snapshot');
+  const { buildActivation } = await import('../lib/overview/activation');
+  const task = (id: string, project: 'clinic-activation' | 'ortho' | 'gbp' | 'smile-club', t: string, due: string, status: 'Not started' | 'In progress' | 'Done' | 'Blocked' | 'On hold') =>
+    ({ id, project, channel: 'Example', task: t, owner: 'Example owner', due, status, note: null, completedOn: null });
+  const snapshot = buildSnapshot({
+    today, activation: buildActivation(activation), orthoFunnel: activation.ortho?.funnel ?? null, gbp, readAt: new Date().toISOString(),
+    tasks: [
+      task('E1', 'clinic-activation', 'Example task, done', dayIn({ from: today }, -5), 'Done'),
+      task('E2', 'clinic-activation', 'Example task, overdue', dayIn({ from: today }, -3), 'Not started'),
+      task('E3', 'ortho', 'Example task, in progress', dayIn({ from: today }, 4), 'In progress'),
+      task('E4', 'gbp', 'Example task, blocked', dayIn({ from: today }, 2), 'Blocked'),
+      task('E5', 'smile-club', 'Example task, to do', dayIn({ from: today }, 6), 'Not started'),
+    ],
+  });
+
   const fixtures: Record<Kind, unknown> = {
     'am:sc-daily': smileClub,
     'am:ortho-daily': ortho,
@@ -227,6 +243,7 @@ async function main() {
     'am:akbar-perf': performance,
     'am:clinic-activation': activation,
     'am:ortho-weekly': orthoWeekly,
+    'am:snapshot': snapshot,
   };
 
   mkdirSync(outDir, { recursive: true });

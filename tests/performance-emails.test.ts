@@ -1,7 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import { buildAkbarPerformance, buildGbpDaily } from '../lib/performance/emails';
-import { CLINIC_ACTIVATION_LIVE_FROM, DAILY_ALERTS, sendsLiveOn } from '../lib/alerts/registry';
+import { CLINIC_ACTIVATION_LIVE_FROM, DAILY_ALERTS, SNAPSHOT_LIVE_FROM, sendsLiveOn } from '../lib/alerts/registry';
 import { benchmarks, buildPeriod, groupOf, parseGrossRows, patientSplits, performanceWhy } from '../lib/performance/core';
 import { buildGbpPlan } from '../lib/gbp/plan';
 import { ALERT_CAP } from '../lib/smileclub/alertRules';
@@ -67,9 +67,9 @@ test('Akbar performance email has synthetic figures, labelled gross/net and hone
   assert.ok(!mail.html.includes('Team task calendar')); assert.ok(!mail.html.includes('logged activities'));
   report.action = 'Keep priorities A & B\nReview <next> week.';
   assert.ok(buildAkbarPerformance(report).html.includes('Keep priorities A &amp; B\nReview &lt;next&gt; week.'));
-  // Legacy builder text is unchanged, but it is no longer sent: the live email (lib/alerts) goes to Mr Akbar and Ms Shadi.
+  // Legacy builder text is unchanged, but it is no longer sent: the live email (lib/alerts) goes to Mr Akbar (Ms Shadi off it since 12 Nov 2026).
   const live = DAILY_ALERTS.find((a) => a.kind === 'am:akbar-perf')!;
-  assert.deepEqual([live.to, live.cc], [['akbar', 'shadi'], ['fahad']]);
+  assert.deepEqual([live.to, live.cc], [['akbar'], ['fahad']]);
   assert.match(mail.subject, /^\[Template review\]/);
   assert.match(mail.html, /Mr Akbar is excluded until Fahad explicitly approves the template/);
   assert.match(mail.html, /To Fahad; copied to Dr Luvi and Ms Shadi/);
@@ -85,24 +85,36 @@ test('GBP email caps activities at five per branch, includes metrics and skips g
   assert.equal(buildGbpDaily(empty, '2026-10-12'), null);
   empty.branches[0].status = 'Off track'; assert.ok(buildGbpDaily(empty, '2026-10-12'));
   const live = DAILY_ALERTS.find((a) => a.kind === 'am:gbp-daily')!;
-  assert.deepEqual([live.to, live.cc], [['akbar', 'shadi', 'luvi'], ['fahad']]);
+  assert.deepEqual([live.to, live.cc], [['akbar', 'luvi'], ['fahad']]);
 });
 
-test('cap table describes the five daily emails: Mr Akbar included (now with Clinic Activation), one of each kind per person', () => {
+test('cap table describes the six daily emails: Mr Akbar included (with Clinic Activation), Ms Shadi on Smile Club and the daily snapshot only, one of each kind per person', () => {
   assert.deepEqual(ALERT_CAP.find((r) => r.who === 'Mr Akbar'), { who: 'Mr Akbar', morning: 'GBP daily, performance daily and Clinic Activation', evening: '-', max: 3 });
-  assert.deepEqual(ALERT_CAP.find((r) => r.who === 'Ms Shadi'), { who: 'Ms Shadi', morning: 'Smile Club, DN Ortho, GBP, performance daily and Clinic Activation', evening: '-', max: 5 });
+  // Ms Shadi (12 Nov 2026): only the Smile Club daily and the daily snapshot (all projects).
+  const shadi = ALERT_CAP.find((r) => r.who === 'Ms Shadi')!;
+  assert.equal(shadi.max, 2);
+  assert.equal(shadi.evening, '-');
+  assert.match(shadi.morning, /Smile Club/);
+  assert.match(shadi.morning, /snapshot/i);
+  assert.doesNotMatch(shadi.morning, /DN Ortho|GBP|performance|Clinic Activation/);
   assert.deepEqual(ALERT_CAP.find((r) => r.who === 'Dr Luvi'), { who: 'Dr Luvi', morning: 'Smile Club, DN Ortho, GBP daily and Clinic Activation', evening: 'Shoot schedule (copied), evenings before a shoot', max: 5 });
   assert.equal(ALERT_CAP.find((r) => r.who === 'Gautam')?.morning, 'Smile Club daily');
   assert.equal(ALERT_CAP.find((r) => r.who === 'MJ')?.max, 3);
-  assert.deepEqual(ALERT_CAP.find((r) => r.who === 'Fahad'), { who: 'Fahad', morning: 'Briefing, plus a copy of all five daily emails', evening: 'Shoot schedule (copied) or his evening update', max: 7 });
-  // The cap is the most in a day: every kind is live from Clinic Activation's first day.
+  // Fahad is copied on all six daily emails, plus his briefing and one evening email.
+  const fahad = ALERT_CAP.find((r) => r.who === 'Fahad')!;
+  assert.match(fahad.morning, /^Briefing, plus a copy of all six daily emails/);
+  assert.equal(fahad.evening, 'Shoot schedule (copied) or his evening update');
+  assert.equal(fahad.max, 8);
+  // The cap is the most in a day: every daily kind is live from the daily snapshot's first day (13 Nov 2026).
   assert.equal(CLINIC_ACTIVATION_LIVE_FROM, '2026-10-31');
+  assert.equal(SNAPSHOT_LIVE_FROM, '2026-11-13');
+  assert.deepEqual(DAILY_ALERTS.filter((a) => sendsLiveOn(a, '2026-11-13')).map((a) => a.kind), DAILY_ALERTS.map((a) => a.kind));
   // Morning counts match the registry: each person's daily emails, plus Mohan's and Fahad's briefing.
   for (const row of ALERT_CAP) {
     if ('kind' in row) continue;
     const id = ({ 'Mr Akbar': 'akbar', 'Dr Luvi': 'luvi', 'Ms Shadi': 'shadi', Gautam: 'gautam', Mohan: 'mohan', Fahad: 'fahad', MJ: 'mj' } as const)[row.who];
-    // The emails live from 31 Oct 2026, when Clinic Activation joins the four approved emails.
-    const daily = DAILY_ALERTS.filter((a) => sendsLiveOn(a, '2026-10-31') && [...a.to, ...a.cc].includes(id)).length;
+    // The emails live from 13 Nov 2026, when the daily snapshot joins the other five.
+    const daily = DAILY_ALERTS.filter((a) => sendsLiveOn(a, '2026-11-13') && [...a.to, ...a.cc].includes(id)).length;
     const briefing = id === 'mohan' || id === 'fahad' ? 1 : 0;
     const evening = row.evening === '-' ? 0 : 1;
     assert.equal(row.max, daily + briefing + evening, row.who);

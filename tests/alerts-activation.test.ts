@@ -54,32 +54,35 @@ function fixture(alerts: readonly DailyAlert[], opts: { preview?: boolean } = {}
   return { deps, claims, logs, sent, rendered, read, state };
 }
 
-test('registry: the fifth kind, its recipients, and its own first live day (31 Oct 2026)', () => {
+test('registry: the fifth kind (before the daily snapshot), its recipients, and its own first live day (31 Oct 2026)', () => {
   assert.ok(alert, 'am:clinic-activation missing from DAILY_ALERTS');
-  assert.equal(DAILY_ALERTS.length, 5);
-  assert.equal(DAILY_ALERTS[DAILY_ALERTS.length - 1].kind, KIND);
-  assert.deepEqual([alert.to, alert.cc], [['akbar', 'shadi', 'luvi'], ['fahad']]);
-  assert.equal(recipientsLine(alert), 'To Mr Akbar, Ms Shadi and Dr Luvi; copied to Fahad.');
+  // Six daily kinds since 12 Nov 2026: Clinic Activation is fifth, the daily snapshot (all projects) is appended after it.
+  assert.equal(DAILY_ALERTS.length, 6);
+  assert.equal(DAILY_ALERTS[4].kind, KIND);
+  assert.equal(DAILY_ALERTS[5].kind, 'am:snapshot');
+  // Ms Shadi asked to come off this email (12 Nov 2026).
+  assert.deepEqual([alert.to, alert.cc], [['akbar', 'luvi'], ['fahad']]);
+  assert.equal(recipientsLine(alert), 'To Mr Akbar and Dr Luvi; copied to Fahad.');
   assert.equal(CLINIC_ACTIVATION_LIVE_FROM, ACTIVATION_FROM);
   assert.equal(alert.liveFrom, ACTIVATION_FROM);
   assert.equal(liveFromOf(alert), ACTIVATION_FROM);
   for (const day of [LIVE_FROM, TODAY, DAY_BEFORE]) assert.equal(sendsLiveOn(alert, day), false, day);
   for (const day of [ACTIVATION_FROM, '2026-11-01', '2030-01-01']) assert.equal(sendsLiveOn(alert, day), true, day);
-  // The four approved emails are untouched by the Clinic Activation date.
-  for (const a of DAILY_ALERTS.filter((x) => x.kind !== KIND)) {
+  // The four approved emails are untouched by the Clinic Activation date (the snapshot has its own day: tests/alerts-delivery.test.ts).
+  for (const a of DAILY_ALERTS.filter((x) => x.kind !== KIND && x.kind !== 'am:snapshot')) {
     assert.equal(a.liveFrom, undefined);
     assert.equal(sendsLiveOn(a, LIVE_FROM), true);
     assert.equal(sendsLiveOn(a, '2026-10-24'), false);
   }
   // The preview names its own first day, never earlier, and the real day once it has come.
-  assert.equal(previewNote(alert, '2026-10-30'), 'Preview for Fahad: on Sat 31 Oct at 09:00 this goes to Mr Akbar, Ms Shadi and Dr Luvi, copied to Fahad.');
-  assert.equal(previewNote(alert, '2026-11-01'), 'Preview for Fahad: on Sun 1 Nov at 09:00 this goes to Mr Akbar, Ms Shadi and Dr Luvi, copied to Fahad.');
-  assert.equal(previewNote({ ...alert, liveFrom: '2026-11-01' }, '2026-10-30'), 'Preview for Fahad: on Sun 1 Nov at 09:00 this goes to Mr Akbar, Ms Shadi and Dr Luvi, copied to Fahad.');
+  assert.equal(previewNote(alert, '2026-10-30'), 'Preview for Fahad: on Sat 31 Oct at 09:00 this goes to Mr Akbar and Dr Luvi, copied to Fahad.');
+  assert.equal(previewNote(alert, '2026-11-01'), 'Preview for Fahad: on Sun 1 Nov at 09:00 this goes to Mr Akbar and Dr Luvi, copied to Fahad.');
+  assert.equal(previewNote({ ...alert, liveFrom: '2026-11-01' }, '2026-10-30'), 'Preview for Fahad: on Sun 1 Nov at 09:00 this goes to Mr Akbar and Dr Luvi, copied to Fahad.');
   // The gate mechanism still holds a kind that is not switched on.
   assert.equal(liveFromOf({ liveFrom: null }), null);
   assert.equal(
     previewNote({ ...alert, liveFrom: null }, '2026-10-30'),
-    'Preview for Fahad: not switched on yet. Once it is, this goes at 09:00 to Mr Akbar, Ms Shadi and Dr Luvi, copied to Fahad.',
+    'Preview for Fahad: not switched on yet. Once it is, this goes at 09:00 to Mr Akbar and Dr Luvi, copied to Fahad.',
   );
 });
 
@@ -109,7 +112,7 @@ test('the preview path renders and sends it, to Fahad only', async () => {
   assert.ok(mail, 'preview of the Clinic Activation email missing');
   assert.deepEqual([mail.to, mail.cc], [addr('fahad'), []]);
   assert.equal(mail.subject, '[Preview] Clinic Activation · Thu 29 Oct · 12 leads, AED 15,493 billed yesterday');
-  assert.ok(mail.html.includes('Preview for Fahad: on Sat 31 Oct at 09:00 this goes to Mr Akbar, Ms Shadi and Dr Luvi, copied to Fahad.'));
+  assert.ok(mail.html.includes('Preview for Fahad: on Sat 31 Oct at 09:00 this goes to Mr Akbar and Dr Luvi, copied to Fahad.'));
   assert.deepEqual(x.logs.find((l) => l.kind === `preview:${KIND}`), { kind: `preview:${KIND}`, ok: true, recipients: addr('fahad') });
   assert.equal(x.claims.size, 0);
   // At 09:00 before its day with a preview request, the preview goes to Fahad while the live run still skips the kind.
@@ -128,7 +131,7 @@ test('the preview path renders and sends it, to Fahad only', async () => {
   assert.equal(live.sent.filter((m) => m.subject.startsWith('Clinic Activation')).length, 1);
 });
 
-test('from 31 Oct it is claimed and sent once per day, 09:00 to 10:59 Dubai, to Mr Akbar, Ms Shadi and Dr Luvi, copied to Fahad', async () => {
+test('from 31 Oct it is claimed and sent once per day, 09:00 to 10:59 Dubai, to Mr Akbar and Dr Luvi, copied to Fahad', async () => {
   // Outside the window on its first day: nothing.
   for (const utc of ['2026-10-31T04:59:59Z', '2026-10-31T07:00:00Z', '2026-10-31T13:00:00Z']) {
     const x = fixture([alert]);
@@ -141,10 +144,10 @@ test('from 31 Oct it is claimed and sent once per day, 09:00 to 10:59 Dubai, to 
   await deliverDailyAlerts(new Date('2026-10-31T05:15:00Z'), x.deps);
   const later = await deliverDailyAlerts(new Date('2026-10-31T06:59:59Z'), x.deps);
   assert.equal(x.sent.length, 1);
-  assert.deepEqual([x.sent[0].to, x.sent[0].cc], [addr('akbar', 'shadi', 'luvi'), addr('fahad')]);
+  assert.deepEqual([x.sent[0].to, x.sent[0].cc], [addr('akbar', 'luvi'), addr('fahad')]);
   assert.match(x.sent[0].subject, /^Clinic Activation · Sat 31 Oct · /);
   assert.deepEqual([...x.claims], [`${KIND}:${ACTIVATION_FROM}`]);
-  assert.deepEqual(x.logs, [{ kind: KIND, ok: true, recipients: addr('akbar', 'shadi', 'luvi', 'fahad') }]);
+  assert.deepEqual(x.logs, [{ kind: KIND, ok: true, recipients: addr('akbar', 'luvi', 'fahad') }]);
   assert.deepEqual(later, [`${KIND}: already sent today`]);
   // The next day sends again, once.
   await deliverDailyAlerts(new Date('2026-11-01T05:00:00Z'), x.deps);
@@ -152,17 +155,19 @@ test('from 31 Oct it is claimed and sent once per day, 09:00 to 10:59 Dubai, to 
   assert.equal(x.sent.length, 2);
   assert.ok(x.claims.has(`${KIND}:2026-11-01`));
 
-  // With the full registry on 31 Oct: the four approved emails exactly as before, then Clinic Activation.
+  // With the full registry on 31 Oct: the four approved emails, then Clinic Activation (current recipients;
+  // Ms Shadi is on the Smile Club email only). The daily snapshot is not live yet, so it is not sent.
   const all = fixture(DAILY_ALERTS);
   await deliverDailyAlerts(AT_0900_LIVE, all.deps);
   assert.deepEqual(all.sent.map((m) => [m.to, m.cc]), [
     [addr('gautam', 'luvi', 'shadi', 'mj'), addr('fahad')],
-    [addr('luvi', 'mj', 'shadi'), addr('fahad')],
-    [addr('akbar', 'shadi', 'luvi'), addr('fahad')],
-    [addr('akbar', 'shadi'), addr('fahad')],
-    [addr('akbar', 'shadi', 'luvi'), addr('fahad')],
+    [addr('luvi', 'mj'), addr('fahad')],
+    [addr('akbar', 'luvi'), addr('fahad')],
+    [addr('akbar'), addr('fahad')],
+    [addr('akbar', 'luvi'), addr('fahad')],
   ]);
   assert.equal(all.claims.size, 5);
+  assert.ok(!all.claims.has(`am:snapshot:${ACTIVATION_FROM}`));
   assert.ok(all.sent.every((m) => !m.subject.startsWith('[Preview]')));
 
   // An override to a later day still waits until that day.
@@ -199,7 +204,7 @@ test('subject and the five sections in order', () => {
   assert.ok(full.html.includes('The 09:00 email is a snapshot'));
   assert.ok(full.html.includes('2 days reported in 1 to 28 Oct; 26 days missing.'));
   assert.ok(full.html.includes('the doctor table in section 4b uses the appointment match'));
-  assert.ok(full.html.includes('To Mr Akbar, Ms Shadi and Dr Luvi; copied to Fahad.'));
+  assert.ok(full.html.includes('To Mr Akbar and Dr Luvi; copied to Fahad.'));
   for (const v of ['>12<', '>15<', '>618<', '>349<', '>AED 7,240<', '>AED 148,600<',  '>AED 3,914<', '>AED 310<', '>183<', '>AED 38,600<']) {
     assert.ok(full.html.includes(v), v);
   }

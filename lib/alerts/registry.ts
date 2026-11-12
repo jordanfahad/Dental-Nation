@@ -22,9 +22,10 @@ import { buildGbpDaily, readGbpDaily } from './gbpDaily';
 import { buildPerformanceDaily, readPerformanceDaily } from './performanceDaily';
 import { buildActivationDaily, readActivationDaily } from './activationDaily';
 import { buildOrthoWeekly, readOrthoWeekly } from './orthoWeekly';
+import { buildSnapshotDaily, readSnapshotDaily } from './snapshotDaily';
 
 export type { Who };
-export type DailyAlertKind = 'am:sc-daily' | 'am:ortho-daily' | 'am:gbp-daily' | 'am:akbar-perf' | 'am:clinic-activation' | 'am:ortho-weekly';
+export type DailyAlertKind = 'am:sc-daily' | 'am:ortho-daily' | 'am:gbp-daily' | 'am:akbar-perf' | 'am:clinic-activation' | 'am:ortho-weekly' | 'am:snapshot';
 export interface BuildOpts { preview?: string; recipients?: string }
 export interface AlertEmail { subject: string; html: string }
 
@@ -56,6 +57,11 @@ export const LIVE_FROM = '2026-10-25';
 export const CLINIC_ACTIVATION_LIVE_FROM: string | null = '2026-10-31'; // approved by Fahad 30 Oct 2026
 /** The DN Ortho weekly email's first live day (Monday 9 Nov 2026; Dr Luvi asked for it on 30 Oct). */
 export const ORTHO_WEEKLY_LIVE_FROM: string | null = '2026-11-09';
+/**
+ * The daily snapshot's first live day (Ms Shadi, 12 Nov 2026: one short email
+ * instead of five; needs supabase/migrations/0056_project_tasks_and_snapshot.sql).
+ */
+export const SNAPSHOT_LIVE_FROM: string | null = '2026-11-13';
 /** lane_e.app_secrets key: any row with this key asks the next cron run to email every preview to Fahad, once. */
 export const PREVIEW_KEY = 'alerts_preview_request';
 /** Dubai send window: 09:00 inclusive to 11:00 exclusive. */
@@ -65,15 +71,17 @@ export const PREVIEW_TO: Who = 'fahad';
 
 export const DAILY_ALERTS: readonly DailyAlert[] = [
   { kind: 'am:sc-daily', label: 'Smile Club daily', to: ['gautam', 'luvi', 'shadi', 'mj'], cc: ['fahad'], read: readSmileClubDaily, build: buildSmileClubDaily },
-  { kind: 'am:ortho-daily', label: 'DN Ortho daily', to: ['luvi', 'mj', 'shadi'], cc: ['fahad'], read: readOrthoDaily, build: buildOrthoDaily },
-  { kind: 'am:gbp-daily', label: 'Google Business Profile daily', to: ['akbar', 'shadi', 'luvi'], cc: ['fahad'], read: readGbpDaily, build: buildGbpDaily },
-  { kind: 'am:akbar-perf', label: 'Daily and month to date performance', to: ['akbar', 'shadi'], cc: ['fahad'], read: readPerformanceDaily, build: buildPerformanceDaily },
-  { kind: 'am:clinic-activation', label: 'Clinic Activation daily', to: ['akbar', 'shadi', 'luvi'], cc: ['fahad'], read: readActivationDaily, build: buildActivationDaily, liveFrom: CLINIC_ACTIVATION_LIVE_FROM },
+  { kind: 'am:ortho-daily', label: 'DN Ortho daily', to: ['luvi', 'mj'], cc: ['fahad'], read: readOrthoDaily, build: buildOrthoDaily },
+  { kind: 'am:gbp-daily', label: 'Google Business Profile daily', to: ['akbar', 'luvi'], cc: ['fahad'], read: readGbpDaily, build: buildGbpDaily },
+  { kind: 'am:akbar-perf', label: 'Daily and month to date performance', to: ['akbar'], cc: ['fahad'], read: readPerformanceDaily, build: buildPerformanceDaily },
+  { kind: 'am:clinic-activation', label: 'Clinic Activation daily', to: ['akbar', 'luvi'], cc: ['fahad'], read: readActivationDaily, build: buildActivationDaily, liveFrom: CLINIC_ACTIVATION_LIVE_FROM },
+  // Ms Shadi (12 Nov 2026): this snapshot and the Smile Club email only; she is off the other report emails.
+  { kind: 'am:snapshot', label: 'Daily snapshot (all projects)', to: ['shadi'], cc: ['fahad'], read: readSnapshotDaily, build: buildSnapshotDaily, liveFrom: SNAPSHOT_LIVE_FROM },
 ];
 
 /** Weekly emails, sent by the same 09:00 run on their weekday only. */
 export const WEEKLY_ALERTS: readonly DailyAlert[] = [
-  { kind: 'am:ortho-weekly', label: 'DN Ortho weekly (Mondays)', to: ['luvi', 'akbar', 'shadi'], cc: ['fahad'], read: readOrthoWeekly, build: buildOrthoWeekly, liveFrom: ORTHO_WEEKLY_LIVE_FROM, weekday: 1 },
+  { kind: 'am:ortho-weekly', label: 'DN Ortho weekly (Mondays)', to: ['luvi', 'akbar'], cc: ['fahad'], read: readOrthoWeekly, build: buildOrthoWeekly, liveFrom: ORTHO_WEEKLY_LIVE_FROM, weekday: 1 },
 ];
 
 /** Every email the 09:00 run handles, daily first. */

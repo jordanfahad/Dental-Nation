@@ -114,7 +114,7 @@ test('every figure links to the Social tab with the right clinic and dates', () 
   assert.match(html, /Latest day Google has reported every measure: <b>Tue 20 Oct<\/b>\. Reviews are as of 09:00 today\./);
   for (const a of anchors(html)) assert.ok(a.href.startsWith(REPORTS), a.href);
   assert.ok(anchors(html).some((a) => a.href === `${REPORTS}?tab=social&bpclinic=all` && a.text.startsWith('Open the Business Profile report')));
-  assert.match(html, /To Mr Akbar, Ms Shadi and Dr Luvi; copied to Fahad\./);
+  assert.match(html, /To Mr Akbar and Dr Luvi; copied to Fahad\./);
 });
 
 test('several clinics waiting for a reply: tile links to all clinics, one attention line each', () => {

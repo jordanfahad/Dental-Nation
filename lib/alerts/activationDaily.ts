@@ -22,7 +22,7 @@ import {
 } from './shell';
 
 export type ActivationDailyData = ClinicActivation;
-export const ACTIVATION_DAILY_RECIPIENTS = 'To Mr Akbar, Ms Shadi and Dr Luvi; copied to Fahad.';
+export const ACTIVATION_DAILY_RECIPIENTS = 'To Mr Akbar and Dr Luvi; copied to Fahad.';
 
 /** The default read: yesterday and the 1st of yesterday's month to yesterday. Never throws per source. */
 export const readActivationDaily = (db: AdminClient, today: string): Promise<ClinicActivation> => readClinicActivation(db, today);

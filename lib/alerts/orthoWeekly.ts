@@ -18,7 +18,7 @@ const dm = (iso: string) => new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', 
 /** "26 Oct to 1 Nov" (weeks cross months, so both ends carry the month). */
 const rangeLabel = (from: string, to: string) => `${dm(from)} to ${dm(to)}`;
 
-export const ORTHO_WEEKLY_RECIPIENTS = 'To Dr Luvi, Mr Akbar and Ms Shadi; copied to Fahad.';
+export const ORTHO_WEEKLY_RECIPIENTS = 'To Dr Luvi and Mr Akbar; copied to Fahad.';
 
 export interface OrthoWeeklyData {
   today: string;

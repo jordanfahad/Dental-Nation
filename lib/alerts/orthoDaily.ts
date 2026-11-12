@@ -33,7 +33,7 @@ import {
 
 /** Exact Google Ads campaign name (the gcamp filter must match it exactly). */
 export const ORTHO_GOOGLE_CAMPAIGN = 'Search | DNO Ortho | EN | Dubai | 2026-10';
-export const ORTHO_DAILY_RECIPIENTS = 'To Dr Luvi, MJ and Ms Shadi; copied to Fahad.';
+export const ORTHO_DAILY_RECIPIENTS = 'To Dr Luvi and MJ; copied to Fahad.';
 
 /**
  * Orthodontists with a Practo feed, in template order. `practo` is the
