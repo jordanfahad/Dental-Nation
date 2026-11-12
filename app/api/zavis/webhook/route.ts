@@ -47,14 +47,19 @@ export async function POST(req: NextRequest) {
   const raw = await req.text();
   let payload: unknown;
   try { payload = JSON.parse(raw); } catch { return NextResponse.json({ ok: true, ignored: 'not json' }); }
-  // Signature check is logged, not enforced, until the first real calls confirm the format;
-  // the secret URL token above already refuses anyone else.
+  // Signature (format confirmed on Zavis's live calls, 12 Nov 2026): a wrong signature is refused.
+  // A call with no signature headers is still accepted, on the secret URL token alone, and logged,
+  // so a Zavis-side header change cannot silently stop Dr Luvi's alerts.
   const db0 = getSupabaseAdmin();
   const { data: secretRow } = db0 ? await db0.from('app_secrets').select('value').eq('key', 'zavis_webhook_secret').maybeSingle() : { data: null };
   const sig = signatureStatus(
     Object.fromEntries(req.headers.entries()), raw, String(secretRow?.value ?? '').trim() || null,
     (key, msg) => createHmac('sha256', key).update(msg).digest('hex'),
   );
+  if (sig === 'mismatch') {
+    console.log(`[zavis-webhook] refused: signature mismatch on ${eventOf(payload)}`);
+    return NextResponse.json({ error: 'bad signature' }, { status: 401 });
+  }
   console.log(`[zavis-webhook] received ${eventOf(payload)} · signature ${sig}`);
 
   after(async () => {
