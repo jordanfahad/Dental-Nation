@@ -7,9 +7,10 @@
  * is logged to lane_e.zavis_webhook_events; a lead alert goes out once per
  * conversation, on its first incoming patient message.
  *
- * "From an ad" is read from the payload: Meta click-to-WhatsApp leads carry a
- * referral (ad id, headline, source URL, ctwa_clid), and Zavis may also label
- * the conversation. Which fields Zavis fills is confirmed on the first real
+ * "From an ad" is read from the payload. Zavis (Sagar, 12 Nov 2026): on
+ * message_created, content_attributes.ad_referral is present only for a
+ * click-to-WhatsApp ad (source_id = the Meta ad ID), and the contact gets the
+ * label fb_ctwa_sr. Older referral shapes and ad labels are also recognised. Which fields Zavis fills is confirmed on the first real
  * ad leads, so the mode starts in 'test' (every new lead, to Fahad only, with
  * the detected source) and moves to 'live' (ad leads only, to Dr Luvi) by
  * setting lane_e.app_secrets 'zavis_alert_mode'. No deploy needed to switch.
@@ -81,13 +82,21 @@ const AD_VALUES = /\b(ad|ads|meta ad|facebook ad|instagram ad|ctwa|click.?to.?wh
  * found so the alert can show it and the mode can be tuned on real payloads.
  */
 export function adSourceOf(p: unknown): AdSource {
+  // Zavis's own marker (Sagar, 12 Nov 2026): content_attributes.ad_referral is present only on
+  // messages from a click-to-WhatsApp ad, and its source_id is the Meta ad ID.
+  const adRef = obj(obj(obj(p).content_attributes).ad_referral);
+  if (Object.keys(adRef).length) {
+    const head = str(adRef.headline) ?? str(adRef.title);
+    const id = str(adRef.source_id);
+    return { fromAd: true, detail: `Meta click-to-WhatsApp ad${head ? `: ${head}` : ''}${id ? ` (ad ${id})` : ''}` };
+  }
   const hits: string[] = [];
   const walk = (v: unknown, path: string, depth: number) => {
     if (depth > 6 || hits.length > 3) return;
     if (Array.isArray(v)) { v.forEach((x, i) => walk(x, `${path}[${i}]`, depth + 1)); return; }
     if (!v || typeof v !== 'object') return;
     for (const [k, val] of Object.entries(v as J)) {
-      if (/^referral$/i.test(k) && val && typeof val === 'object') {
+      if (/^(ad_)?referral$/i.test(k) && val && typeof val === 'object') {
         const r = obj(val);
         hits.push(`Meta ad referral${str(r.headline) ? `: ${str(r.headline)}` : str(r.source_id) ? ` (ad ${str(r.source_id)})` : ''}`);
         continue;
@@ -132,4 +141,22 @@ export function decide(mode: AlertMode, ad: AdSource): { send: boolean; to: 'luv
   if (mode === 'off') return { send: false, to: null };
   if (mode === 'test') return { send: true, to: 'fahad' };
   return ad.fromAd ? { send: true, to: 'luvi' } : { send: false, to: null };
+}
+
+/**
+ * Zavis request signature (Sagar, 12 Nov 2026): a timestamp header and a
+ * signature header "sha256=<hex>", the HMAC-SHA256 with the webhook secret
+ * over "<timestamp>.<raw body>". Header names are matched by their ending
+ * ("-signature", "-timestamp") so the platform prefix does not matter.
+ * Returns 'ok', 'mismatch', or 'missing' (no headers, or no secret).
+ */
+export function signatureStatus(
+  headers: Record<string, string>, rawBody: string, secret: string | null, hmac: (key: string, msg: string) => string,
+): 'ok' | 'mismatch' | 'missing' {
+  const find = (suffix: string) => Object.entries(headers).find(([k]) => k.toLowerCase().endsWith(suffix))?.[1]?.trim() ?? '';
+  const sig = find('-signature').replace(/^sha256=/i, '');
+  const ts = find('-timestamp');
+  if (!secret || !sig || !ts) return 'missing';
+  const want = hmac(secret, `${ts}.${rawBody}`);
+  return want.length === sig.length && want.toLowerCase() === sig.toLowerCase() ? 'ok' : 'mismatch';
 }

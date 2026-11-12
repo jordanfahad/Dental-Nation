@@ -57,3 +57,23 @@ test('the email names the lead, the source and links the conversation; text is e
   assert.ok(html.includes('&lt;b&gt;hi&lt;/b&gt;') && !html.includes('<b>hi</b>'));
   assert.ok(buildLeadEmail(leadOf(p), { fromAd: false, detail: null }, 'test').subject.startsWith('[Test] New lead in Zavis'));
 });
+
+test("Zavis's own ad marker: content_attributes.ad_referral with the ad ID", () => {
+  const p = message({ content_attributes: { ad_referral: { source_id: '120253762148530092', headline: 'Braces for adults' } } });
+  assert.deepEqual(adSourceOf(p), { fromAd: true, detail: 'Meta click-to-WhatsApp ad: Braces for adults (ad 120253762148530092)' });
+  const label = message({ conversation: { id: 9001, labels: ['fb_ctwa_sr'] } });
+  assert.equal(adSourceOf(label).fromAd, true);
+});
+
+test('signature: HMAC-SHA256 over "<timestamp>.<raw body>", header names matched by ending', async () => {
+  const { createHmac } = await import('crypto');
+  const { signatureStatus } = await import('../lib/zavis/leadAlert');
+  const h = (k: string, m: string) => createHmac('sha256', k).update(m).digest('hex');
+  const body = '{"event":"message_created"}';
+  const good = `sha256=${h('s3cret', `1731400000.${body}`)}`;
+  assert.equal(signatureStatus({ 'x-chatwoot-timestamp': '1731400000', 'x-chatwoot-signature': good }, body, 's3cret', h), 'ok');
+  assert.equal(signatureStatus({ 'x-zavis-timestamp': '1731400000', 'x-zavis-signature': good }, body, 's3cret', h), 'ok');
+  assert.equal(signatureStatus({ 'x-zavis-timestamp': '1731400000', 'x-zavis-signature': good }, body + ' ', 's3cret', h), 'mismatch');
+  assert.equal(signatureStatus({}, body, 's3cret', h), 'missing');
+  assert.equal(signatureStatus({ 'x-zavis-timestamp': '1', 'x-zavis-signature': good }, body, null, h), 'missing');
+});

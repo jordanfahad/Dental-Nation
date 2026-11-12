@@ -1,11 +1,11 @@
-import { timingSafeEqual } from 'crypto';
+import { createHmac, timingSafeEqual } from 'crypto';
 import { NextRequest, NextResponse, after } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/server';
 import { sendEmail, emailConfigured } from '@/lib/notify/email';
 import { OPS_ALERT_FROM } from '@/config/ops';
 import { emailsOf, loadStoredEmails } from '@/lib/smileclub/alerts';
 import {
-  adSourceOf, buildLeadEmail, decide, eventOf, isIncomingPatientMessage, leadOf, type AlertMode,
+  adSourceOf, buildLeadEmail, decide, eventOf, isIncomingPatientMessage, leadOf, signatureStatus, type AlertMode,
 } from '@/lib/zavis/leadAlert';
 
 /**
@@ -44,9 +44,18 @@ export async function POST(req: NextRequest) {
     console.warn(`[zavis-webhook] refused: ${given ? 'wrong token' : 'no token'}`);
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
+  const raw = await req.text();
   let payload: unknown;
-  try { payload = await req.json(); } catch { return NextResponse.json({ ok: true, ignored: 'not json' }); }
-  console.log(`[zavis-webhook] received ${eventOf(payload)}`);
+  try { payload = JSON.parse(raw); } catch { return NextResponse.json({ ok: true, ignored: 'not json' }); }
+  // Signature check is logged, not enforced, until the first real calls confirm the format;
+  // the secret URL token above already refuses anyone else.
+  const db0 = getSupabaseAdmin();
+  const { data: secretRow } = db0 ? await db0.from('app_secrets').select('value').eq('key', 'zavis_webhook_secret').maybeSingle() : { data: null };
+  const sig = signatureStatus(
+    Object.fromEntries(req.headers.entries()), raw, String(secretRow?.value ?? '').trim() || null,
+    (key, msg) => createHmac('sha256', key).update(msg).digest('hex'),
+  );
+  console.log(`[zavis-webhook] received ${eventOf(payload)} · signature ${sig}`);
 
   after(async () => {
     const db = getSupabaseAdmin();
