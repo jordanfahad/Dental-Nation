@@ -100,7 +100,20 @@ function dayRuns(days: string[]): string {
   return runs.map(rangeDates).join(', ');
 }
 
-export function ActivationView({ data, range }: { data: ActivationData; range?: ViewRange }) {
+/** The page's sections; a project page shows only its own (Ms Shadi, 14 Nov 2026: one home per project). */
+export type ActivationPanel = 'leads' | 'smile-club' | 'gbp' | 'revenue' | 'ortho';
+
+export function ActivationView({
+  data, range, only, embedPath,
+}: {
+  data: ActivationData;
+  range?: ViewRange;
+  /** Sections to show, in page order; omitted = all five. */
+  only?: readonly ActivationPanel[];
+  /** Set when embedded in a project page: no page heading, and the date control stays on that page. */
+  embedPath?: string;
+}) {
+  const show = (p: ActivationPanel) => !only || only.includes(p);
   // The range the data was read for; without one it is the default month to yesterday.
   const r = range ?? rangeOfData(data.window, data.today);
   const wDates = periodDates(r);
@@ -188,8 +201,8 @@ export function ActivationView({ data, range }: { data: ActivationData; range?: 
   };
 
   return (
-    <main className="mx-auto max-w-[1440px] px-4 pb-6 pt-6 sm:px-8 sm:pt-7">
-      <div className="mb-4">
+    <Wrap embedded={!!embedPath}>
+      {embedPath ? null : <div className="mb-4">
         <p className="m-0 mb-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-dn-navy">Clinic Activation</p>
         <h1 className="m-0 mb-2 text-[27px] font-bold leading-tight tracking-[-1.1px] text-dn-navy sm:text-[32px]">
           Are the clinics turning activity into patients?
@@ -197,18 +210,18 @@ export function ActivationView({ data, range }: { data: ActivationData; range?: 
         <p className="m-0 text-xs text-[#617075]">
           Dr Luvi&apos;s daily report: leads, Smile Club, Google Business Profile, revenue and DN Ortho, each source named.
         </p>
-      </div>
+      </div>}
 
       <div className="my-4 flex flex-col justify-between gap-2 sm:flex-row sm:items-center sm:gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          <DateRangeControl range={r} path="/next/activation" />
+          <DateRangeControl range={r} path={embedPath ?? '/next/activation'} />
           <span className="rounded-md border border-dn-line bg-white px-2.5 py-1.5 text-xs text-dn-navy">All clinics</span>
         </div>
         <span className="text-xs text-[#617075]">Dubai time · Live figures, opened {withYear(dayLabel(data.today), data.today)}</span>
       </div>
 
       {/* a. Leads */}
-      <Panel id="leads" className="border-t-4 border-t-dn-navy">
+      {show('leads') && <Panel id="leads" className="border-t-4 border-t-dn-navy">
         <Head kicker="Leads" title="Leads per clinic" sub={sub} />
         <Table
           label="Leads per clinic"
@@ -249,10 +262,10 @@ export function ActivationView({ data, range }: { data: ActivationData; range?: 
           Source: the Inhouse Lead Tracker lead tabs, by enquiry date. Smile Club, GMB and website tabs are left out. {CONVERTED_RULE}{' '}
           {TOSUN_LEADS_NOTE} The proof opens the Growth enquiries for the same dates. {SNAPSHOT_NOTE}
         </Note>
-      </Panel>
+      </Panel>}
 
       {/* b. Smile Club */}
-      <Panel id="smile-club" className="border-t-4 border-t-dn-soft">
+      {show('smile-club') && <Panel id="smile-club" className="border-t-4 border-t-dn-soft">
         <Head kicker="Smile Club" title="Smile Club enquiries and follow-up" sub={sub} />
         <Table
           label="Smile Club enquiries per clinic"
@@ -284,10 +297,10 @@ export function ActivationView({ data, range }: { data: ActivationData; range?: 
             Open the company pipeline
           </a>
         </Note>
-      </Panel>
+      </Panel>}
 
       {/* c. Google Business Profile (front office) */}
-      <Panel id="gbp">
+      {show('gbp') && <Panel id="gbp">
         <Head kicker="Google Business Profile · front office" title="Reviews, photos and videos as entered" sub={sub} />
         <div className="mb-3 rounded-[2px] border border-l-[3px] border-dn-line border-l-dn-soft bg-white p-3 text-[11px] text-[#526269] sm:text-xs">
           <strong className="text-dn-navy">As entered by the front office in the lead tracker GMB tab, snapshotted daily.</strong>{' '}
@@ -324,10 +337,10 @@ export function ActivationView({ data, range }: { data: ActivationData; range?: 
             <Note>Per person, from the same GMB tab, added up over the selected dates.</Note>
           </>
         )}
-      </Panel>
+      </Panel>}
 
       {/* d. Revenue: the same measures for every clinic, each row with its source (Dr Luvi, 9 Nov 2026) */}
-      <Panel id="revenue">
+      {show('revenue') && <Panel id="revenue">
         <Head kicker="Revenue" title="Billed revenue per clinic" sub={sub} />
         <Table label="Billed revenue per clinic" minWidth="min-w-[640px]" head={['Clinic', `Billed · ${yHead}`, `Billed · ${wHead}`, `Bills · ${wHead}`, 'Source']}>
           {revenue.rows.map((r) => {
@@ -402,10 +415,10 @@ export function ActivationView({ data, range }: { data: ActivationData; range?: 
             </Table>
           </div>
         </details>
-      </Panel>
+      </Panel>}
 
       {/* e. DN Ortho */}
-      <Panel id="ortho">
+      {show('ortho') && <Panel id="ortho">
         <Head kicker="DN Ortho" title="Campaign and orthodontist billing" sub={sub} />
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <div className="min-w-0">
@@ -463,7 +476,14 @@ export function ActivationView({ data, range }: { data: ActivationData; range?: 
             </Note>
           </div>
         </div>
-      </Panel>
-    </main>
+      </Panel>}
+    </Wrap>
   );
+}
+
+/** The page's own <main>, or a plain block when embedded in a project page. */
+function Wrap({ embedded, children }: { embedded: boolean; children: React.ReactNode }) {
+  return embedded
+    ? <div className="min-w-0">{children}</div>
+    : <main className="mx-auto max-w-[1440px] px-4 pb-6 pt-6 sm:px-8 sm:pt-7">{children}</main>;
 }

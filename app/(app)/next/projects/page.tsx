@@ -5,9 +5,9 @@ import { PreviewShell } from '@/components/next/PreviewShell';
 import { ProjectsView } from '@/components/next/projects/ProjectsView';
 
 /**
- * Projects page (Ms Shadi, 12 Nov 2026) at /next/projects: the detail behind
- * the 09:00 daily snapshot email, from the same read (lib/projects/snapshot.ts).
- * Every project's figures against target, bottlenecks and tasks. Behind the
+ * Projects home (Ms Shadi, 12 and 14 Nov 2026) at /next/projects: every
+ * project on one screen, each linking to its own page (/next/projects/<key>).
+ * Same read as the 09:00 daily snapshot email (lib/projects/snapshot.ts). Behind the
  * password gate like every other route.
  */
 export const dynamic = 'force-dynamic';
@@ -18,14 +18,16 @@ export default async function NextProjectsPage() {
   if (!db) {
     return (
       <PreviewShell active="Projects">
-        <p className="my-6 text-sm text-dn-navy">The database is not configured, so the projects cannot be read.</p>
+        <p className="mx-auto my-6 max-w-[1440px] px-4 text-sm text-dn-navy sm:px-8">The database is not configured, so the projects cannot be read.</p>
       </PreviewShell>
     );
   }
   const data = await readSnapshot(db, dubaiDay());
   return (
     <PreviewShell active="Projects">
-      <ProjectsView data={data} />
+      <main className="mx-auto max-w-[1440px] px-4 pb-6 pt-6 sm:px-8 sm:pt-7">
+        <ProjectsView data={data} />
+      </main>
     </PreviewShell>
   );
 }

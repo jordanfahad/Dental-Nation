@@ -99,9 +99,10 @@ test('sections render in order, each with yesterday and the window', () => {
   assert.match(populated, /Leads · Month to date/);
   for (const clinic of ['Al Wasl', 'Dr Tosun', 'Al Maher', 'Not assigned', 'All clinics']) assert.ok(populated.includes(`>${clinic}<`), clinic);
   assert.match(populated, /Are the clinics turning activity into patients\?/);
-  // The shell nav carries the new page after Programmes and marks it current (desktop and phone).
-  assert.ok(populated.indexOf('href="/next/programmes"') < populated.indexOf('href="/next/activation"'));
-  assert.equal(populated.split('href="/next/activation" aria-current="page"').length - 1, 2, 'active nav highlight missing');
+  // Since 14 Nov 2026 the nav's Clinic Activation tab is the project page; this older report page (kept for the
+  // email links) marks that tab current (desktop and phone) and is not itself in the menu.
+  assert.equal(populated.split('href="/next/projects/clinic-activation" aria-current="page"').length - 1, 2, 'active nav highlight missing');
+  assert.ok(!populated.includes('href="/next/activation" aria-current'));
   assert.match(populated, /Navigate · Clinic Activation/);
   assert.match(populated, /Month to yesterday · 1 to 28 Oct 2026/);
 });
@@ -193,7 +194,8 @@ test('the default range is month to yesterday; a custom range pins every dated p
   hasProofUrl(custom, growthLink(CUSTOM, 'dn-alwasl'));
   hasProofUrl(custom, executiveLink(CUSTOM, 'dental-nation'));
   hasProofUrl(custom, executiveLink({ from: CUSTOM.to, to: CUSTOM.to }, 'dr-tosun'));
-  assert.ok(custom.includes('href="/next/activation?from=2026-09-15&amp;to=2026-10-10"'));
+  // The nav's Clinic Activation tab (the project page since 14 Nov 2026) carries the dates.
+  assert.ok(custom.includes('href="/next/projects/clinic-activation?from=2026-09-15&amp;to=2026-10-10"'));
   // Before the first GMB copy, the page says when copies start rather than 0.
   assert.ok(custom.includes('Daily copies start 29 Oct 2026'));
   assert.doesNotMatch(custom, /undefined|NaN|[–—]/);

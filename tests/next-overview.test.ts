@@ -94,12 +94,13 @@ test('every figure renders with its M-id and the registry covers them all', () =
   assert.match(populated, /href="\/\?tab=executive"/);
   assert.match(populated, /is still in the detailed dashboard/);
   for (const nav of ['Overview', 'Channels', 'Clinics', 'Programmes', 'Reports', 'Admin']) assert.ok(populated.includes(`>${nav}<`), nav);
-  // The shell nav links the four real pages and marks the Overview current (desktop and phone).
+  // Group reports (Ms Shadi, 14 Nov 2026): the main nav marks Group reports current (desktop and phone),
+  // and its second row links the four group pages and marks the Overview current.
   for (const href of ['/next/channels', '/next/clinics', '/next/programmes']) {
     assert.ok(populated.includes(`href="${href}"`), `nav link ${href} missing`);
   }
-  assert.equal(populated.split('href="/next" aria-current="page"').length - 1, 2, 'active nav highlight missing');
-  assert.match(populated, /Navigate · Overview/);
+  assert.equal(populated.split('href="/next" aria-current="page"').length - 1, 3, 'active nav highlight missing');
+  assert.match(populated, /Navigate · Group reports/);
   assert.match(populated, /How is the group doing\?/);
   assert.match(populated, /Definition version 1 · Click a number for its proof/);
 });

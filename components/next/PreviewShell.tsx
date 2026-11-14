@@ -1,26 +1,42 @@
 /**
  * Shell of the /next DN-032 preview (mockups 01 and 06): the preview strip,
- * the navy brand header with the six-item navigation, and the footer.
- * Overview, Channels, Clinics, Programmes, Clinic Activation, DN Ortho, Content Calendar and Projects are real pages and link to each
- * other; each page passes `active` so the nav highlights it. Reports and
+ * the navy brand header with the navigation, and the footer.
+ *
+ * Navigation (Ms Shadi, 14 Nov 2026: one home per project, no overlap):
+ * Projects (home), then one tab per project (Clinic Activation, DN Ortho,
+ * Google Business Profile, Smile Club, each /next/projects/<key>), the
+ * Content Calendar, and Group reports (Overview, Channels, Clinics,
+ * Programmes: group-wide figures, shown as a second row when one is open).
+ * The older Clinic Activation and DN Ortho report pages (/next/activation,
+ * /next/ortho) still work for the email links but are not in the menu.
+ * Each page passes `active` so the nav highlights it. Reports and
  * Admin are <details> buttons that point to the detailed dashboard, so
  * nothing links to a 404. The page links carry the current date range
  * (rangeParams), so switching page keeps the dates. Server component, no
  * JavaScript needed.
  */
 
-export type PreviewSection = 'Overview' | 'Channels' | 'Clinics' | 'Programmes' | 'Clinic Activation' | 'DN Ortho' | 'Content Calendar' | 'Projects';
+export type PreviewSection =
+  | 'Projects' | 'Clinic Activation' | 'DN Ortho' | 'Google Business Profile' | 'Smile Club' | 'Content Calendar'
+  | 'Overview' | 'Channels' | 'Clinics' | 'Programmes';
+type NavItem = PreviewSection | 'Group reports';
 
 /** The real pages of the preview, in nav order. */
-const SECTIONS: { name: PreviewSection; href: string }[] = [
+const SECTIONS: { name: NavItem; href: string }[] = [
+  { name: 'Projects', href: '/next/projects' },
+  { name: 'Clinic Activation', href: '/next/projects/clinic-activation' },
+  { name: 'DN Ortho', href: '/next/projects/ortho' },
+  { name: 'Google Business Profile', href: '/next/projects/gbp' },
+  { name: 'Smile Club', href: '/next/projects/smile-club' },
+  { name: 'Content Calendar', href: '/next/calendar' },
+  { name: 'Group reports', href: '/next' },
+];
+/** Group-wide reports, not tied to one project: a second nav row when one is open. */
+const GROUP_REPORTS: { name: PreviewSection; href: string }[] = [
   { name: 'Overview', href: '/next' },
   { name: 'Channels', href: '/next/channels' },
   { name: 'Clinics', href: '/next/clinics' },
   { name: 'Programmes', href: '/next/programmes' },
-  { name: 'Clinic Activation', href: '/next/activation' },
-  { name: 'DN Ortho', href: '/next/ortho' },
-  { name: 'Content Calendar', href: '/next/calendar' },
-  { name: 'Projects', href: '/next/projects' },
 ];
 
 const COMING_SOON = ['Reports', 'Admin'];
@@ -61,7 +77,10 @@ export function PreviewShell({
   rangeParams?: Record<string, string>;
 }) {
   const q = new URLSearchParams(rangeParams).toString();
-  const sections = SECTIONS.map((s) => ({ ...s, href: q ? `${s.href}?${q}` : s.href }));
+  const withQ = (href: string) => (q ? `${href}?${q}` : href);
+  const sections = SECTIONS.map((s) => ({ ...s, href: withQ(s.href) }));
+  const inGroup = GROUP_REPORTS.some((g) => g.name === active);
+  const current: NavItem = inGroup ? 'Group reports' : active;
   return (
     <div className="min-h-screen bg-dn-off font-sans text-sm text-dn-ink">
       <div className="flex justify-between gap-3 bg-dn-mint px-4 py-2 text-[11px] text-dn-navy sm:px-7 sm:text-xs">
@@ -72,7 +91,7 @@ export function PreviewShell({
       </div>
       <header className="bg-dn-navy px-4 text-white sm:px-8">
         <div className="flex h-[60px] items-center justify-between sm:h-[68px]">
-          <a className="flex items-center gap-3 text-lg font-bold tracking-[-0.5px] text-white no-underline sm:text-xl" href="/next">
+          <a className="flex items-center gap-3 text-lg font-bold tracking-[-0.5px] text-white no-underline sm:text-xl" href="/next/projects">
             <span className="grid h-[34px] w-[34px] place-items-center rounded-[10px] bg-dn-mint text-[15px] text-dn-navy">DN</span>
             Dental Nation
           </a>
@@ -80,7 +99,7 @@ export function PreviewShell({
         </div>
         <nav className="relative hidden gap-4 whitespace-nowrap sm:flex lg:gap-7" aria-label="Main navigation">
           {sections.map((s) =>
-            s.name === active ? (
+            s.name === current ? (
               <a
                 key={s.name}
                 className="border-b-[3px] border-dn-mint pb-[15px] pt-3 font-semibold text-white no-underline"
@@ -104,10 +123,10 @@ export function PreviewShell({
           ))}
         </nav>
         <details className="pb-3 sm:hidden">
-          <summary className="cursor-pointer py-1 text-xs font-semibold">Navigate · {active}</summary>
+          <summary className="cursor-pointer py-1 text-xs font-semibold">Navigate · {current}</summary>
           <nav className="relative mt-2 grid grid-cols-3 gap-1.5" aria-label="Mobile navigation">
             {sections.map((s) =>
-              s.name === active ? (
+              s.name === current ? (
                 <a
                   key={s.name}
                   className="rounded border border-dn-mint bg-dn-mint px-2 py-2 text-center text-[11px] font-semibold text-dn-navy no-underline"
@@ -132,6 +151,23 @@ export function PreviewShell({
           </nav>
         </details>
       </header>
+      {inGroup ? (
+        <nav className="border-b border-dn-line bg-white px-4 sm:px-8" aria-label="Group reports">
+          <div className="flex gap-4 overflow-x-auto whitespace-nowrap py-2 text-xs">
+            <span className="font-semibold text-[#617075]">Group reports:</span>
+            {GROUP_REPORTS.map((g) => (
+              <a
+                key={g.name}
+                href={withQ(g.href)}
+                aria-current={g.name === active ? 'page' : undefined}
+                className={g.name === active ? 'font-bold text-dn-navy underline' : 'text-dn-navy no-underline hover:underline'}
+              >
+                {g.name}
+              </a>
+            ))}
+          </div>
+        </nav>
+      ) : null}
       {children}
       <footer className="mx-auto max-w-[1440px] px-4 pb-10 sm:px-8">
         <div className="flex flex-col justify-between gap-2 border-t border-dn-line pt-3 text-[10px] text-[#6c7b7c] sm:flex-row sm:gap-5">

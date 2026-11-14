@@ -98,7 +98,15 @@ function CreativeCard({ c, rangeTo }: { c: OrthoCreative; rangeTo: string }) {
   );
 }
 
-export function OrthoView({ data, range, creatives = null }: { data: OrthoDashboard; range: ViewRange; creatives?: OrthoCreative[] | null }) {
+export function OrthoView({
+  data, range, creatives = null, embedPath,
+}: {
+  data: OrthoDashboard;
+  range: ViewRange;
+  creatives?: OrthoCreative[] | null;
+  /** Set when embedded in the DN Ortho project page: no page heading, and the date control stays on that page. */
+  embedPath?: string;
+}) {
   const dates = rangeDates(range);
   const proof = (r: Range) => ({
     google: marketingLink('google', r, { gcamp: DNO_SEARCH_CAMPAIGN }),
@@ -150,8 +158,8 @@ export function OrthoView({ data, range, creatives = null }: { data: OrthoDashbo
     day == null ? `${what}: no spend in these dates` : day >= range.to ? `${what}: live` : `${what}: last spend ${dayMonthYear(day)}`;
 
   return (
-    <main className="mx-auto max-w-[1440px] px-4 pb-6 pt-6 sm:px-8 sm:pt-7">
-      <div className="mb-4">
+    <Wrap embedded={!!embedPath}>
+      {embedPath ? null : <div className="mb-4">
         <p className="m-0 mb-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-dn-navy">DN Ortho</p>
         <h1 className="m-0 mb-2 text-[27px] font-bold leading-tight tracking-[-1.1px] text-dn-navy sm:text-[32px]">
           Is DN Ortho turning ad spend into patients?
@@ -159,11 +167,11 @@ export function OrthoView({ data, range, creatives = null }: { data: OrthoDashbo
         <p className="m-0 text-xs text-[#617075]">
           Spend, enquiries, appointments, treatment starts and billing, week by week and by segment. The Monday DN Ortho email uses the same figures.
         </p>
-      </div>
+      </div>}
 
       <div className="my-4 flex flex-col justify-between gap-2 sm:flex-row sm:items-center sm:gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          <DateRangeControl range={range} path="/next/ortho" />
+          <DateRangeControl range={range} path={embedPath ?? '/next/ortho'} />
           <span className="rounded-md border border-dn-line bg-white px-2.5 py-1.5 text-xs text-dn-navy">{liveLine('Google Search', data.live.google)}</span>
           <span className="rounded-md border border-dn-line bg-white px-2.5 py-1.5 text-xs text-dn-navy">{liveLine('Meta', data.live.meta)}</span>
         </div>
@@ -292,6 +300,13 @@ export function OrthoView({ data, range, creatives = null }: { data: OrthoDashbo
           <Note>Al Maher appointments are in Practo from 22 Oct 2026. {NO_LINK}</Note>
         </Panel>
       </div>
-    </main>
+    </Wrap>
   );
+}
+
+/** The page's own <main>, or a plain block when embedded in the DN Ortho project page. */
+function Wrap({ embedded, children }: { embedded: boolean; children: React.ReactNode }) {
+  return embedded
+    ? <div className="min-w-0">{children}</div>
+    : <main className="mx-auto max-w-[1440px] px-4 pb-6 pt-6 sm:px-8 sm:pt-7">{children}</main>;
 }

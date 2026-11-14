@@ -70,7 +70,7 @@ test('health: blocked beats behind beats on track; a figure with no target is ne
     assert.ok(k.status === 'no-target' || k.status === 'no-data', k.label);
     assert.equal(k.targetToDate, null);
   }
-  for (const p of s.projects) assert.equal(p.detailUrl, `${PROJECTS_URL}#${p.key}`);
+  for (const p of s.projects) assert.equal(p.detailUrl, `${PROJECTS_URL}/${p.key}`);
 });
 
 test('revenue carries the management targets, paced to the window', () => {
@@ -102,7 +102,7 @@ test('email: one row per project, linked to its detail; subject counts; no patie
   assert.match(subject, /^Daily snapshot · Thu 29 Oct · \d on track, \d behind/);
   for (const p of s.projects) {
     assert.ok(html.includes(p.name.replace(/&/g, '&amp;')), p.name);
-    assert.ok(html.includes(`${PROJECTS_URL}#${p.key}`), p.key);
+    assert.ok(html.includes(`${PROJECTS_URL}/${p.key}`), p.key);
   }
   assert.ok(html.includes('1 overdue'));
   assert.ok(html.includes('To Ms Shadi; copied to Fahad.'));

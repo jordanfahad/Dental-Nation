@@ -82,12 +82,14 @@ test('every figure renders with its M-id and the registry covers them all', () =
   assert.match(populated, /Follow up missed visits/);
   assert.match(populated, /Appointments and operating billing/);
   assert.match(populated, /Definition version 1 · Click a number for its proof/);
-  // The shell nav links the four real pages and marks this one current (desktop and phone).
+  // Group reports (Ms Shadi, 14 Nov 2026): the main nav marks Group reports current (desktop and phone),
+  // and its second row links the four group pages and marks this one current.
   for (const href of ['/next', '/next/channels', '/next/clinics', '/next/programmes']) {
     assert.ok(populated.includes(`href="${href}"`), `nav link ${href} missing`);
   }
-  assert.equal(populated.split('href="/next/clinics" aria-current="page"').length - 1, 2, 'active nav highlight missing');
-  assert.match(populated, /Navigate · Clinics/);
+  assert.equal(populated.split('href="/next/clinics" aria-current="page"').length - 1, 1, 'active nav highlight missing');
+  assert.equal(populated.split('href="/next" aria-current="page"').length - 1, 2, 'Group reports highlight missing');
+  assert.match(populated, /Navigate · Group reports/);
 });
 
 test('drawer proof URLs are exactly the existing detail views for the same dates and clinics', () => {

@@ -147,12 +147,14 @@ test('every figure renders with its M-id and the registry covers them all', () =
   for (const tab of ['Enquiries', 'Paid media', 'Website &amp; SEO', 'Partners']) assert.ok(populated.includes(tab), tab);
   assert.ok(populated.includes('Local &amp; social'));
   assert.match(populated, /coming after approval/);
-  // The shell nav links the four real pages and marks this one current (desktop and phone).
+  // Group reports (Ms Shadi, 14 Nov 2026): the main nav marks Group reports current (desktop and phone),
+  // and its second row links the four group pages and marks this one current.
   for (const href of ['/next', '/next/channels', '/next/clinics', '/next/programmes']) {
     assert.ok(populated.includes(`href="${href}"`), `nav link ${href} missing`);
   }
-  assert.equal(populated.split('href="/next/channels" aria-current="page"').length - 1, 2, 'active nav highlight missing');
-  assert.match(populated, /Navigate · Channels/);
+  assert.equal(populated.split('href="/next/channels" aria-current="page"').length - 1, 1, 'active nav highlight missing');
+  assert.equal(populated.split('href="/next" aria-current="page"').length - 1, 2, 'Group reports highlight missing');
+  assert.match(populated, /Navigate · Group reports/);
   // The total row states its own denominator (deviation 8 from the mockup).
   assert.match(populated, /spend over all measured enquiries/);
   assert.match(populated, /divides all\s*recorded ad spend by all measured enquiries/);

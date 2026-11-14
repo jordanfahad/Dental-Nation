@@ -21,7 +21,7 @@ import type { AdminClient } from '@/lib/supabase/server';
 import { readClinicActivation, type ClinicActivation } from '@/lib/activation/read';
 import { buildActivation, type ActivationData } from '@/lib/overview/activation';
 import { readGbpDaily, type GbpDailyData } from '@/lib/alerts/gbpDaily';
-import { activationLink, orthoLink, REPORTS, socialLink, type Range } from '@/lib/alerts/links';
+import { REPORTS, type Range } from '@/lib/alerts/links';
 import { NO_TARGET_NOTE, RATING_TARGET, REVENUE_TARGETS } from '@/config/project-targets';
 
 export type ProjectKey = 'clinic-activation' | 'ortho' | 'gbp' | 'smile-club';
@@ -72,7 +72,7 @@ export interface ProjectSnapshot {
   tasks: ProjectTask[];
   /** The few things holding the project back, worst first. */
   bottlenecks: string[];
-  /** The project's section on /next/projects. */
+  /** The project's own page, /next/projects/<key>. */
   detailUrl: string;
   /** The full report for the project's figures. */
   reportUrl: string;
@@ -96,7 +96,11 @@ export const PROJECT_NAMES: Record<ProjectKey, string> = {
   gbp: 'Google Business Profile',
   'smile-club': 'Smile Club',
 };
-const ORDER: ProjectKey[] = ['clinic-activation', 'ortho', 'gbp', 'smile-club'];
+export const PROJECT_KEYS: readonly ProjectKey[] = ['clinic-activation', 'ortho', 'gbp', 'smile-club'];
+const ORDER = PROJECT_KEYS;
+/** Each project's own page (Ms Shadi, 14 Nov 2026: one home per project). */
+export const projectUrl = (p: ProjectKey) => `${PROJECTS_URL}/${p}`;
+export const isProjectKey = (v: string): v is ProjectKey => (PROJECT_KEYS as readonly string[]).includes(v);
 /** Within 5% of pace counts as on target. */
 const ON_TARGET_BAND = 0.05;
 
@@ -204,12 +208,14 @@ export function buildSnapshot(s: SnapshotSources): Snapshot {
   const w = a.window;
   const tasksOf = (p: ProjectKey) => (s.tasks ?? []).filter((t) => t.project === p);
   const projects: ProjectSnapshot[] = [];
-  const detail = (p: ProjectKey) => `${PROJECTS_URL}#${p}`;
+  const detail = (p: ProjectKey) => projectUrl(p);
+  /** A section of the project's own page, pinned to the snapshot's dates (every figure stays inside its project). */
+  const at = (p: ProjectKey, section: string) => `${projectUrl(p)}?${new URLSearchParams({ from: w.from, to: w.to }).toString()}#${section}`;
 
   /* Clinic Activation: leads and billed revenue per clinic, against the revenue targets. */
   {
-    const leadsHref = activationLink(w, 'leads');
-    const revHref = activationLink(w, 'revenue');
+    const leadsHref = at('clinic-activation', 'leads');
+    const revHref = at('clinic-activation', 'revenue');
     const lt = a.leads.lines.find((l) => l.key === 'total');
     const rows = a.revenue.rows;
     const total = rows.find((r) => r.key === 'total');
@@ -228,17 +234,17 @@ export function buildSnapshot(s: SnapshotSources): Snapshot {
     projects.push({
       key: 'clinic-activation', name: PROJECT_NAMES['clinic-activation'], ...judge(tasks, kpis, today, extra),
       headline: `${count(lt?.yesterday.leads ?? null, 'lead', 'leads')}, ${aedOf(total?.yesterday ?? null, 'billed')}`,
-      kpis, tasks, detailUrl: detail('clinic-activation'), reportUrl: activationLink(w), reportLabel: 'Clinic Activation report',
+      kpis, tasks, detailUrl: detail('clinic-activation'), reportUrl: at('clinic-activation', 'figures'), reportLabel: 'Detailed figures',
     });
   }
 
   /* DN Ortho: spend, enquiries, orthodontist visits and starts. No targets set yet. */
   {
     const f = s.orthoFunnel;
-    const href = orthoLink(w, 'funnel');
+    const href = at('ortho', 'funnel');
     const kpis: Kpi[] = [
       kpi('Ad spend (Google and Meta)', 'aed', f?.yesterday.spend ?? null, f?.mtd.spend ?? null, href),
-      kpi('Ortho enquiries', 'count', f?.yesterday.leads ?? null, f?.mtd.leads ?? null, orthoLink(w, 'leads')),
+      kpi('Ortho enquiries', 'count', f?.yesterday.leads ?? null, f?.mtd.leads ?? null, at('ortho', 'leads')),
       kpi('Orthodontist visits', 'count', f?.yesterday.attended ?? null, f?.mtd.attended ?? null, href),
       kpi('Treatment starts', 'count', f?.yesterday.starts ?? null, f?.mtd.starts ?? null, href),
     ];
@@ -247,14 +253,14 @@ export function buildSnapshot(s: SnapshotSources): Snapshot {
     projects.push({
       key: 'ortho', name: PROJECT_NAMES.ortho, ...judge(tasks, kpis, today, extra),
       headline: `${aedOf(f?.yesterday.spend ?? null, 'spend')}, ${count(f?.yesterday.leads ?? null, 'enquiry', 'enquiries')}, ${count(f?.yesterday.attended ?? null, 'orthodontist visit', 'orthodontist visits')}`,
-      kpis, tasks, detailUrl: detail('ortho'), reportUrl: orthoLink(w), reportLabel: 'DN Ortho dashboard',
+      kpis, tasks, detailUrl: detail('ortho'), reportUrl: at('ortho', 'figures'), reportLabel: 'Detailed figures',
     });
   }
 
   /* Google Business Profile: Google's figures, reviews and the front office's daily review count. */
   {
     const g = s.gbp;
-    const href = socialLink('all', w);
+    const href = at('gbp', 'figures');
     const mtd = (k: 'calls' | 'directions') => (g ? sumKnown(g.branches.map((b) => b.mtd?.[k])) : null);
     const ratings = g?.branches.map((b) => b.reviews).filter((r): r is NonNullable<typeof r> => !!r && r.average != null && r.total > 0) ?? [];
     const reviewTotal = ratings.reduce((n, r) => n + r.total, 0);
@@ -266,7 +272,7 @@ export function buildSnapshot(s: SnapshotSources): Snapshot {
       kpi('Calls from Google', 'count', g?.all.day?.calls ?? null, mtd('calls'), href),
       kpi('Direction requests', 'count', g?.all.day?.directions ?? null, mtd('directions'), href),
       kpi('New Google reviews', 'count', newReviews, null, href),
-      kpi('Reviews collected by the front office', 'count', null, fo?.window.reviewsToday ?? null, activationLink(w, 'gbp')),
+      kpi('Reviews collected by the front office', 'count', null, fo?.window.reviewsToday ?? null, at('gbp', 'gbp')),
       kpi('Average Google rating', 'rating', null, rating, href, { level: RATING_TARGET.value, source: RATING_TARGET.source }),
     ];
     const extra = [
@@ -278,13 +284,13 @@ export function buildSnapshot(s: SnapshotSources): Snapshot {
     projects.push({
       key: 'gbp', name: PROJECT_NAMES.gbp, ...judge(tasks, kpis, today, extra),
       headline: `${count(g?.all.day?.calls ?? null, 'call', 'calls')}, ${count(g?.all.day?.directions ?? null, 'direction request', 'direction requests')}${day}`,
-      kpis, tasks, detailUrl: detail('gbp'), reportUrl: href, reportLabel: 'Google Business Profile report',
+      kpis, tasks, detailUrl: detail('gbp'), reportUrl: href, reportLabel: 'Detailed figures',
     });
   }
 
   /* Smile Club: enquiries, follow-ups and conversions from the lead tracker. */
   {
-    const href = activationLink(w, 'smile-club');
+    const href = at('smile-club', 'smile-club');
     const sc = a.smileClub.lines.find((l) => l.key === 'total');
     const kpis: Kpi[] = [
       kpi('Smile Club enquiries', 'count', sc?.yesterday.enquiries ?? null, sc?.window.enquiries ?? null, href),
@@ -321,14 +327,19 @@ export async function readProjectTasks(db: AdminClient): Promise<ProjectTask[] |
   }
 }
 
+/** The snapshot plus the reads behind it, so a project page can show the detail without reading twice. */
+export interface SnapshotParts { snapshot: Snapshot; activation: ActivationData; gbp: GbpDailyData | null }
+
 /** Reads every source; never throws per source. */
-export async function readSnapshot(db: AdminClient, today: string): Promise<Snapshot> {
+export async function readSnapshotParts(db: AdminClient, today: string): Promise<SnapshotParts> {
   const [raw, gbp, tasks] = await Promise.all([
     readClinicActivation(db, today),
     readGbpDaily(db, today).catch(() => null),
     readProjectTasks(db),
   ]);
-  return buildSnapshot({
-    today, activation: buildActivation(raw), orthoFunnel: raw.ortho?.funnel ?? null, gbp, tasks, readAt: raw.readAt,
-  });
+  const activation = buildActivation(raw);
+  const snapshot = buildSnapshot({ today, activation, orthoFunnel: raw.ortho?.funnel ?? null, gbp, tasks, readAt: raw.readAt });
+  return { snapshot, activation, gbp };
 }
+
+export const readSnapshot = async (db: AdminClient, today: string): Promise<Snapshot> => (await readSnapshotParts(db, today)).snapshot;
