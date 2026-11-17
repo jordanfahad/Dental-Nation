@@ -5,7 +5,8 @@ import { addDaysIso, SMILE_CLUB_COMPANIES, smileClubLink, socialLink } from '@/l
 import { parseRange, rangeParams, type ViewRange } from '@/lib/overview/range';
 import { readActivation } from '@/lib/overview/activation';
 import { ORTHO_FROM, readOrthoCreatives, readOrthoDashboard } from '@/lib/ortho/dashboard';
-import { isProjectKey, PROJECT_NAMES, readSnapshotParts, type ProjectKey } from '@/lib/projects/snapshot';
+import { isProjectClinic, isProjectKey, PROJECT_NAMES, readSnapshotParts, taskCounts, type ProjectKey } from '@/lib/projects/snapshot';
+import { ClinicProgressTable, MembershipPanel } from '@/components/next/projects/PlanPanels';
 import { PreviewShell, type PreviewSection } from '@/components/next/PreviewShell';
 import { ProjectHeader, ProjectOverview } from '@/components/next/projects/ProjectsView';
 import { GbpGoogleTable } from '@/components/next/projects/GbpGoogleTable';
@@ -45,7 +46,7 @@ export default async function ProjectPage({
   params, searchParams,
 }: {
   params: Promise<{ key: string }>;
-  searchParams: Promise<{ from?: string | string[]; to?: string | string[]; preset?: string | string[] }>;
+  searchParams: Promise<{ from?: string | string[]; to?: string | string[]; preset?: string | string[]; clinic?: string | string[] }>;
 }) {
   const { key } = await params;
   if (!isProjectKey(key)) notFound();
@@ -58,10 +59,15 @@ export default async function ProjectPage({
     );
   }
   const today = dubaiDay();
-  const parsed = parseRange(await searchParams, today);
+  const sp = await searchParams;
+  const parsed = parseRange(sp, today);
+  // GBP: ?clinic= narrows the activities to one clinic (Ms Shadi, 17 Nov 2026).
+  const clinic = key === 'gbp' && isProjectClinic(sp.clinic) ? sp.clinic : null;
   const path = `/next/projects/${key}`;
   const parts = await readSnapshotParts(db, today);
-  const p = parts.snapshot.projects.find((x) => x.key === key)!;
+  const whole = parts.snapshot.projects.find((x) => x.key === key)!;
+  const shown = clinic ? whole.tasks.filter((t) => t.clinic === clinic || t.clinic == null) : whole.tasks;
+  const p = clinic ? { ...whole, tasks: shown, counts: taskCounts(shown, today) } : whole;
 
   let detail: React.ReactNode;
   if (key === 'ortho') {
@@ -103,6 +109,7 @@ export default async function ProjectPage({
             {' · '}
             <a className="font-semibold text-dn-navy underline" href={smileClubLink()}>Smile Club workspace</a>
           </p>
+          <MembershipPanel m={whole.membership ?? null} />
           <ActivationView data={activation} range={parsed} only={['smile-club']} embedPath={path} />
         </Detail>
       );
@@ -112,7 +119,8 @@ export default async function ProjectPage({
   return (
     <PreviewShell active={NAV[key]} rangeParams={rangeParams(parsed)}>
       <main className="mx-auto max-w-[1440px] px-4 pb-6 pt-6 sm:px-8 sm:pt-7">
-        <ProjectHeader p={p} data={parts.snapshot} />
+        <ProjectHeader p={whole} data={parts.snapshot} />
+        {key === 'gbp' && whole.clinics ? <ClinicProgressTable clinics={whole.clinics} path={path} current={clinic} /> : null}
         <ProjectOverview p={p} today={parts.snapshot.today} tasksRead={parts.snapshot.tasksRead} />
         {detail}
       </main>

@@ -10,7 +10,7 @@ import { REVENUE_TARGETS } from '../config/project-targets';
 import { PLANTED_NAME, PLANTED_PHONE, TODAY, nullActivation, sampleActivation } from './fixtures/activation';
 
 const task = (id: string, project: ProjectTask['project'], status: ProjectTask['status'], due: string | null, note: string | null = null): ProjectTask =>
-  ({ id, project, channel: 'Example channel', task: `Example task ${id}`, owner: 'Example owner', due, status, note, completedOn: null });
+  ({ id, project, channel: 'Example channel', task: `Example task ${id}`, owner: 'Example owner', due, status, note, completedOn: null, clinic: null });
 
 const funnel = (over: Partial<Funnel> = {}): Funnel => ({
   googleSpend: 0, googleClicks: 0, googleImpressions: 0, metaSpend: 100, metaPeople: 10, metaRealPeople: 6, spend: 100,
@@ -108,4 +108,35 @@ test('email: one row per project, linked to its detail; subject counts; no patie
   assert.ok(html.includes('To Ms Shadi; copied to Fahad.'));
   assert.ok(!html.includes(PLANTED_NAME) && !html.includes(PLANTED_PHONE));
   assert.doesNotMatch(subject + html, /[–—]/);
+});
+
+test('Smile Club counts paying members from the membership admin, not the lead tracker', () => {
+  const membership = {
+    day: '2026-10-28', activeMembers: 5, monthlyRevenueAed: 695, incompleteApplications: 3, upcomingAppointments: 0,
+    members: [{ id: 'SC-TEST-1', plan: 'Plus', pays: 'monthly', amount: 139, partner: 'EXAMPLECODE', started: '2026-10-25', renews: '2026-11-25', benefitsUsed: 1 }],
+    source: 'test',
+  };
+  const s = buildSnapshot(sources({ membership }));
+  const sc = s.projects.find((p) => p.key === 'smile-club')!;
+  assert.equal(sc.kpis.find((k) => k.label.startsWith('Active paying members'))!.mtd, 5);
+  assert.equal(sc.kpis.find((k) => k.label.startsWith('Monthly membership revenue'))!.mtd, 695);
+  assert.match(sc.headline, /^5 active members, AED 695 a month \(membership admin, 28 Oct\)$/);
+  assert.ok(sc.bottlenecks.includes('3 incomplete membership applications worth a call'));
+  assert.equal(sc.membership?.members.length, 1);
+  // Without a membership read, the page says so rather than showing 0.
+  const none = buildSnapshot(sources()).projects.find((p) => p.key === 'smile-club')!;
+  assert.ok(none.bottlenecks.includes('Membership figures not read yet from the membership admin'));
+  assert.equal(none.kpis.find((k) => k.label.startsWith('Active paying members'))!.mtd, null);
+});
+
+test('GBP: the plan is tracked clinic by clinic, with the plan review targets', () => {
+  const t = (id: string, clinic: 'dental-nation' | 'dr-tosun' | 'al-maher', status: ProjectTask['status']): ProjectTask =>
+    ({ id, project: 'gbp', channel: 'x', task: id, owner: 'o', due: null, status, note: null, completedOn: null, clinic });
+  const s = buildSnapshot(sources({ tasks: [t('A1', 'dental-nation', 'Done'), t('A2', 'dental-nation', 'Not started'), t('M1', 'al-maher', 'In progress')] }));
+  const gbp = s.projects.find((p) => p.key === 'gbp')!;
+  const by = Object.fromEntries(gbp.clinics!.map((c) => [c.clinic, c]));
+  assert.deepEqual([by['dental-nation'].counts.done, by['dental-nation'].counts.total], [1, 2]);
+  assert.deepEqual([by['al-maher'].counts.inProgress, by['dr-tosun'].counts.total], [1, 0]);
+  assert.deepEqual([by['dental-nation'].reviewsBaseline, by['dental-nation'].reviewsTarget], [79, 250]);
+  assert.equal(by['dr-tosun'].reviewsNow, null); // no Google read in this fixture: not yet, never 0
 });

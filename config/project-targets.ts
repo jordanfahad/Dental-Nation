@@ -26,4 +26,16 @@ export const REVENUE_TARGETS: Record<'dental-nation' | 'dr-tosun' | 'al-maher' |
 /** Average Google rating to hold (2026 KPI target). */
 export const RATING_TARGET: MonthlyTarget = { value: 4.7, source: '2026 KPI target' };
 
+/**
+ * Ms Shadi's GBP plan (GBP Plan sheet, Executive Dashboard): per clinic, Google
+ * reviews at the start of the plan, the 30-day review target, and the 30-day
+ * target of new patients from Google.
+ */
+export const GBP_PLAN_TARGETS: Record<'dental-nation' | 'dr-tosun' | 'al-maher', { reviewsBaseline: number; reviewsTarget: number; patientTarget: number }> = {
+  'dental-nation': { reviewsBaseline: 79, reviewsTarget: 250, patientTarget: 100 },
+  'dr-tosun': { reviewsBaseline: 124, reviewsTarget: 300, patientTarget: 100 },
+  'al-maher': { reviewsBaseline: 60, reviewsTarget: 150, patientTarget: 100 },
+};
+export const GBP_PLAN_SOURCE = "Ms Shadi's GBP plan (30-day targets)";
+
 export const NO_TARGET_NOTE = "No target set yet: waiting for Ms Shadi's project plan";

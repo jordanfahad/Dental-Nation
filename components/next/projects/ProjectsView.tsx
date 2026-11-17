@@ -53,13 +53,16 @@ function KpiStatusText({ k }: { k: Kpi }) {
   return <span className="font-bold text-[#1d7a4f]">On target</span>;
 }
 
+const CLINIC: Record<string, string> = { 'dental-nation': 'Al Wasl', 'dr-tosun': 'Dr Tosun', 'al-maher': 'Al Maher' };
+
 function TaskTable({ tasks, today }: { tasks: ProjectTask[]; today: string }) {
+  const byClinic = tasks.some((t) => t.clinic);
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[640px] border-collapse text-[12.5px] text-dn-ink">
         <thead>
           <tr>
-            <th className={th}>Task</th><th className={th}>Owner</th><th className={th}>Due</th><th className={th}>Status</th><th className={th}>Latest update</th>
+            <th className={th}>Task</th>{byClinic ? <th className={th}>Clinic</th> : null}<th className={th}>Owner</th><th className={th}>Due</th><th className={th}>Status</th><th className={th}>Latest update</th>
           </tr>
         </thead>
         <tbody>
@@ -71,6 +74,7 @@ function TaskTable({ tasks, today }: { tasks: ProjectTask[]; today: string }) {
                   <span className="font-semibold text-dn-navy">{t.task}</span>
                   <span className="text-[11px] text-[#647578]"> · {t.channel} · {t.id}</span>
                 </td>
+                {byClinic ? <td className={`${td} whitespace-nowrap`}>{t.clinic ? CLINIC[t.clinic] : 'All clinics'}</td> : null}
                 <td className={`${td} whitespace-nowrap`}>{t.owner}</td>
                 <td className={`${td} whitespace-nowrap ${late ? 'font-bold text-[#b42318]' : ''}`}>
                   {t.due ? dayMonth(t.due) : '-'}{late ? ' (overdue)' : ''}

@@ -224,7 +224,7 @@ async function main() {
   const { buildSnapshot } = await import('../lib/projects/snapshot');
   const { buildActivation } = await import('../lib/overview/activation');
   const task = (id: string, project: 'clinic-activation' | 'ortho' | 'gbp' | 'smile-club', t: string, due: string, status: 'Not started' | 'In progress' | 'Done' | 'Blocked' | 'On hold') =>
-    ({ id, project, channel: 'Example', task: t, owner: 'Example owner', due, status, note: null, completedOn: null });
+    ({ id, project, channel: 'Example', task: t, owner: 'Example owner', due, status, note: null, completedOn: null, clinic: null });
   const snapshot = buildSnapshot({
     today, activation: buildActivation(activation), orthoFunnel: activation.ortho?.funnel ?? null, gbp, readAt: new Date().toISOString(),
     tasks: [

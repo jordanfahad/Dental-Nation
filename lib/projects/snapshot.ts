@@ -22,7 +22,7 @@ import { readClinicActivation, type ClinicActivation } from '@/lib/activation/re
 import { buildActivation, type ActivationData } from '@/lib/overview/activation';
 import { readGbpDaily, type GbpDailyData } from '@/lib/alerts/gbpDaily';
 import { REPORTS, type Range } from '@/lib/alerts/links';
-import { NO_TARGET_NOTE, RATING_TARGET, REVENUE_TARGETS } from '@/config/project-targets';
+import { GBP_PLAN_TARGETS, NO_TARGET_NOTE, RATING_TARGET, REVENUE_TARGETS } from '@/config/project-targets';
 
 export type ProjectKey = 'clinic-activation' | 'ortho' | 'gbp' | 'smile-club';
 export type TaskStatus = 'Not started' | 'In progress' | 'Done' | 'Blocked' | 'On hold';
@@ -39,6 +39,37 @@ export interface ProjectTask {
   status: TaskStatus;
   note: string | null;
   completedOn: string | null;
+  /** The clinic this task is for; null = all clinics or not clinic-specific. */
+  clinic: ProjectClinic | null;
+}
+
+export type ProjectClinic = 'dental-nation' | 'dr-tosun' | 'al-maher';
+export const CLINIC_NAMES: Record<ProjectClinic, string> = { 'dental-nation': 'Al Wasl', 'dr-tosun': 'Dr Tosun', 'al-maher': 'Al Maher' };
+export const PROJECT_CLINICS: readonly ProjectClinic[] = ['dental-nation', 'dr-tosun', 'al-maher'];
+export const isProjectClinic = (v: unknown): v is ProjectClinic => typeof v === 'string' && (PROJECT_CLINICS as readonly string[]).includes(v);
+
+/** One clinic's progress on Ms Shadi's GBP plan: activities and Google reviews against the plan's targets. */
+export interface ClinicProgress {
+  clinic: ProjectClinic;
+  name: string;
+  counts: TaskCounts;
+  /** Google's review count now; null = not read. */
+  reviewsNow: number | null;
+  reviewsBaseline: number;
+  reviewsTarget: number;
+  patientTarget: number;
+}
+
+/** A day's read of the Smile Club membership admin (no names or contact details). */
+export interface MembershipSnapshot {
+  day: string;
+  activeMembers: number | null;
+  monthlyRevenueAed: number | null;
+  incompleteApplications: number | null;
+  upcomingAppointments: number | null;
+  /** Members by start date (member ID, plan, amount, partner code, dates only). */
+  members: { id: string; plan: string; pays: string; amount: number; partner: string; started: string; renews: string; benefitsUsed: number }[];
+  source: string;
 }
 
 export interface Kpi {
@@ -77,6 +108,10 @@ export interface ProjectSnapshot {
   /** The full report for the project's figures. */
   reportUrl: string;
   reportLabel: string;
+  /** GBP only: the plan's progress per clinic. */
+  clinics?: ClinicProgress[];
+  /** Smile Club only: the latest membership admin read. */
+  membership?: MembershipSnapshot | null;
 }
 
 export interface Snapshot {
@@ -199,6 +234,8 @@ export interface SnapshotSources {
   gbp: GbpDailyData | null;
   /** null = the task table could not be read. */
   tasks: ProjectTask[] | null;
+  /** Latest Smile Club membership admin read; null = none yet. */
+  membership?: MembershipSnapshot | null;
   readAt: string;
 }
 
@@ -280,11 +317,20 @@ export function buildSnapshot(s: SnapshotSources): Snapshot {
       ...(g ? [] : ['Google Business Profile figures could not be read this morning']),
     ];
     const tasks = tasksOf('gbp');
+    const clinics: ClinicProgress[] = PROJECT_CLINICS.map((c) => {
+      const plan = GBP_PLAN_TARGETS[c];
+      const google = g?.branches.find((b) => b.key === c)?.reviews?.total;
+      return {
+        clinic: c, name: CLINIC_NAMES[c], counts: taskCounts(tasks.filter((t) => t.clinic === c), today),
+        reviewsNow: typeof google === 'number' ? google : null,
+        reviewsBaseline: plan.reviewsBaseline, reviewsTarget: plan.reviewsTarget, patientTarget: plan.patientTarget,
+      };
+    });
     const day = g?.latestDay ? ` (Google's latest day, ${dayMonth(g.latestDay)})` : '';
     projects.push({
       key: 'gbp', name: PROJECT_NAMES.gbp, ...judge(tasks, kpis, today, extra),
       headline: `${count(g?.all.day?.calls ?? null, 'call', 'calls')}, ${count(g?.all.day?.directions ?? null, 'direction request', 'direction requests')}${day}`,
-      kpis, tasks, detailUrl: detail('gbp'), reportUrl: href, reportLabel: 'Detailed figures',
+      kpis, tasks, detailUrl: detail('gbp'), reportUrl: href, reportLabel: 'Detailed figures', clinics,
     });
   }
 
@@ -292,16 +338,29 @@ export function buildSnapshot(s: SnapshotSources): Snapshot {
   {
     const href = at('smile-club', 'smile-club');
     const sc = a.smileClub.lines.find((l) => l.key === 'total');
+    const m = s.membership ?? null;
+    const memberHref = at('smile-club', 'members');
+    const asOf = m ? ` (membership admin, ${dayMonth(m.day)})` : '';
+    // Paying members come from the membership admin (Ms Shadi, 17 Nov 2026): the lead
+    // tracker only counts sign-ups the front office marks, so it undercounts.
     const kpis: Kpi[] = [
-      kpi('Smile Club enquiries', 'count', sc?.yesterday.enquiries ?? null, sc?.window.enquiries ?? null, href),
-      kpi('Followed up', 'count', sc?.yesterday.followedUp ?? null, sc?.window.followedUp ?? null, href),
-      kpi('Converted', 'count', sc?.yesterday.converted ?? null, sc?.window.converted ?? null, href),
+      kpi(`Active paying members${asOf}`, 'count', null, m?.activeMembers ?? null, memberHref),
+      kpi(`Monthly membership revenue${asOf}`, 'aed', null, m?.monthlyRevenueAed ?? null, memberHref),
+      kpi(`Incomplete applications${asOf}`, 'count', null, m?.incompleteApplications ?? null, memberHref),
+      kpi('Smile Club enquiries (lead tracker)', 'count', sc?.yesterday.enquiries ?? null, sc?.window.enquiries ?? null, href),
+      kpi('Followed up (lead tracker)', 'count', sc?.yesterday.followedUp ?? null, sc?.window.followedUp ?? null, href),
     ];
     const tasks = tasksOf('smile-club');
+    const extra = [
+      ...(m?.incompleteApplications ? [`${fmt(m.incompleteApplications)} incomplete membership ${m.incompleteApplications === 1 ? 'application' : 'applications'} worth a call`] : []),
+      ...(m ? [] : ['Membership figures not read yet from the membership admin']),
+    ];
     projects.push({
-      key: 'smile-club', name: PROJECT_NAMES['smile-club'], ...judge(tasks, kpis, today),
-      headline: `${count(sc?.yesterday.enquiries ?? null, 'enquiry', 'enquiries')}, ${count(sc?.window.converted ?? null, 'conversion', 'conversions')} this month`,
-      kpis, tasks, detailUrl: detail('smile-club'), reportUrl: href, reportLabel: 'Smile Club figures',
+      key: 'smile-club', name: PROJECT_NAMES['smile-club'], ...judge(tasks, kpis, today, extra),
+      headline: m
+        ? `${count(m.activeMembers, 'active member', 'active members')}, ${aedOf(m.monthlyRevenueAed, 'a month')}${asOf}`
+        : `${count(sc?.yesterday.enquiries ?? null, 'enquiry', 'enquiries')}, ${count(sc?.window.converted ?? null, 'conversion', 'conversions')} this month`,
+      kpis, tasks, detailUrl: detail('smile-club'), reportUrl: href, reportLabel: 'Smile Club figures', membership: m,
     });
   }
 
@@ -311,17 +370,37 @@ export function buildSnapshot(s: SnapshotSources): Snapshot {
 
 interface TaskRow {
   id: string; project: string; channel: string; task: string; owner: string; due: string | null;
-  status: string; note: string | null; completed_on: string | null;
+  status: string; note: string | null; completed_on: string | null; clinic: string | null;
 }
 
 export async function readProjectTasks(db: AdminClient): Promise<ProjectTask[] | null> {
   try {
-    const { data, error } = await db.from('project_tasks').select('id,project,channel,task,owner,due,status,note,completed_on').order('sort');
+    const { data, error } = await db.from('project_tasks').select('id,project,channel,task,owner,due,status,note,completed_on,clinic').order('sort');
     if (error || !data) return null;
     return (data as TaskRow[]).map((r) => ({
       id: r.id, project: r.project as ProjectKey, channel: r.channel, task: r.task, owner: r.owner, due: r.due,
-      status: r.status as TaskStatus, note: r.note, completedOn: r.completed_on,
+      status: r.status as TaskStatus, note: r.note, completedOn: r.completed_on, clinic: isProjectClinic(r.clinic) ? r.clinic : null,
     }));
+  } catch {
+    return null;
+  }
+}
+
+interface MembershipRow {
+  day: string; active_members: number | null; monthly_revenue_aed: number | string | null; incomplete_applications: number | null;
+  upcoming_appointments: number | null; members: MembershipSnapshot['members'] | null; source: string;
+}
+
+/** The latest Smile Club membership admin read; null when none or unreadable. */
+export async function readMembership(db: AdminClient): Promise<MembershipSnapshot | null> {
+  try {
+    const { data, error } = await db.from('sc_membership_snapshots').select('*').order('day', { ascending: false }).limit(1);
+    const r = (data as MembershipRow[] | null)?.[0];
+    if (error || !r) return null;
+    return {
+      day: r.day, activeMembers: r.active_members, monthlyRevenueAed: r.monthly_revenue_aed == null ? null : Number(r.monthly_revenue_aed),
+      incompleteApplications: r.incomplete_applications, upcomingAppointments: r.upcoming_appointments, members: r.members ?? [], source: r.source,
+    };
   } catch {
     return null;
   }
@@ -332,13 +411,14 @@ export interface SnapshotParts { snapshot: Snapshot; activation: ActivationData;
 
 /** Reads every source; never throws per source. */
 export async function readSnapshotParts(db: AdminClient, today: string): Promise<SnapshotParts> {
-  const [raw, gbp, tasks] = await Promise.all([
+  const [raw, gbp, tasks, membership] = await Promise.all([
     readClinicActivation(db, today),
     readGbpDaily(db, today).catch(() => null),
     readProjectTasks(db),
+    readMembership(db),
   ]);
   const activation = buildActivation(raw);
-  const snapshot = buildSnapshot({ today, activation, orthoFunnel: raw.ortho?.funnel ?? null, gbp, tasks, readAt: raw.readAt });
+  const snapshot = buildSnapshot({ today, activation, orthoFunnel: raw.ortho?.funnel ?? null, gbp, tasks, membership, readAt: raw.readAt });
   return { snapshot, activation, gbp };
 }
 
