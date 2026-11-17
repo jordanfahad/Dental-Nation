@@ -4,6 +4,8 @@ import { parseRange, rangeParams } from '@/lib/overview/range';
 import { readChannels } from '@/lib/overview/channels';
 import { PreviewShell } from '@/components/next/PreviewShell';
 import { ChannelsView } from '@/components/next/channels/ChannelsView';
+import { AcquisitionPanel } from '@/components/next/channels/AcquisitionPanel';
+import { readAcquisition } from '@/lib/channels/acquisition';
 import { ProofDrawer } from '@/components/next/ProofDrawer';
 
 /**
@@ -29,10 +31,12 @@ export default async function NextChannelsPage({
 }) {
   const today = dubaiDay();
   const range = parseRange(await searchParams, today);
-  const data = await readChannels(getSupabaseAdmin(), today, range);
+  const db = getSupabaseAdmin();
+  const [data, acquisition] = await Promise.all([readChannels(db, today, range), readAcquisition(db, range)]);
   return (
     <PreviewShell active="Channels" rangeParams={rangeParams(range)}>
       <ChannelsView data={data} range={range} />
+      <AcquisitionPanel data={acquisition} />
       <ProofDrawer />
     </PreviewShell>
   );
