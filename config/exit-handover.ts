@@ -114,8 +114,8 @@ export const EXIT_HANDOVER = {
   /** Where things stand and what is waiting. */
   openItems: [
     {
-      title: 'Google Ads data stopped on 6 November',
-      body: 'The Google Ads sync has not stored spend since 6 November, so Google CPL and CAC on the Channels page are incomplete after that date. Only one of the two Google Ads accounts is connected. Needs the connection checked and the second account added.',
+      title: 'Google Ads: second account not connected',
+      body: 'The Google Ads connection works; it shows no spend after 6 November because Search is paused. Only one of the two Google Ads accounts is connected, so the second account needs adding before Google CPL and CAC are complete.',
       owner: P('Zavis (Syed), before my last day'),
     },
     {
@@ -155,7 +155,7 @@ export const EXIT_HANDOVER = {
   plan: [
     'Agree the owners above with Mr Akbar and Ms Shadi, and update this page.',
     'Walk Dr Luvi and Gautam through the project pages and the task tracker (30 minutes).',
-    'Get the Google Ads sync fixed and the second account connected.',
+    'Get the second Google Ads account connected to the dashboard.',
     'Transfer ownership of the dashboard code, hosting and database to the named Dental Nation owner.',
     'On my last day: move my email copies and the previews to my successor, and stop my daily update.',
   ],

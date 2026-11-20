@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { runDailyAlerts } from '@/lib/alerts/run';
+import { getSupabaseAdmin } from '@/lib/supabase/server';
+import { runKeywordPlannerRequest } from '@/lib/googleAds/keywordPlanner';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -27,6 +29,10 @@ export async function GET(req: NextRequest) {
   }
   try {
     const results = await runDailyAlerts();
+    // Keyword Planner runs only when a request row is waiting (lib/googleAds/keywordPlanner.ts).
+    const db = getSupabaseAdmin();
+    const keywords = db ? await runKeywordPlannerRequest(db).catch(() => 'keyword planner failed') : null;
+    if (keywords) return NextResponse.json({ results, keywords });
     return NextResponse.json({ results });
   } catch {
     // No raw exception text in the response: upstream errors can contain row contents.

@@ -32,7 +32,7 @@ export interface GAdsSyncOpts {
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 
-async function getAccessToken(cfg: GoogleAdsConfig): Promise<string> {
+export async function getAccessToken(cfg: GoogleAdsConfig): Promise<string> {
   const res = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
