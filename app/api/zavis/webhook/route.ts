@@ -5,7 +5,7 @@ import { sendEmail, emailConfigured } from '@/lib/notify/email';
 import { OPS_ALERT_FROM } from '@/config/ops';
 import { emailsOf, loadStoredEmails } from '@/lib/smileclub/alerts';
 import {
-  adSourceOf, buildLeadEmail, decide, eventOf, isIncomingPatientMessage, leadOf, signatureStatus, type AlertMode,
+  adSourceOf, buildLeadEmail, decide, eventOf, isIncomingPatientMessage, isNewConversation, leadOf, signatureStatus, type AlertMode,
 } from '@/lib/zavis/leadAlert';
 
 /**
@@ -73,6 +73,11 @@ export async function POST(req: NextRequest) {
     });
     // One alert per conversation, on the patient's first message.
     if (!isIncomingPatientMessage(payload) || lead.conversationId == null) return;
+    // Only a conversation that started in the last day is a new lead; an older chat coming back is not.
+    if (!isNewConversation(payload, Date.now())) {
+      console.log(`[zavis-webhook] no alert: conversation ${lead.conversationId} is not new`);
+      return;
+    }
     const { data: modeRow } = await db.from('app_secrets').select('value').eq('key', 'zavis_alert_mode').maybeSingle();
     const raw = String(modeRow?.value ?? 'test').trim() as AlertMode;
     const mode: AlertMode = MODES.includes(raw) ? raw : 'test';

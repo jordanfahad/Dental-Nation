@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { adSourceOf, buildLeadEmail, decide, eventOf, isIncomingPatientMessage, leadOf } from '../lib/zavis/leadAlert';
+import { adSourceOf, buildLeadEmail, decide, eventOf, isIncomingPatientMessage, isNewConversation, leadOf } from '../lib/zavis/leadAlert';
 
 // Synthetic payloads shaped like Chatwoot webhooks (Zavis runs on the same API). No real patient data.
 const message = (over: Record<string, unknown> = {}) => ({
@@ -76,4 +76,16 @@ test('signature: HMAC-SHA256 over "<timestamp>.<raw body>", header names matched
   assert.equal(signatureStatus({ 'x-zavis-timestamp': '1731400000', 'x-zavis-signature': good }, body + ' ', 's3cret', h), 'mismatch');
   assert.equal(signatureStatus({}, body, 's3cret', h), 'missing');
   assert.equal(signatureStatus({ 'x-zavis-timestamp': '1', 'x-zavis-signature': good }, body, null, h), 'missing');
+});
+
+test('only a conversation that started in the last day is a new lead (old chats coming back do not alert)', () => {
+  const now = Date.parse('2026-11-20T08:00:00Z');
+  const at = (convStart: unknown, msg: unknown = '2026-11-20T07:59:00Z') =>
+    message({ created_at: msg, conversation: { id: 9001, created_at: convStart } });
+  assert.equal(isNewConversation(at(Math.floor(Date.parse('2026-11-20T07:58:00Z') / 1000)), now), true); // unix seconds, minutes ago
+  assert.equal(isNewConversation(at(Math.floor(Date.parse('2026-11-02T10:00:00Z') / 1000)), now), false); // started 2 Nov
+  assert.equal(isNewConversation(at('2026-11-13T03:50:00Z'), now), false); // ISO, a week old
+  assert.equal(isNewConversation(at('2026-11-19T09:00:00Z'), now), true); // under 24 hours
+  assert.equal(isNewConversation(at(undefined), now), true); // no start time: still alert
+  assert.equal(isNewConversation(at(Math.floor(Date.parse('2026-11-02T10:00:00Z') / 1000), 1795152876), now), false); // unix message time
 });

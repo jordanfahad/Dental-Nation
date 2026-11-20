@@ -54,6 +54,33 @@ export function isIncomingPatientMessage(p: unknown): boolean {
   return incoming && m.private !== true;
 }
 
+/** A Zavis time (unix seconds, unix ms or ISO text) as epoch ms; null when absent or unreadable. */
+export function zavisTimeMs(v: unknown): number | null {
+  const n = int(v);
+  if (n != null) return n > 1e12 ? n : n * 1000;
+  const t = typeof v === 'string' ? Date.parse(v) : NaN;
+  return Number.isFinite(t) ? t : null;
+}
+
+/** A conversation older than this at the patient's message is a returning chat, not a new lead. */
+export const NEW_LEAD_HOURS = 24;
+
+/**
+ * Is this message in a conversation that started recently? Dr Luvi (20 Nov 2026)
+ * got alerts for chats from early November: a returning patient's first message
+ * since the alert went live looked new. The conversation's own start time
+ * decides. When Zavis sends no start time, the alert still goes (a missed lead
+ * costs more than a repeat alert).
+ */
+export function isNewConversation(p: unknown, nowMs: number, hours = NEW_LEAD_HOURS): boolean {
+  const m = obj(p);
+  const conv = eventOf(p).startsWith('conversation') ? m : obj(m.conversation);
+  const started = zavisTimeMs(conv.created_at);
+  if (started == null) return true;
+  const at = zavisTimeMs(m.created_at) ?? nowMs;
+  return at - started <= hours * 3_600_000;
+}
+
 /** Pull the lead fields from any conversation or message payload, whatever its shape. */
 export function leadOf(p: unknown): ZavisLead {
   const m = obj(p);
